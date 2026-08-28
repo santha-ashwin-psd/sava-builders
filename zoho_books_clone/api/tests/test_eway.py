@@ -1,15 +1,22 @@
 # Copyright (c) 2026, PS Digitise and Contributors
 # See license.txt
 """
-Tests for api/eway.py -- local-only E-Way Bill lifecycle endpoints (mock
-NIC number, no real portal integration).
+Tests for api/eway.py -- local-only E-Way Bill lifecycle endpoints. We never
+contact NIC directly and never fabricate an EWB number: generate_eway_bill
+validates the invoice and creates a "Ready for Upload" record with
+ewb_no="", and import_eway_result() is the only place a real, government-
+issued ewb_no ever gets set (after the client uploads the bulk JSON to the
+portal and pastes the result back).
 
 Covers: _validity_days (200km/day rule, including the round-up-to-next-day
-boundary), _ui_status (Cancelled > Expired > Generated precedence), the
-generate_eway_bill flow (docstatus guard, double-generation block, ODC vs
-regular validity calc), cancel_eway_bill (idempotent on already-cancelled),
-update_vehicle, extend_validity (single-extension rule, past-date base
-clamp), and get_eway_json's NIC payload shape.
+boundary), _ui_status (Cancelled > Expired > Generated/Ready for Upload
+precedence), the generate_eway_bill flow (docstatus guard, double-generation
+block, ODC vs regular validity calc, Ready-for-Upload creation with a blank
+ewb_no), import_eway_result (status guard, required-field checks, the
+Ready for Upload -> Generated transition), cancel_eway_bill (idempotent on
+already-cancelled), update_vehicle, extend_validity (single-extension rule,
+past-date base clamp), and get_eway_json's NIC bulk payload shape (both the
+Ready-for-Upload "no number yet" case and the post-import Generated case).
 
 DB-free: frappe.db.* / frappe.get_doc are mocked; require_module is mocked
 to isolate business logic from authorization (covered in
@@ -101,13 +108,10 @@ class TestUiStatus(unittest.TestCase):
         doc = SimpleNamespace(status=None, valid_upto=None)
         self.assertEqual(eway._ui_status(doc), "Draft")
 
-
-class TestMockEwbNumber(unittest.TestCase):
-
-    def test_produces_12_digit_numeric_string(self):
-        num = eway._mock_ewb_number()
-        self.assertEqual(len(num), 12)
-        self.assertTrue(num.isdigit())
+    def test_ready_for_upload_passes_through_unchanged(self):
+        # No valid_upto expiry check applies -- there's no real EWB yet.
+        doc = SimpleNamespace(status="Ready for Upload", valid_upto=None)
+        self.assertEqual(eway._ui_status(doc), "Ready for Upload")
 
 
 class TestGenerateEwayBill(unittest.TestCase):
@@ -161,13 +165,15 @@ class TestGenerateEwayBill(unittest.TestCase):
         inv = self._base_invoice()
         ewb_doc = MagicMock()
         ewb_doc.name = "EWB-2026-00001"
-        ewb_doc.ewb_no = "260801123456"
+        ewb_doc.ewb_no = ""
         ewb_doc.valid_upto = "2026-08-02"
 
+        captured = {}
         def _side_effect(doctype, name=None, *args, **kwargs):
             if doctype == "Sales Invoice" and name == "SINV-0001":
                 return inv
             if isinstance(doctype, dict):
+                captured.update(doctype)
                 return ewb_doc
             return _REAL_GET_DOC(doctype, name, *args, **kwargs)
         with patch.object(frappe, "get_doc", side_effect=_side_effect):
@@ -176,6 +182,9 @@ class TestGenerateEwayBill(unittest.TestCase):
                 vehicle_no="ka 01 ab 1234", distance_km=250, vehicle_type="Regular",
             )
         self.assertEqual(result["days"], 2)  # 250km -> ceil(250/200) = 2
+        self.assertEqual(result["status"], "Ready for Upload")
+        self.assertEqual(captured["status"], "Ready for Upload")
+        self.assertEqual(captured["ewb_no"], "")  # never fabricated
         ewb_doc.insert.assert_called_once_with(ignore_permissions=False)
 
     @patch.object(frappe.db, "commit")
@@ -189,7 +198,7 @@ class TestGenerateEwayBill(unittest.TestCase):
         inv = self._base_invoice()
         ewb_doc = MagicMock()
         ewb_doc.name = "EWB-2026-00002"
-        ewb_doc.ewb_no = "260801654321"
+        ewb_doc.ewb_no = ""
         ewb_doc.valid_upto = "2026-08-04"
 
         def _side_effect(doctype, name=None, *args, **kwargs):
@@ -205,36 +214,7 @@ class TestGenerateEwayBill(unittest.TestCase):
             )
         # 45km ODC: ceil(45/20) = 3 days, NOT ceil(45/200)=1
         self.assertEqual(result["days"], 3)
-
-    @patch.object(frappe.db, "commit")
-    @patch.object(frappe.db, "set_value", side_effect=Exception("column missing"))
-    @patch.object(frappe.db, "get_value")
-    @patch.object(frappe.db, "exists")
-    @patch("zoho_books_clone.utils.access.require_module")
-    def test_invoice_stamp_failure_does_not_block_ewb_creation(
-        self, mock_req, mock_exists, mock_get_value, mock_set_value, mock_commit,
-    ):
-        # Best-effort stamp of ewaybill no. back onto the invoice -- wrapped
-        # in try/except in the source, must not blow up the whole call.
-        mock_exists.side_effect = [True, None]
-        mock_get_value.return_value = 1
-        inv = self._base_invoice()
-        ewb_doc = MagicMock()
-        ewb_doc.name = "EWB-2026-00003"
-        ewb_doc.ewb_no = "260801000001"
-        ewb_doc.valid_upto = "2026-08-02"
-
-        def _side_effect(doctype, name=None, *args, **kwargs):
-            if doctype == "Sales Invoice" and name == "SINV-0001":
-                return inv
-            if isinstance(doctype, dict):
-                return ewb_doc
-            return _REAL_GET_DOC(doctype, name, *args, **kwargs)
-        with patch.object(frappe, "get_doc", side_effect=_side_effect):
-            result = eway.generate_eway_bill(
-                invoice_no="SINV-0001", transporter="XYZ Logistics", vehicle_no="KA01AB1234",
-            )
-        self.assertTrue(result["ok"])
+        self.assertEqual(result["status"], "Ready for Upload")
 
     @patch.object(frappe.db, "commit")
     @patch.object(frappe.db, "set_value")
@@ -263,6 +243,57 @@ class TestGenerateEwayBill(unittest.TestCase):
             eway.generate_eway_bill(invoice_no="SINV-0001", transporter="XYZ Logistics",
                                      vehicle_no="ka 01 ab 1234")
         self.assertEqual(captured["vehicle_no"], "KA01AB1234")
+
+
+class TestImportEwayResult(unittest.TestCase):
+
+    @patch.object(frappe.db, "commit")
+    @patch.object(frappe.db, "exists", return_value=True)
+    @patch("zoho_books_clone.utils.access.require_module")
+    def test_imports_real_result_and_marks_generated(self, mock_req, mock_exists, mock_commit):
+        doc = SimpleNamespace(name="EWB-0001", status="Ready for Upload", ewb_no="",
+                               valid_upto=None, uploaded_on=None, nic_ack_no=None,
+                               nic_ack_date=None)
+        doc.save = MagicMock()
+        with patch.object(frappe, "get_doc",
+                          side_effect=_get_doc_side_effect("E Way Bill", "EWB-0001", doc)):
+            result = eway.import_eway_result(
+                "EWB-0001", ewb_no="260801123456", valid_upto="2026-08-02",
+                ack_no="ACK123", ack_date="2026-08-01",
+            )
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["ewb_no"], "260801123456")
+        self.assertEqual(doc.status, "Generated")
+        self.assertEqual(doc.ewb_no, "260801123456")
+        self.assertEqual(doc.nic_ack_no, "ACK123")
+        doc.save.assert_called_once_with(ignore_permissions=False)
+
+    @patch.object(frappe.db, "exists", return_value=True)
+    @patch("zoho_books_clone.utils.access.require_module")
+    def test_cannot_import_when_not_ready_for_upload(self, mock_req, mock_exists):
+        doc = SimpleNamespace(name="EWB-0001", status="Generated", ewb_no="260801000000")
+        with patch.object(frappe, "get_doc",
+                          side_effect=_get_doc_side_effect("E Way Bill", "EWB-0001", doc)):
+            with self.assertRaises(frappe.ValidationError):
+                eway.import_eway_result("EWB-0001", ewb_no="260801999999", valid_upto="2026-08-02")
+
+    @patch.object(frappe.db, "exists", return_value=True)
+    @patch("zoho_books_clone.utils.access.require_module")
+    def test_blank_ewb_no_is_rejected(self, mock_req, mock_exists):
+        doc = SimpleNamespace(name="EWB-0001", status="Ready for Upload", ewb_no="")
+        with patch.object(frappe, "get_doc",
+                          side_effect=_get_doc_side_effect("E Way Bill", "EWB-0001", doc)):
+            with self.assertRaises(frappe.ValidationError):
+                eway.import_eway_result("EWB-0001", ewb_no="   ", valid_upto="2026-08-02")
+
+    @patch.object(frappe.db, "exists", return_value=True)
+    @patch("zoho_books_clone.utils.access.require_module")
+    def test_missing_valid_upto_is_rejected(self, mock_req, mock_exists):
+        doc = SimpleNamespace(name="EWB-0001", status="Ready for Upload", ewb_no="")
+        with patch.object(frappe, "get_doc",
+                          side_effect=_get_doc_side_effect("E Way Bill", "EWB-0001", doc)):
+            with self.assertRaises(frappe.ValidationError):
+                eway.import_eway_result("EWB-0001", ewb_no="260801123456", valid_upto=None)
 
 
 class TestCancelEwayBill(unittest.TestCase):
@@ -364,13 +395,18 @@ class TestGetEwayJson(unittest.TestCase):
     @patch.object(frappe.db, "exists", return_value=True)
     @patch.object(frappe.db, "get_value", return_value="VK Herbal Formulations Pvt Ltd")
     def test_payload_shape_and_item_mapping(self, mock_get_value, mock_exists):
+        # Post-import: a real EWB number/validity have been set by
+        # import_eway_result(), so status is Generated.
         ewb = SimpleNamespace(
-            name="EWB-0001", ewb_no="260801123456", invoice_no="SINV-0001",
+            name="EWB-0001", status="Generated", ewb_no="260801123456", invoice_no="SINV-0001",
             invoice_date="2026-08-01", from_gstin="27AAAAA0000A1Z1", to_gstin="29BBBBB0000B1Z2",
             supply_type="Outward", transaction_type="Regular", grand_total=1180,
             transporter="XYZ Logistics", vehicle_no="KA01AB1234", vehicle_type="Regular",
             valid_upto="2026-08-02", company="VK Herbal", customer_name="Acme Herbal Traders",
-            customer="CUST-1",
+            customer="CUST-1", sub_supply_type="Supply", doc_type="INV", transport_mode="Road",
+            transporter_id="", transport_doc_no=None, transport_doc_date=None,
+            distance_km=0, from_pincode=None, to_pincode=None, taxable_value=None,
+            cgst_amount=0, sgst_amount=0, igst_amount=0, cess_amount=0,
         )
         item_row = SimpleNamespace(item_name="Ashwagandha Tablets", item_code="ITEM-1",
                                     description="", qty=10, uom="Box", amount=5000)
@@ -393,17 +429,21 @@ class TestGetEwayJson(unittest.TestCase):
         self.assertEqual(payload["ewbNo"], "260801123456")
         self.assertEqual(len(payload["itemList"]), 1)
         self.assertEqual(payload["itemList"][0]["productName"], "Ashwagandha Tablets")
+        self.assertEqual(payload["ewbValidUpto"], "2026-08-02")  # populated once Generated
         self.assertEqual(result["filename"], "EWB-260801123456.json")
 
     @patch.object(frappe.db, "exists", return_value=True)
     @patch.object(frappe.db, "get_value", return_value="")
     def test_missing_invoice_gives_empty_item_list_not_an_error(self, mock_get_value, mock_exists):
         ewb = SimpleNamespace(
-            name="EWB-0002", ewb_no="260801000009", invoice_no="SINV-GONE",
-            invoice_date=None, from_gstin=None, to_gstin=None, supply_type="Outward",
-            transaction_type="Regular", grand_total=0, transporter="", vehicle_no="",
-            vehicle_type="Regular", valid_upto=None, company="VK Herbal",
-            customer_name="", customer="",
+            name="EWB-0002", status="Ready for Upload", ewb_no="260801000009",
+            invoice_no="SINV-GONE", invoice_date=None, from_gstin=None, to_gstin=None,
+            supply_type="Outward", transaction_type="Regular", grand_total=0, transporter="",
+            vehicle_no="", vehicle_type="Regular", valid_upto=None, company="VK Herbal",
+            customer_name="", customer="", sub_supply_type="Supply", doc_type="INV",
+            transport_mode="Road", transporter_id="", transport_doc_no=None,
+            transport_doc_date=None, distance_km=0, from_pincode=None, to_pincode=None,
+            taxable_value=None, cgst_amount=0, sgst_amount=0, igst_amount=0, cess_amount=0,
         )
         def _side_effect(doctype, name=None, *args, **kwargs):
             if doctype == "E Way Bill" and name == "EWB-0002":
@@ -418,6 +458,41 @@ class TestGetEwayJson(unittest.TestCase):
         payload = json.loads(result["content"])
         self.assertEqual(payload["itemList"], [])
         self.assertEqual(payload["fromGstin"], "URP")  # blank GSTIN falls back to "URP"
+
+    @patch.object(frappe.db, "exists", return_value=True)
+    @patch.object(frappe.db, "get_value", return_value="VK Herbal Formulations Pvt Ltd")
+    def test_ready_for_upload_has_no_ewb_number_or_valid_upto(self, mock_get_value, mock_exists):
+        # This is the "honest" pre-portal-upload state: the JSON is a valid
+        # bulk-upload file, but it must never carry a fabricated EWB number
+        # or validity date, since none has been issued by NIC yet.
+        ewb = SimpleNamespace(
+            name="EWB-0003", status="Ready for Upload", ewb_no="", invoice_no="SINV-0002",
+            invoice_date="2026-08-01", from_gstin="27AAAAA0000A1Z1", to_gstin="29BBBBB0000B1Z2",
+            supply_type="Outward", transaction_type="Regular", grand_total=5000,
+            transporter="XYZ Logistics", vehicle_no="KA01AB1234", vehicle_type="Regular",
+            valid_upto="2026-08-02",  # provisional estimate only, must not leak into ewbValidUpto
+            company="VK Herbal", customer_name="Acme Herbal Traders", customer="CUST-1",
+            sub_supply_type="Supply", doc_type="INV", transport_mode="Road", transporter_id="",
+            transport_doc_no=None, transport_doc_date=None, distance_km=10, from_pincode=None,
+            to_pincode=None, taxable_value=5000, cgst_amount=0, sgst_amount=0, igst_amount=0,
+            cess_amount=0,
+        )
+        inv = SimpleNamespace(items=[])
+
+        def _side_effect(doctype, name=None, *args, **kwargs):
+            if doctype == "E Way Bill" and name == "EWB-0003":
+                return ewb
+            if doctype == "Sales Invoice" and name == "SINV-0002":
+                return inv
+            return _REAL_GET_DOC(doctype, name, *args, **kwargs)
+        with patch.object(frappe, "get_doc", side_effect=_side_effect):
+            result = eway.get_eway_json("EWB-0003")
+
+        import json
+        payload = json.loads(result["content"])
+        self.assertEqual(payload["ewbNo"], "")
+        self.assertEqual(payload["ewbValidUpto"], "")
+        self.assertEqual(result["filename"], "EWB-READY-EWB-0003.json")
 
 
 if __name__ == "__main__":

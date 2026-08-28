@@ -45,6 +45,12 @@ class TestBeforeDelete(unittest.TestCase):
         doc = _make_ewb(status="Draft")
         doc.before_delete()  # should not raise
 
+    def test_ready_for_upload_ewb_can_be_deleted(self):
+        # No real government-issued number exists yet at this status, so
+        # there's nothing to "cancel" on the portal -- deletion is safe.
+        doc = _make_ewb(status="Ready for Upload")
+        doc.before_delete()  # should not raise
+
 
 if __name__ == "__main__":
     unittest.main()

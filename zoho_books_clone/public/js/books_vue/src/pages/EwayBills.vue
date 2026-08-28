@@ -28,6 +28,7 @@
     <SummaryStrip v-if="!loading" :cards="[
       { label: 'Total Invoices', tone: 'accent', value: stats.total_invoices },
       { label: 'Generated', tone: 'success', value: stats.generated, valueClass: 'green' },
+      { label: 'Ready for Upload', tone: stats.ready_for_upload>0?'warn':'default', value: stats.ready_for_upload, valueClass: stats.ready_for_upload>0?'orange':'' },
       { label: 'Pending', tone: stats.pending>0?'warn':'default', value: stats.pending, valueClass: stats.pending>0?'orange':'' },
       { label: 'Expiring / Expired', tone: (stats.expired>0||stats.expiring_soon>0)?'danger':'default', value: `${stats.expiring_soon} / ${stats.expired}`, valueClass: (stats.expired>0||stats.expiring_soon>0)?'red':'' },
     ]" />
@@ -83,7 +84,7 @@
               <td @click.stop style="text-align:right">
                 <div class="ew-actions-row">
                   <button class="ew-act-btn" @click="openView(r)" title="View"><span v-html="icon('eye',13)"></span></button>
-                  <button v-if="r.ui_status==='Generated'" class="ew-act-btn" @click="quickDownload(r)" title="Download JSON"><span v-html="icon('download',13)"></span></button>
+                  <button v-if="r.ui_status==='Generated'||r.ui_status==='Ready for Upload'" class="ew-act-btn" @click="quickDownload(r)" title="Download JSON"><span v-html="icon('download',13)"></span></button>
                   <button v-if="r.ui_status==='Generated'" class="ew-act-btn" :disabled="!$canDelete('invoices')" :title="!$canDelete('invoices') ? 'Not permitted' : 'Cancel EWB'" @click="actionOn(r,'cancel')"><span v-html="icon('x',13)"></span></button>
                   <button v-if="r.ui_status==='Cancelled' || r.ui_status==='Expired'" class="ew-act-btn ew-act-del" :disabled="!$canDelete('invoices')" :title="!$canDelete('invoices') ? 'Not permitted' : 'Delete'" @click.stop="deleteTarget={row:r}"><span v-html="icon('trash',13)"></span></button>
                 </div>
@@ -210,20 +211,42 @@
           <div class="ew-gen-card-body" :class="{collapsed:genCollapsed.transporter}">
             <div class="ew-grid">
               <div class="ew-field" style="grid-column:1/-1">
-                <label class="ew-flbl">Transporter <span class="req">*</span></label>
+                <label class="ew-flbl">Transporter Name <span class="req">*</span></label>
                 <input v-model="genForm.transporter" class="ew-input" placeholder="e.g. BlueDart Express, VRL Logistics" />
               </div>
+              <div class="ew-field" style="grid-column:1/-1">
+                <label class="ew-flbl">Transporter ID / GSTIN</label>
+                <input v-model="genForm.transporter_id" class="ew-input" placeholder="15-char Transporter GSTIN or TRANSIN"
+                       @input="genForm.transporter_id=genForm.transporter_id.toUpperCase()" />
+              </div>
               <div class="ew-field">
+                <label class="ew-flbl">Transport Mode</label>
+                <select v-model="genForm.transport_mode" class="ew-input">
+                  <option value="Road">Road</option>
+                  <option value="Rail">Rail</option>
+                  <option value="Air">Air</option>
+                  <option value="Ship">Ship</option>
+                </select>
+              </div>
+              <div class="ew-field" v-if="genForm.transport_mode==='Road'">
                 <label class="ew-flbl">Vehicle Number <span class="req">*</span></label>
                 <input v-model="genForm.vehicle_no" class="ew-input" placeholder="e.g. MH12AB1234"
                        @input="genForm.vehicle_no=genForm.vehicle_no.toUpperCase()" />
               </div>
-              <div class="ew-field">
+              <div class="ew-field" v-if="genForm.transport_mode==='Road'">
                 <label class="ew-flbl">Vehicle Type</label>
                 <select v-model="genForm.vehicle_type" class="ew-input">
                   <option value="Regular">Regular</option>
                   <option value="Over Dimensional Cargo">Over Dimensional Cargo</option>
                 </select>
+              </div>
+              <div class="ew-field" v-if="genForm.transport_mode!=='Road'">
+                <label class="ew-flbl">Transport Doc No <span class="req">*</span></label>
+                <input v-model="genForm.transport_doc_no" class="ew-input" placeholder="e.g. AWB / RR / BL number" />
+              </div>
+              <div class="ew-field" v-if="genForm.transport_mode!=='Road'">
+                <label class="ew-flbl">Transport Doc Date</label>
+                <input v-model="genForm.transport_doc_date" type="date" class="ew-input" />
               </div>
             </div>
           </div>
@@ -253,6 +276,28 @@
                   <option value="Inward">Inward</option>
                 </select>
               </div>
+              <div class="ew-field">
+                <label class="ew-flbl">Sub Supply Type</label>
+                <select v-model="genForm.sub_supply_type" class="ew-input">
+                  <option value="Supply">Supply</option>
+                  <option value="Import">Import</option>
+                  <option value="Export">Export</option>
+                  <option value="Job Work">Job Work</option>
+                  <option value="For Own Use">For Own Use</option>
+                  <option value="Sales Return">Sales Return</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+              <div class="ew-field">
+                <label class="ew-flbl">Document Type</label>
+                <select v-model="genForm.doc_type" class="ew-input">
+                  <option value="INV">Tax Invoice</option>
+                  <option value="CHL">Delivery Challan</option>
+                  <option value="BIL">Bill of Supply</option>
+                  <option value="BOE">Bill of Entry</option>
+                  <option value="OTH">Others</option>
+                </select>
+              </div>
               <div class="ew-field" style="grid-column:1/-1">
                 <label class="ew-flbl">Transaction Type</label>
                 <select v-model="genForm.transaction_type" class="ew-input">
@@ -262,9 +307,17 @@
                   <option value="Combination">Combination</option>
                 </select>
               </div>
+              <div class="ew-field">
+                <label class="ew-flbl">From Pincode</label>
+                <input v-model="genForm.from_pincode" class="ew-input" placeholder="e.g. 400001" maxlength="6" />
+              </div>
+              <div class="ew-field">
+                <label class="ew-flbl">To Pincode</label>
+                <input v-model="genForm.to_pincode" class="ew-input" placeholder="e.g. 560001" maxlength="6" />
+              </div>
               <div class="ew-plan-hint" style="grid-column:1/-1" v-if="genForm.distance_km>0">
                 <span v-html="icon('info',13)"></span>
-                <span>Validity: <b>{{ validityDays }} day{{ validityDays!==1?'s':'' }}</b> ({{ genForm.vehicle_type==='Over Dimensional Cargo'?'1 day per 20 km':'1 day per 200 km' }})</span>
+                <span>Validity: <b>{{ validityDays }} day{{ validityDays!==1?'s':'' }}</b> ({{ genForm.vehicle_type==='Over Dimensional Cargo'?'1 day per 20 km':'1 day per 200 km' }}) — provisional, based on the date you actually upload to the portal.</span>
               </div>
             </div>
           </div>
@@ -274,7 +327,7 @@
         <button class="ew-btn-ghost" @click="genOpen=false" :disabled="generating">Cancel</button>
         <button class="ew-btn-primary" :disabled="generating || !canGenerate || !$canCreate('invoices')" :title="!$canCreate('invoices') ? 'Read-only access' : ''" @click="submitGenerate">
           <span v-html="icon('check',13)"></span>
-          {{ generating?'Generating…':'Generate E-Way Bill' }}
+          {{ generating?'Validating…':'Prepare for Upload' }}
         </button>
       </div>
     </div>
@@ -286,7 +339,7 @@
         <div class="ew-view-head" :class="viewDoc.ui_status==='Cancelled'?'cancelled':viewDoc.ui_status==='Expired'?'expired':''">
           <div class="ew-view-head-row">
             <div>
-              <div class="ew-view-num">{{ viewDoc.ewb_no || viewDoc.name }}</div>
+              <div class="ew-view-num">{{ viewDoc.ewb_no || '—' }}</div>
               <div class="ew-view-sub">
                 Invoice <DocLink doctype="Sales Invoice" :name="viewDoc.invoice_no" :mono-style="false" /> · <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name || viewDoc.customer }}</DocLink>
               </div>
@@ -304,16 +357,19 @@
         </div>
 
         <div class="ew-view-actbar">
-          <button class="ew-va-btn" @click="downloadJson(viewDoc)" :disabled="!viewDoc.ewb_no || actionLoading">
+          <button class="ew-va-btn" @click="downloadJson(viewDoc)" :disabled="actionLoading">
             <span v-html="icon('download',13)"></span><div class="ew-va-btn-text"> Download JSON</div>
           </button>
-          <button class="ew-va-btn" @click="printEwb(viewDoc)" :disabled="actionLoading">
+          <button v-if="viewDoc.ui_status==='Ready for Upload'" class="ew-va-btn" @click="openImportResult(viewDoc)" :disabled="actionLoading || !$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''">
+            <span v-html="icon('check',13)"></span> <div class="ew-va-btn-text">Import EWB Result</div>
+          </button>
+          <button v-if="viewDoc.ui_status!=='Ready for Upload'" class="ew-va-btn" @click="printEwb(viewDoc)" :disabled="actionLoading">
             <span v-html="icon('mail',13)"></span> <div class="ew-va-btn-text">Print</div>
           </button>
-          <button class="ew-va-btn" @click="openVehicleEdit(viewDoc)" :disabled="actionLoading || viewDoc.ui_status!=='Generated' || !$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''">
+          <button v-if="viewDoc.ui_status!=='Ready for Upload'" class="ew-va-btn" @click="openVehicleEdit(viewDoc)" :disabled="actionLoading || viewDoc.ui_status!=='Generated' || !$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''">
             <span v-html="icon('edit',13)"></span> <div class="ew-va-btn-text">Update Vehicle</div>
           </button>
-          <button class="ew-va-btn" @click="openExtend(viewDoc)" :disabled="actionLoading || viewDoc.ui_status!=='Generated' || viewDoc.extended || !$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : (viewDoc.extended?'Already extended once — NIC permits only one extension':'')">
+          <button v-if="viewDoc.ui_status!=='Ready for Upload'" class="ew-va-btn" @click="openExtend(viewDoc)" :disabled="actionLoading || viewDoc.ui_status!=='Generated' || viewDoc.extended || !$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : (viewDoc.extended?'Already extended once — NIC permits only one extension':'')">
             <span v-html="icon('refresh',13)"></span> <div class="ew-va-btn-text">{{ viewDoc.extended?'Extended':'Extend' }}</div>
           </button>
           <button class="ew-va-btn ew-va-danger" @click="doCancel(viewDoc)" :disabled="actionLoading || viewDoc.ui_status==='Cancelled' || viewDoc.ui_status==='Expired' || !$canDelete('invoices')" :title="!$canDelete('invoices') ? 'Not permitted' : ''">
@@ -323,6 +379,36 @@
 
         <div class="ew-dbody">
           <!-- Inline edit overlays -->
+          <div v-if="importEdit.open" class="ew-section">
+            <div class="ew-section-hdr"><span v-html="icon('check',13)"></span><span>Import E-Way Bill Result</span></div>
+            <div class="ew-plan-hint" style="grid-column:1/-1;margin-bottom:8px">
+              <span v-html="icon('info',13)"></span>
+              <span>Paste the real E-Way Bill number and validity returned by the government portal after you uploaded the JSON.</span>
+            </div>
+            <div class="ew-grid">
+              <div class="ew-field">
+                <label class="ew-flbl">E-Way Bill No <span class="req">*</span></label>
+                <input v-model="importEdit.ewb_no" class="ew-input" placeholder="12-digit government EWB number" />
+              </div>
+              <div class="ew-field">
+                <label class="ew-flbl">Valid Upto <span class="req">*</span></label>
+                <input v-model="importEdit.valid_upto" type="date" class="ew-input" />
+              </div>
+              <div class="ew-field">
+                <label class="ew-flbl">Acknowledgement No</label>
+                <input v-model="importEdit.ack_no" class="ew-input" />
+              </div>
+              <div class="ew-field">
+                <label class="ew-flbl">Acknowledgement Date</label>
+                <input v-model="importEdit.ack_date" type="date" class="ew-input" />
+              </div>
+              <div style="grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end">
+                <button class="ew-btn-ghost" @click="importEdit.open=false">Cancel</button>
+                <button class="ew-btn-primary" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''" @click="saveImportResult">Save</button>
+              </div>
+            </div>
+          </div>
+
           <div v-if="vehicleEdit.open" class="ew-section">
             <div class="ew-section-hdr"><span v-html="icon('edit',13)"></span><span>Update Vehicle</span></div>
             <div class="ew-grid">
@@ -386,6 +472,22 @@
                 <span class="ew-kv-lbl">To GSTIN</span>
                 <span class="ew-kv-val mono-sm">{{ viewDoc.to_gstin || 'Unregistered' }}</span>
               </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Taxable Value</span>
+                <span class="ew-kv-val mono-sm">{{ fmtCur(viewDoc.taxable_value) }}</span>
+              </div>
+              <div class="ew-kv-row" v-if="viewDoc.igst_amount">
+                <span class="ew-kv-lbl">IGST</span>
+                <span class="ew-kv-val mono-sm">{{ fmtCur(viewDoc.igst_amount) }}</span>
+              </div>
+              <div class="ew-kv-row" v-if="viewDoc.cgst_amount || viewDoc.sgst_amount">
+                <span class="ew-kv-lbl">CGST + SGST</span>
+                <span class="ew-kv-val mono-sm">{{ fmtCur((viewDoc.cgst_amount||0)+(viewDoc.sgst_amount||0)) }}</span>
+              </div>
+              <div class="ew-kv-row" v-if="viewDoc.nic_ack_no">
+                <span class="ew-kv-lbl">NIC Ack No</span>
+                <span class="ew-kv-val mono-sm">{{ viewDoc.nic_ack_no }}</span>
+              </div>
               <div class="ew-kv-row" v-if="viewDoc.cancellation_reason">
                 <span class="ew-kv-lbl">Cancellation Reason</span>
                 <span class="ew-kv-val">{{ viewDoc.cancellation_reason }}</span>
@@ -400,25 +502,45 @@
                 <span class="ew-kv-lbl">Transporter</span>
                 <span class="ew-kv-val" style="font-weight:600;color:#111827">{{ viewDoc.transporter || '—' }}</span>
               </div>
-              <div class="ew-kv-row">
-                <span class="ew-kv-lbl">Vehicle No</span>
-                <span class="ew-kv-val mono-sm">{{ viewDoc.vehicle_no || '—' }}</span>
+              <div class="ew-kv-row" v-if="viewDoc.transporter_id">
+                <span class="ew-kv-lbl">Transporter ID</span>
+                <span class="ew-kv-val mono-sm">{{ viewDoc.transporter_id }}</span>
               </div>
               <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Transport Mode</span>
+                <span class="ew-kv-val">{{ viewDoc.transport_mode || 'Road' }}</span>
+              </div>
+              <div class="ew-kv-row" v-if="viewDoc.vehicle_no">
+                <span class="ew-kv-lbl">Vehicle No</span>
+                <span class="ew-kv-val mono-sm">{{ viewDoc.vehicle_no }}</span>
+              </div>
+              <div class="ew-kv-row" v-if="viewDoc.vehicle_no">
                 <span class="ew-kv-lbl">Vehicle Type</span>
                 <span class="ew-kv-val">{{ viewDoc.vehicle_type || 'Regular' }}</span>
               </div>
+              <div class="ew-kv-row" v-if="viewDoc.transport_doc_no">
+                <span class="ew-kv-lbl">Transport Doc No</span>
+                <span class="ew-kv-val mono-sm">{{ viewDoc.transport_doc_no }}</span>
+              </div>
+              <div class="ew-kv-row">
+                <span class="ew-kv-lbl">Distance</span>
+                <span class="ew-kv-val mono-sm">{{ viewDoc.distance_km || 0 }} km</span>
+              </div>
               <div class="ew-kv-row">
                 <span class="ew-kv-lbl">Supply Type</span>
-                <span class="ew-kv-val">{{ viewDoc.supply_type || 'Outward' }}</span>
+                <span class="ew-kv-val">{{ viewDoc.supply_type || 'Outward' }} · {{ viewDoc.sub_supply_type || 'Supply' }}</span>
               </div>
               <div class="ew-kv-row">
                 <span class="ew-kv-lbl">Transaction</span>
                 <span class="ew-kv-val">{{ viewDoc.transaction_type || 'Regular' }}</span>
               </div>
               <div class="ew-kv-row">
-                <span class="ew-kv-lbl">Generated On</span>
+                <span class="ew-kv-lbl">Prepared On</span>
                 <span class="ew-kv-val mono-sm">{{ fmtDate(viewDoc.creation) }}</span>
+              </div>
+              <div class="ew-kv-row" v-if="viewDoc.uploaded_on">
+                <span class="ew-kv-lbl">Imported On</span>
+                <span class="ew-kv-val mono-sm">{{ fmtDate(viewDoc.uploaded_on) }}</span>
               </div>
             </div>
           </div>
@@ -470,7 +592,7 @@ const deleteTarget = ref(null);  // { row }
 const deleting     = ref(false);
 const search = ref("");
 const tab = ref("all");
-const stats = ref({ total_invoices: 0, total_value: 0, generated: 0, pending: 0, expired: 0, cancelled: 0, expiring_soon: 0 });
+const stats = ref({ total_invoices: 0, total_value: 0, generated: 0, ready_for_upload: 0, pending: 0, expired: 0, cancelled: 0, expiring_soon: 0 });
 const sortCol = ref("invoice_date");
 const sortDir = ref("desc");
 const selected = ref(new Set());
@@ -479,6 +601,7 @@ const bulkBusy = ref(false);
 const tabs = computed(() => [
   { v: "all", l: "All", count: list.value.length || null },
   { v: "Generated", l: "Generated", count: stats.value.generated },
+  { v: "Ready for Upload", l: "Ready for Upload", count: stats.value.ready_for_upload || null },
   { v: "Expired", l: "Expired", count: stats.value.expired || null },
   { v: "Cancelled", l: "Cancelled", count: stats.value.cancelled || null },
 ]);
@@ -526,6 +649,7 @@ function statusClass(s) {
   if (s === "Cancelled") return "badge-grey";
   if (s === "Expired") return "badge-red";
   if (s === "Generated") return "badge-green";
+  if (s === "Ready for Upload") return "badge-orange";
   return "badge-orange";
 }
 function validClass(r) {
@@ -614,8 +738,10 @@ const generating = ref(false);
 const genCollapsed = reactive({ transporter: false, movement: false });
 const genForm = reactive({
   invoice_no: "", customer_name: "", grand_total: 0,
-  transporter: "", vehicle_no: "", vehicle_type: "Regular",
-  distance_km: 0, supply_type: "Outward", transaction_type: "Regular",
+  transporter: "", transporter_id: "", vehicle_no: "", vehicle_type: "Regular",
+  transport_mode: "Road", transport_doc_no: "", transport_doc_date: "",
+  distance_km: 0, supply_type: "Outward", sub_supply_type: "Supply", doc_type: "INV",
+  transaction_type: "Regular", from_pincode: "", to_pincode: "",
 });
 
 const validityDays = computed(() => {
@@ -625,15 +751,19 @@ const validityDays = computed(() => {
   return Math.max(1, Math.ceil(d / 200));
 });
 
-const canGenerate = computed(() =>
-  genForm.transporter.trim() && genForm.vehicle_no.trim() && genForm.distance_km > 0
-);
+const canGenerate = computed(() => {
+  if (!genForm.transporter.trim() || genForm.distance_km <= 0) return false;
+  if (genForm.transport_mode === "Road") return !!genForm.vehicle_no.trim();
+  return !!genForm.transport_doc_no.trim();
+});
 
 function startGenerate(p) {
   Object.assign(genForm, {
     invoice_no: p.name, customer_name: p.customer_name || p.customer, grand_total: p.grand_total,
-    transporter: "", vehicle_no: "", vehicle_type: "Regular",
-    distance_km: 0, supply_type: "Outward", transaction_type: "Regular",
+    transporter: "", transporter_id: "", vehicle_no: "", vehicle_type: "Regular",
+    transport_mode: "Road", transport_doc_no: "", transport_doc_date: "",
+    distance_km: 0, supply_type: "Outward", sub_supply_type: "Supply", doc_type: "INV",
+    transaction_type: "Regular", from_pincode: "", to_pincode: "",
   });
   Object.assign(genCollapsed, { transporter: false, movement: false });
   genListOpen.value = false;
@@ -641,24 +771,31 @@ function startGenerate(p) {
 }
 
 async function submitGenerate() {
-  if (!canGenerate.value) return toast.error("Transporter, vehicle and distance are required");
+  if (!canGenerate.value) return toast.error("Transporter and distance are required (plus vehicle no. for Road, or transport doc no. for other modes)");
   generating.value = true;
   try {
-    const res = await apiPOST("zoho_books_clone.api.eway.generate_eway_bill", {
+    await apiPOST("zoho_books_clone.api.eway.generate_eway_bill", {
       invoice_no: genForm.invoice_no,
       transporter: genForm.transporter,
+      transporter_id: genForm.transporter_id,
       vehicle_no: genForm.vehicle_no,
+      vehicle_type: genForm.vehicle_type,
+      transport_mode: genForm.transport_mode,
+      transport_doc_no: genForm.transport_doc_no,
+      transport_doc_date: genForm.transport_doc_date,
       distance_km: genForm.distance_km,
       supply_type: genForm.supply_type,
+      sub_supply_type: genForm.sub_supply_type,
+      doc_type: genForm.doc_type,
       transaction_type: genForm.transaction_type,
-      vehicle_type: genForm.vehicle_type,
+      from_pincode: genForm.from_pincode,
+      to_pincode: genForm.to_pincode,
     });
-    const ewb = res?.message?.ewb_no || res?.ewb_no;
-    toast.success(`E-Way Bill ${ewb || ""} generated`);
+    toast.success("Invoice validated — ready for E-Way Bill upload");
     genOpen.value = false;
     await load();
   } catch (e) {
-    toast.error(e.message || "Failed to generate");
+    toast.error(e.message || "Failed to prepare E-Way Bill");
   } finally {
     generating.value = false;
   }
@@ -685,6 +822,7 @@ async function openView(r) {
 // ----- view actions
 const vehicleEdit = reactive({ open: false, vehicle: "", transporter: "" });
 const extendEdit = reactive({ open: false, days: 1 });
+const importEdit = reactive({ open: false, ewb_no: "", valid_upto: "", ack_no: "", ack_date: "" });
 
 const newValid = computed(() => {
   const base = viewDoc.value?.valid_upto ? new Date(viewDoc.value.valid_upto) : new Date();
@@ -696,13 +834,47 @@ const newValid = computed(() => {
 function openVehicleEdit(doc) {
   vehicleEdit.open = true;
   extendEdit.open = false;
+  importEdit.open = false;
   vehicleEdit.vehicle = doc.vehicle_no || "";
   vehicleEdit.transporter = doc.transporter || "";
 }
 function openExtend(doc) {
   extendEdit.open = true;
   vehicleEdit.open = false;
+  importEdit.open = false;
   extendEdit.days = 1;
+}
+function openImportResult(doc) {
+  importEdit.open = true;
+  vehicleEdit.open = false;
+  extendEdit.open = false;
+  importEdit.ewb_no = "";
+  importEdit.valid_upto = "";
+  importEdit.ack_no = "";
+  importEdit.ack_date = "";
+}
+
+async function saveImportResult() {
+  if (!importEdit.ewb_no.trim()) return toast.error("E-Way Bill number is required");
+  if (!importEdit.valid_upto) return toast.error("Valid Upto date is required");
+  actionLoading.value = true;
+  try {
+    await apiPOST("zoho_books_clone.api.eway.import_eway_result", {
+      name: viewDoc.value.name,
+      ewb_no: importEdit.ewb_no,
+      valid_upto: importEdit.valid_upto,
+      ack_no: importEdit.ack_no,
+      ack_date: importEdit.ack_date,
+    });
+    toast.success("E-Way Bill result imported");
+    importEdit.open = false;
+    await openView({ name: viewDoc.value.name });
+    await load();
+  } catch (e) {
+    toast.error(e.message || "Import failed");
+  } finally {
+    actionLoading.value = false;
+  }
 }
 
 async function saveVehicle() {
