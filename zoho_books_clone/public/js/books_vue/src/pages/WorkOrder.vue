@@ -94,6 +94,7 @@
           <th>Planned End</th>
           <th>Status</th>
           <th>Progress</th>
+          <th>Created At</th>
         </tr>
       </thead>
       <tbody>
@@ -120,6 +121,7 @@
               <span style="font-size:11.5px;font-weight:700;color:var(--bx-muted);white-space:nowrap">{{ progressPctnew(row) }}%</span>
             </div>
           </td>
+          <td style="font-size:12.5px;color:var(--bx-muted);white-space:nowrap">{{ fmtDate(row.creation) }}</td>
         </tr>
       </tbody>
     </table>
@@ -316,10 +318,10 @@
                     <span v-else>{{ grp.label }}</span>
                     <span class="bomx-count">({{ grp.rows.length }})</span>
                   </div>
-                <div class="bomx-rm-card" v-for="{ rm, idx, qtyOverride, isShared, sharedWith, breakdown } in grp.rows" :key="idx + '-' + grp.key">
+                <div class="bomx-rm-card" v-for="({ rm, idx, qtyOverride, isShared, sharedWith, breakdown }, sn) in grp.rows" :key="idx + '-' + grp.key">
                   <div class="bomx-rm-card-hdr">
                     <span class="bomx-tree-icon">📦</span>
-                    <span class="bomx-rm-card-title" style="font-weight:600">{{ rm.item_code || 'New Row' }}</span>
+                    <span class="bomx-rm-card-title" style="font-weight:600"><span style="color:var(--bx-mfgB);font-weight:700;margin-right:4px">{{ sn + 1 }}.</span>{{ rm.item_code || 'New Row' }}</span>
                     <span v-if="rm.is_scrap_row" class="bomx-badge" style="background:#ecfdf5;color:#047857;font-size:10px" :title="'Split off from ' + rm.original_item_code + ' as a scrap-reuse row'">From Scrap</span>
                     <span v-else-if="flt(rm.scrap_reused_qty) > 0" class="bomx-badge" style="background:#ecfdf5;color:#047857;font-size:10px" :title="scrapBreakdownTooltip(rm)">Partly from Scrap</span>
                     <span v-else-if="rm.is_substituted" class="bomx-badge" style="background:#eef2ff;color:#4338ca;font-size:10px" :title="'Substituted from ' + rm.original_item_code">Substituted</span>
@@ -931,7 +933,7 @@ async function loadList() {
   try {
     const fields = ["name", "production_item", "item_name", "bom", "qty", "stock_uom",
                      "produced_qty", "process_loss_qty", "status", "docstatus", "modified",
-                     "planned_start_date", "planned_end_date"];
+                     "creation", "planned_start_date", "planned_end_date"];
     const r = await apiList("Work Order", { fields, limit: 1000, order: "modified desc" });
     list.value = r || [];
   } catch (e) {
@@ -2195,8 +2197,8 @@ function itemUom(code) {
 function printWorkOrder() {
   const groups = groupedWoItems.value.filter(g => !g.hidden);
   const groupHtml = (grp) => `
-        <tr><td colspan="8" style="background:#EEF2FF;font-weight:700;color:#3730a3;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;padding:6px 10px;border-top:2px solid #C7D2FE">${esc(grp.label)}</td></tr>
-        ${grp.rows.map(({ rm, qtyOverride, isShared }) => {
+        <tr><td colspan="9" style="background:#EEF2FF;font-weight:700;color:#3730a3;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;padding:6px 10px;border-top:2px solid #C7D2FE">${esc(grp.label)}</td></tr>
+        ${grp.rows.map(({ rm, qtyOverride, isShared }, sn) => {
           // For a shared row (same item pulled in by more than one
           // sub-assembly), print this sub-assembly's own portion instead
           // of the row's full combined total -- transferred/needed can't
@@ -2208,6 +2210,7 @@ function printWorkOrder() {
           const needed = isShared ? null : Math.max(required - transferred, 0);
           return `
         <tr>
+          <td style="text-align:right;color:#1a6ef7;font-weight:700">${sn + 1}</td>
           <td>${esc(rm.item_code)}</td>
           <td>${esc(itemLabel(rm.item_code))}</td>
           <td>${esc(itemUom(rm.item_code) || "—")}</td>
@@ -2220,7 +2223,7 @@ function printWorkOrder() {
         }).join("")}`;
   const rowsHtml = groups.length
     ? groups.map(groupHtml).join("")
-    : `<tr><td colspan="8" style="text-align:center;color:#868E96">No raw materials</td></tr>`;
+    : `<tr><td colspan="9" style="text-align:center;color:#868E96">No raw materials</td></tr>`;
 
   const html = `
     <!DOCTYPE html>
@@ -2269,7 +2272,7 @@ function printWorkOrder() {
           <h2>Raw Materials</h2>
           <table>
             <thead>
-              <tr><th>Item Code</th><th>Item Name</th><th>UOM</th><th style="text-align:right">Required Qty</th><th style="text-align:right">Already Transferred</th><th style="text-align:right">Needed Qty</th><th>Warehouse</th><th>Rack</th></tr>
+              <tr><th>S.No</th><th>Item Code</th><th>Item Name</th><th>UOM</th><th style="text-align:right">Required Qty</th><th style="text-align:right">Already Transferred</th><th style="text-align:right">Needed Qty</th><th>Warehouse</th><th>Rack</th></tr>
             </thead>
             <tbody>${rowsHtml}</tbody>
           </table>

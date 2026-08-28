@@ -80,6 +80,9 @@
               </div>
               <div class="psx-hdr-actions">
                 <button class="psx-btn psx-btn-ghost-inv" @click="goBackToList">Back</button>
+                <button v-if="!isNew" class="psx-btn psx-btn-ghost-inv" @click="printPackingSlip" title="Print Packing Slip">
+                  <span v-html="icon('printer',12)"></span> Print
+                </button>
                 <button v-if="!isNew && ps.status!=='Cancelled'" class="psx-btn psx-btn-light" style="color:#C92A2A" @click="cancelPS" :disabled="saving || !$canDelete('inventory')">
                   {{ saving ? 'Cancelling…' : 'Cancel' }}
                 </button>
@@ -602,8 +605,104 @@ function fmtDate(d) {
   return isNaN(o) ? d : o.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+function printPackingSlip() {
+  const p = ps.value;
+  const itemName = (code) => {
+    const found = itemsList.value.find((i) => i.name === code);
+    return (found && found.item_name) || code;
+  };
+
+  const itemRows = (p.items || []).length
+    ? (p.items || []).map(row => `
+        <tr>
+          <td>${esc(row.item_code)}</td>
+          <td>${esc(itemName(row.item_code))}</td>
+          <td style="text-align:right">${esc(fmt(row.required_qty))}</td>
+          <td style="text-align:right">${esc(fmt(row.packed_qty))}</td>
+          <td>${esc(row.uom || "Nos")}</td>
+          <td>${esc(row.source_warehouse || "—")}</td>
+          <td>${esc(row.batch_no || "—")}</td>
+        </tr>`).join("")
+    : `<tr><td colspan="7" style="text-align:center;color:#868E96">No items</td></tr>`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8"/>
+        <title>Packing Slip ${esc(p.name)}</title>
+        <style>
+          * { box-sizing:border-box; margin:0; padding:0; }
+          body { font-family: Arial, Helvetica, sans-serif; color:#1A1D23; background:#e5e7eb; min-height:100vh; }
+          .toolbar { position:sticky; top:0; z-index:10; background:#fff; padding:10px 18px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; gap:10px; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+          .tb-lbl { font-size:11.5px; font-weight:700; color:#374151; letter-spacing:.04em; }
+          .print-btn { margin-left:auto; background:#1a6ef7; color:#fff; border:none; padding:7px 16px; border-radius:7px; font-weight:700; cursor:pointer; font:inherit; font-size:12.5px; display:flex; align-items:center; gap:6px; }
+          .print-btn:hover { background:#1558d0; }
+          .doc-wrap { max-width:820px; margin:20px auto; background:#fff; box-shadow:0 4px 24px rgba(0,0,0,.1); border-radius:8px; overflow:hidden; }
+          .sheet { padding:28px 30px; }
+          h1 { font-size:18px; margin:0 0 4px; }
+          .sub { color:#868E96; font-size:12px; margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid #E2E8F0; }
+          .meta { display:grid; grid-template-columns: 1fr 1fr; gap:10px 24px; margin-bottom:22px; font-size:13px; }
+          .meta div { border:1px solid #E2E8F0; border-radius:6px; padding:8px 10px; }
+          .meta div span { color:#868E96; display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
+          table { width:100%; border-collapse:collapse; font-size:13px; border:1px solid #E2E8F0; border-radius:6px; overflow:hidden; margin-bottom:22px; }
+          th, td { border:1px solid #E2E8F0; padding:8px 10px; text-align:left; }
+          th { background:#F8F9FC; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:#868E96; }
+          h2 { font-size:13px; text-transform:uppercase; letter-spacing:.03em; color:#868E96; margin:0 0 8px; }
+          .rem { border:1px solid #E2E8F0; border-radius:6px; padding:10px; font-size:13px; min-height:40px; white-space:pre-wrap; }
+          @media print { .toolbar { display:none!important; } body { background:#fff; } .doc-wrap { box-shadow:none; margin:0; max-width:none; border-radius:0; } }
+        </style>
+      </head>
+      <body>
+        <div class="toolbar">
+          <span class="tb-lbl">PRINT PREVIEW</span>
+          <button class="print-btn" onclick="window.print()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print
+          </button>
+        </div>
+        <div class="doc-wrap"><div class="sheet">
+          <h1>Packing Slip — ${esc(p.name)}</h1>
+          <div class="sub">Printed ${esc(new Date().toLocaleString())}</div>
+          <div class="meta">
+            <div><span>Work Order</span>${esc(p.work_order || "—")}</div>
+            <div><span>Item Being Packed</span>${esc(itemName(p.production_item) || p.production_item || "—")}</div>
+            <div><span>Packing BOM</span>${esc(p.bom || "—")}</div>
+            <div><span>Status</span>${esc(p.status || "Draft")}</div>
+            <div><span>Qty to Pack</span>${esc(fmt(p.qty_to_pack || 0))}</div>
+            <div><span>Packing Date</span>${esc(fmtDate(p.packing_date) || "—")}</div>
+            <div><span>Packed By</span>${esc(p.packed_by || "—")}</div>
+            <div><span>Consume Materials From</span>${esc(p.source_warehouse || "—")}</div>
+          </div>
+
+          <h2>Items to Pack</h2>
+          <table>
+            <thead><tr><th>Item Code</th><th>Item Name</th><th style="text-align:right">Required</th><th style="text-align:right">Packed</th><th>UOM</th><th>Source Warehouse</th><th>Batch</th></tr></thead>
+            <tbody>${itemRows}</tbody>
+          </table>
+
+          ${p.remarks ? `<h2>Remarks</h2><div class="rem">${esc(p.remarks)}</div>` : ""}
+        </div></div>
+      </body>
+    </html>`;
+
+  const win = window.open("", "_blank");
+  if (!win) { toast("Please allow pop-ups to print", "error"); return; }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+}
+
 const ICONS = {
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>',
+  printer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>',
 };
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);

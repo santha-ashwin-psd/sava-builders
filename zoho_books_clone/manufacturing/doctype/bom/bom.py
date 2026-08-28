@@ -144,6 +144,59 @@ class BOM(Document):
             # A new revision starts as the active one; the row it amends should
             # not keep competing as "default" once superseded.
             self.is_active = 1
+            # frappe.copy_doc() (used by api.docs.amend_doc for "+ New Version")
+            # carries every child row over verbatim, including Raw Material
+            # rows whose Sub-Assembly BOM points at a BOM that has, in the
+            # meantime, been cancelled to create its own new version. Frappe's
+            # link validation then blocks inserting this document with
+            # "Cannot link cancelled document". Re-point those rows at the
+            # sub-assembly's current revision instead of making the user
+            # track it down and fix it by hand.
+            self._relink_stale_sub_assembly_boms()
+
+    def _relink_stale_sub_assembly_boms(self):
+        for row in (self.items or []):
+            sub = getattr(row, "sub_assembly_bom", None)
+            if not sub:
+                continue
+            docstatus = frappe.db.get_value("BOM", sub, "docstatus")
+            if docstatus != 2:
+                continue  # still a valid (draft or submitted) link, leave it alone
+            replacement = self._find_latest_non_cancelled_version(sub)
+            if replacement and replacement != sub:
+                row.sub_assembly_bom = replacement
+
+    def _find_latest_non_cancelled_version(self, bom_name):
+        """Follow the amended_from -> name chain forward from a cancelled BOM
+        to the newest revision that isn't itself cancelled (e.g. dhbgs v1 ->
+        v2 -> v3 -> v4, where v4 is the current Active one). Falls back to
+        whatever BOM is currently marked default/active for that item if the
+        chain doesn't lead anywhere usable (e.g. the sub-assembly was
+        cancelled outright with no replacement version ever created)."""
+        seen = set()
+        current = bom_name
+        latest_valid = None
+        item = None
+        while current and current not in seen:
+            seen.add(current)
+            row = frappe.db.get_value("BOM", current, ["docstatus", "item"], as_dict=True)
+            if not row:
+                break
+            item = row.get("item") or item
+            if row.get("docstatus") != 2:
+                latest_valid = current
+            current = frappe.db.get_value("BOM", {"amended_from": current}, "name")
+
+        if latest_valid:
+            return latest_valid
+
+        if item:
+            return frappe.db.get_value(
+                "BOM",
+                {"item": item, "docstatus": 1, "is_active": 1, "is_default": 1},
+                "name",
+            )
+        return None
 
     def on_submit(self):
         # Only one submitted, active BOM should be flagged default per item —

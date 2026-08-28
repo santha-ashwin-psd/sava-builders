@@ -933,6 +933,16 @@ def amend_doc(doctype, name):
     new_doc.amended_from = src.name
     new_doc.docstatus = 0
     new_doc.flags.ignore_permissions = True
+    # Frappe validates Link fields (raising CancelledLinkError for anything
+    # pointing at a cancelled document) before running the before_insert
+    # hook, so BOM's own before_insert-based relink of stale Sub-Assembly
+    # BOM rows (see BOM._relink_stale_sub_assembly_boms) runs too late to
+    # help here. Call the same method directly, right now, so a copied BOM
+    # row pointing at a sub-assembly that's since been superseded gets
+    # re-pointed at its latest non-cancelled version before insert's own
+    # link check ever sees it.
+    if hasattr(new_doc, "_relink_stale_sub_assembly_boms"):
+        new_doc._relink_stale_sub_assembly_boms()
     new_doc.insert(ignore_permissions=True)
     frappe.db.commit()
     return new_doc.as_dict()

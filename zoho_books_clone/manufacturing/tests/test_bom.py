@@ -360,5 +360,119 @@ class TestAlternativeItemValidate(unittest.TestCase):
         mock_throw.assert_not_called()
 
 
+# ---------------------------------------------------------------------------
+# Unit tests for auto-relinking a stale (cancelled) Sub-Assembly BOM when a
+# new version of the PARENT BOM is created via "+ New Version"
+# ---------------------------------------------------------------------------
+
+class TestRelinkStaleSubAssemblyBoms(unittest.TestCase):
+    """dhbgs has gone through 4 versions: BOM-2026-00004 (cancelled) ->
+    -00004-1 (cancelled) -> -00004-2 (cancelled) -> -00004-3 (Active).
+    A parent BOM's Raw Material row still references the original
+    BOM-2026-00004. Creating a new version of the PARENT should re-point
+    that row at -00004-3 instead of dragging along the cancelled name."""
+
+    BOM_RECORDS = {
+        "BOM-2026-00004":   {"docstatus": 2, "item": "dhbgs"},
+        "BOM-2026-00004-1": {"docstatus": 2, "item": "dhbgs"},
+        "BOM-2026-00004-2": {"docstatus": 2, "item": "dhbgs"},
+        "BOM-2026-00004-3": {"docstatus": 1, "item": "dhbgs", "is_active": 1, "is_default": 1},
+    }
+    AMENDED_FROM_CHAIN = {
+        "BOM-2026-00004":   "BOM-2026-00004-1",
+        "BOM-2026-00004-1": "BOM-2026-00004-2",
+        "BOM-2026-00004-2": "BOM-2026-00004-3",
+    }
+
+    def _fake_get_value(self, doctype, filters, fieldname=None, as_dict=False):
+        if isinstance(filters, dict):
+            if "amended_from" in filters:
+                return self.AMENDED_FROM_CHAIN.get(filters["amended_from"])
+            if "item" in filters:  # fallback lookup for default/active BOM
+                for name, rec in self.BOM_RECORDS.items():
+                    if (rec.get("item") == filters["item"] and rec.get("docstatus") == filters.get("docstatus")
+                            and rec.get("is_active") == filters.get("is_active")
+                            and rec.get("is_default") == filters.get("is_default")):
+                        return name
+                return None
+            return None
+        rec = self.BOM_RECORDS.get(filters)
+        if not rec:
+            return None
+        if as_dict:
+            return {"docstatus": rec["docstatus"], "item": rec.get("item")}
+        return rec.get(fieldname)
+
+    def _bind_real_finder(self, bom, BOM):
+        """bom is a plain MagicMock, not a real BOM instance -- self.foo()
+        calls inside the method under test would otherwise resolve to
+        auto-generated mock attributes instead of the real class method.
+        Bind the real _find_latest_non_cancelled_version onto it so
+        _relink_stale_sub_assembly_boms exercises the real lookup logic."""
+        bom._find_latest_non_cancelled_version = lambda name: BOM._find_latest_non_cancelled_version(bom, name)
+
+    def test_relinks_to_latest_version_in_chain(self):
+        from zoho_books_clone.manufacturing.doctype.bom.bom import BOM
+        row = _make_item_row("dhbgs", qty=1, rate=380, sub_assembly_bom="BOM-2026-00004")
+        bom = _make_bom(items=[row])
+        self._bind_real_finder(bom, BOM)
+        with patch("frappe.db.get_value", side_effect=self._fake_get_value):
+            BOM._relink_stale_sub_assembly_boms(bom)
+        self.assertEqual(row.sub_assembly_bom, "BOM-2026-00004-3")
+
+    def test_leaves_valid_link_untouched(self):
+        """If the sub-assembly link already points at a submitted/non-cancelled
+        BOM, nothing should change."""
+        from zoho_books_clone.manufacturing.doctype.bom.bom import BOM
+        row = _make_item_row("dhbgs", qty=1, rate=380, sub_assembly_bom="BOM-2026-00004-3")
+        bom = _make_bom(items=[row])
+        self._bind_real_finder(bom, BOM)
+        with patch("frappe.db.get_value", side_effect=self._fake_get_value):
+            BOM._relink_stale_sub_assembly_boms(bom)
+        self.assertEqual(row.sub_assembly_bom, "BOM-2026-00004-3")
+
+    def test_falls_back_to_default_active_bom_when_chain_is_a_dead_end(self):
+        """A cancelled sub-assembly BOM with no amendment chain at all should
+        still fall back to whatever BOM is currently default+active for that
+        item, rather than being left dangling."""
+        from zoho_books_clone.manufacturing.doctype.bom.bom import BOM
+        records = dict(self.BOM_RECORDS)
+        records["BOM-ORPHAN"] = {"docstatus": 2, "item": "dhbgs"}  # cancelled, no successor
+
+        def fake_get_value(doctype, filters, fieldname=None, as_dict=False):
+            if isinstance(filters, dict):
+                if "amended_from" in filters:
+                    return None  # dead end -- nothing amends BOM-ORPHAN
+                if "item" in filters:
+                    for name, rec in records.items():
+                        if (rec.get("item") == filters["item"] and rec.get("docstatus") == filters.get("docstatus")
+                                and rec.get("is_active") == filters.get("is_active")
+                                and rec.get("is_default") == filters.get("is_default")):
+                            return name
+                    return None
+                return None
+            rec = records.get(filters)
+            if not rec:
+                return None
+            if as_dict:
+                return {"docstatus": rec["docstatus"], "item": rec.get("item")}
+            return rec.get(fieldname)
+
+        row = _make_item_row("dhbgs", qty=1, rate=380, sub_assembly_bom="BOM-ORPHAN")
+        bom = _make_bom(items=[row])
+        self._bind_real_finder(bom, BOM)
+        with patch("frappe.db.get_value", side_effect=fake_get_value):
+            BOM._relink_stale_sub_assembly_boms(bom)
+        self.assertEqual(row.sub_assembly_bom, "BOM-2026-00004-3")
+
+    def test_no_sub_assembly_bom_is_skipped(self):
+        from zoho_books_clone.manufacturing.doctype.bom.bom import BOM
+        row = _make_item_row("RAW-001", qty=1, rate=10, sub_assembly_bom=None)
+        bom = _make_bom(items=[row])
+        with patch("frappe.db.get_value", side_effect=self._fake_get_value):
+            BOM._relink_stale_sub_assembly_boms(bom)  # should not raise
+        self.assertIsNone(row.sub_assembly_bom)
+
+
 if __name__ == "__main__":
     unittest.main()

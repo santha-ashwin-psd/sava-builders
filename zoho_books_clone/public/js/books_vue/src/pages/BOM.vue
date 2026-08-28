@@ -255,7 +255,7 @@
             </div>
             <div>
               <div class="bomx-hf-label">BOM Type</div>
-              <select class="bomx-fi" v-model="bom.bom_type" :disabled="readOnly || !isNew" style="width:100%" title="BOM Type is set on creation and cannot be changed afterwards.">
+              <select class="bomx-fi" v-model="bom.bom_type" :disabled="readOnly" style="width:100%" title="BOM Type can be changed while this version is still a draft.">
                 <option value="Manufacturing">Manufacturing</option>
                 <option value="Sub-Assembly">Sub-Assembly</option>
                 <option value="Packing">Packing</option>
