@@ -486,18 +486,38 @@ const TYPES = [
     { key: "currency",                 label: "Currency",              required: false, type: "text" },
     { key: "remarks",                  label: "Remarks",               required: false, type: "text" },
   ]},
+  { key: "Asset",           label: "Assets",         icon: "box",      iconBg: "#EDE7F6", iconColor: "#5E35B1", route: "/assets",
+    note: "New assets are created in Draft status — submit them from the Assets list once reviewed.", fields: [
+    { key: "asset_name",             label: "Asset Name",             required: true,  type: "text" },
+    { key: "asset_code",             label: "Asset Code",             required: false, type: "text" },
+    { key: "asset_category",         label: "Asset Category",         required: false, type: "text" },
+    { key: "purchase_date",          label: "Purchase Date",          required: false, type: "date" },
+    { key: "available_for_use_date", label: "Available For Use Date", required: false, type: "date" },
+    { key: "qty",                    label: "Quantity",               required: false, type: "number" },
+    { key: "purchase_cost",          label: "Purchase Cost",          required: false, type: "number" },
+    { key: "taxable_value",          label: "Taxable Value",          required: false, type: "number" },
+    { key: "location",               label: "Location",               required: false, type: "text" },
+    { key: "department",             label: "Department",             required: false, type: "text" },
+    { key: "supplier",               label: "Vendor",                 required: false, type: "text" },
+    { key: "depreciation_method",    label: "Depreciation Method",    required: false, type: "text" },
+    { key: "useful_life",            label: "Useful Life (years)",    required: false, type: "number" },
+    { key: "salvage_value",          label: "Salvage Value",          required: false, type: "number" },
+    { key: "description",            label: "Description",            required: false, type: "text" },
+  ]},
 ];
 
 const CATEGORIES = [
   { key: "contacts",  label: "Contacts",  icon: "users" },
   { key: "sales",     label: "Sales",     icon: "fileplus" },
   { key: "purchases", label: "Purchases", icon: "purchase" },
+  { key: "assets",    label: "Assets",    icon: "box" },
 ];
 
 const CATEGORY_MAP = {
   contacts:  ["Customer", "Supplier"],
   sales:     ["Sales Invoice", "Quotation", "Sales Order"],
   purchases: ["Purchase Invoice", "Purchase Order", "Expense", "Item"],
+  assets:    ["Asset"],
 };
 
 const category = ref("contacts");

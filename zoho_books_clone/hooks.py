@@ -20,6 +20,8 @@ fixtures = [
 _CV = "zoho_books_clone.accounts.central_validator"
 # Stock link layer (Audit-2 / Audit-3) — auto stock entries on invoice submit/cancel
 _SL = "zoho_books_clone.inventory.stock_link"
+# Asset link layer — auto-create Draft Assets from fixed-asset Purchase Invoice lines
+_AL = "zoho_books_clone.assets.asset_link"
 # Multi-tenant data isolation — must be defined before doc_events, permission_query_conditions, and has_permission
 _TN = "zoho_books_clone.utils.tenancy"
 # Quality Control gate — soft-warn before stock moves (runs BEFORE _SL on submit)
@@ -42,10 +44,12 @@ doc_events = {
         f"{_CV}.on_submit",
         f"{_QC}.check_qc_before_stock_link",
         f"{_SL}.on_purchase_invoice_submit",
+        f"{_AL}.on_purchase_invoice_submit",
     ],
     "on_cancel": [
         f"{_CV}.on_cancel",
         f"{_SL}.on_purchase_invoice_cancel",
+        f"{_AL}.on_purchase_invoice_cancel",
     ],
     "before_delete": f"{_CV}.before_delete",
 },

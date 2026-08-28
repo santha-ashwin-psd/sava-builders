@@ -215,6 +215,17 @@ class PurchaseInvoice(Document):
         )
 
         on_purchase_invoice_update_after_submit(self)
+
+        # ---------------------------------------------------------
+        # 4. Rebuild any Draft asset auto-created from this bill so it
+        #    reflects the updated price/qty (submitted/capitalized assets
+        #    are left alone — see asset_link.py).
+        # ---------------------------------------------------------
+        from zoho_books_clone.assets.asset_link import (
+            on_purchase_invoice_update_after_submit as _sync_assets,
+        )
+
+        _sync_assets(self)
     def on_cancel(self):
         self.status = "Cancelled"
         self.outstanding_amount = 0
@@ -317,4 +328,3 @@ class PurchaseInvoice(Document):
             {"outstanding_amount": new_outstanding, "status": new_status},
             update_modified=False,
         )
-   

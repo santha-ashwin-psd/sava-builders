@@ -415,11 +415,17 @@ def _stock_rows(doc, direction: str, zero_rate: bool = False) -> list[dict]:
         if not item_code or qty <= 0:
             continue
 
-        # Only process stock items
+        # Only process stock items — and never a fixed-asset item, even if
+        # it's also flagged is_stock_item (the Item form doesn't enforce
+        # mutual exclusivity). A fixed asset is capitalized by
+        # assets/asset_link.py's on_purchase_invoice_submit instead; adding
+        # it to a warehouse too would double-book the same purchase (once
+        # as Stock/Inventory Asset, once as Fixed Asset) and leave a
+        # phantom qty sitting in a Bin that will never actually move.
         item_meta = frappe.db.get_value(
-            "Item", item_code, ["is_stock_item", "default_warehouse"], as_dict=True
+            "Item", item_code, ["is_stock_item", "default_warehouse", "is_fixed_asset"], as_dict=True
         ) or {}
-        if not item_meta.get("is_stock_item"):
+        if not item_meta.get("is_stock_item") or item_meta.get("is_fixed_asset"):
             continue
 
         warehouse = (

@@ -157,6 +157,14 @@
    "options": "Supplier"
   },
   {
+   "fieldname": "purchase_invoice",
+   "fieldtype": "Link",
+   "label": "Purchase Invoice",
+   "options": "Purchase Invoice",
+   "read_only": 1,
+   "description": "Auto-filled when this asset was created automatically from a submitted Purchase Invoice line item."
+  },
+  {
    "fieldname": "company",
    "fieldtype": "Data",
    "label": "Company",

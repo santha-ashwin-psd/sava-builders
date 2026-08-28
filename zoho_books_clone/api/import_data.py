@@ -99,6 +99,13 @@ PURCHASE_ORDER_FIELDS = [
     "item_code", "qty", "rate", "tax_type", "tax_rate", "currency", "remarks",
 ]
 
+ASSET_FIELDS = [
+    "asset_name", "asset_code", "asset_category", "purchase_date",
+    "available_for_use_date", "qty", "purchase_cost", "taxable_value",
+    "location", "department", "supplier", "depreciation_method",
+    "useful_life", "salvage_value", "description",
+]
+
 
 @frappe.whitelist()
 def bulk_import(doctype, rows_json):
@@ -112,6 +119,7 @@ def bulk_import(doctype, rows_json):
         "Customer", "Item", "Supplier",
         "Sales Invoice", "Quotation", "Sales Order",
         "Purchase Invoice", "Expense", "Purchase Order",
+        "Asset",
     }
     if doctype not in allowed:
         frappe.throw(_("Unsupported doctype for import: {}").format(doctype))
@@ -216,6 +224,32 @@ def _build_doc(doctype, row, company):
             "is_sales_item": cint(row.get("is_sales_item") if row.get("is_sales_item") is not None else 1),
             "is_purchase_item": cint(row.get("is_purchase_item") if row.get("is_purchase_item") is not None else 1),
             "books_company": company,
+        }
+
+    if doctype == "Asset":
+        aname = (row.get("asset_name") or "").strip()
+        if not aname:
+            return None
+        purchase_cost = flt(row.get("purchase_cost") or 0)
+        return {
+            "doctype": "Asset",
+            "asset_name": aname,
+            "asset_code": (row.get("asset_code") or "").strip(),
+            "asset_category": _resolve_or_create_asset_category(row.get("asset_category"), company),
+            "status": "Draft",
+            "purchase_date": _parse_date(row.get("purchase_date")),
+            "available_for_use_date": _parse_date(row.get("available_for_use_date")) if row.get("available_for_use_date") else "",
+            "qty": flt(row.get("qty") or 1),
+            "purchase_cost": purchase_cost,
+            "taxable_value": flt(row.get("taxable_value") or purchase_cost),
+            "location": row.get("location") or "",
+            "department": row.get("department") or "",
+            "supplier": row.get("supplier") or "",
+            "depreciation_method": row.get("depreciation_method") or "Straight Line",
+            "useful_life": cint(row.get("useful_life") or 0),
+            "salvage_value": flt(row.get("salvage_value") or 0),
+            "description": row.get("description") or "",
+            "company": company,
         }
 
     if doctype == "Sales Invoice":
@@ -446,6 +480,31 @@ def _resolve_tax_code(tax_code_input, company):
     )
 
 
+def _resolve_or_create_asset_category(name, company):
+    """
+    Asset Category is autonamed by hash (the typed value is a *title*,
+    category_name, not the docname) — so look it up by category_name
+    scoped to the company, and create it on the fly if the CSV
+    references one that doesn't exist yet, rather than failing the
+    whole row with a generic Link-validation error.
+    """
+    name = (name or "").strip() or "General"
+    existing = frappe.db.get_value(
+        "Asset Category", {"category_name": name, "books_company": company}, "name"
+    )
+    if existing:
+        return existing
+
+    doc = frappe.get_doc({
+        "doctype": "Asset Category",
+        "category_name": name,
+        "books_company": company,
+        "is_active": 1,
+    })
+    doc.insert(ignore_permissions=True)
+    return doc.name
+
+
 def _resolve_or_create_item_group(name):
     """
     Item Group is a global (not per-company) taxonomy, autonamed by prompt —
@@ -623,6 +682,10 @@ def get_sample_csv(doctype):
         "Purchase Order": {
             "headers": ["supplier","transaction_date","expected_delivery_date","item_code","qty","rate","tax_type","tax_rate","currency","remarks"],
             "sample":  [["Global Supplies","2025-01-10","2025-01-30","ITEM-001","20","380","IGST","18","INR","PO for Q1 stock"]],
+        },
+        "Asset": {
+            "headers": ["asset_name","asset_code","asset_category","purchase_date","available_for_use_date","qty","purchase_cost","taxable_value","location","department","supplier","depreciation_method","useful_life","salvage_value","description"],
+            "sample":  [["Dell Laptop - E7450","AST-001","Computers","2025-01-15","2025-01-20","1","55000","55000","Head Office","","Global Supplies","Straight Line","5","5000","Employee laptop"]],
         },
     }
 

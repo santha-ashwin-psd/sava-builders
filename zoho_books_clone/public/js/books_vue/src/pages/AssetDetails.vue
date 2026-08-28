@@ -103,66 +103,39 @@
                 </div>
               </div>
 
-              <!-- Tax Lines (not applicable to existing/opening assets -- backend skips tax bookkeeping for them) -->
-              <div class="asset-tax-block" v-if="!asset.is_existing_asset">
-                <div class="asset-tax-head">
-                  <span class="inv-lbl" style="margin:0">Taxes</span>
-                  <button type="button" class="asset-tax-add" @click="addTaxRow" :disabled="financialsLocked">
-                    <span v-html="icon('plus',12)"></span> Add Tax
-                  </button>
+              <!-- Full multi-row Tax Lines UI stays hidden per the earlier
+                   request. This lightweight replacement exists solely to
+                   fix the ITC/GSTR reporting gap that hiding it caused:
+                   with no way at all to mark GST as ITC-eligible, every
+                   new asset's GST was silently getting folded into
+                   Purchase Cost (capitalized, depreciated) instead of
+                   claimed as input credit — see get_gstr_summary() /
+                   the ITC report in db/queries.py, which reads this off
+                   Asset Tax Detail rows with is_itc_eligible=1. -->
+              <div v-if="!asset.is_existing_asset" class="inv-fg inv-fg3 asset-fg4" style="margin-top:10px">
+                <div>
+                  <label class="inv-lbl">GST / Tax Amount</label>
+                  <input v-model.number="gstAmount" type="number" step="0.01" min="0" class="inv-fi" placeholder="0.00" @input="recalcTotals" :disabled="financialsLocked"/>
                 </div>
-
-                <div v-if="asset.taxes && asset.taxes.length" class="asset-tax-table">
-                  <div class="asset-tax-row asset-tax-row-head">
-                    <div>Tax Type</div>
-                    <div>Rate (%)</div>
-                    <div>ITC Eligible</div>
-                    <div>Account Head</div>
-                    <div class="ta-r">Amount</div>
-                    <div></div>
-                  </div>
-                  <div v-for="(row, idx) in asset.taxes" :key="row._id" class="asset-tax-row">
-                    <select v-model="row.tax_type" class="inv-fi" :disabled="financialsLocked">
-                      <option value="">Select</option>
-                      <option>CGST</option>
-                      <option>SGST</option>
-                      <option>IGST</option>
-                      <option>VAT</option>
-                      <option>Cess</option>
-                      <option>Other</option>
-                    </select>
-                    <input v-model.number="row.rate" type="number" step="0.01" min="0" class="inv-fi" placeholder="0" @input="recalcTotals" :disabled="financialsLocked"/>
-                    <label class="ad-switch" style="margin:auto">
-                      <input type="checkbox" :checked="!!row.is_itc_eligible" :disabled="financialsLocked" @change="row.is_itc_eligible = $event.target.checked ? 1 : 0; recalcTotals()"/>
-                      <span class="ad-switch-track"></span>
-                    </label>
-                    <SearchableSelect
-                      v-model="row.account_head"
-                      :options="taxAccountOptions"
-                      placeholder="Default (category)"
-                      :disabled="financialsLocked || !row.is_itc_eligible"
-                      @search="fetchTaxAccounts"
-                    />
-                    <div class="ta-r mono-sm">{{ fmt(row.amount || 0) }}</div>
-                    <button type="button" class="asset-tax-remove" @click="removeTaxRow(idx)" title="Remove" :disabled="financialsLocked">
-                      <span v-html="icon('x',13)"></span>
-                    </button>
-                  </div>
+                <div>
+                  <label class="inv-lbl">ITC Eligible</label>
+                  <label class="ad-switch" style="display:block;margin-top:8px">
+                    <input type="checkbox" v-model="gstItcEligible" :disabled="financialsLocked" @change="recalcTotals"/>
+                    <span class="ad-switch-track"></span>
+                  </label>
                 </div>
-                <div v-else class="asset-tax-empty">No tax lines. Click "Add Tax" if GST or another tax applies to this purchase.</div>
-
-                <div class="asset-tax-totals">
-                  <div><span>Total Tax</span><span>{{ fmt(asset.total_tax || 0) }}</span></div>
-                  <div><span>Purchase Cost (capitalized)</span><span>{{ fmt(asset.purchase_cost || 0) }}</span></div>
-                  <div class="fw-700"><span>Grand Total</span><span>{{ fmt(asset.grand_total || 0) }}</span></div>
-                </div>
-                <div style="font-size:11px;color:#94a3b8;margin-top:6px">
-                  ITC-eligible tax posts to the category's GST Input Account and is excluded from Purchase Cost. Non-eligible tax is folded into Purchase Cost and depreciated with the asset.
-                </div>
+              </div>
+              <div v-if="!asset.is_existing_asset" style="font-size:11px;color:#94a3b8;margin-top:4px">
+                ITC-eligible GST posts to the category's GST Input Account and is excluded from Purchase Cost (recoverable credit). Leave unchecked if this GST is a blocked credit — it's folded into Purchase Cost and depreciated with the asset instead.
+              </div>
+              <div v-if="!asset.is_existing_asset" style="font-size:12px;color:#64748b;margin-top:10px">
+                <span class="fw-600">Purchase Cost (capitalized): </span>{{ fmt(asset.purchase_cost || 0) }}
+                <span v-if="gstAmount > 0" style="margin-left:16px"><span class="fw-600">Grand Total: </span>{{ fmt(asset.grand_total || 0) }}</span>
               </div>
               <div v-else style="font-size:11px;color:#94a3b8;margin-top:14px">
                 Existing asset: enter its current book value directly in Purchase Cost above. No capitalization tax entry is posted for opening assets.
               </div>
+
 
               <label class="add-toggle-row" style="margin-top:14px">
                 <span>Existing Asset (already on the books)</span>
@@ -343,6 +316,19 @@ const toast = useToast();
 const { confirm } = useConfirm();
 
 let _taxRowId = 1;
+// Simplified stand-ins for the old multi-row Taxes table: one GST amount +
+// one ITC-eligible flag, translated into a single Asset Tax Detail row on
+// save (see saveAsset). Kept separate from asset.value so the number the
+// person actually typed doesn't get mangled by the rate/amount round-trip
+// the backend does on doc.taxes.
+const gstAmount = ref(0);
+const gstItcEligible = ref(false);
+// Preserves a pre-existing row's account_head override (Asset Tax Detail
+// lets a row point at a specific GST Input account instead of the
+// category's default) through the load → save round-trip. There's no UI
+// to set this — only to not silently drop it if it was already configured
+// before the Taxes table was hidden.
+const gstAccountHead = ref('');
 const blankAsset = () => ({
   doctype: 'Asset',
   asset_name: '',
@@ -475,13 +461,9 @@ function removeTaxRow(idx) {
 // this is a live preview only, not the source of truth.
 function recalcTotals() {
   const taxableValue = Number(asset.value.taxable_value) || 0;
-  let eligibleTax = 0;
-  let nonEligibleTax = 0;
-  for (const row of asset.value.taxes || []) {
-    row.amount = Math.round(taxableValue * (Number(row.rate) || 0) / 100 * 100) / 100;
-    if (row.is_itc_eligible) eligibleTax += row.amount;
-    else nonEligibleTax += row.amount;
-  }
+  const gst = Number(gstAmount.value) || 0;
+  const eligibleTax = gst > 0 && gstItcEligible.value ? gst : 0;
+  const nonEligibleTax = gst > 0 && !gstItcEligible.value ? gst : 0;
   asset.value.total_tax = Math.round((eligibleTax + nonEligibleTax) * 100) / 100;
   asset.value.purchase_cost = Math.round((taxableValue + nonEligibleTax) * 100) / 100;
   asset.value.grand_total = Math.round((taxableValue + asset.value.total_tax) * 100) / 100;
@@ -517,10 +499,26 @@ async function loadAsset() {
     await loadLookups();
     if (isNew.value) {
       asset.value = blankAsset();
+      gstAmount.value = 0;
+      gstItcEligible.value = false;
+      gstAccountHead.value = '';
     } else {
       const doc = await apiGet('Asset', route.params.id);
       asset.value = { ...blankAsset(), ...doc };
       asset.value.taxes = (asset.value.taxes || []).map(r => ({ ...r, _id: r._id || _taxRowId++ }));
+      // Fold any existing row(s) into the simplified single amount/flag —
+      // note this collapses a legacy multi-row breakdown (e.g. separate
+      // CGST + SGST rows) into one aggregate "GST" line the next time this
+      // asset is saved. The reporting/GL split (eligible vs not) is
+      // preserved; the per-row tax_type labels are not. account_head is
+      // only carried forward when every row agrees on the same one (a
+      // single pre-existing row is the common case) — a genuine mix is
+      // left blank rather than guessing which override should win.
+      const existingTaxes = asset.value.taxes || [];
+      gstAmount.value = existingTaxes.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+      gstItcEligible.value = existingTaxes.length > 0 && existingTaxes.every(r => r.is_itc_eligible);
+      const accountHeads = new Set(existingTaxes.map(r => r.account_head || '').filter(Boolean));
+      gstAccountHead.value = accountHeads.size === 1 ? [...accountHeads][0] : '';
     }
     initialSnapshot = JSON.stringify(asset.value);
   } catch (e) {
@@ -576,6 +574,28 @@ async function saveAsset(targetStatus) {
   saving.value = true;
   try {
     const doc = { ...asset.value, doctype: 'Asset' };
+    if (!doc.is_existing_asset) {
+      // Translate the simplified GST amount/flag into a single Asset Tax
+      // Detail row. rate is back-solved from the amount because the
+      // backend's calculate_totals() always recomputes row.amount as
+      // taxable_value * rate/100 and ignores whatever amount is sent —
+      // so a rate has to be supplied that reproduces the amount the
+      // person actually typed for the taxable_value they entered.
+      const taxableValueNow = Number(doc.taxable_value) || 0;
+      const gst = Number(gstAmount.value) || 0;
+      if (gst > 0 && taxableValueNow > 0) {
+        doc.taxes = [{
+          tax_type: 'GST',
+          rate: Math.round((gst / taxableValueNow) * 100 * 10000) / 10000,
+          is_itc_eligible: gstItcEligible.value ? 1 : 0,
+          amount: gst,
+          account_head: gstAccountHead.value || '',
+          description: '',
+        }];
+      } else {
+        doc.taxes = [];
+      }
+    }
     // _id is a client-only key for Vue's :key — strip before sending to the backend
     if (Array.isArray(doc.taxes)) doc.taxes = doc.taxes.map(({ _id, ...r }) => r);
     if (targetStatus === 'Submitted') {

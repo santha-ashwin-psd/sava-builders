@@ -302,6 +302,7 @@ const tabs = [
   { key: "pm",        label: "Packing Materials" },
   { key: "stock",     label: "Stock Items" },
   { key: "services",  label: "Services" },
+  { key: "fixed_asset", label: "Fixed Assets" },
 ];
 
 const list       = ref([]);
@@ -349,7 +350,7 @@ async function load() {
   // instead of blocking on the item-group filter dropdown lookup below it.
   try {
     const rows = await apiList("Item", {
-      fields: ["name","item_code","item_name","item_group","item_type","stock_uom","standard_rate","standard_buying_rate","disabled","is_stock_item","is_sales_item","is_purchase_item","has_variants","variant_of","creation","default_bom","quality_inspection_required","inspection_required_before_purchase","inspection_required_before_delivery","inspection_required_before_manufacture","min_order_qty","lead_time_days"],
+      fields: ["name","item_code","item_name","item_group","item_type","stock_uom","standard_rate","standard_buying_rate","disabled","is_stock_item","is_sales_item","is_purchase_item","has_variants","variant_of","creation","default_bom","quality_inspection_required","inspection_required_before_purchase","inspection_required_before_delivery","inspection_required_before_manufacture","min_order_qty","lead_time_days","is_fixed_asset","asset_category"],
       order: "item_name asc", limit: 100000,
     });
     list.value = rows || [];
@@ -381,6 +382,7 @@ const filtered = computed(() => {
   if (filterTab.value === "fg")       r = r.filter((i) => i.item_type === "Finished Good");
   if (filterTab.value === "pm")       r = r.filter((i) => i.item_type === "Packing Material");
   if (filterTab.value === "scrap")    r = r.filter((i) => i.item_type === "Scrap Item");
+  if (filterTab.value === "fixed_asset") r = r.filter((i) => i.is_fixed_asset);
   if (filterGroup.value) r = r.filter((i) => i.item_group === filterGroup.value);
   const q = search.value.toLowerCase().trim();
   if (q) r = r.filter((i) => ((i.item_name || "") + (i.item_code || "") + (i.item_group || "") + (i.item_type || "")).toLowerCase().includes(q));
@@ -398,6 +400,7 @@ const counts = computed(() => ({
   fg:       list.value.filter(i => i.item_type === "Finished Good").length,
   pm:       list.value.filter(i => i.item_type === "Packing Material").length,
   scrap:    list.value.filter(i => i.item_type === "Scrap Item").length,
+  fixed_asset: list.value.filter(i => i.is_fixed_asset).length,
 }));
 
 // ── Secondary stats ──

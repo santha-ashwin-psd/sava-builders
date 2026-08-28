@@ -96,6 +96,33 @@
                 <span class="ad-switch-track ad-switch-track--green"></span>
               </label>
             </div>
+            <div class="ad-toggle-row" style="margin-top:12px">
+              <div class="ad-toggle-left">
+                <div class="ad-toggle-title">Is Fixed Asset</div>
+                <div class="ad-toggle-sub">Auto-create a Draft Asset in the Assets module whenever this item is purchased via a submitted Purchase Invoice</div>
+              </div>
+              <label class="ad-switch">
+                <input type="checkbox" :checked="!!form.is_fixed_asset" @change="form.is_fixed_asset=($event.target.checked?1:0)"/>
+                <span class="ad-switch-track ad-switch-track--green"></span>
+              </label>
+            </div>
+            <div v-if="form.is_fixed_asset && form.is_stock_item" style="margin-top:10px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px">
+              ⚠ Track Inventory is also on for this item (Inventory tab). A fixed asset shouldn't also be tracked as stock — the purchase would get double-booked (once to Fixed Asset, once to Stock/Inventory) and sit in a warehouse it'll never actually move from. Turn off Track Inventory, or uncheck Is Fixed Asset.
+            </div>
+            <div class="ad-field" v-if="form.is_fixed_asset" style="margin-top:12px">
+              <label class="ad-label">Default Asset Category</label>
+              <select v-if="!addingNewAssetCategory" class="ad-input" v-model="form.asset_category"
+                @change="if (form.asset_category === '__new__') { addingNewAssetCategory = true; form.asset_category = ''; }">
+                <option value="">— Select Category —</option>
+                <option v-for="c in assetCategoryList" :key="c.name" :value="c.name">{{c.label}}</option>
+                <option value="__new__">+ Add new category…</option>
+              </select>
+              <div v-else style="display:flex;gap:8px">
+                <input class="ad-input" v-model="newAssetCategoryText" placeholder="e.g. Computers, Furniture" autofocus
+                  @keydown.enter.prevent="confirmNewAssetCategory" @blur="confirmNewAssetCategory"/>
+                <button type="button" class="b-btn b-btn-ghost" style="white-space:nowrap" @mousedown.prevent="addingNewAssetCategory=false; newAssetCategoryText=''">Cancel</button>
+              </div>
+            </div>
           </div>
 
           <div class="ad-section">
@@ -227,6 +254,9 @@
               <input type="checkbox" :checked="!!form.is_stock_item" @change="form.is_stock_item=($event.target.checked?1:0)"/>
               <span class="ad-switch-track ad-switch-track--green"></span>
             </label>
+          </div>
+          <div v-if="form.is_stock_item && form.is_fixed_asset" style="margin-bottom:20px;margin-top:-10px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px">
+            ⚠ Is Fixed Asset is also on for this item (Basic tab). A fixed asset shouldn't also be tracked as stock — the purchase would get double-booked (once to Fixed Asset, once to Stock/Inventory) and sit in a warehouse it'll never actually move from. Turn off Is Fixed Asset, or uncheck Track Inventory.
           </div>
 
           <div class="ad-toggle-row" style="margin-bottom:20px" v-if="form.is_stock_item">
@@ -490,6 +520,9 @@ const salesTaxTemplates    = computed(() => taxTemplates.value.filter((t) => t.a
 const purchaseTaxTemplates = computed(() => taxTemplates.value.filter((t) => t.applies_to === "Purchase" || t.applies_to === "Both" || !t.applies_to));
 const uomList        = ref([]);
 const brandList      = ref([]);
+const assetCategoryList = ref([]);
+const addingNewAssetCategory = ref(false);
+const newAssetCategoryText = ref("");
 const defaultAccounts  = ref({ income: "", expense: "" });
 const incomeAccounts   = ref([]);
 const expenseAccounts  = ref([]);
@@ -500,7 +533,7 @@ const form = reactive({
   stock_uom: "Nos", hsn_code: "", barcode: "", description: "", disabled: 0, brand: "",
   standard_rate: 0, standard_buying_rate: 0, mrp: 0, gst_rate: 18, tax_code: "", default_purchase_tax_template: "",
   income_account: "", expense_account: "",
-  is_sales_item: 1, is_purchase_item: 1,
+  is_sales_item: 1, is_purchase_item: 1, is_fixed_asset: 0, asset_category: "",
   is_stock_item: 1, has_batch_no: 0, shelf_life_in_days: 0, valuation_method: "FIFO", default_warehouse: "",
   reorder_level: 0, reorder_qty: 0, opening_stock: 0,
   default_bom: "", quality_inspection_required: 0, min_order_qty: 0, lead_time_days: 0,
@@ -583,7 +616,7 @@ const leafGroupOptions = computed(() =>
 );
 
 async function loadDrawerReferenceData() {
-  const [groupsRes, whRes, ttRes, uomRes, brandRes, acctRes] = await Promise.allSettled([
+  const [groupsRes, whRes, ttRes, uomRes, brandRes, acctRes, assetCatRes] = await Promise.allSettled([
     apiList("Item Group", { fields: ["name", "is_group"], order: "name asc", limit: 200 }),
     apiList("Warehouse", {
       fields: ["name", "warehouse_name", "warehouse_type"],
@@ -597,6 +630,7 @@ async function loadDrawerReferenceData() {
     apiList("UOM", { fields: ["name"], order: "name asc", limit: 200 }),
     apiList("Brand", { fields: ["name"], filters: [["disabled", "=", 0]], order: "name asc", limit: 200 }),
     resolveCompany().then(async (company) => { await loadAccountLists(company); return company; }),
+    apiList("Asset Category", { fields: ["name", "category_name"], filters: [["is_active", "=", 1]], order: "category_name asc", limit: 200 }),
   ]);
 
   if (groupsRes.status === "fulfilled") {
@@ -624,6 +658,10 @@ async function loadDrawerReferenceData() {
   if (brandRes.status === "fulfilled") {
     brandList.value = (brandRes.value || []).map((r) => r.name);
   } else { brandList.value = []; }
+
+  if (assetCatRes.status === "fulfilled") {
+    assetCategoryList.value = (assetCatRes.value || []).map((r) => ({ name: r.name, label: r.category_name || r.name }));
+  } else { assetCategoryList.value = []; }
 
   if (acctRes.status === "fulfilled") {
     // First income / expense account becomes the default for new items
@@ -733,8 +771,32 @@ function applyTypeDefaults(type) {
   }
 }
 
+// Creates the Asset Category immediately (Item.asset_category is a Link
+// field — it must store the real docname, not the typed label) and swaps
+// the drawer back to the dropdown with the new category pre-selected.
+async function confirmNewAssetCategory() {
+  const label = newAssetCategoryText.value.trim();
+  if (!label) { addingNewAssetCategory.value = false; return; }
+  try {
+    const company = await resolveCompany();
+    const created = await apiSave({
+      doctype: "Asset Category",
+      category_name: label,
+      books_company: company,
+      is_active: 1,
+    });
+    assetCategoryList.value.push({ name: created.name, label: created.category_name || label });
+    form.asset_category = created.name;
+    addingNewAssetCategory.value = false;
+    newAssetCategoryText.value = "";
+  } catch (e) {
+    toast("Could not create category: " + e.message, "error");
+  }
+}
+
 function openAdd(presetType) {
   drawerMode.value = "add"; drawerTab.value = "basic";
+  addingNewAssetCategory.value = false;
   const defaultType = presetType || "Raw Material";
   const d = ITEM_TYPE_DEFAULTS[defaultType] || {};
   Object.assign(form, {
@@ -746,6 +808,8 @@ function openAdd(presetType) {
     is_stock_item: d.is_stock !== undefined ? d.is_stock : 1,
     is_sales_item: d.is_sales !== undefined ? d.is_sales : 1,
     is_purchase_item: d.is_purchase !== undefined ? d.is_purchase : 1,
+    is_fixed_asset: 0,
+    asset_category: "",
     has_batch_no: 0,
     shelf_life_in_days: 0,
     valuation_method: d.valuation || "FIFO",
@@ -768,6 +832,7 @@ function openAdd(presetType) {
 
 async function openEdit(row) {
   drawerMode.value = "edit"; drawerTab.value = "basic";
+  addingNewAssetCategory.value = false;
   Object.assign(form, {
     ...row,
     hsn_code: "", barcode: "", description: "", standard_buying_rate: 0, mrp: 0, brand: "",
@@ -793,6 +858,8 @@ async function openEdit(row) {
       is_stock_item:        full.is_stock_item ? 1 : 0,
       is_sales_item:        full.is_sales_item === 0 ? 0 : 1,
       is_purchase_item:     full.is_purchase_item === 0 ? 0 : 1,
+      is_fixed_asset:       full.is_fixed_asset ? 1 : 0,
+      asset_category:       full.asset_category || "",
       has_batch_no:         full.has_batch_no ? 1 : 0,
       shelf_life_in_days:   flt(full.shelf_life_in_days),
       valuation_method:     full.valuation_method     || "FIFO",
@@ -843,6 +910,8 @@ function validateItem() {
     [!form.income_account,                           "Income account is required",   "pricing"],
     [!form.expense_account,                          "Expense account is required",  "pricing"],
     [!!form.is_stock_item && !form.default_warehouse, "Default Warehouse is required when Track Inventory is on", "inventory"],
+    [!!form.is_fixed_asset && !!form.is_stock_item,
+      "An item can't be both Is Fixed Asset and Track Inventory — a fixed asset is capitalized, not stocked. Turn one off.", "basic"],
     [form.item_type !== "Work In Progress" && !form.is_sales_item && !form.is_purchase_item,
       "Enable Sales Item and/or Purchase Item — an item unusable in both won't show up anywhere", "basic"],
     [!!form.purchase_uom && form.purchase_uom !== form.stock_uom && flt(form.purchase_conversion_factor) <= 0,
@@ -883,6 +952,7 @@ async function saveItem({ close = true } = {}) {
       income_account: form.income_account, expense_account: form.expense_account,
       is_stock_item: form.is_stock_item ? 1 : 0, has_batch_no: form.is_stock_item ? (form.has_batch_no ? 1 : 0) : 0,
       is_sales_item: form.is_sales_item ? 1 : 0, is_purchase_item: form.is_purchase_item ? 1 : 0,
+      is_fixed_asset: form.is_fixed_asset ? 1 : 0, asset_category: form.is_fixed_asset ? (form.asset_category || "") : "",
       shelf_life_in_days: (form.is_stock_item && form.has_batch_no) ? flt(form.shelf_life_in_days) : 0,
       valuation_method: form.valuation_method,
       default_warehouse: form.default_warehouse, reorder_level: flt(form.reorder_level),
