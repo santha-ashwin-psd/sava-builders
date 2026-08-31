@@ -577,7 +577,7 @@ onMounted(async () => {
     // above. loadList() doesn't depend on this reference data either, so it's
     // folded in too, turning ~4 sequential round trips into 1.
     const [stk, boms, whs] = await Promise.all([
-      apiList("Item", { fields: ["name", "item_name", "stock_uom"], filters: [["is_stock_item", "=", 1]], limit: 5000, order: "name asc" }),
+      apiList("Item", { fields: ["name", "item_name", "stock_uom"], filters: [["is_stock_item", "=", 1], ["disabled", "=", 0]], limit: 5000, order: "name asc" }),
       apiList("BOM", { fields: ["name", "item", "quantity", "is_default", "docstatus", "is_active"], filters: [["docstatus", "=", 1], ["is_active", "=", 1]], limit: 2000, order: "name asc" }),
       apiList("Warehouse", { fields: ["name"], filters: co ? [["company", "=", co], ["is_group", "=", 0]] : [["is_group", "=", 0]], limit: 1000, order: "name asc" }),
       loadList(),

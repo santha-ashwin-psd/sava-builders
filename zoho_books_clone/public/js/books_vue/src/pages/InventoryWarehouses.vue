@@ -1259,6 +1259,7 @@ async function loadItems() {
   try { 
   allItems.value = await apiList("Item", { 
     fields: ["name","item_name","has_batch_no","stock_uom"], 
+    filters: [["disabled", "=", 0]],
     limit: 100000, 
     order: "item_name asc" 
   }) || []; 

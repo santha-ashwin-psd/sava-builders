@@ -1405,7 +1405,7 @@ onMounted(async () => {
     // gets its own .catch so a failure there doesn't take down the rest
     // (it's non-critical — we keep the "Manufacturing" fallback).
     const [stk, uoms, ops, wks, rtg, saRows, mfgDefaults] = await Promise.all([
-      apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom", "item_type", "default_warehouse"], filters: [["is_stock_item", "=", 1]], limit: 5000, order: "name asc" }),
+      apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom", "item_type", "default_warehouse"], filters: [["is_stock_item", "=", 1], ["disabled", "=", 0]], limit: 5000, order: "name asc" }),
       apiList("UOM", { fields: ["name"], order: "name asc", limit: 200 }),
       apiList("Operation", { fields: ["name"], limit: 1000, order: "name asc" }),
       apiList("Workstation", { fields: ["name", "hour_rate"], filters: [["is_active", "=", 1]], limit: 1000, order: "name asc" }),

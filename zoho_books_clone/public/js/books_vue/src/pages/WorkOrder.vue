@@ -1310,7 +1310,7 @@ onMounted(async () => {
     // this together turns ~9 sequential round trips into 1.
     const [boms, stk, whs, ops, wks, cos, sos] = await Promise.all([
       apiList("BOM", { fields: ["name", "item", "quantity", "docstatus", "bom_version", "is_default", "bom_type"], filters: [["docstatus", "=", 1]], limit: 1000, order: "name asc" }),
-      apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom", "has_batch_no", "shelf_life_in_days", "item_type"], filters: [["is_stock_item", "=", 1]], limit: 5000, order: "name asc" }),
+      apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom", "has_batch_no", "shelf_life_in_days", "item_type"], filters: [["is_stock_item", "=", 1], ["disabled", "=", 0]], limit: 5000, order: "name asc" }),
       apiList("Warehouse", { fields: ["name"], filters: co ? [["company", "=", co], ["is_group", "=", 0]] : [["is_group", "=", 0]], limit: 1000, order: "name asc" }),
       apiList("Operation", { fields: ["name"], limit: 1000, order: "name asc" }),
       apiList("Workstation", { fields: ["name", "hour_rate"], limit: 1000, order: "name asc" }),

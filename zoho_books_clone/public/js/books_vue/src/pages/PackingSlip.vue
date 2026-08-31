@@ -429,7 +429,7 @@ onMounted(async () => {
         filters: [["bom_type", "=", "Packing"], ["docstatus", "=", 1]],
         limit: 2000,
       }),
-      apiList("Item", { fields: ["name", "item_name", "stock_uom"], limit: 5000, order: "name asc" }),
+      apiList("Item", { fields: ["name", "item_name", "stock_uom"], filters: [["is_stock_item", "=", 1], ["disabled", "=", 0]], limit: 5000, order: "name asc" }),
       apiList("UOM", { fields: ["name"], limit: 200, order: "name asc" }),
       apiList("Warehouse", { fields: ["name"], filters: [["company", "=", co], ["is_group", "=", 0]], limit: 200, order: "name asc" }),
     ]);

@@ -594,7 +594,7 @@ async function loadDropdowns() {
       apiList("Work Order", { fields: ["name"], filters: [["docstatus", "=", 1], ["status", "not in", ["Completed", "Stopped", "Cancelled"]]], limit: 2000, order: "name desc" }),
       apiList("Operation",  { fields: ["name"], filters: [["is_active", "=", 1]], limit: 1000, order: "name asc" }),
       apiList("Workstation",{ fields: ["name"], filters: [["is_active", "=", 1]], limit: 1000, order: "name asc" }),
-      apiList("Item",       { fields: ["name", "item_name"], filters: [["is_stock_item", "=", 1]], limit: 5000, order: "name asc" }),
+      apiList("Item",       { fields: ["name", "item_name"], filters: [["is_stock_item", "=", 1], ["disabled", "=", 0]], limit: 5000, order: "name asc" }),
     ]);
     workOrdersList.value   = wos || [];
     operationsList.value   = ops || [];

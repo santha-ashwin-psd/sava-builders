@@ -268,7 +268,7 @@ const previewSourceType = computed(() => {
 onMounted(async () => {
   loading.value = true;
   try {
-    const items = await apiList("Item", { fields: ["name", "item_name", "item_type"], limit: 5000, order: "name asc" });
+    const items = await apiList("Item", { fields: ["name", "item_name", "item_type"], filters: [["disabled", "=", 0]], limit: 5000, order: "name asc" });
     itemsList.value = items || [];
     const uoms = await apiList("UOM", { fields: ["name"], limit: 200, order: "name asc" });
     uomList.value = (uoms || []).map(u => u.name);
