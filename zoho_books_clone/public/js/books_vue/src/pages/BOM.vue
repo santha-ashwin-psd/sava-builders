@@ -799,7 +799,7 @@ const loading = ref(false);
 const list = ref([]);
 const search = ref("");
 const filterStatus = ref("");
-const filterBomType = ref("");
+const filterBomType = ref("Manufacturing");
 const currentPage = ref(1);
 const pageSize = ref(25);
 
