@@ -493,7 +493,10 @@ async function loadItemsFromWO() {
     ps.value.items = (breakdown.items || []).map(r => ({
       item_code: r.item_code,
       item_name: r.item_name || "",
-      required_qty: r.required_qty,
+      // Backend already rounds required_qty (get_bom_breakdown); round4 here
+      // too as a defensive mirror of BOM.vue/WorkOrder.vue's own round4, in
+      // case this value gets re-derived client-side before save.
+      required_qty: round4(r.required_qty),
       packed_qty: 0,
       uom: r.uom || "",
       source_warehouse: r.source_warehouse || "",
@@ -598,6 +601,7 @@ async function cancelPS() {
 
 // ── UTIL ─────────────────────────────────────────────────────
 function flt(n) { const v = parseFloat(n); return isNaN(v) ? 0 : v; }
+function round4(n) { return Math.round((flt(n) + Number.EPSILON) * 10000) / 10000; }
 function fmt(n) { const v = parseFloat(n); return isNaN(v) ? "0.00" : v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtDate(d) {
   if (!d) return "—";

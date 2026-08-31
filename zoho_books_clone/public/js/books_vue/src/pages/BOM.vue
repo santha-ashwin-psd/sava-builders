@@ -1398,21 +1398,29 @@ async function loadBom() {
   detailLoading.value = false;
 }
 
+// Matches the backend's rounding precision (flt(x, 4) in work_order_engine.py
+// etc.) — without it, `(rm.qty || 0) * ratio` produces long float artifacts
+// like 0.34154999999999996 for most non-round ratios (plain JS floating
+// point, same root cause as the unrounded backend spots this mirrors).
+function round4(n) {
+  return Math.round((n + Number.EPSILON) * 10000) / 10000;
+}
+
 function onQtyChange() {
   const newQty = parseFloat(bom.value.quantity) || 0;
   if (newQty <= 0) { bom.value.quantity = 1; oldQty.value = 1; return; }
   const ratio = newQty / oldQty.value;
-  (bom.value.items || []).forEach(rm => { rm.qty = (rm.qty || 0) * ratio; });
-  (bom.value.scrap_items || []).forEach(sc => { sc.qty = (sc.qty || 0) * ratio; });
+  (bom.value.items || []).forEach(rm => { rm.qty = round4((rm.qty || 0) * ratio); });
+  (bom.value.scrap_items || []).forEach(sc => { sc.qty = round4((sc.qty || 0) * ratio); });
   // Packing BOMs keep their materials in packing_items (items is required to
   // stay empty for that bom_type — see BOM.validate_packing_bom) — without
   // rescaling this table too, changing Quantity on a Packing BOM silently
   // leaves every packing material's qty at its old, now-wrong value.
-  (bom.value.packing_items || []).forEach(pi => { pi.qty = (pi.qty || 0) * ratio; });
+  (bom.value.packing_items || []).forEach(pi => { pi.qty = round4((pi.qty || 0) * ratio); });
   // Operation time must scale with quantity too — otherwise op_cost stays pinned
   // to the old quantity's time. Mirrors get_bom_breakdown() on the backend, which
   // scales planned_time_in_mins by the same qty ratio when previewing a Work Order.
-  (bom.value.operations || []).forEach(op => { op.time_in_mins = (op.time_in_mins || 0) * ratio; });
+  (bom.value.operations || []).forEach(op => { op.time_in_mins = round4((op.time_in_mins || 0) * ratio); });
   oldQty.value = newQty;
 }
 

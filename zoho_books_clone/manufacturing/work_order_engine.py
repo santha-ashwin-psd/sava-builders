@@ -211,9 +211,9 @@ def get_bom_breakdown(bom, qty, work_order=None):
     top_level_operations = [{
         "operation": r.operation,
         "workstation": r.workstation,
-        "planned_time_in_mins": flt(r.time_in_mins) * ratio,
+        "planned_time_in_mins": flt(flt(r.time_in_mins) * ratio, 4),
         "hour_rate": flt(r.hour_rate),
-        "cost": flt(r.cost) * ratio,
+        "cost": flt(flt(r.cost) * ratio, 2),
         "sub_assembly_bom": "",
         "sub_assembly_item": "",
         "sub_assembly_qty": 0,
@@ -222,7 +222,7 @@ def get_bom_breakdown(bom, qty, work_order=None):
 
     scrap_items = [{
         "item_code": r.item_code,
-        "qty": flt(r.qty) * ratio,
+        "qty": flt(flt(r.qty) * ratio, 4),
         "rate": flt(r.rate),
     } for r in (bom_doc.scrap_items or [])]
 
@@ -319,9 +319,9 @@ def _explode_bom_items(rows, ratio, depth=0, _seen_boms=None, operations_acc=Non
                         operations_acc.append({
                             "operation": op.operation,
                             "workstation": op.workstation,
-                            "planned_time_in_mins": flt(op.time_in_mins) * sub_ratio,
+                            "planned_time_in_mins": flt(flt(op.time_in_mins) * sub_ratio, 4),
                             "hour_rate": flt(op.hour_rate),
-                            "cost": flt(op.cost) * sub_ratio,
+                            "cost": flt(flt(op.cost) * sub_ratio, 2),
                             # Same origin used to tag this branch's material rows
                             # below -- lets the Work Order UI group/label this
                             # operation (and the Job Card created from it) by
@@ -344,10 +344,10 @@ def _explode_bom_items(rows, ratio, depth=0, _seen_boms=None, operations_acc=Non
         result.append({
             "item_code": r.item_code,
             "item_name": r.item_name,
-            "required_qty": flt(r.qty) * conv * ratio,
+            "required_qty": flt(flt(r.qty) * conv * ratio, 4),
             "uom": stock_uom,
             "rate": flt(r.rate) / conv if conv else flt(r.rate),
-            "amount": flt(r.rate) * flt(r.qty) * ratio,
+            "amount": flt(flt(r.rate) * flt(r.qty) * ratio, 2),
             "source_warehouse": r.source_warehouse or "",
             "sub_assembly_bom": origin or "",
         })
@@ -429,10 +429,10 @@ def _explode_packing_bom(bom_doc, ratio, qty_to_pack):
         result.append({
             "item_code": bom_doc.bulk_item,
             "item_name": bulk_name,
-            "required_qty": flt(bom_doc.bulk_qty_per_unit) * flt(qty_to_pack),
+            "required_qty": flt(flt(bom_doc.bulk_qty_per_unit) * flt(qty_to_pack), 4),
             "uom": bulk_uom,
             "rate": flt(bom_doc.bulk_rate),
-            "amount": flt(bom_doc.bulk_rate) * flt(bom_doc.bulk_qty_per_unit) * flt(qty_to_pack),
+            "amount": flt(flt(bom_doc.bulk_rate) * flt(bom_doc.bulk_qty_per_unit) * flt(qty_to_pack), 2),
             "source_warehouse": "",
         })
     for r in (bom_doc.packing_items or []):
@@ -441,10 +441,10 @@ def _explode_packing_bom(bom_doc, ratio, qty_to_pack):
         result.append({
             "item_code": r.item_code,
             "item_name": r.item_name,
-            "required_qty": flt(r.qty) * conv * ratio,
+            "required_qty": flt(flt(r.qty) * conv * ratio, 4),
             "uom": stock_uom,
             "rate": flt(r.rate) / conv if conv else flt(r.rate),
-            "amount": flt(r.rate) * flt(r.qty) * ratio,
+            "amount": flt(flt(r.rate) * flt(r.qty) * ratio, 2),
             "source_warehouse": "",
         })
     return result

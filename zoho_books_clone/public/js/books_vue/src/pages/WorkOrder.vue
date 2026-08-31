@@ -1642,6 +1642,14 @@ async function onBomChange() {
   await loadFromBom();
 }
 
+// Backend (get_bom_breakdown) already rounds required_qty/amount/
+// planned_time_in_mins/cost, but rounds here too on the way in as a defensive
+// mirror of BOM.vue's round4 — protects against float drift if these values
+// get displayed/re-derived client-side before ever being saved back.
+function round4(n) {
+  return Math.round((flt(n) + Number.EPSILON) * 10000) / 10000;
+}
+
 async function loadFromBom() {
   if (!wo.value.bom || !wo.value.qty) return;
   breakdownLoading.value = true;
@@ -1656,6 +1664,7 @@ async function loadFromBom() {
     wo.value.items = (r.items || []).map(i => ({
       ...EMPTY_MATERIAL(),
       ...i,
+      required_qty: round4(i.required_qty),
       // Small Text field on Work Order Item can only hold a plain string —
       // the API returns an array, so join it here. Parsed back into an
       // array by groupedWoItems() below wherever it's read for display.
@@ -1668,7 +1677,9 @@ async function loadFromBom() {
       // the default source warehouse coming from Manufacturing Settings
       source_warehouse: i.source_warehouse || r.default_source_warehouse || "",
     }));
-    wo.value.operations = (r.operations || []).map(o => ({ ...EMPTY_OP(), ...o }));
+    wo.value.operations = (r.operations || []).map(o => ({
+      ...EMPTY_OP(), ...o, time_in_mins: round4(o.time_in_mins),
+    }));
     bomScrapItems.value = r.scrap_items || [];
     bomProcessLoss.value = flt(r.process_loss);
     // Persist onto the Work Order doc itself (not just the client-side ref)

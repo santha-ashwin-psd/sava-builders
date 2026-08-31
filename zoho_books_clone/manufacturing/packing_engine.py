@@ -270,7 +270,7 @@ def create_packing_slip(work_order, qty_to_pack=None):
         ps.append("items", {
             "item_code": bom_doc.bulk_item,
             "item_name": frappe.db.get_value("Item", bom_doc.bulk_item, "item_name") or bom_doc.bulk_item,
-            "required_qty": flt(bom_doc.bulk_qty_per_unit) * qty_to_pack,
+            "required_qty": flt(flt(bom_doc.bulk_qty_per_unit) * qty_to_pack, 4),
             "packed_qty": 0,
             "uom": bulk_uom,
             "batch_no": source_batch_no or "",
@@ -282,7 +282,7 @@ def create_packing_slip(work_order, qty_to_pack=None):
         ps.append("items", {
             "item_code": r.item_code,
             "item_name": r.item_name or "",
-            "required_qty": flt(r.qty) * ratio,
+            "required_qty": flt(flt(r.qty) * ratio, 4),
             "packed_qty": 0,
             "source_warehouse": wo_item_warehouse.get(r.item_code) or "",
             "uom": r.uom or "",

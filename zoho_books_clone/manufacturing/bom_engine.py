@@ -88,7 +88,7 @@ def _build_tree(bom_name, qty, level, result, seen, max_depth=6):
             if sub_cost is not None and flt(sub_qty):
                 row_rate = flt(sub_cost) / flt(sub_qty)
 
-        node_qty = flt(r.qty) * ratio
+        node_qty = flt(flt(r.qty) * ratio, 4)
         node = {
             "level": level,
             "item_code": r.item_code,
@@ -96,7 +96,7 @@ def _build_tree(bom_name, qty, level, result, seen, max_depth=6):
             "qty": node_qty,
             "uom": r.uom or "",
             "rate": row_rate,
-            "amount": row_rate * node_qty,
+            "amount": flt(row_rate * node_qty, 2),
             "sub_assembly_bom": sub_bom,
             "is_phantom": is_phantom,
             "has_sub_assembly": bool(sub_bom),

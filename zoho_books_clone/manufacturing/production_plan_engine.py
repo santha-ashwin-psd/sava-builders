@@ -210,9 +210,10 @@ def get_raw_materials(po_items, warehouse=None, production_plan=None):
 
     results = []
     for code, entry in agg.items():
+        entry["required_qty"] = flt(entry["required_qty"], 4)
         available = flt(balances.get(code, 0))
         entry["available_qty"] = available
-        entry["shortfall_qty"] = max(0.0, entry["required_qty"] - available)
+        entry["shortfall_qty"] = flt(max(0.0, entry["required_qty"] - available), 4)
         rate = valuation_rates.get(code) or fallback_rates.get(code) or 0.0
         entry["estimated_cost"] = round(entry["shortfall_qty"] * rate, 2)
         results.append(entry)
