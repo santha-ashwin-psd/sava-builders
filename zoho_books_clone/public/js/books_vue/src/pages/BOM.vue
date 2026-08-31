@@ -112,8 +112,8 @@
               <th>BOM Name</th>
               <th>Status</th>
               <th>BOM Type</th>
-              <th style="text-align:right">BOM Cost (₹)</th>
-              <th style="text-align:right">Quantity</th>
+              <th >BOM Cost (₹)</th>
+              <th >Quantity</th>
               <th>Default</th>
               <th>Last Updated</th>
               <th style="text-align:center">Actions</th>
@@ -142,6 +142,7 @@
               <td>
                 <div class="bomx-name-cell">
                   {{ row.item_name || row.item }}
+                  
                   <span v-if="row._role === 'top BOM'" class="bomx-badge-top">top BOM <span v-if="expandedGroups.has(row.name)" style="opacity:0.7;margin-left:4px;">({{ row._childCount }} items)</span></span>
                   <span v-if="row._role === 'assembly'" class="bomx-badge-assembly">assembly <span v-if="expandedGroups.has(row.name)" style="opacity:0.7;margin-left:4px;">({{ row._childCount }} sub)</span></span>
                   <span v-if="row._role === 'sub-assembly'" class="bomx-badge-sub">sub-assembly</span>
@@ -151,7 +152,7 @@
               <td><span class="bomx-badge" :class="statusClass(row)">{{ statusLabel(row) }}</span></td>
               <td><span class="bomx-type-tag" :style="bomTypeStyle(row._role === 'sub-assembly' ? 'Sub-Assembly' : row.bom_type)">{{ row._role === 'sub-assembly' ? 'Sub-assembly' : (row.bom_type || '—') }}</span></td>
               <td class="mono bomx-num">{{ INR(row.total_cost) }}</td>
-              <td class="mono bomx-num">{{ row.quantity || 1 }}</td>
+              <td class="mono bomx-num">{{ row.quantity || 1 }} <span class="bomx-uom-tag">{{ rowUom(row) }}</span></td>
               <td>
                 <span class="bomx-mini-pill" :class="row.is_default ? 'yes' : 'no'">{{ row.is_default ? 'Yes' : 'No' }}</span>
               </td>
@@ -1298,6 +1299,12 @@ function itemNameFor(code) {
   const i = stockItems.value.find(x => x.name === code) || manufacturedItems.value.find(x => x.name === code);
   return i ? i.item_name : null;
 }
+// Same lookup producedUom uses for the open BOM's header, applied per-row
+// for the list table — the produced item's stock UOM, shown next to its
+// name so "1 Nos" vs "1 Pair" is visible without opening each BOM.
+function rowUom(row) {
+  return (stockItems.value.find(i => i.name === row.item) || {}).stock_uom || "Nos";
+}
 
 // All revisions sharing the same base document id as the open BOM, newest version first.
 const bomVersions = computed(() => {
@@ -2139,6 +2146,7 @@ function icon(name, size) {
 .bomx-empty-row { text-align:center; padding:28px 14px !important; color:var(--bx-muted); }
 .bomx-link-bom { color:var(--bx-mfg); font-weight:800; }
 .bomx-name-cell { font-weight:700; color:var(--bx-text); }
+.bomx-uom-tag { font-size:11px; font-weight:500; color:var(--bx-muted); margin-left:6px; }
 .bomx-name-sub { font-size:11.5px; color:var(--bx-muted); margin-top:3px; }
 .bomx-type-tag, .bomx-mini-pill {
   display:inline-flex; align-items:center; justify-content:center;
