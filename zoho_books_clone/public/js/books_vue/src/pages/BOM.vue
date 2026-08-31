@@ -899,10 +899,17 @@ async function loadList() {
     const r = await apiList("BOM", { fields, limit: 1000, order: "modified desc" });
     list.value = r || [];
     // Derived from the same fetch instead of a second BOM query — used by the
-    // sub-assembly BOM picker, which only needs submitted (docstatus 1) rows.
+    // sub-assembly BOM picker (docstatus 1 only) and the Bulk Item Rate
+    // auto-fetch (docstatus 1 + is_active + is_default, see
+    // onBulkItemChange), so is_active/is_default/modified have to survive
+    // the map below, not just the sub-assembly picker's original fields.
     bomsList.value = list.value
       .filter(row => row.docstatus === 1)
-      .map(row => ({ name: row.name, item: row.item, bom_type: row.bom_type, total_cost: row.total_cost, quantity: row.quantity }));
+      .map(row => ({
+        name: row.name, item: row.item, bom_type: row.bom_type,
+        total_cost: row.total_cost, quantity: row.quantity,
+        is_active: row.is_active, is_default: row.is_default, modified: row.modified,
+      }));
     if (list.value.length) {
       const uniqueItemCodes = [...new Set(list.value.map(row => row.item).filter(Boolean))];
       if (uniqueItemCodes.length) {
@@ -1498,8 +1505,33 @@ function onSubAssemblyBomChange(rm) {
 }
 function onBulkItemChange() {
   if (!bom.value.bulk_item) return;
-  const item = stockItems.value.find(i => i.name === bom.value.bulk_item);
-  if (item && !bom.value.bulk_rate) bom.value.bulk_rate = item.standard_rate || 0;
+  // Mirrors onSubAssemblyBomChange()'s pattern (which itself mirrors
+  // _calc_costs() in bom.py): pull the bulk item's own per-unit cost from
+  // its Manufacturing BOM (total_cost / quantity) instead of the Item
+  // master's standard_rate, which is often stale or never set. Prefer the
+  // item's default BOM; if more than one qualifies with no default marked,
+  // fall back to whichever was modified most recently.
+  // bomsList is already pre-filtered to submitted (docstatus 1) BOMs by
+  // loadList(), and its mapped rows don't carry a docstatus field at all —
+  // so there's nothing to re-check here beyond is_active/bom_type/item.
+  const candidates = bomsList.value.filter(b =>
+    b.item === bom.value.bulk_item &&
+    b.is_active &&
+    (b.bom_type === "Manufacturing" || b.bom_type === "Sub-Assembly")
+  );
+  const bulkBom = candidates.find(b => b.is_default) ||
+    candidates.sort((a, b) => new Date(b.modified) - new Date(a.modified))[0];
+  if (bulkBom) {
+    const bulkQty = parseFloat(bulkBom.quantity) || 1;
+    const bulkCost = parseFloat(bulkBom.total_cost) || 0;
+    bom.value.bulk_rate = Math.round((bulkCost / bulkQty) * 100) / 100;
+  } else {
+    // No submitted Manufacturing BOM exists yet for this item — fall back
+    // to the Item master's standard_rate so the field isn't just left at 0
+    // with no explanation.
+    const item = stockItems.value.find(i => i.name === bom.value.bulk_item);
+    bom.value.bulk_rate = (item && item.standard_rate) || 0;
+  }
 }
 function onWorkstationChange(op) {
   if (!op.workstation) return;
