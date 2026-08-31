@@ -65,6 +65,10 @@
       <span v-html="icon('search',14)"></span>
       <input v-model="search" type="text" placeholder="Search by WO number, item…"/>
     </div>
+    <select class="bomx-fi" v-model="filterBom" style="max-width:220px" title="Filter by BOM">
+      <option value="">All BOMs</option>
+      <option v-for="b in usedBomOptions" :key="b.name" :value="b.name">{{ b.name }} — {{ b.label }}</option>
+    </select>
     <span class="bomx-toolbar-count">{{ sorted.length }} order{{ sorted.length===1?'':'s' }}</span>
     <div style="flex:1"></div>
     <button class="bomx-btn bomx-btn-mfg" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> New Work Order</button>
@@ -85,16 +89,16 @@
     <table v-else class="bomx-table">
       <thead>
         <tr>
-          <th>WO Number</th>
-          <th>Item</th>
-          <th>BOM</th>
-          <th style="text-align:right">Qty Ordered</th>
-          <th style="text-align:right">Qty Produced</th>
-          <th>Planned Start</th>
-          <th>Planned End</th>
-          <th>Status</th>
+          <th class="sortable" @click="sortBy('name')">WO Number <span v-html="sortArrow('name')"></span></th>
+          <th class="sortable" @click="sortBy('item_name')">Item <span v-html="sortArrow('item_name')"></span></th>
+          <th class="sortable" @click="sortBy('bom')">BOM <span v-html="sortArrow('bom')"></span></th>
+          <th class="sortable" style="text-align:right" @click="sortBy('qty')">Qty Ordered <span v-html="sortArrow('qty')"></span></th>
+          <th class="sortable" style="text-align:right" @click="sortBy('produced_qty')">Qty Produced <span v-html="sortArrow('produced_qty')"></span></th>
+          <th class="sortable" @click="sortBy('planned_start_date')">Planned Start <span v-html="sortArrow('planned_start_date')"></span></th>
+          <th class="sortable" @click="sortBy('planned_end_date')">Planned End <span v-html="sortArrow('planned_end_date')"></span></th>
+          <th class="sortable" @click="sortBy('status')">Status <span v-html="sortArrow('status')"></span></th>
           <th>Progress</th>
-          <th>Created At</th>
+          <th class="sortable" @click="sortBy('creation')">Created At <span v-html="sortArrow('creation')"></span></th>
         </tr>
       </thead>
       <tbody>
@@ -929,6 +933,7 @@ const loading = ref(false);
 const list = ref([]);
 const search = ref("");
 const filterStatus = ref(typeof route.query.status === "string" ? route.query.status : "");
+const filterBom = ref("");
 
 const statusOptions = ["Draft", "Submitted", "In Process", "Stopped", "Completed", "Cancelled"];
 
@@ -946,15 +951,49 @@ async function loadList() {
   }
 }
 
+// Distinct BOMs actually used by existing Work Orders, for the BOM filter
+// dropdown — not the full bomList (which includes BOMs never used in a WO).
+const usedBomOptions = computed(() => {
+  const seen = new Map();
+  for (const r of list.value) {
+    if (r.bom && !seen.has(r.bom)) seen.set(r.bom, r.item_name || r.production_item || r.bom);
+  }
+  return [...seen.entries()].map(([name, label]) => ({ name, label })).sort((a, b) => a.name.localeCompare(b.name));
+});
+
 const filtered = computed(() => {
   let r = list.value;
   if (filterStatus.value) r = r.filter(i => i.status === filterStatus.value);
+  if (filterBom.value) r = r.filter(i => i.bom === filterBom.value);
   const q = search.value.toLowerCase().trim();
   if (q) r = r.filter(i => ((i.item_name || "") + (i.production_item || "") + (i.bom || "") + i.name).toLowerCase().includes(q));
   return r;
 });
 
-const sorted = computed(() => [...filtered.value]);
+const sortCol = ref(""), sortDir = ref("asc");
+function sortBy(col) {
+  if (sortCol.value === col) sortDir.value = sortDir.value === "asc" ? "desc" : "asc";
+  else { sortCol.value = col; sortDir.value = "asc"; }
+}
+function sortArrow(col) {
+  if (sortCol.value !== col) return '<span style="color:#d1d5db">⇅</span>';
+  return sortDir.value === "asc" ? "↑" : "↓";
+}
+
+const sorted = computed(() => {
+  if (!sortCol.value) return [...filtered.value]; // default: server order (modified desc)
+  const col = sortCol.value;
+  return [...filtered.value].sort((a, b) => {
+    let av, bv;
+    if (col === "item_name") { av = a.item_name || a.production_item; bv = b.item_name || b.production_item; }
+    else if (col === "planned_start_date" || col === "planned_end_date" || col === "creation") {
+      av = new Date(a[col] || 0).getTime(); bv = new Date(b[col] || 0).getTime();
+    } else { av = a[col]; bv = b[col]; }
+    av = av ?? ""; bv = bv ?? "";
+    const c = (typeof av === "number" && typeof bv === "number") ? av - bv : String(av).localeCompare(String(bv));
+    return sortDir.value === "asc" ? c : -c;
+  });
+});
 
 function statusClass(row) {
   if (row.status === "Completed") return "badge-active";
@@ -2983,6 +3022,8 @@ function icon(name, size) {
 /* ── Work Order table ── */
 .bomx-table-wrap { background:var(--bx-surface); border:1px solid var(--bx-border); border-radius:var(--bx-radius); overflow-x:auto; margin-bottom:20px; }
 .bomx-table { width:100%; border-collapse:collapse; font-size:13px; }
+.bomx-table th.sortable { cursor:pointer; user-select:none; }
+.bomx-table th.sortable:hover { color:var(--bx-mfgB); }
 .bomx-table th { text-align:left; padding:9px 14px; border-bottom:1px solid var(--bx-border); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--bx-muted); font-weight:700; background:var(--bx-surf2); white-space:nowrap; }
 .bomx-table td { padding:11px 14px; border-bottom:1px solid #F1F3F5; vertical-align:middle; }
 .bomx-table tr:last-child td { border-bottom:none; }

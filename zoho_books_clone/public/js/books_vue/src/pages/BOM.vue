@@ -48,13 +48,21 @@
             <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
             <input v-model="search" placeholder="Search BOM by name or number..." class="sales-search-input"/>
           </div>
-          <select class="bomx-fi bomx-toolbar-select" v-model="filterStatus">
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="draft">Draft</option>
-            <option value="inactive">Inactive</option>
-            <option value="obsolete">Obsolete</option>
-          </select>
+          <div class="sales-pills">
+            <button v-for="t in statusTabs" :key="t.key"
+              class="sales-pill" :class="{active:filterStatus===t.key}"
+              @click="filterStatus=t.key">
+              {{ t.label }}
+              <span v-if="t.key" class="sales-pill-count">{{ tabCounts[t.key] }}</span>
+            </button>
+            <span class="bomx-pill-divider"></span>
+            <button v-for="t in bomTypeTabs" :key="t"
+              class="sales-pill" :class="{active:filterBomType===t}"
+              @click="filterBomType = filterBomType===t ? '' : t">
+              {{ t }}
+              <span class="sales-pill-count">{{ typeCounts[t] }}</span>
+            </button>
+          </div>
         </div>
         <div class="bomx-toolbar-actions">
           <button class="bomx-btn bomx-btn-mfg bomx-btn-sm" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openAdd" style="margin-right: 8px;">
@@ -63,35 +71,12 @@
           <button class="bomx-toolbar-btn" @click="toggleGroupedView" :class="{active: showGroupedView}">
             <span v-html="icon('list',14)"></span> Group
           </button>
-          <button class="bomx-toolbar-btn" @click="showAdvancedFilters = !showAdvancedFilters" :class="{active: showAdvancedFilters}">
-            <span v-html="icon('filter',14)"></span> Filters
-          </button>
           <button class="bomx-toolbar-btn" @click="exportCsv">
             <span v-html="icon('download',14)"></span> CSV
           </button>
           <button class="bomx-toolbar-btn" @click="refreshList" title="Refresh">
             <span v-html="icon('refresh',14)"></span>
           </button>
-        </div>
-      </div>
-
-      <div v-if="showAdvancedFilters" class="bomx-advanced-filters">
-        <div>
-          <div class="bomx-hf-label">BOM Type</div>
-          <select class="bomx-fi" v-model="filterBomType">
-            <option value="">All Types</option>
-            <option value="Manufacturing">Manufacturing</option>
-            <option value="Packing">Packing</option>
-            <option value="Sub-Assembly">Sub-Assembly</option>
-          </select>
-        </div>
-        <div>
-          <div class="bomx-hf-label">Rows per page</div>
-          <select class="bomx-fi" v-model.number="pageSize">
-            <option :value="10">10</option>
-            <option :value="25">25</option>
-            <option :value="50">50</option>
-          </select>
         </div>
       </div>
 
@@ -108,14 +93,14 @@
           <thead>
             <tr>
               <th style="width:34px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th>
-              <th>BOM Number</th>
-              <th>BOM Name</th>
-              <th>Status</th>
-              <th>BOM Type</th>
-              <th >BOM Cost (₹)</th>
-              <th >Quantity</th>
+              <th class="sortable" @click="sortBy('name')">BOM Number <span v-html="sortArrow('name')"></span></th>
+              <th class="sortable" @click="sortBy('item_name')">BOM Name <span v-html="sortArrow('item_name')"></span></th>
+              <th class="sortable" @click="sortBy('status')">Status <span v-html="sortArrow('status')"></span></th>
+              <th class="sortable" @click="sortBy('bom_type')">BOM Type <span v-html="sortArrow('bom_type')"></span></th>
+              <th class="sortable" @click="sortBy('total_cost')">BOM Cost (₹) <span v-html="sortArrow('total_cost')"></span></th>
+              <th class="sortable" @click="sortBy('quantity')">Quantity <span v-html="sortArrow('quantity')"></span></th>
               <th>Default</th>
-              <th>Last Updated</th>
+              <th class="sortable" @click="sortBy('modified')">Last Updated <span v-html="sortArrow('modified')"></span></th>
               <th style="text-align:center">Actions</th>
             </tr>
           </thead>
@@ -176,6 +161,11 @@
           <button class="bomx-page-btn" :disabled="currentPage === 1" @click="goToPage(currentPage - 1)">‹</button>
           <button v-for="page in totalPages" :key="page" class="bomx-page-btn" :class="{active: page === currentPage}" @click="goToPage(page)">{{ page }}</button>
           <button class="bomx-page-btn" :disabled="currentPage === totalPages" @click="goToPage(currentPage + 1)">›</button>
+          <select class="bomx-fi" v-model.number="pageSize" style="margin-left:8px;width:auto" title="Rows per page">
+            <option :value="10">10 / page</option>
+            <option :value="25">25 / page</option>
+            <option :value="50">50 / page</option>
+          </select>
         </div>
       </div>
     </div>
@@ -810,7 +800,6 @@ const list = ref([]);
 const search = ref("");
 const filterStatus = ref("");
 const filterBomType = ref("");
-const showAdvancedFilters = ref(false);
 const currentPage = ref(1);
 const pageSize = ref(25);
 
@@ -948,12 +937,8 @@ function chainRoot(name) {
   return cur ? cur.name : name;
 }
 
-const sorted = computed(() => {
+const groupedBase = computed(() => {
   let r = list.value;
-  if (filterStatus.value === "active") r = r.filter(i => i.is_active && i.docstatus !== 2);
-  if (filterStatus.value === "inactive") r = r.filter(i => !i.is_active && i.docstatus !== 2);
-  if (filterStatus.value === "draft") r = r.filter(i => i.docstatus === 0);
-  if (filterStatus.value === "obsolete") r = r.filter(i => i.docstatus === 2);
   if (filterBomType.value) r = r.filter(i => i.bom_type === filterBomType.value);
   const q = search.value.toLowerCase().trim();
   if (q) r = r.filter(i => [i.item_name, i.item, i.name].filter(Boolean).join(" ").toLowerCase().includes(q));
@@ -972,6 +957,91 @@ const sorted = computed(() => {
     const rep = pool.slice().sort((a, b) => (Number(b.bom_version) || 0) - (Number(a.bom_version) || 0))[0];
     return { ...rep, _versionCount: rows.length };
   }).sort((a, b) => new Date(b.modified) - new Date(a.modified));
+});
+
+// Tab counts reflect type/search filters but NOT the active status pill itself,
+// so switching pills doesn't make the other pills' own counts shift around.
+const tabCounts = computed(() => {
+  const rows = groupedBase.value;
+  return {
+    active: rows.filter(r => statusLabel(r) === "Active").length,
+    draft: rows.filter(r => statusLabel(r) === "Draft").length,
+    inactive: rows.filter(r => statusLabel(r) === "Inactive").length,
+    obsolete: rows.filter(r => statusLabel(r) === "Obsolete").length,
+  };
+});
+
+const statusTabs = [
+  { key: "", label: "All" },
+  { key: "active", label: "Active" },
+  { key: "draft", label: "Draft" },
+  { key: "inactive", label: "Inactive" },
+  { key: "obsolete", label: "Obsolete" },
+];
+
+// Counts for the BOM Type pills — reflect the current status pill + search,
+// but never the type pill itself, so switching type doesn't hide the other
+// types' own counts.
+const statusFilteredNoType = computed(() => {
+  let r = list.value;
+  const q = search.value.toLowerCase().trim();
+  if (q) r = r.filter(i => [i.item_name, i.item, i.name].filter(Boolean).join(" ").toLowerCase().includes(q));
+  const groups = new Map();
+  for (const row of r) {
+    const key = chainRoot(row.name);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+  let grouped = [...groups.values()].map(rows => {
+    const notCancelled = rows.filter(x => x.docstatus !== 2);
+    const pool = notCancelled.length ? notCancelled : rows;
+    const rep = pool.slice().sort((a, b) => (Number(b.bom_version) || 0) - (Number(a.bom_version) || 0))[0];
+    return { ...rep, _versionCount: rows.length };
+  });
+  if (filterStatus.value === "active") grouped = grouped.filter(i => i.is_active && i.docstatus !== 2);
+  if (filterStatus.value === "inactive") grouped = grouped.filter(i => !i.is_active && i.docstatus !== 2);
+  if (filterStatus.value === "draft") grouped = grouped.filter(i => i.docstatus === 0);
+  if (filterStatus.value === "obsolete") grouped = grouped.filter(i => i.docstatus === 2);
+  return grouped;
+});
+
+const bomTypeTabs = ["Manufacturing", "Packing", "Sub-Assembly"];
+const typeCounts = computed(() => {
+  const rows = statusFilteredNoType.value;
+  const out = {};
+  for (const t of bomTypeTabs) out[t] = rows.filter(r => r.bom_type === t).length;
+  return out;
+});
+
+// ── Column sorting (click a header to sort; click again to reverse) ──
+const sortCol = ref(""), sortDir = ref("asc");
+function sortBy(col) {
+  if (sortCol.value === col) sortDir.value = sortDir.value === "asc" ? "desc" : "asc";
+  else { sortCol.value = col; sortDir.value = "asc"; }
+}
+function sortArrow(col) {
+  if (sortCol.value !== col) return '<span style="color:#d1d5db">⇅</span>';
+  return sortDir.value === "asc" ? "↑" : "↓";
+}
+
+const sorted = computed(() => {
+  let r = groupedBase.value;
+  if (filterStatus.value === "active") r = r.filter(i => i.is_active && i.docstatus !== 2);
+  if (filterStatus.value === "inactive") r = r.filter(i => !i.is_active && i.docstatus !== 2);
+  if (filterStatus.value === "draft") r = r.filter(i => i.docstatus === 0);
+  if (filterStatus.value === "obsolete") r = r.filter(i => i.docstatus === 2);
+  if (!sortCol.value) return r; // default order already set by groupedBase (modified desc)
+  const col = sortCol.value;
+  return [...r].sort((a, b) => {
+    let av, bv;
+    if (col === "item_name") { av = itemNameFor(a.item) || a.item; bv = itemNameFor(b.item) || b.item; }
+    else if (col === "modified" || col === "creation") { av = new Date(a[col] || 0).getTime(); bv = new Date(b[col] || 0).getTime(); }
+    else if (col === "status") { av = statusLabel(a); bv = statusLabel(b); }
+    else { av = a[col]; bv = b[col]; }
+    av = av ?? ""; bv = bv ?? "";
+    const c = (typeof av === "number" && typeof bv === "number") ? av - bv : String(av).localeCompare(String(bv));
+    return sortDir.value === "asc" ? c : -c;
+  });
 });
 
 const showGroupedView = ref(false);
@@ -1092,7 +1162,7 @@ function toggleRow(name) {
 const totalPages = computed(() => Math.max(1, Math.ceil(hierarchicalRows.value.length / pageSize.value)));
 
 const bomSummary = computed(() => {
-  const rows = sorted.value;
+  const rows = groupedBase.value;
   return {
     total: rows.length,
     draft: rows.filter(r => statusLabel(r) === "Draft").length,
@@ -2132,6 +2202,9 @@ function icon(name, size) {
   box-shadow:0 10px 24px rgba(16,24,40,.04);
 }
 .bomx-table { width:100%; border-collapse:collapse; }
+.bomx-pill-divider { width:1px; align-self:stretch; background:#E5E7EB; margin:0 4px; }
+.bomx-table th.sortable { cursor:pointer; user-select:none; }
+.bomx-table th.sortable:hover { color:#1a6ef7; }
 .bomx-table thead th {
   background:#f8fafc;
   color:#667085;
