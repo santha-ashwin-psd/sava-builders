@@ -168,7 +168,8 @@
           <td style="text-align:center;white-space:nowrap" @click.stop>
             <button class="inv-act-btn" @click="openView(row)" title="View"><span v-html="icon('eye',13)"></span></button>
             <button class="inv-act-btn" @click="openEdit(row)" :disabled="!$canEdit('inventory')" :title="row.status && row.status !== 'Draft' ? 'Edit — financial fields are locked once submitted' : 'Quick Edit'"><span v-html="icon('edit',13)"></span></button>
-            <button class="inv-act-btn" style="color:#dc2626" @click="confirmDel(row)" :disabled="!$canDelete('inventory') || !isDeletable(row)" :title="isDeletable(row) ? 'Delete' : 'Submitted assets are already capitalized in the ledger — cancel via Asset Disposal or Value Adjustment instead of deleting'"><span v-html="icon('trash',13)"></span></button>
+            <button v-if="isCancellable(row)" class="inv-act-btn" style="color:#dc2626" @click="confirmCancelAsset(row)" :disabled="!$canDelete('inventory')" title="Cancel — reverses the capitalization entry so the asset can then be deleted"><span v-html="icon('cancel',13)"></span></button>
+            <button v-else class="inv-act-btn" style="color:#dc2626" @click="confirmDel(row)" :disabled="!$canDelete('inventory') || !isDeletable(row)" title="Delete"><span v-html="icon('trash',13)"></span></button>
           </td>
         </tr>
       </tbody>
@@ -197,7 +198,8 @@
         </div>
         <div class="ii-mob-card-actions">
           <button @click.stop="openEdit(row)" class="ii-qa-btn ii-qa-edit" :disabled="!$canEdit('inventory')" title="Edit" v-html="icon('edit',13)"></button>
-          <button @click.stop="confirmDel(row)" class="ii-qa-btn ii-qa-del" :disabled="!$canDelete('inventory') || !isDeletable(row)" :title="isDeletable(row) ? 'Delete' : 'Submitted assets are already capitalized — cancel via Disposal/Value Adjustment instead'" v-html="icon('trash',13)"></button>
+          <button v-if="isCancellable(row)" @click.stop="confirmCancelAsset(row)" class="ii-qa-btn ii-qa-del" :disabled="!$canDelete('inventory')" title="Cancel — reverses the capitalization entry so the asset can then be deleted" v-html="icon('cancel',13)"></button>
+          <button v-else @click.stop="confirmDel(row)" class="ii-qa-btn ii-qa-del" :disabled="!$canDelete('inventory') || !isDeletable(row)" title="Delete" v-html="icon('trash',13)"></button>
         </div>
       </div>
     </div>
@@ -243,7 +245,7 @@ import { useConfirm } from '@/composables/useConfirm.js';
 import { icon } from '@/utils/icons.js';
 import Pagination from '@/components/Pagination.vue';
 import { fmt, fmtDate } from '@/utils/format.js';
-import { apiList, apiDelete, apiCall } from '@/api/client.js';
+import { apiList, apiDelete, apiCall, apiCancel } from '@/api/client.js';
 
 const router = useRouter();
 const { confirm } = useConfirm();
@@ -264,10 +266,15 @@ function categoryLabel(id) {
 }
 // Once an asset is Submitted, post_asset_capitalization() has already posted
 // its GL entry (asset.py on_submit). Deleting straight from the list would
-// either be rejected server-side or, worse, orphan that ledger entry -- only
-// Draft assets (never submitted, nothing posted) are safe to hard-delete.
+// either be rejected server-side or, worse, orphan that ledger entry -- a
+// Submitted asset must be Cancelled first (which reverses that GL entry via
+// reverse_asset_capitalization), and only THEN is it safe to hard-delete --
+// same as a Draft asset that was never submitted in the first place.
 function isDeletable(row) {
-  return !row.status || row.status === 'Draft';
+  return (row.docstatus ?? 0) !== 1;
+}
+function isCancellable(row) {
+  return row.docstatus === 1;
 }
 const search = ref('');
 const filterTab = ref('all');
@@ -384,6 +391,7 @@ function statusClass(status) {
     'Partially Depreciated': 'status-partial',
     'Fully Depreciated': 'status-inactive',
     Scrapped: 'status-cancelled',
+    Cancelled: 'status-cancelled',
     Sold: 'status-paid',
     'In Maintenance': 'status-maintenance',
     'Out of Order': 'status-danger',
@@ -401,7 +409,7 @@ async function load() {
           'qty', 'purchase_cost', 'supplier', 'location', 'department',
           'depreciation_method', 'useful_life', 'salvage_value', 
           'last_maintenance_date', 'next_maintenance_date', 'maintenance_frequency_days',
-          'description', 'is_active'
+          'description', 'is_active', 'docstatus'
         ],
         order: 'asset_name asc',
         limit: 500,
@@ -424,7 +432,7 @@ function openAdd() {
 }
 
 function openView(row) {
-  router.push({ name: 'asset-details', params: { id: row.name } });
+  router.push({ name: 'asset-details', params: { id: row.name }, query: { mode: 'view' } });
 }
 
 function openEdit(row) {
@@ -433,7 +441,7 @@ function openEdit(row) {
 
 async function confirmDel(row) {
   if (!isDeletable(row)) {
-    toast.error('Submitted assets are already capitalized in the ledger and cannot be deleted directly.');
+    toast.error('Submitted assets must be cancelled first before they can be deleted.');
     return;
   }
   const ok = await confirm({
@@ -443,6 +451,24 @@ async function confirmDel(row) {
     okStyle: 'danger',
   });
   if (ok) await del(row.name);
+}
+
+async function confirmCancelAsset(row) {
+  if (!isCancellable(row)) return;
+  const ok = await confirm({
+    title: 'Cancel Asset',
+    body: `Cancel ${row.asset_name || row.name}? This reverses its capitalization entry in the ledger. Once cancelled, it can be deleted from this list if no longer needed.`,
+    okLabel: 'Cancel Asset',
+    okStyle: 'danger',
+  });
+  if (!ok) return;
+  try {
+    await apiCancel('Asset', row.name);
+    toast.success('Asset cancelled.');
+    load();
+  } catch (e) {
+    toast.error('Cancel failed: ' + e.message);
+  }
 }
 
 async function del(name) {

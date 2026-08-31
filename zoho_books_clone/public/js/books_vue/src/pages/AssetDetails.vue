@@ -6,8 +6,9 @@
         <!-- Header -->
         <div class="inv-dh">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div class="inv-dh-title">{{ isNew ? 'New Asset' : 'Edit Asset' }}</div>
+            <div class="inv-dh-title">{{ isNew ? 'New Asset' : (isViewOnly ? 'View Asset' : 'Edit Asset') }}</div>
             <span v-if="isNew" class="add-status-badge">Draft</span>
+            <span v-if="isCancelled" class="add-status-badge" style="background:#fee2e2;color:#b91c1c">Cancelled</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <button class="inv-dclose" @click="cancelGuarded" title="Close"><span v-html="icon('x',16)"></span></button>
@@ -30,7 +31,7 @@
               <div class="inv-fg inv-fg2">
                 <div>
                   <label class="inv-lbl">Asset Name <span class="inv-req">*</span></label>
-                  <input v-model="asset.asset_name" class="inv-fi" required autocomplete="off" placeholder="e.g. Dell Laptop XPS 15"/>
+                  <input v-model="asset.asset_name" class="inv-fi" required autocomplete="off" placeholder="e.g. Dell Laptop XPS 15" :disabled="isViewOnly"/>
                 </div>
                 <div>
                   <label class="inv-lbl">Asset Category <span class="inv-req">*</span></label>
@@ -56,7 +57,10 @@
                   />
                 </div>
               </div>
-              <p v-if="financialsLocked" class="asset-locked-hint">
+              <p v-if="isCancelled" class="asset-locked-hint" style="background:#fee2e2;color:#b91c1c;border-color:#fecaca">
+                This asset has been cancelled — its capitalization entry has been reversed in the ledger. It can no longer be edited or resubmitted; it can only be deleted from the Assets list if no longer needed.
+              </p>
+              <p v-else-if="financialsLocked" class="asset-locked-hint">
                 This asset is submitted — its capitalization entry has already posted to the ledger, so Category and Company are locked to keep the books consistent. Use Asset Value Adjustment, Asset Quantity Adjustment, or Asset Disposal for changes after submit.
               </p>
             </div>
@@ -178,11 +182,11 @@
               <div class="inv-fg inv-fg2">
                 <div>
                   <label class="inv-lbl">Location</label>
-                  <input v-model="asset.location" class="inv-fi" autocomplete="off" placeholder="e.g. Warehouse A"/>
+                  <input v-model="asset.location" class="inv-fi" autocomplete="off" placeholder="e.g. Warehouse A" :disabled="isViewOnly"/>
                 </div>
                 <div>
                   <label class="inv-lbl">Department</label>
-                  <select v-model="asset.department" class="inv-fi">
+                  <select v-model="asset.department" class="inv-fi" :disabled="isViewOnly">
                     <option value="">Select department</option>
                     <option v-for="department in departments" :key="department.name" :value="department.name">{{ department.name }}</option>
                   </select>
@@ -244,15 +248,15 @@
               <div class="inv-fg inv-fg3">
                 <div>
                   <label class="inv-lbl">Last Maintenance Date</label>
-                  <input v-model="asset.last_maintenance_date" type="date" class="inv-fi"/>
+                  <input v-model="asset.last_maintenance_date" type="date" class="inv-fi" :disabled="isViewOnly"/>
                 </div>
                 <div>
                   <label class="inv-lbl">Next Maintenance Date</label>
-                  <input v-model="asset.next_maintenance_date" type="date" class="inv-fi"/>
+                  <input v-model="asset.next_maintenance_date" type="date" class="inv-fi" :disabled="isViewOnly"/>
                 </div>
                 <div>
                   <label class="inv-lbl">Maintenance Frequency (Days)</label>
-                  <input v-model.number="asset.maintenance_frequency_days" type="number" class="inv-fi" placeholder="e.g. 90"/>
+                  <input v-model.number="asset.maintenance_frequency_days" type="number" class="inv-fi" placeholder="e.g. 90" :disabled="isViewOnly"/>
                 </div>
               </div>
             </div>
@@ -269,11 +273,11 @@
             </div>
             <div class="add-card-body" :class="{collapsed:collapsed.additional}">
               <label class="inv-lbl">Description</label>
-              <textarea v-model="asset.description" class="inv-fi" rows="3" placeholder="Brief description of this asset" style="margin-bottom:14px"></textarea>
+              <textarea v-model="asset.description" class="inv-fi" rows="3" placeholder="Brief description of this asset" style="margin-bottom:14px" :disabled="isViewOnly"></textarea>
               <label class="add-toggle-row">
                 <span>Active</span>
                 <span class="ad-switch">
-                  <input type="checkbox" :checked="!!asset.is_active" @change="asset.is_active=$event.target.checked?1:0"/>
+                  <input type="checkbox" :checked="!!asset.is_active" :disabled="isViewOnly" @change="asset.is_active=$event.target.checked?1:0"/>
                   <span class="ad-switch-track"></span>
                 </span>
               </label>
@@ -287,12 +291,27 @@
           <div class="add-footer-status">{{ isNew ? 'New asset — unsaved changes' : 'Editing: ' + (asset.name || '') }}</div>
           <div class="add-footer-actions">
             <button class="add-btn-cancel" @click="cancelGuarded">Cancel</button>
-            <button class="add-btn-draft" :disabled="saving || !(isNew ? $canCreate('inventory') : $canEdit('inventory'))" @click="saveAsset('Draft')">
-              <span v-html="icon('save',13)"></span> Save Draft
-            </button>
-            <button class="add-btn-more" :disabled="saving || !(isNew ? $canCreate('inventory') : $canEdit('inventory'))" @click="saveAsset('Submitted')">
-              <span v-html="icon('check',13)"></span> {{ saving ? 'Saving…' : 'Save & Submit' }}
-            </button>
+            <template v-if="!isViewOnly">
+              <button v-if="!isNew && asset.docstatus === 1" class="add-btn-more" style="background:#fee2e2;color:#b91c1c" :disabled="cancelling" @click="cancelAsset">
+                <span v-html="icon('cancel',13)"></span> {{ cancelling ? 'Cancelling…' : 'Cancel Asset' }}
+              </button>
+              <button v-if="isCancelled" class="add-btn-more" style="background:#b91c1c;color:#fff" :disabled="deleting || !$canDelete('inventory')" @click="deleteAsset">
+                <span v-html="icon('trash',13)"></span> {{ deleting ? 'Deleting…' : 'Delete Asset' }}
+              </button>
+              <template v-if="!isCancelled">
+                <!-- Once submitted, this button and Save & Submit below do the
+                     exact same thing (saveAsset() only ever calls apiSubmit
+                     when docstatus isn't already 1) — so there's nothing
+                     "Draft" left to save. Hide it rather than show two
+                     identical actions with confusing labels. -->
+                <button v-if="asset.docstatus !== 1" class="add-btn-draft" :disabled="saving || !(isNew ? $canCreate('inventory') : $canEdit('inventory'))" @click="saveAsset('Draft')">
+                  <span v-html="icon('save',13)"></span> Save Draft
+                </button>
+                <button class="add-btn-more" :disabled="saving || !(isNew ? $canCreate('inventory') : $canEdit('inventory'))" @click="saveAsset('Submitted')">
+                  <span v-html="icon('check',13)"></span> {{ saving ? 'Saving…' : 'Save & Submit' }}
+                </button>
+              </template>
+            </template>
           </div>
         </div>
 
@@ -304,7 +323,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { apiGet, apiList, apiSave, apiSubmit, apiLinkValues } from '@/api/client.js';
+import { apiGet, apiList, apiSave, apiSubmit, apiCancel, apiDelete, apiLinkValues } from '@/api/client.js';
 import { useToast } from '@/composables/useToast.js';
 import { useConfirm } from '@/composables/useConfirm.js';
 import { icon } from '@/utils/icons.js';
@@ -380,6 +399,12 @@ const collapsed = reactive({
 });
 
 const isNew = computed(() => route.params.id === 'new');
+// Set by Asset.vue's "View" (eye icon) action via ?mode=view — a genuine
+// read-only mode, distinct from the normal edit drawer opened by the
+// pencil icon. Folded into financialsLocked/depreciationLocked below so
+// every field those already gate is automatically locked here too,
+// without touching each :disabled binding individually.
+const isViewOnly = computed(() => route.query.mode === 'view');
 // Once an asset is submitted, its capitalization GL entry has already been
 // posted (post_asset_capitalization in asset_gl.py runs once, at submit).
 // The backend's save_doc() sets ignore_validate_update_after_submit for every
@@ -389,14 +414,23 @@ const isNew = computed(() => route.params.id === 'new');
 // submit would silently desync the Asset's book value from the ledger. Lock
 // them here; only operational metadata (location, maintenance, description,
 // depreciation policy going forward) stays editable post-submit.
-const financialsLocked = computed(() => !isNew.value && asset.value.docstatus === 1);
+const financialsLocked = computed(() => isViewOnly.value || (!isNew.value && asset.value.docstatus === 1));
+
+// A cancelled asset's capitalization GL entry has already been reversed
+// (asset.py on_cancel -> reverse_asset_capitalization) -- there's nothing
+// left to save or submit, and Category/Company/Purchase edits would have
+// nothing to reconcile against. Its only remaining action is deletion,
+// which happens from the Assets list, not from here.
+const isCancelled = computed(() => !isNew.value && asset.value.docstatus === 2);
+const cancelling = ref(false);
+const deleting = ref(false);
 
 // generate_depreciation_schedule() on the backend refuses to regenerate once
 // any row has status "Completed" (a posted depreciation entry) -- edits to
 // method/useful_life/salvage_value at that point are silently a no-op. Match
 // that here so the UI doesn't imply the change will take effect.
 const depreciationLocked = computed(() =>
-  (asset.value.depreciation_schedule || []).some(row => row.status === 'Completed')
+  isViewOnly.value || (asset.value.depreciation_schedule || []).some(row => row.status === 'Completed')
 );
 
 async function loadLookups() {
@@ -638,6 +672,48 @@ async function saveAsset(targetStatus) {
     toast.error('Failed to save asset: ' + e.message);
   } finally {
     saving.value = false;
+  }
+}
+
+async function cancelAsset() {
+  if (isCancelled.value || asset.value.docstatus !== 1) return;
+  const ok = await confirm({
+    title: 'Cancel Asset',
+    body: `Cancel ${asset.value.name}? This reverses its capitalization entry in the ledger. Once cancelled, it can be deleted from the Assets list if no longer needed.`,
+    okLabel: 'Cancel Asset',
+    okStyle: 'danger',
+  });
+  if (!ok) return;
+  cancelling.value = true;
+  try {
+    const doc = await apiCancel('Asset', asset.value.name);
+    if (doc) asset.value = { ...asset.value, ...doc };
+    initialSnapshot = JSON.stringify(asset.value);
+    toast.success('Asset cancelled.');
+  } catch (e) {
+    toast.error('Cancel failed: ' + e.message);
+  } finally {
+    cancelling.value = false;
+  }
+}
+
+async function deleteAsset() {
+  if (!isCancelled.value) return;
+  const ok = await confirm({
+    title: 'Delete Asset',
+    body: `Are you sure you want to delete asset ${asset.value.asset_name || asset.value.name}? This cannot be undone.`,
+    okLabel: 'Delete',
+    okStyle: 'danger',
+  });
+  if (!ok) return;
+  deleting.value = true;
+  try {
+    await apiDelete('Asset', asset.value.name);
+    toast.success('Asset deleted');
+    router.push({ name: 'assets-assets' });
+  } catch (e) {
+    toast.error('Delete failed: ' + e.message);
+    deleting.value = false;
   }
 }
 

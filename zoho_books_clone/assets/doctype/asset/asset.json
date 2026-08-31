@@ -70,7 +70,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Status",
-   "options": "Draft\nSubmitted\nPartially Depreciated\nFully Depreciated\nScrapped\nSold\nIn Maintenance\nOut of Order",
+   "options": "Draft\nSubmitted\nPartially Depreciated\nFully Depreciated\nScrapped\nSold\nIn Maintenance\nOut of Order\nCancelled",
    "reqd": 1
   },
   {

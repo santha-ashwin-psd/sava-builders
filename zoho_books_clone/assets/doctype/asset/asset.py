@@ -89,6 +89,7 @@ class Asset(Document):
 
     def on_cancel(self):
         reverse_asset_capitalization(self)
+        self.db_set("status", "Cancelled", update_modified=False)
 
     def generate_depreciation_schedule(self):
         # Regenerating a schedule after any period has already been posted
