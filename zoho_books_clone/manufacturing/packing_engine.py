@@ -259,6 +259,38 @@ def create_packing_slip(work_order, qty_to_pack=None):
         row.item_code: row.source_warehouse for row in (wo.items or []) if row.source_warehouse
     }
 
+    # Substitutions applied at the Work Order level (api.material_substitution /
+    # work_order_engine.apply_row_substitution) replace one raw material with
+    # another on THIS Work Order's own `items` rows -- the BOM template itself
+    # is never touched. Rebuilding straight off bom_doc.bulk_item/packing_items
+    # below would silently ignore that and demand the ORIGINAL item again, even
+    # when the whole point of substituting was to route around that item being
+    # out of stock. Resolve any substitution before checking/consuming anything.
+    substitution_map = {}
+    for row in (wo.items or []):
+        if row.is_substituted and row.original_item_code:
+            conv_factor = frappe.db.get_value(
+                "Alternative Item",
+                {"item_code": row.original_item_code, "alternative_item_code": row.item_code},
+                "conversion_factor",
+            ) or 1
+            substitution_map[row.original_item_code] = {
+                "item_code": row.item_code,
+                "item_name": row.item_name,
+                "uom": row.uom,
+                "conversion_factor": flt(conv_factor),
+            }
+
+    def _resolve(item_code):
+        """(item_code, item_name, uom, conversion_factor) for whatever item
+        is actually in use for `item_code` on this Work Order -- the
+        substitute if one was applied, otherwise the BOM template's own item
+        unchanged (conversion_factor 1)."""
+        sub = substitution_map.get(item_code)
+        if not sub:
+            return item_code, None, None, 1.0
+        return sub["item_code"], sub["item_name"], sub["uom"], sub["conversion_factor"]
+
     # Bulk item row. Scales directly with qty_to_pack (bulk_qty_per_unit is
     # defined as "per packed unit"), NOT with `ratio` (qty_to_pack /
     # bom.quantity) -- ratio is only correct for packing_items, whose qty is
@@ -266,26 +298,35 @@ def create_packing_slip(work_order, qty_to_pack=None):
     # item would silently divide its consumption by bom.quantity for any
     # Packing BOM whose Quantity field isn't exactly 1.
     if bom_doc.bulk_item and flt(bom_doc.bulk_qty_per_unit) > 0:
-        bulk_uom = frappe.db.get_value("Item", bom_doc.bulk_item, "stock_uom") or ""
+        actual_code, actual_name, actual_uom, conv = _resolve(bom_doc.bulk_item)
+        actual_name = actual_name or frappe.db.get_value("Item", actual_code, "item_name") or actual_code
+        actual_uom = actual_uom or frappe.db.get_value("Item", actual_code, "stock_uom") or ""
+        actual_wh = wo_item_warehouse.get(actual_code) or ""
+        actual_rate = (
+            get_valuation_rate(actual_code, actual_wh or fallback_wh)
+            if actual_code != bom_doc.bulk_item else flt(bom_doc.bulk_rate)
+        )
+        required = flt(flt(bom_doc.bulk_qty_per_unit) * qty_to_pack * conv, 4)
         ps.append("items", {
-            "item_code": bom_doc.bulk_item,
-            "item_name": frappe.db.get_value("Item", bom_doc.bulk_item, "item_name") or bom_doc.bulk_item,
-            "required_qty": flt(flt(bom_doc.bulk_qty_per_unit) * qty_to_pack, 4),
+            "item_code": actual_code,
+            "item_name": actual_name,
+            "required_qty": required,
             "packed_qty": 0,
-            "uom": bulk_uom,
+            "uom": actual_uom,
             "batch_no": source_batch_no or "",
-            "source_warehouse": wo_item_warehouse.get(bom_doc.bulk_item) or "",
+            "source_warehouse": actual_wh,
         })
 
     # Packing materials
     for r in (bom_doc.packing_items or []):
+        actual_code, actual_name, actual_uom, conv = _resolve(r.item_code)
         ps.append("items", {
-            "item_code": r.item_code,
-            "item_name": r.item_name or "",
-            "required_qty": flt(flt(r.qty) * ratio, 4),
+            "item_code": actual_code,
+            "item_name": actual_name or (r.item_name or ""),
+            "required_qty": flt(flt(r.qty) * ratio * conv, 4),
             "packed_qty": 0,
-            "source_warehouse": wo_item_warehouse.get(r.item_code) or "",
-            "uom": r.uom or "",
+            "source_warehouse": wo_item_warehouse.get(actual_code) or "",
+            "uom": actual_uom or (r.uom or ""),
         })
 
     if not ps.items:
