@@ -83,6 +83,15 @@ class WorkOrder(Document):
 		if not self.items:
 			frappe.throw(_("Work Order must have at least one Raw Material row."))
 
+		# Mirrors the 500-char maxlength on the Description textarea in the
+		# UI -- enforced here too since that's client-side only and can be
+		# bypassed via a direct API call.
+		for row in (self.items or []):
+			if row.description and len(row.description) > 500:
+				frappe.throw(_(
+					"Description for raw material {0} exceeds 500 characters."
+				).format(row.item_code or row.idx))
+
 		if flt(self.produced_qty) > flt(self.qty):
 			frappe.throw(_("Produced Qty cannot exceed Qty to Manufacture."))
 

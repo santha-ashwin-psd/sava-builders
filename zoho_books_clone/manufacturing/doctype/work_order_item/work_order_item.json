@@ -89,6 +89,16 @@
    "description": "Label-only snapshot of the rack this item was sourced from in Source Warehouse at the time it was set on this row (from Bin.rack_no). Not re-synced automatically if the item's rack later changes."
   },
   {
+   "read_only": 0,
+   "no_copy": 0,
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "in_list_view": 0,
+   "description": "Free-text note for this raw material line (e.g. handling instructions) \u2014 shown on the printed Work Order.",
+   "allow_on_submit": 1
+  },
+  {
    "fieldname": "rate",
    "fieldtype": "Currency",
    "label": "Rate"

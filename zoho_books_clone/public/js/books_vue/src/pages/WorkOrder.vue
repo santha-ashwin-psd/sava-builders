@@ -368,6 +368,11 @@
                       <label>Consumed</label>
                       <div class="bomx-rm-static">{{ fmtQty(rm.consumed_qty) }}</div>
                     </div>
+                    <div class="bomx-rm-field" style="grid-column:1/-1" v-if="grp.key==='__shared__' || !isShared">
+                      <label>Description <span style="font-weight:400;color:var(--bx-muted,#94a3b8)">({{ (rm.description || '').length }}/500)</span></label>
+                      <textarea class="bomx-fi" v-model="rm.description" :disabled="!warehousesEditable || (isShared && grp.key!=='__shared__')" rows="2" maxlength="500"
+                        placeholder="Optional note for this material (e.g. handling instructions) " style="width:100%;resize:vertical;font:inherit"></textarea>
+                    </div>
                   </div>
                 </div>
                 </template>
@@ -1232,7 +1237,7 @@ const sourcedPsLoading = ref(false);
 const reconciliation = ref(null);
 const reconLoading = ref(false);
 
-const EMPTY_MATERIAL = () => ({ item_code: "", required_qty: 1, transferred_qty: 0, consumed_qty: 0, source_warehouse: "", rack_no: "" });
+const EMPTY_MATERIAL = () => ({ item_code: "", required_qty: 1, transferred_qty: 0, consumed_qty: 0, source_warehouse: "", rack_no: "", description: "" });
 const EMPTY_OP = () => ({ operation: "", workstation: "", planned_time_in_mins: 0, actual_time_in_mins: 0, status: "Pending", sub_assembly_bom: "", sub_assembly_item: "", sub_assembly_qty: 0 });
 
 // docstatus: 0 = Draft, 1 = Submitted, 2 = Cancelled. Once submitted, the
@@ -2208,6 +2213,9 @@ function printWorkOrder() {
           const required = isShared ? qtyOverride : flt(rm.required_qty);
           const transferred = flt(rm.transferred_qty);
           const needed = isShared ? null : Math.max(required - transferred, 0);
+          const descRow = rm.description
+            ? `<tr><td></td><td colspan="8" style="color:#868E96;font-size:12px;padding:4px 10px 8px 10px;border-top:none;word-break:break-word;overflow-wrap:anywhere;white-space:normal">${esc(rm.description)}</td></tr>`
+            : "";
           return `
         <tr>
           <td style="text-align:right;color:#1a6ef7;font-weight:700">${sn + 1}</td>
@@ -2219,7 +2227,7 @@ function printWorkOrder() {
           <td style="text-align:right;font-weight:700">${isShared ? "—" : esc(fmtQty(needed))}</td>
           <td>${esc(rm.source_warehouse || wo.value.source_warehouse || "—")}</td>
           <td>${esc(rm.rack_no || "—")}</td>
-        </tr>`;
+        </tr>${descRow}`;
         }).join("")}`;
   const rowsHtml = groups.length
     ? groups.map(groupHtml).join("")
@@ -2246,7 +2254,7 @@ function printWorkOrder() {
           .meta div { border:1px solid #E2E8F0; border-radius:6px; padding:8px 10px; }
           .meta div span { color:#868E96; display:block; font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
           table { width:100%; border-collapse:collapse; font-size:13px; border:1px solid #E2E8F0; border-radius:6px; overflow:hidden; }
-          th, td { border:1px solid #E2E8F0; padding:8px 10px; text-align:left; }
+          th, td { border:1px solid #E2E8F0; padding:8px 10px; text-align:left; word-break:break-word; overflow-wrap:anywhere; }
           th { background:#F8F9FC; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:#868E96; }
           h2 { font-size:13px; text-transform:uppercase; letter-spacing:.03em; color:#868E96; margin:0 0 8px; }
           @media print { .toolbar { display:none!important; } body { background:#fff; } .doc-wrap { box-shadow:none; margin:0; max-width:none; border-radius:0; } }
