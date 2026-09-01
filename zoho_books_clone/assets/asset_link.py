@@ -10,6 +10,10 @@ purchase details by hand on the Assets page.
   on_submit  → for each line where item.is_fixed_asset is set, create one
                Draft Asset (qty/rate/date/supplier copied from the line),
                linked back to the Purchase Invoice via asset.purchase_invoice.
+               Created with is_existing_asset=1 since this bill's own GL
+               posting already capitalizes its cost — see the inline note
+               in on_purchase_invoice_submit for why that flag (not a
+               fresh capitalization) is the correct fit here.
   on_cancel  → any Draft asset that was auto-created from this invoice and
                is still Draft (i.e. not yet submitted/capitalized by the
                user) is deleted. Assets already submitted are left alone —
@@ -61,8 +65,24 @@ def on_purchase_invoice_submit(doc, method=None):
             "status": "Draft",
             "purchase_date": doc.posting_date,
             "qty": qty,
+            # is_existing_asset=1 — this asset's cost (+ any tax on this bill)
+            # has ALREADY been posted to the GL by post_purchase_invoice()
+            # (DR Expense/GRIR + ITC lines, CR credit_to), the same as any
+            # other line on this Purchase Invoice. Asset.calculate_totals()/
+            # post_asset_capitalization() both no-op for is_existing_asset
+            # assets (see asset.py, asset_gl.py), which is exactly what's
+            # needed here: without this flag, later submitting this Draft
+            # asset would post a SECOND capitalization entry for the same
+            # purchase (DR Fixed Asset, CR credit_account) on top of what
+            # the bill already posted — a real double-count bug this flag
+            # closes. It also skips this asset out of get_gstr_summary's
+            # Asset Tax Detail ITC union (db/queries.py filters
+            # is_existing_asset=0 there), so its GST isn't double-claimed
+            # against the ITC already picked up from this bill's own Tax
+            # Line rows. Depreciation is unaffected — that schedule/posting
+            # path doesn't care about is_existing_asset, only purchase_cost.
+            "is_existing_asset": 1,
             "purchase_cost": purchase_cost,
-            "taxable_value": purchase_cost,
             "supplier": doc.supplier,
             "company": doc.company,
             "purchase_invoice": doc.name,

@@ -1,6 +1,6 @@
 import frappe
 from frappe import _
-from frappe.utils import flt
+from frappe.utils import flt, cint
 from frappe.model.document import Document
 
 from zoho_books_clone.assets.asset_gl import (
@@ -19,8 +19,26 @@ class Asset(Document):
             frappe.throw(_("Asset Category is required."))
         if not self.qty:
             self.qty = 1
+        if self.purchase_invoice and not self.is_existing_asset:
+            # Guards the server side of the same rule the Asset drawer
+            # enforces by disabling the toggle (see AssetDetails.vue). An
+            # asset auto-created from a Purchase Bill (assets/asset_link.py)
+            # is always is_existing_asset=1 because that bill's own GL
+            # posting already capitalized its cost -- letting this flip to 0
+            # (whether via the UI, a direct API call, or a bulk update)
+            # would make post_asset_capitalization() post that same cost a
+            # second time on submit. This can't be relaxed per-asset; if the
+            # bill linkage is wrong, fix/unlink purchase_invoice instead.
+            frappe.throw(
+                _(
+                    "This asset was auto-created from Purchase Bill {0}, whose own "
+                    "posting already capitalized this cost. It must stay marked as "
+                    "an Existing Asset to avoid capitalizing it a second time."
+                ).format(frappe.bold(self.purchase_invoice))
+            )
         self.calculate_totals()
         self.generate_depreciation_schedule()
+        self.validate_units()
         if self.docstatus == 1:
             # Only enforce full capitalization setup (Fixed Asset Account,
             # GST Input Account if needed, Credit Account) at submit time.
@@ -49,7 +67,7 @@ class Asset(Document):
             self.total_tax = 0
             self.grand_total = self.purchase_cost
             self.taxes = []
-            if self.purchase_cost <= 0:
+            if self.docstatus == 1 and self.purchase_cost <= 0:
                 frappe.throw(_("Purchase Cost must be greater than zero."))
             return
 
@@ -76,8 +94,55 @@ class Asset(Document):
         self.purchase_cost = round(self.taxable_value + non_eligible_tax, 2)
         self.grand_total = round(self.taxable_value + self.total_tax, 2)
 
-        if self.purchase_cost <= 0 and not self.is_existing_asset:
+        if self.purchase_cost <= 0 and not self.is_existing_asset and self.docstatus == 1:
             frappe.throw(_("Taxable Value must be greater than zero."))
+
+    def validate_units(self):
+        """Per-unit tracking (e.g. one row per physical laptop when Qty=5).
+        Rows are optional -- an asset can be tracked at the qty level only,
+        with no unit rows at all -- but if any are entered, they're capped
+        at Qty and each Unit/Serial No must be unique, both within this
+        asset and across every other Asset in the system (a serial number
+        that already exists elsewhere is almost always a data-entry mistake,
+        not a real duplicate unit)."""
+        rows = self.units or []
+        if not rows:
+            return
+
+        if len(rows) > flt(self.qty):
+            frappe.throw(
+                _("This Asset has Qty {0}, but {1} Unit rows were entered. "
+                  "Remove the extra row(s) or increase Qty first.").format(
+                    cint(self.qty), len(rows)
+                )
+            )
+
+        seen = {}
+        for row in rows:
+            unit_no = (row.unit_no or "").strip()
+            if not unit_no:
+                frappe.throw(_("Row {0}: Unit / Serial No is required.").format(row.idx))
+            if unit_no in seen:
+                frappe.throw(
+                    _("Row {0}: Unit / Serial No {1} is already used in row {2} of this "
+                      "Asset.").format(row.idx, frappe.bold(unit_no), seen[unit_no])
+                )
+            seen[unit_no] = row.idx
+
+            clash = frappe.db.sql(
+                """
+                SELECT parent FROM `tabAsset Unit`
+                WHERE unit_no = %s AND parent != %s
+                LIMIT 1
+                """,
+                (unit_no, self.name or ""),
+            )
+            if clash:
+                frappe.throw(
+                    _("Row {0}: Unit / Serial No {1} already exists on Asset {2}.").format(
+                        row.idx, frappe.bold(unit_no), frappe.bold(clash[0][0])
+                    )
+                )
 
     def on_submit(self):
         # Nothing set this before -- the old free-text status dropdown was

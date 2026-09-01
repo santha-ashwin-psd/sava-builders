@@ -30,6 +30,7 @@
   "replacement_of",
   "location_section",
   "department",
+  "units",
   "location",
   "depreciation_section",
   "depreciation_method",
@@ -230,6 +231,13 @@
    "fieldtype": "Link",
    "label": "Department",
    "options": "Department"
+  },
+  {
+   "fieldname": "units",
+   "fieldtype": "Table",
+   "label": "Units",
+   "options": "Asset Unit",
+   "description": "One row per physical unit of this Asset (e.g. one row per laptop when Qty is 5). Capped at Qty rows; each Unit / Serial No must be unique across every Asset."
   },
   {
    "fieldname": "depreciation_section",

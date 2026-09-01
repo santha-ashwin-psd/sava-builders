@@ -167,6 +167,7 @@ class PurchaseInvoice(Document):
             # itself now — see inventory_gl.classify_debit_note_item_amounts.
             post_debit_note(self)
             self._adjust_source_bill_outstanding(direction=-1)
+            self._warn_if_source_bill_has_linked_assets()
         else:
             self.db_set("outstanding_amount", self.grand_total, update_modified=False)
             self.db_set("status", "Submitted", update_modified=False)
@@ -327,4 +328,47 @@ class PurchaseInvoice(Document):
             "Purchase Invoice", self.return_against,
             {"outstanding_amount": new_outstanding, "status": new_status},
             update_modified=False,
+        )
+
+    def _warn_if_source_bill_has_linked_assets(self):
+        """A Debit Note only reverses GL/outstanding on the source bill (see
+        post_debit_note / _adjust_source_bill_outstanding above) -- it does
+        not touch any Asset that asset_link.py auto-created from that same
+        bill. If the returned/adjusted item was a fixed asset, that Asset's
+        purchase_cost, depreciation schedule, and status are left completely
+        untouched, so the books (GL, now reduced) and the Assets module (cost
+        still the pre-return amount) will silently drift apart -- including,
+        for an already-submitted Asset, continuing to depreciate a cost that
+        no longer matches what's owed/paid.
+
+        This is deliberately just a visible warning, not an automatic
+        adjustment: whether to write the asset down, dispose of it entirely,
+        or leave it (e.g. a price-only debit note with no physical return)
+        is a judgment call for the person handling it, not something safe to
+        decide silently here.
+        """
+        if not getattr(self, "return_against", None):
+            return
+        linked_assets = frappe.get_all(
+            "Asset",
+            filters={"purchase_invoice": self.return_against, "docstatus": ["!=", 2]},
+            fields=["name", "asset_name", "status", "purchase_cost"],
+        )
+        if not linked_assets:
+            return
+        rows = "".join(
+            f"<li>{frappe.bold(a.name)} — {a.asset_name} "
+            f"({a.status}, ₹{flt(a.purchase_cost):,.2f})</li>"
+            for a in linked_assets
+        )
+        frappe.msgprint(
+            _(
+                "The Purchase Invoice {0} that this Debit Note is against has "
+                "{1} linked Asset(s). This Debit Note does NOT reduce their "
+                "purchase cost or depreciation automatically:<ul>{2}</ul>"
+                "Review and adjust them manually (e.g. Asset Disposal or a "
+                "manual cost correction) if this return affects a fixed asset."
+            ).format(frappe.bold(self.return_against), len(linked_assets), rows),
+            title=_("Linked Asset Not Adjusted"),
+            indicator="orange",
         )

@@ -120,6 +120,22 @@ class LandedCostVoucher(Document):
         for row in self.items:
             if flt(row.received_qty) <= 0:
                 frappe.throw(_("Row {0}: Received Qty must be greater than zero.").format(row.idx))
+            # get_source_items() already excludes fixed-asset items from the
+            # picker/preview (see landed_cost_engine.py) -- this is the
+            # server-side backstop in case a row for one ever reaches this
+            # doc some other way (manual API call, direct child-table edit).
+            # This module has no code path that updates Asset.purchase_cost,
+            # so silently allocating a charge onto a fixed-asset item here
+            # would drift the Assets module away from what actually got
+            # capitalized, the same class of gap as the Debit Note one.
+            if row.item_code and frappe.db.get_value("Item", row.item_code, "is_fixed_asset"):
+                frappe.throw(
+                    _(
+                        "Row {0}: {1} is a Fixed Asset item. Landed costs can't be allocated "
+                        "onto it here -- this voucher only updates stock valuation, not the "
+                        "linked Asset's purchase cost. Adjust the Asset directly instead."
+                    ).format(row.idx, frappe.bold(row.item_code))
+                )
         for row in self.charges:
             if flt(row.amount) <= 0:
                 frappe.throw(_("Row {0}: Charge Amount must be greater than zero.").format(row.idx))

@@ -54,9 +54,23 @@ def get_source_items(source_doctype: str, source_name: str) -> list[dict]:
             continue
 
         item_meta = frappe.db.get_value(
-            "Item", item_code, ["is_stock_item", "default_warehouse"], as_dict=True
+            "Item", item_code, ["is_stock_item", "default_warehouse", "is_fixed_asset"], as_dict=True
         ) or {}
         if not item_meta.get("is_stock_item"):
+            continue
+        # Fixed-asset items are excluded even when also flagged is_stock_item
+        # (the two aren't mutually exclusive at the Item level -- see
+        # Item.validate()). This module only ever touches stock valuation
+        # (Bin/SLE) and the linked GL accounts -- it has no code path that
+        # updates Asset.purchase_cost. If it allocated a charge onto a fixed-
+        # asset item's stock valuation, that extra cost would silently never
+        # reach the Asset record asset_link.py created from the same
+        # Purchase Invoice/Receipt line, so the books and the Assets module
+        # would drift apart exactly like the Debit Note gap flagged above.
+        # If landed costs genuinely need to be capitalized onto a fixed
+        # asset, that has to go through a manual Asset cost adjustment
+        # instead, not this voucher.
+        if item_meta.get("is_fixed_asset"):
             continue
 
         warehouse = (
