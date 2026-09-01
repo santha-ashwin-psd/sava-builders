@@ -82,7 +82,15 @@
           </div>
 
           <!-- Purchase Details -->
-          <div class="add-card" v-if="!isNew">
+          <!-- Only ever relevant for an asset auto-created from a Purchase
+               Bill (asset_link.py sets purchase_invoice on that copy) --
+               those really do have a capitalized cost/tax/credit-account
+               trail worth showing, read-only, from the bill. A manually
+               created asset (the "New Asset" tracking-only flow above) never
+               has this data and never will -- permanently hidden here, not
+               just while isNew, so it doesn't reappear once the Draft is
+               saved and reopened. -->
+          <div class="add-card" v-if="isFromPurchaseBill">
             <div class="add-card-header" @click="collapsed.purchase = !collapsed.purchase">
               <div class="add-card-title">
                 <span class="add-card-title-icon"><span v-html="icon('rupee',16)"></span></span>
@@ -300,11 +308,23 @@
                 </div>
                 <div>
                   <label class="inv-lbl">Current Value</label>
-                  <div class="inv-fi" style="background:#f8fafc;color:#475569;display:flex;align-items:center;">
-                    {{ fmt(asset.current_value || 0) }}
-                  </div>
+                  <input v-model.number="asset.current_value" type="number" step="0.01" min="0" class="inv-fi" placeholder="0.00" :disabled="depreciationLocked"/>
+                </div>
+                <!-- Tracking-only assets (never linked to a Purchase Bill)
+                     have no Purchase Details card at all -- see the v-if
+                     on that card above. This is a plain memo field for
+                     those assets: purely for the person's own records, not
+                     read by capitalization/GL (asset_gl.py already skips
+                     capitalization entirely when there's no purchase_invoice)
+                     and not fed into Current Value auto-fill. -->
+                <div v-if="!isFromPurchaseBill">
+                  <label class="inv-lbl">Purchase Cost</label>
+                  <input v-model.number="asset.purchase_cost" type="number" step="0.01" min="0" class="inv-fi" placeholder="0.00" :disabled="isViewOnly"/>
                 </div>
               </div>
+              <p v-if="!isFromPurchaseBill" style="font-size:11px;color:#94a3b8;margin-top:4px">
+                For your own records only — this asset is tracking-only, so no ledger entry is posted from this field.
+              </p>
               <p v-if="depreciationLocked" class="asset-locked-hint">
                 One or more depreciation periods have already posted. Method, Useful Life, and Salvage Value are locked here to avoid silently invalidating posted history — use a dedicated depreciation revision flow if the schedule genuinely needs to change.
               </p>
@@ -367,6 +387,9 @@
           <div class="add-footer-status">{{ isNew ? 'New asset — unsaved changes' : 'Editing: ' + (asset.name || '') }}</div>
           <div class="add-footer-actions">
             <button class="add-btn-cancel" @click="cancelGuarded">Cancel</button>
+            <button v-if="isViewOnly" class="add-btn-more" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="switchToEdit">
+              <span v-html="icon('edit',13)"></span> Edit
+            </button>
             <template v-if="!isViewOnly">
               <button v-if="!isNew && asset.docstatus === 1" class="add-btn-more" style="background:#fee2e2;color:#b91c1c" :disabled="cancelling" @click="cancelAsset">
                 <span v-html="icon('cancel',13)"></span> {{ cancelling ? 'Cancelling…' : 'Cancel Asset' }}
@@ -720,13 +743,13 @@ async function saveAsset(targetStatus) {
     collapsed.general = false;
     return;
   }
-  // Purchase Details is hidden entirely while isNew (see template) — this
-  // asset is meant to be a bare tracking record until first saved as a
-  // Draft, at which point the card reappears for someone who genuinely
-  // wants to fill in purchase/capitalization details by hand instead of
-  // going through a Purchase Invoice. None of these fields are reachable
-  // in the UI yet on a still-new asset, so don't block saving over them.
-  if (!isNew.value) {
+  // Purchase Details is now permanently hidden for any asset that wasn't
+  // auto-created from a Purchase Bill (see template: v-if="isFromPurchaseBill")
+  // — a manually-created ("New Asset") record is tracking-only for good, not
+  // just before its first save, so these fields are never reachable in the
+  // UI for it. Gate this validation the same way, or it'd block Save &
+  // Submit over fields the person can no longer see or fill in.
+  if (isFromPurchaseBill.value) {
     if (targetStatus === 'Submitted' && !asset.value.is_existing_asset && !asset.value.credit_account) {
       toast.error('Credit Account is required to submit a non-existing asset (used for the capitalization entry).');
       collapsed.purchase = false;
@@ -869,6 +892,14 @@ async function deleteAsset() {
 
 function cancel() {
   router.push({ name: 'assets-assets' });
+}
+
+// Same page, same asset — just drop ?mode=view so isViewOnly flips to false
+// and every field's :disabled="isViewOnly" binding re-evaluates. No reload
+// needed: the asset is already loaded, and nothing was editable while in
+// view mode, so there's no unsaved-changes state to guard against here.
+function switchToEdit() {
+  router.replace({ name: 'asset-details', params: { id: route.params.id }, query: {} });
 }
 
 async function cancelGuarded() {

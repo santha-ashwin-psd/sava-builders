@@ -139,8 +139,8 @@
         <th class="sortable" @click="sortBy('asset_name')">Asset Name <span v-html="sortArrow('asset_name')"></span></th>
         <th class="sortable" @click="sortBy('asset_category')">Category <span v-html="sortArrow('asset_category')"></span></th>
         <th class="sortable" @click="sortBy('purchase_date')">Purchase Date <span v-html="sortArrow('purchase_date')"></span></th>
-        <th class="ta-r sortable" @click="sortBy('qty')">Qty <span v-html="sortArrow('qty')"></span></th>
-        <th class="ta-r sortable" @click="sortBy('purchase_cost')">Purchase Cost <span v-html="sortArrow('purchase_cost')"></span></th>
+        <th class="sortable" @click="sortBy('qty')">Qty <span v-html="sortArrow('qty')"></span></th>
+        <th class=" sortable" @click="sortBy('purchase_cost')">Purchase Cost <span v-html="sortArrow('purchase_cost')"></span></th>
         <th class="sortable" @click="sortBy('status')">Status <span v-html="sortArrow('status')"></span></th>
         <th style="width:110px;text-align:center">Actions</th>
       </tr></thead>
@@ -162,8 +162,8 @@
           <td @click="openView(row)" data-label="Asset Name"><span class="inv-link">{{row.asset_name || row.name}}</span><div class="asset-code">{{ row.name }}</div></td>
           <td @click="openView(row)" data-label="Asset Category"><span v-if="row.asset_category" class="it-group-badge">{{categoryLabel(row.asset_category)}}</span><span v-else class="text-muted">-</span></td>
           <td @click="openView(row)" class="mono-sm text-muted" data-label="Purchase Date">{{ fmtDate(row.purchase_date) }}</td>
-          <td @click="openView(row)" class="ta-r mono-sm" data-label="Qty">{{ row.qty || 1 }}</td>
-          <td @click="openView(row)" class="ta-r mono-sm fw-600" data-label="Purchase Cost">{{ fmt(row.purchase_cost || 0) }}</td>
+          <td @click="openView(row)" class="mono-sm" data-label="Qty">{{ row.qty || 1 }}</td>
+          <td @click="openView(row)" class=" mono-sm fw-600" data-label="Purchase Cost">{{ fmt(row.purchase_cost || 0) }}</td>
           <td @click="openView(row)" data-label="Status"><span class="inv-status-badge" :class="statusClass(row.status)">{{row.status || 'Draft'}}</span></td>
           <td style="text-align:center;white-space:nowrap" @click.stop>
             <button class="inv-act-btn" @click="openView(row)" title="View"><span v-html="icon('eye',13)"></span></button>

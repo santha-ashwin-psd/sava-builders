@@ -94,7 +94,7 @@ class Asset(Document):
         self.purchase_cost = round(self.taxable_value + non_eligible_tax, 2)
         self.grand_total = round(self.taxable_value + self.total_tax, 2)
 
-        if self.purchase_cost <= 0 and not self.is_existing_asset and self.docstatus == 1:
+        if self.purchase_cost <= 0 and not self.is_existing_asset and self.purchase_invoice and self.docstatus == 1:
             frappe.throw(_("Taxable Value must be greater than zero."))
 
     def validate_units(self):
@@ -173,4 +173,26 @@ class Asset(Document):
         for row in rows:
             self.append("depreciation_schedule", row)
 
-        self.current_value = self.purchase_cost if rows else self.current_value
+        # Not conditional on `rows`: build_schedule() returns [] whenever the
+        # asset has no useful_life set (a non-depreciating asset is valid --
+        # it just never gets a schedule), and current_value still needs to
+        # start at purchase_cost either way. The guard above already bailed
+        # out before this point if a period has actually been posted, so
+        # it's always safe here to (re)initialize to purchase_cost --
+        # *except* when current_value has already been explicitly set to
+        # something else (Current Value is now a directly-editable field
+        # while the asset is Draft -- see AssetDetails.vue -- most useful
+        # for a manually-created tracking-only asset that has no
+        # purchase_cost at all). Only fall back to purchase_cost when
+        # current_value is still at its untouched default of 0/None, so a
+        # deliberate manual entry survives every subsequent save.
+        #
+        # A tracking-only asset (no purchase_invoice, not is_existing_asset)
+        # may now also carry an optional Purchase Cost as a plain memo field
+        # (see AssetDetails.vue) -- deliberately NOT capitalized and NOT
+        # meant to seed Current Value, since it isn't a real acquisition
+        # cost in the books. Only a purchase_cost backed by an actual
+        # Purchase Bill, or a declared Existing Asset's opening cost, should
+        # auto-seed Current Value here.
+        if not self.current_value and (self.purchase_invoice or self.is_existing_asset):
+            self.current_value = self.purchase_cost

@@ -156,6 +156,15 @@ def validate_capitalization_setup(doc) -> None:
     setup while still editing, not only at submit time."""
     if doc.is_existing_asset:
         return
+    if not doc.purchase_invoice:
+        # Manually created via "New Asset" (never linked to a Purchase
+        # Bill). AssetDetails.vue no longer shows Purchase Details at all
+        # for this case -- Company/Fixed Asset Account/Credit Account are
+        # unreachable in that UI -- so there's nothing here to validate.
+        # It's a bare tracking record by design (see the warning banner
+        # shown when creating one); skip capitalization setup entirely
+        # instead of blocking submit over fields the person can't fill in.
+        return
 
     if not doc.company:
         frappe.throw(_("Company is required before this asset can be submitted."))
@@ -198,10 +207,14 @@ def validate_capitalization_setup(doc) -> None:
 def post_asset_capitalization(doc) -> None:
     """DR Fixed Asset Account / CR doc.credit_account for purchase_cost.
     Skipped for existing/opening assets (already reflected in the books
-    elsewhere) and for a second submit-attempt if already posted."""
+    elsewhere), for a manually-created tracking-only asset (never linked
+    to a Purchase Bill -- see validate_capitalization_setup), and for a
+    second submit-attempt if already posted."""
     if doc.is_existing_asset:
         return
     if doc.capitalization_posted:
+        return
+    if not doc.purchase_invoice:
         return
 
     validate_capitalization_setup(doc)
