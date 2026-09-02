@@ -77,6 +77,12 @@
    "label": "Source Warehouse",
    "options": "Warehouse",
    "description": "Override the Work Order's default source warehouse for this specific raw material."
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "description": "Optional note for this raw material (e.g. handling instructions). Carried read-only onto any Work Order created from this BOM."
   }
  ],
  "permissions": []

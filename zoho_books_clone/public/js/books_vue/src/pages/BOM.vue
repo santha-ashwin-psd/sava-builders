@@ -363,16 +363,24 @@
                       </div>
                     </div>
                     <div class="bomx-rm-field bomx-rm-field-wide">
-                      <label>Sub-Assembly BOM</label>
+                      <label style="display:flex;align-items:center;gap:4px">
+                        Sub-Assembly BOM
+                        <button v-if="rm.item_code && !bomsList.some(b => b.item === rm.item_code)" type="button" class="bomx-info-btn" @click="toggleSubAssemblyHint(idx)" title="No submitted BOM exists yet for this item — it can't be used as a sub-assembly until one is created.">ⓘ</button>
+                      </label>
                       <select class="bomx-fi" v-model="rm.sub_assembly_bom" @change="onSubAssemblyBomChange(rm)" :disabled="readOnly">
                         <option value="">— Select —</option>
                         <option v-for="b in bomsList.filter(b => b.item === rm.item_code)" :key="b.name" :value="b.name">{{ b.name }}</option>
                       </select>
-                      <div class="bomx-field-hint" v-if="rm.item_code && !bomsList.some(b => b.item === rm.item_code)">No submitted BOM exists yet for this item — it can't be used as a sub-assembly until one is created.</div>
+                      <div class="bomx-field-hint bomx-tooltip-pop" v-if="openSubAssemblyHintIdx === idx && rm.item_code && !bomsList.some(b => b.item === rm.item_code)">No submitted BOM exists yet for this item — it can't be used as a sub-assembly until one is created.</div>
                       <div class="bomx-field-hint bomx-field-hint-danger" v-else-if="rm.sub_assembly_bom && wouldCreateCycle(rm.sub_assembly_bom)">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         Circular reference: this sub-assembly loops back to this BOM. Explosion will be truncated.
                       </div>
+                    </div>
+                    <div class="bomx-rm-field" style="grid-column:1/-1">
+                      <label>Description <span style="font-weight:400;color:var(--bx-muted,#94a3b8)">({{ (rm.description || '').length }}/500)</span></label>
+                      <textarea class="bomx-fi" v-model="rm.description" :disabled="readOnly" rows="2" maxlength="500"
+                        placeholder="Optional note for this material, carried onto any Work Order created from this BOM" style="width:100%;resize:vertical;font:inherit"></textarea>
                     </div>
                   </div>
                 </div>
@@ -1364,6 +1372,10 @@ const compareLoading = ref(false);
 
 const readOnly = computed(() => !isNew.value && (bom.value.docstatus === 1 || bom.value.docstatus === 2));
 const producedUom = computed(() => (stockItems.value.find(i => i.name === bom.value.item) || {}).stock_uom || "Nos");
+const openSubAssemblyHintIdx = ref(null);
+function toggleSubAssemblyHint(idx) {
+  openSubAssemblyHintIdx.value = openSubAssemblyHintIdx.value === idx ? null : idx;
+}
 
 function itemNameFor(code) {
   const i = stockItems.value.find(x => x.name === code) || manufacturedItems.value.find(x => x.name === code);
@@ -1645,7 +1657,7 @@ async function onRoutingChange() {
   }
 }
 
-function addMaterial() { bom.value.items.push({ item_code: "", uom: "Nos", qty: 1, rate: 0 }); }
+function addMaterial() { bom.value.items.push({ item_code: "", uom: "Nos", qty: 1, rate: 0, description: "" }); }
 function removeMaterial(idx) { bom.value.items.splice(idx, 1); }
 
 // ── Scrap Reuse Eligibility panel (Phase 4) ────────────────────────────────
@@ -2398,6 +2410,8 @@ function icon(name, size) {
 .bomx-lo-cell { background:var(--bx-surf2); border:1px solid var(--bx-border); border-radius:var(--bx-rsm); padding:12px 16px; }
 .bomx-field-block { margin-bottom:4px; }
 .bomx-field-hint { font-size:12px; color:var(--bx-muted); margin-top:5px; }
+.bomx-info-btn { border:none; background:none; padding:0; margin:0; cursor:pointer; font-size:12px; line-height:1; color:var(--bx-mfg); text-transform:none; letter-spacing:normal; font-weight:700; }
+.bomx-tooltip-pop { background:var(--bx-surf2); border:1px solid var(--bx-border); border-radius:var(--bx-rsm); padding:8px 10px; }
 .bomx-field-hint-danger { color:var(--bx-red); font-weight:600; display:flex; align-items:center; gap:4px; }
 .bomx-link { color:var(--bx-mfg); font-weight:600; cursor:pointer; }
 .bomx-link:hover { text-decoration:underline; }

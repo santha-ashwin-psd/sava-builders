@@ -227,6 +227,7 @@ class WorkOrder(Document):
 				"rate": row["rate"],
 				"amount": row["amount"],
 				"source_warehouse": row.get("source_warehouse") or self.source_warehouse,
+				"description": row.get("description") or "",
 			})
 
 		self.set("operations", [])

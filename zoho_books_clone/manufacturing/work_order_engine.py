@@ -350,6 +350,7 @@ def _explode_bom_items(rows, ratio, depth=0, _seen_boms=None, operations_acc=Non
             "amount": flt(flt(r.rate) * flt(r.qty) * ratio, 2),
             "source_warehouse": r.source_warehouse or "",
             "sub_assembly_bom": origin or "",
+            "description": r.description or "",
         })
     return result
 

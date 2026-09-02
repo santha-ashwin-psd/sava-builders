@@ -373,9 +373,9 @@
                       <div class="bomx-rm-static">{{ fmtQty(rm.consumed_qty) }}</div>
                     </div>
                     <div class="bomx-rm-field" style="grid-column:1/-1" v-if="grp.key==='__shared__' || !isShared">
-                      <label>Description <span style="font-weight:400;color:var(--bx-muted,#94a3b8)">({{ (rm.description || '').length }}/500)</span></label>
-                      <textarea class="bomx-fi" v-model="rm.description" :disabled="!warehousesEditable || (isShared && grp.key!=='__shared__')" rows="2" maxlength="500"
-                        placeholder="Optional note for this material (e.g. handling instructions) " style="width:100%;resize:vertical;font:inherit"></textarea>
+                      <label>Description <span style="font-weight:400;color:var(--bx-muted,#94a3b8)">(from BOM, read-only)</span></label>
+                      <textarea class="bomx-fi" v-model="rm.description" disabled rows="2" maxlength="500"
+                        placeholder="No description set on this material in the BOM" style="width:100%;resize:vertical;font:inherit;opacity:0.85"></textarea>
                     </div>
                   </div>
                 </div>
