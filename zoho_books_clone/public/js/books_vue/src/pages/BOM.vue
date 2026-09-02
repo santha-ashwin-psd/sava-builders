@@ -327,6 +327,7 @@
                   <div class="bomx-rm-bar" :style="{ background: rm.is_substituted ? 'var(--bx-violet)' : 'var(--bx-mfg)' }"></div>
                   <div class="bomx-rm-card-hdr">
                     <span class="bomx-tree-icon">📦</span>
+                    <span style="color:var(--bx-mfgB);font-weight:700;margin-right:2px">{{ idx + 1 }}.</span>
                     <select class="bomx-fi bomx-fi-inline bomx-rm-card-title" v-model="rm.item_code" @change="onRmItemChange(rm)" :disabled="readOnly" :title="itemNameFor(rm.item_code) || rm.item_code">
                       <option value="">— Select item —</option>
                       <option v-for="i in rawMaterialItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
@@ -403,6 +404,7 @@
                   <div class="bomx-rm-bar" :style="{ background: 'var(--bx-violet)' }"></div>
                   <div class="bomx-rm-card-hdr">
                     <span class="bomx-tree-icon">🏷️</span>
+                    <span style="color:var(--bx-mfgB);font-weight:700;margin-right:2px">{{ idx + 1 }}.</span>
                     <select class="bomx-fi bomx-fi-inline bomx-rm-card-title" v-model="pi.item_code" @change="onPackingItemChange(pi)" :disabled="readOnly" :title="itemNameFor(pi.item_code) || pi.item_code">
                       <option value="">— Select item —</option>
                       <option v-for="i in packingMaterialItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
