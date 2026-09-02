@@ -1589,7 +1589,12 @@ function rmLandedInfo(itemCode) {
 }
 function useLandedRate(rm) {
   const info = rmLandedInfo(rm.item_code);
-  if (info) rm.rate = info.valuation_rate;
+  // Math.round(...*10000)/10000 caps this at 4 decimal places -- belt-and-
+  // suspenders alongside the backend rounding in compute_bin_valuation()/
+  // get_landed_cost_breakdown(): this assigns straight into the editable
+  // Rate input with no fmt()/INR() wrapper in between, so any raw float
+  // that slipped past those would otherwise show here unrounded.
+  if (info) rm.rate = Math.round(info.valuation_rate * 10000) / 10000;
 }
 function onSubAssemblyBomChange(rm) {
   if (!rm.sub_assembly_bom) return;

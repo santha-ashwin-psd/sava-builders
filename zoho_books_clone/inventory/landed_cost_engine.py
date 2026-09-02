@@ -416,11 +416,17 @@ def get_landed_cost_breakdown(pairs):
         rate = flt(b.valuation_rate) if b else 0.0
         qty = flt(b.actual_qty) if b else 0.0
         landed_value = landed_map.get(key, 0.0)
-        landed_rate = (landed_value / qty) if qty else 0.0
+        # Rounded to 4 dp for the same reason as compute_bin_valuation()
+        # (inventory/utils.py) -- landed_value/qty is a fresh division with
+        # no rounding of its own, and base_rate inherits whatever noise
+        # that leaves. valuation_rate itself is already clean coming off
+        # Bin (rounded at the source now), but landed_rate/base_rate are
+        # computed fresh right here and need the same treatment.
+        landed_rate = flt((landed_value / qty) if qty else 0.0, 4)
         result[key] = {
             "valuation_rate": rate,
             "landed_rate": landed_rate,
-            "base_rate": rate - landed_rate,
+            "base_rate": flt(rate - landed_rate, 4),
             "has_landed_cost": bool(landed_value),
         }
     return result

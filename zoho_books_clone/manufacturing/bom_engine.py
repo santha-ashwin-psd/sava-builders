@@ -86,7 +86,7 @@ def _build_tree(bom_name, qty, level, result, seen, max_depth=6):
                 "BOM", sub_bom, ["total_cost", "quantity"]
             ) or (None, None)
             if sub_cost is not None and flt(sub_qty):
-                row_rate = flt(sub_cost) / flt(sub_qty)
+                row_rate = flt(flt(sub_cost) / flt(sub_qty), 4)
 
         node_qty = flt(flt(r.qty) * ratio, 4)
         node = {
@@ -146,7 +146,7 @@ def compare_boms(bom1, bom2):
                     "BOM", sub_bom, ["total_cost", "quantity"]
                 ) or (None, None)
                 if sub_cost is not None and flt(sub_qty):
-                    rate = flt(sub_cost) / flt(sub_qty)
+                    rate = flt(flt(sub_cost) / flt(sub_qty), 4)
             out[r.item_code] = {
                 "item_code": r.item_code,
                 "item_name": r.item_name or r.item_code,

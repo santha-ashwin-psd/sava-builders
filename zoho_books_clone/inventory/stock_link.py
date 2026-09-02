@@ -383,7 +383,7 @@ def _stock_rows(doc, direction: str, zero_rate: bool = False) -> list[dict]:
         full_purchase_uom_qty = qty
         row_amount = flt(getattr(row, "amount", 0))
         net_rate_per_purchase_uom = (
-            round(row_amount / full_purchase_uom_qty, 6) if full_purchase_uom_qty else flt(getattr(row, "rate", 0))
+            round(row_amount / full_purchase_uom_qty, 4) if full_purchase_uom_qty else flt(getattr(row, "rate", 0))
         )
 
         accepted_qty = getattr(row, "accepted_qty", None)

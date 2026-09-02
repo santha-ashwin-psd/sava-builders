@@ -326,12 +326,12 @@ class StockEntry(Document):
                         # row's own entry uom (e.g. per Pack) by its
                         # conversion_factor so row.amount (= qty * basic_rate,
                         # both in entry-uom terms) still comes out right.
-                        row.basic_rate = avg_rate * (flt(row.conversion_factor) or 1)
+                        row.basic_rate = flt(avg_rate * (flt(row.conversion_factor) or 1), 4)
                 except Exception:
                     pass  # fall back to 0
 
             # Calculate row amount
-            row.amount = flt(row.qty) * flt(row.basic_rate)
+            row.amount = round(flt(row.qty) * flt(row.basic_rate), 2)
 
     def _calculate_totals(self):
         # Split by what's actually populated on EACH row, not by the entry
@@ -383,7 +383,7 @@ class StockEntry(Document):
             # per stock_uom when conversion_factor is 1, the common case)
             # if stock_qty is somehow zero.
             stock_qty = flt(row.qty_in_stock_uom) or flt(row.qty)
-            rate = (flt(row.amount) / stock_qty) if stock_qty else flt(row.basic_rate)
+            rate = flt((flt(row.amount) / stock_qty) if stock_qty else flt(row.basic_rate), 4)
 
             # Outgoing SLE (from source warehouse)
             if direction.get("s") and row.s_warehouse:

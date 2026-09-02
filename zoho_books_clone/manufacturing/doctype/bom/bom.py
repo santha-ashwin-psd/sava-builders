@@ -95,8 +95,8 @@ class BOM(Document):
                     "BOM", r.sub_assembly_bom, ["total_cost", "quantity"]
                 ) or (None, None)
                 if sub_cost is not None and flt(sub_qty):
-                    r.rate = flt(sub_cost) / flt(sub_qty)
-            r.amount = flt(r.qty) * flt(r.rate)
+                    r.rate = flt(flt(sub_cost) / flt(sub_qty), 4)
+            r.amount = round(flt(r.qty) * flt(r.rate), 2)
             rm += r.amount
 
         # Packing BOMs also consume the bulk item itself (bulk_qty_per_unit
@@ -111,19 +111,19 @@ class BOM(Document):
         # Operation cost  (time_in_mins / 60 * hour_rate)
         op = 0.0
         for r in (self.operations or []):
-            r.cost = flt(r.time_in_mins) / 60.0 * flt(r.hour_rate)
+            r.cost = round(flt(r.time_in_mins) / 60.0 * flt(r.hour_rate), 2)
             op += r.cost
 
         # Scrap / by-product value
         scrap = 0.0
         for r in (self.scrap_items or []):
-            r.amount = flt(r.qty) * flt(r.rate)
+            r.amount = round(flt(r.qty) * flt(r.rate), 2)
             scrap += r.amount
 
-        self.rm_cost = rm
-        self.op_cost = op
-        self.scrap_value = scrap
-        self.total_cost = rm + op - scrap
+        self.rm_cost = round(rm, 2)
+        self.op_cost = round(op, 2)
+        self.scrap_value = round(scrap, 2)
+        self.total_cost = round(rm + op - scrap, 2)
 
     def before_insert(self):
         # Stamp the user's company for multi-tenant isolation if not yet set.

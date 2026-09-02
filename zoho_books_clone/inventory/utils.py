@@ -41,7 +41,7 @@ def get_fifo_cost(item_code: str, warehouse: str, qty: float) -> float:
         total_cost += layer_qty * flt(layer.incoming_rate)
         remaining  -= layer_qty
 
-    return total_cost / qty if qty else 0.0
+    return flt(total_cost / qty, 4) if qty else 0.0
 
 
 # ── Batch Selection (valuation-method-driven consumption order) ───────────────
@@ -501,7 +501,23 @@ def compute_bin_valuation(
         new_value = flt(old_value)
 
     new_value = max(0.0, new_value)
+    # Rounded to 4 decimal places -- this is the single place every Bin's
+    # valuation_rate gets computed (moving average), so an unrounded
+    # new_value/new_qty here is the root cause behind rates and derived
+    # figures showing 10+ raw floating-point decimal digits anywhere that
+    # reads Bin.valuation_rate downstream without its own rounding --
+    # notably get_landed_cost_breakdown()'s valuation_rate/landed_rate/
+    # base_rate (inventory/landed_cost_engine.py), which BOM.vue's
+    # useLandedRate() then drops straight into the editable Raw Material
+    # Rate field with no formatting at all. Rounding the source instead of
+    # every downstream consumer closes all of those in one place. 4 dp
+    # (not 2) is deliberate: unlike a final posted amount, this is a
+    # per-unit rate re-multiplied by qty on every future transaction, and
+    # rounding it to whole paise would introduce its own drift for
+    # low-cost, high-volume items (e.g. ₹0.0034/unit stock).
+    new_value = flt(new_value, 4)
     new_rate = (new_value / new_qty) if new_qty > 0 else 0.0
+    new_rate = flt(new_rate, 4)
     return new_qty, new_value, new_rate
 
 
@@ -693,7 +709,10 @@ def recalculate_bin(item_code: str, warehouse: str) -> dict:
 
     correct_qty   = flt(result[0].total_qty)   if result else 0.0
     correct_value = flt(result[0].total_value) if result else 0.0
-    correct_rate  = (correct_value / correct_qty) if correct_qty else 0.0
+    # Rounded to 4 dp -- same reasoning as compute_bin_valuation() above;
+    # this writes straight back to Bin.valuation_rate too and must not
+    # reintroduce the unrounded-division bug that function was fixed for.
+    correct_rate  = flt((correct_value / correct_qty) if correct_qty else 0.0, 4)
 
     bin_name = frappe.db.get_value("Bin", {"item_code": item_code, "warehouse": warehouse})
 

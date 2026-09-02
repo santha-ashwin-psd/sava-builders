@@ -34,7 +34,7 @@ class JobCard(Document):
                     "Row #{0} in Scrap Items: Item Code is required unless "
                     "the row is marked as Process Loss."
                 ).format(row.idx))
-            row.amount = flt(row.qty) * flt(row.rate)
+            row.amount = round(flt(row.qty) * flt(row.rate), 2)
 
     def _calc_total_time(self):
         total = 0.0
@@ -45,7 +45,7 @@ class JobCard(Document):
                     frappe.throw(
                         _("Time log row: To Time cannot be before From Time.")
                     )
-                row.time_in_mins = flt(diff_secs) / 60
+                row.time_in_mins = round(flt(diff_secs) / 60, 4)
             total += flt(row.time_in_mins)
         self.total_time_in_mins = total
 

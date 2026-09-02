@@ -180,9 +180,9 @@ class WorkOrder(Document):
 			actual += row_actual_cost
 			total += row_actual_cost if row_actual_time else row_planned_cost
 
-		self.planned_operating_cost = planned
-		self.actual_operating_cost = actual
-		self.total_operating_cost = total + flt(self.additional_operating_cost)
+		self.planned_operating_cost = round(planned, 2)
+		self.actual_operating_cost = round(actual, 2)
+		self.total_operating_cost = round(total + flt(self.additional_operating_cost), 2)
 
 	def set_items_and_operations_from_bom(self):
 		"""Safety net used only when a Work Order reaches validate() with a BOM

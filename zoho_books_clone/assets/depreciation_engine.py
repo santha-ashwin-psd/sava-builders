@@ -166,6 +166,14 @@ def recompute_pending_rows(pending_rows: list[dict], opening_value: float, salva
         if closing < salvage:
             closing = salvage
         dep = opening - closing
+        # Rounded to 2 dp (a final posted monetary amount, same as every
+        # other Amount/Cost field -- not a per-unit rate) before being
+        # carried forward as next period's opening_value. Leaving these
+        # unrounded let each period's float division noise accumulate into
+        # the next, and separately could show a value with far more than
+        # 4 decimal digits in the schedule.
+        dep = round(dep, 2)
+        closing = round(closing, 2)
 
         row["opening_value"] = opening
         row["depreciation_amount"] = dep
@@ -189,7 +197,7 @@ def _true_up_final_row(rows: list[dict], salvage: float) -> None:
     last = rows[-1]
     residual = flt(last["closing_value"]) - salvage
     if residual > 0.01:
-        last["depreciation_amount"] = flt(last["depreciation_amount"]) + residual
+        last["depreciation_amount"] = round(flt(last["depreciation_amount"]) + residual, 2)
         last["closing_value"] = salvage
 
 
@@ -214,6 +222,8 @@ def _build_annual(cost, salvage, life_years, start_date, method) -> list[dict]:
         if closing < salvage:
             closing = salvage
         dep = opening - closing  # reconcile after any floor clamp
+        dep = round(dep, 2)
+        closing = round(closing, 2)
 
         rows.append({
             "year": period_no,
@@ -265,6 +275,8 @@ def _build_monthly(cost, salvage, life_years, start_date, method) -> list[dict]:
         if closing < salvage:
             closing = salvage
         dep = opening - closing
+        dep = round(dep, 2)
+        closing = round(closing, 2)
 
         rows.append({
             "year": ((period_no - 1) // 12) + 1,
