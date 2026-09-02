@@ -115,6 +115,48 @@ def _company_member_row(user: str) -> dict | None:
 
 
 @frappe.whitelist()
+def get_company_employees():
+    """Lightweight, non-admin-gated employee list for assignment dropdowns
+    (e.g. Job Card > Employee) -- unlike get_users_list()/get_company_members(),
+    which are restricted to company admins (_require_company_admin) because
+    they also expose roles/module permissions, this only returns name +
+    display label for every active member of the caller's own company, so
+    any logged-in user with ordinary Manufacturing access can populate the
+    dropdown when assigning an operator, not just admins.
+
+    There's no separate Employee doctype in this app -- "employees" here
+    are the same people who show up under Settings > Users (Books Company
+    Member rows), so this reads that table rather than a new one.
+    """
+    company = _resolve_company_for()
+    if not company:
+        return []
+
+    members = frappe.get_all(
+        "Books Company Member",
+        filters={"company": company},
+        fields=["user"],
+        ignore_permissions=True,
+        limit=500,
+    )
+    if not members:
+        return []
+
+    user_names = [m["user"] for m in members]
+    user_rows = frappe.get_all(
+        "User",
+        filters=[["name", "in", user_names], ["enabled", "=", 1]],
+        fields=["name", "full_name"],
+        ignore_permissions=True,
+        order_by="full_name asc",
+    )
+    return [
+        {"name": u["name"], "label": u.get("full_name") or u["name"]}
+        for u in user_rows
+    ]
+
+
+@frappe.whitelist()
 def get_users_list():
     """Return users that belong to the current admin's company."""
     from zoho_books_clone.utils.access import _LVL_FIELDS

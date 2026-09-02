@@ -61,7 +61,7 @@
         <div class="bomx-jc-body">
           <div class="bomx-jc-stat">
             <div class="bomx-jc-stat-lbl">Operator</div>
-            <div class="bomx-jc-stat-val">{{ row.employee || 'Unassigned' }}</div>
+            <div class="bomx-jc-stat-val">{{ employeeLabel(row.employee) }}</div>
           </div>
           <div class="bomx-jc-stat">
             <div class="bomx-jc-stat-lbl">For Quantity</div>
@@ -163,7 +163,10 @@
               </div>
               <div style="flex:1;min-width:150px">
                 <div class="bomx-hf-label">Employee</div>
-                <input class="bomx-fi" type="text" v-model="doc.employee" placeholder="Operator name" style="width:100%"/>
+                <select class="bomx-fi" v-model="doc.employee" style="width:100%" :title="doc.employee">
+                  <option value="">— Unassigned —</option>
+                  <option v-for="e in employeesList" :key="e.name" :value="e.name">{{ e.label || e.name }}</option>
+                </select>
               </div>
             </div>
 
@@ -228,7 +231,10 @@
                   </div>
                   <div class="bomx-rm-field">
                     <label>Employee</label>
-                    <input class="bomx-fi" type="text" v-model="tl.employee" placeholder="Name"/>
+                    <select class="bomx-fi" v-model="tl.employee" :title="tl.employee">
+                      <option value="">— Select —</option>
+                      <option v-for="e in employeesList" :key="e.name" :value="e.name">{{ e.label || e.name }}</option>
+                    </select>
                   </div>
                 </div>
                 <div v-if="tl._invalidRange" class="bomx-field-hint" style="color:var(--bx-red);font-weight:600;padding:0 14px 10px">
@@ -317,7 +323,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
-import { apiGet, apiList, apiSave, apiDelete } from "../api/client.js";
+import { apiGet, apiList, apiSave, apiDelete, apiCall } from "../api/client.js";
 import DocLink from "../components/DocLink.vue";
 
 const route = useRoute();
@@ -513,6 +519,19 @@ watch(() => doc.value.sub_assembly_bom, (b) => { if (b) loadSubAssemblyBomNames(
 const workOrdersList = ref([]);
 const operationsList = ref([]);
 const workstationsList = ref([]);
+// { name, label } per active member of the caller's own company -- see
+// api.admin.get_company_employees. There's no separate Employee doctype
+// here; "employees" are the same people listed under Settings > Users.
+const employeesList = ref([]);
+function employeeLabel(name) {
+  if (!name) return "Unassigned";
+  const e = employeesList.value.find(x => x.name === name);
+  // employeesList only arrives after loadDropdowns() resolves, and older
+  // records may hold a plain typed name from before this was a dropdown --
+  // both cases fall back to showing the stored value as-is rather than a
+  // raw, unresolved email.
+  return (e && e.label) || name;
+}
 const stockItems = ref([]);
 // Scrap row picker: restricted to the Scrap Item item type (mirrors BOM.vue's
 // scrapPickerItems) so operation-level scrap/by-product rows post against
@@ -590,16 +609,18 @@ function ensureUids(rows) { (rows || []).forEach(r => { if (!r._uid) r._uid = ne
 
 async function loadDropdowns() {
   try {
-    const [wos, ops, wks, stk] = await Promise.all([
+    const [wos, ops, wks, stk, emps] = await Promise.all([
       apiList("Work Order", { fields: ["name"], filters: [["docstatus", "=", 1], ["status", "not in", ["Completed", "Stopped", "Cancelled"]]], limit: 2000, order: "name desc" }),
       apiList("Operation",  { fields: ["name"], filters: [["is_active", "=", 1]], limit: 1000, order: "name asc" }),
       apiList("Workstation",{ fields: ["name"], filters: [["is_active", "=", 1]], limit: 1000, order: "name asc" }),
       apiList("Item",       { fields: ["name", "item_name"], filters: [["is_stock_item", "=", 1], ["disabled", "=", 0]], limit: 5000, order: "name asc" }),
+      apiCall("zoho_books_clone.api.admin.get_company_employees").catch(() => []),
     ]);
     workOrdersList.value   = wos || [];
     operationsList.value   = ops || [];
     workstationsList.value = wks || [];
     stockItems.value       = stk || [];
+    employeesList.value    = emps || [];
   } catch (e) {
     toast("Could not load reference data", "error");
   }
@@ -650,6 +671,12 @@ async function loadDoc() {
       operationsList.value = [{ name: r.operation }, ...operationsList.value];
     if (r.workstation && !workstationsList.value.some(w => w.name === r.workstation))
       workstationsList.value = [{ name: r.workstation }, ...workstationsList.value];
+    // This field used to be free text (see loadDoc's Employee input change) --
+    // an already-saved value may not match any current employee's name, or
+    // the person may since have been removed from the company. Keep it
+    // selectable rather than silently clearing it on open.
+    if (r.employee && !employeesList.value.some(e => e.name === r.employee))
+      employeesList.value = [{ name: r.employee, label: r.employee + " (no longer a company member)" }, ...employeesList.value];
   } catch (e) {
     toast("Could not load Job Card", "error");
     goBackToList();
