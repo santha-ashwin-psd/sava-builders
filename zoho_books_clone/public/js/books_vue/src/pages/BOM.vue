@@ -378,11 +378,6 @@
                         Circular reference: this sub-assembly loops back to this BOM. Explosion will be truncated.
                       </div>
                     </div>
-                    <div class="bomx-rm-field" style="grid-column:1/-1">
-                      <label>Description <span style="font-weight:400;color:var(--bx-muted,#94a3b8)">({{ (rm.description || '').length }}/500)</span></label>
-                      <textarea class="bomx-fi" v-model="rm.description" :disabled="readOnly" rows="2" maxlength="500"
-                        placeholder="Optional note for this material, carried onto any Work Order created from this BOM" style="width:100%;resize:vertical;font:inherit"></textarea>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -574,14 +569,13 @@
 
             <!-- ── More Info tab ── -->
             <div v-if="activeTab==='more'">
-              <div class="bomx-field-block">
-                <div class="bomx-hf-label">Project</div>
-                <input class="bomx-fi" type="text" v-model="bom.project" :disabled="readOnly" style="width:100%"/>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
                 <div>
-                  <div class="bomx-hf-label">Description</div>
-                  <textarea class="bomx-fi" v-model="bom.description" rows="3" :disabled="readOnly" style="width:100%;resize:vertical"></textarea>
+                  <div class="bomx-hf-label" style="display:flex;justify-content:space-between">
+                    <span>Description</span>
+                    <span class="bomx-field-hint" style="margin:0" :style="(bom.description||'').length > 500 ? 'color:#e03131' : ''">{{ (bom.description||'').length }}/500</span>
+                  </div>
+                  <textarea class="bomx-fi" v-model="bom.description" maxlength="500" rows="3" :disabled="readOnly" style="width:100%;resize:vertical"></textarea>
                 </div>
                 <div>
                   <div class="bomx-hf-label">Internal Notes</div>
@@ -589,10 +583,6 @@
                 </div>
               </div>
               <div class="bomx-toggle-row" style="margin-top:16px">
-                <label class="bomx-toggle"><input type="checkbox" v-model="bom.is_phantom_bom" :true-value="1" :false-value="0" :disabled="readOnly"/> Is Phantom BOM</label>
-                <label class="bomx-toggle"><input type="checkbox" v-model="bom.set_rate_of_sub_assembly_from_bom" :true-value="1" :false-value="0" :disabled="readOnly"/> Set Rate of Sub-Assembly from BOM</label>
-              </div>
-              <div class="bomx-toggle-row" style="margin-top:8px">
                 <label class="bomx-toggle"><input type="checkbox" v-model="bom.allow_alternative_item" :true-value="1" :false-value="0" :disabled="readOnly"/> Allow Alternative Item</label>
               </div>
               <div class="bomx-field-hint" style="margin-top:4px">
@@ -1813,6 +1803,11 @@ async function save() {
   bom.value.operations = (bom.value.operations || []).filter(o => o.operation);
   bom.value.scrap_items = (bom.value.scrap_items || []).filter(s => s.item_code);
   bom.value.packing_items = (bom.value.packing_items || []).filter(p => p.item_code);
+
+  if (bom.value.description && bom.value.description.length > 500) {
+    bom.value.description = bom.value.description.slice(0, 500);
+    toast("Description trimmed to 500 characters", "error");
+  }
 
   if (!bom.value.item) return toast("Please select a Production Item", "error");
   if (!bom.value.quantity || bom.value.quantity <= 0) return toast("Quantity must be greater than 0", "error");

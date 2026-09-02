@@ -244,7 +244,22 @@ class WorkOrder(Document):
 
 	def on_submit(self):
 		self.db_set("status", "Submitted")
+		self._copy_description_from_bom()
 		self._create_job_cards()
+
+	def _copy_description_from_bom(self):
+		"""Freeze the BOM's Description onto this Work Order at submit time.
+
+		Before submission the form shows the BOM's description live (read
+		straight off the linked BOM doc), so edits to the BOM keep reflecting
+		here. Once submitted, the Work Order is a fixed record of what was
+		planned, so we snapshot the description onto the Work Order itself --
+		this is also what gets printed below the Raw Materials table.
+		"""
+		if not self.bom:
+			return
+		bom_description = frappe.db.get_value("BOM", self.bom, "description")
+		self.db_set("description", bom_description or "")
 
 	def _get_mfg_settings(self):
 		try:

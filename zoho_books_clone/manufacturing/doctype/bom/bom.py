@@ -16,6 +16,7 @@ class BOM(Document):
             self.validate_manufacturing_bom()
 
         self.validate_scrap_items()
+        self.validate_description_length()
         self._calc_costs()
 
         # Carry the version number forward on amendment so it reads 2, 3, 4...
@@ -23,6 +24,18 @@ class BOM(Document):
         # creates when you amend a cancelled BOM).
         if self.amended_from and not self.is_new():
             pass  # version already set by set_version_on_amend at insert time
+
+    def validate_description_length(self):
+        # Hard cap of 500 chars on Description (mirrors the textarea's
+        # maxlength in the UI, More Information tab). Enforced here too
+        # since the client-side maxlength can be bypassed via a direct API
+        # call, and so that a legacy record saved before this cap existed
+        # self-heals the next time it's saved rather than getting stuck
+        # unable to save at all. This description is also what gets copied
+        # onto the Work Order when it is submitted, so keeping it bounded
+        # here keeps that copy bounded too.
+        if self.description and len(self.description) > 500:
+            self.description = self.description[:500]
 
     def validate_manufacturing_bom(self):
         if not self.items or len(self.items) == 0:

@@ -239,6 +239,11 @@ def get_bom_breakdown(bom, qty, work_order=None):
         "stock_uom": frappe.db.get_value("Item", bom_doc.item, "stock_uom"),
         "bom_type": bom_doc.bom_type,
         "process_loss": flt(bom_doc.process_loss),
+        # The BOM's own single Description (More Information tab) -- shown as
+        # one consolidated block below the Work Order's raw materials list
+        # (and on the printed Work Order), replacing what used to be a
+        # separate read-only description per raw-material row.
+        "bom_description": bom_doc.description or "",
         "items": items,
         "operations": operations,
         "scrap_items": scrap_items,

@@ -372,15 +372,16 @@
                       <label>Consumed</label>
                       <div class="bomx-rm-static">{{ fmtQty(rm.consumed_qty) }}</div>
                     </div>
-                    <div class="bomx-rm-field" style="grid-column:1/-1" v-if="grp.key==='__shared__' || !isShared">
-                      <label>Description <span style="font-weight:400;color:var(--bx-muted,#94a3b8)">(from BOM, read-only)</span></label>
-                      <textarea class="bomx-fi" v-model="rm.description" disabled rows="2" maxlength="500"
-                        placeholder="No description set on this material in the BOM" style="width:100%;resize:vertical;font:inherit;opacity:0.85"></textarea>
-                    </div>
                   </div>
                 </div>
                 </template>
                 </template>
+              </div>
+
+              <div v-if="wo.bom" class="bomx-rm-field" style="margin-top:10px">
+                <label>Description <span style="font-weight:400;color:var(--bx-muted,#94a3b8)">(from BOM, read-only)</span></label>
+                <textarea class="bomx-fi" :value="bomDescription" disabled rows="3"
+                  placeholder="No description set on this BOM" style="width:100%;resize:vertical;font:inherit;opacity:0.85"></textarea>
               </div>
 
               <div class="bomx-section-lbl" style="display:flex;align-items:center;justify-content:space-between;margin-top:22px">
@@ -1162,6 +1163,13 @@ function emptyWO() {
 }
 const wo = ref(emptyWO());
 
+// The linked BOM's own single Description (from its More Information tab),
+// shown as one consolidated read-only block below the raw materials list
+// (and on the printed Work Order) -- replacing what used to be a separate
+// per-row "from BOM" description on every raw material. Not persisted on
+// the Work Order itself; always reflects the linked BOM's current text.
+const bomDescription = ref("");
+
 const bomList = ref([]);
 const selectedProductionItem = ref("");
 const filteredBomList = computed(() => {
@@ -1532,7 +1540,7 @@ function applyWarehouseDefaults() {
 
 watch(() => route.params.name, async (name) => {
   activeTab.value = "details";
-  if (!name) { wo.value = emptyWO(); selectedProductionItem.value = ""; return; }
+  if (!name) { wo.value = emptyWO(); selectedProductionItem.value = ""; bomDescription.value = ""; return; }
   loading.value = true;
   try {
     await loadWO();
@@ -1561,6 +1569,7 @@ async function loadWO() {
   if (isNew.value) {
     wo.value = emptyWO();
     selectedProductionItem.value = "";
+    bomDescription.value = "";
     await fetchManufacturingDefaults();
     applyWarehouseDefaults();
     return;
@@ -1642,6 +1651,27 @@ async function loadWO() {
       }
     }
   }
+
+  // Once submitted (or cancelled), the Work Order's own `description` field
+  // is the frozen snapshot taken from the BOM at submit time (see
+  // WorkOrder.on_submit -> _copy_description_from_bom on the server) -- use
+  // that so this view and Print both show what was actually planned, even
+  // if the BOM's description has since changed. While still a Draft there's
+  // nothing frozen yet, so keep showing the BOM's live description: only
+  // get_bom_breakdown (via loadFromBom, e.g. after "Load / Refresh Materials
+  // from BOM" or changing the BOM) returns this otherwise, so a draft Work
+  // Order that isn't re-loaded from its BOM on this view still needs its
+  // own fetch here to show current text.
+  if (wo.value.docstatus !== 0) {
+    bomDescription.value = wo.value.description || "";
+  } else if (wo.value.bom) {
+    try {
+      const bomDoc = await apiGet("BOM", wo.value.bom);
+      bomDescription.value = (bomDoc && bomDoc.description) || "";
+    } catch (e) { bomDescription.value = ""; }
+  } else {
+    bomDescription.value = "";
+  }
 }
 
 async function onProductionItemChange() {
@@ -1654,6 +1684,7 @@ async function onProductionItemChange() {
   wo.value.items = [];
   wo.value.operations = [];
   bomScrapItems.value = [];
+  bomDescription.value = "";
   bomProcessLoss.value = 0;
   bomType.value = "";
 
@@ -1673,7 +1704,7 @@ async function onProductionItemChange() {
 }
 
 async function onBomChange() {
-  if (!wo.value.bom) return;
+  if (!wo.value.bom) { bomDescription.value = ""; return; }
   // Default Qty to Manufacture to the selected BOM's own base quantity
   // (e.g. a BOM defined "per 100Nos" defaults the WO to 100 instead of 1),
   // so the breakdown loads at a 1:1 ratio out of the box. User can still
@@ -1724,6 +1755,7 @@ async function loadFromBom() {
       ...EMPTY_OP(), ...o, time_in_mins: round4(o.time_in_mins),
     }));
     bomScrapItems.value = r.scrap_items || [];
+    bomDescription.value = r.bom_description || "";
     bomProcessLoss.value = flt(r.process_loss);
     // Persist onto the Work Order doc itself (not just the client-side ref)
     // so complete_work_order() on the server has this BOM's expected loss %
@@ -2267,9 +2299,6 @@ function printWorkOrder() {
           const required = isShared ? qtyOverride : flt(rm.required_qty);
           const transferred = flt(rm.transferred_qty);
           const needed = isShared ? null : Math.max(required - transferred, 0);
-          const descRow = rm.description
-            ? `<tr><td></td><td colspan="8" style="color:#868E96;font-size:12px;padding:4px 10px 8px 10px;border-top:none;word-break:break-word;overflow-wrap:anywhere;white-space:normal">${esc(rm.description)}</td></tr>`
-            : "";
           return `
         <tr>
           <td style="text-align:right;color:#1a6ef7;font-weight:700">${sn + 1}</td>
@@ -2281,7 +2310,7 @@ function printWorkOrder() {
           <td style="text-align:right;font-weight:700">${isShared ? "—" : esc(fmtQty(needed))}</td>
           <td>${esc(rm.source_warehouse || wo.value.source_warehouse || "—")}</td>
           <td>${esc(rm.rack_no || "—")}</td>
-        </tr>${descRow}`;
+        </tr>`;
         }).join("")}`;
   const rowsHtml = groups.length
     ? groups.map(groupHtml).join("")
@@ -2338,6 +2367,9 @@ function printWorkOrder() {
             </thead>
             <tbody>${rowsHtml}</tbody>
           </table>
+          ${bomDescription.value ? `
+          <h2 style="margin-top:20px">Description</h2>
+          <div style="font-size:13px;line-height:1.5;white-space:pre-wrap;border:1px solid #E2E8F0;border-radius:6px;padding:10px 12px">${esc(bomDescription.value)}</div>` : ``}
         </div></div>
       </body>
     </html>`;
