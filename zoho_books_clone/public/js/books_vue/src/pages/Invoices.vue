@@ -2573,11 +2573,17 @@ async function loadTaxAccount() {
   // Company GST state + Output GST accounts for intra/inter split.
   try {
     const co=await resolveCompany();
-    console.log("[BooksCompany][Invoices.vue] loadTaxAccount() resolveCompany() (GST state lookup) ->", co);
-    const bc=await apiGet("Books Company",co);
-    companyGstState.value=bc?.gst_state||bc?.state||"";
+    // Books Company itself is gated on the "admin" module, which invoicing
+    // users don't hold — fetch just the GST state via a "taxes"-gated
+    // endpoint instead of reading the whole company doc (apiGet would 403
+    // for non-admins and silently leave companyGstState "", which makes
+    // every sale look inter-state and drops CGST/SGST from intra templates).
+    const gstState=await apiGET("zoho_books_clone.api.gst.get_company_gst_state",{company:co})||{};
+    companyGstState.value=gstState.gst_state||gstState.state||"";
     gstAccounts.value=await apiGET("zoho_books_clone.api.gst.get_gst_accounts",{company:co})||{};
-  } catch {}
+  } catch (e) {
+    console.warn("[Invoices.vue] loadTaxAccount(): GST state/account lookup failed — CGST/SGST/IGST split may be wrong.", e);
+  }
 }
 
 // ── Sorting & selection ────────────────────────────────────────────────

@@ -26,6 +26,28 @@ def _find_account(company: str, account_type: str, name_like: str = None) -> str
 
 
 @frappe.whitelist(allow_guest=False)
+def get_company_gst_state(company: str | None = None) -> dict:
+    """Lightweight GST-state lookup for the invoicing SPA's intra/inter-state
+    tax split (CGST+SGST vs IGST). `Books Company` itself is gated on the
+    `admin` module, which invoicing users don't hold — that forced the SPA to
+    read the whole company doc via a plain apiGet, which 403's for anyone
+    without admin access and silently left companyGstState empty, wrongly
+    treating every sale as inter-state and dropping the tax entirely (only
+    IGST rows apply on the intra-only "GST 5%" style templates).
+    Gated on `taxes` View instead of `admin`, and returns only what tax calc
+    needs — no other company fields leak through."""
+    from zoho_books_clone.utils.access import require_module
+    from zoho_books_clone.api.session import _get_company
+    require_module("taxes", write=False)
+    if not company:
+        company = _get_company(frappe.session.user)
+    if not company:
+        return {"gst_state": "", "state": ""}
+    row = frappe.db.get_value("Books Company", company, ["gst_state", "state"], as_dict=True) or {}
+    return {"gst_state": row.get("gst_state") or "", "state": row.get("state") or ""}
+
+
+@frappe.whitelist(allow_guest=False)
 def get_gst_accounts(company: str | None = None) -> dict:
     """Resolve the company's Output (sales) and Input (purchase) GST accounts so
     the SPA can post correctly-split CGST/SGST/IGST tax lines. Falls back across
