@@ -163,6 +163,18 @@
    "description": "Master switch for the Scrap Reuse feature (partially filling a raw-material requirement from previously-recovered scrap -- see Alternative Item.source_type='Recycled Scrap'). Checked by apply_partial_scrap_substitution() before any scrap-reuse action is applied, whether requested directly or via approval, so turning this off immediately stops all NEW scrap reuse company-wide without touching already-applied splits. To pilot on a single BOM instead of a blanket rollout, leave this on and only enable 'Allow Alternative Item' + define Recycled Scrap alternatives on that one BOM -- other BOMs simply have no scrap alternatives to pick from."
   },
   {
+   "fieldname": "sb_loss_accounting",
+   "fieldtype": "Section Break",
+   "label": "Loss Accounting"
+  },
+  {
+   "fieldname": "absorb_abnormal_loss_into_fg_cost",
+   "fieldtype": "Check",
+   "label": "Absorb Abnormal Process Loss into Finished Good Cost",
+   "default": "0",
+   "description": "Off (default): abnormal process loss (loss beyond the BOM's expected shrinkage %) is written off separately as Manufacturing Variance Loss to a loss/variance GL account, and never inflates the finished good's stock value -- keeps loss visible as its own line for tracking wastage. On: that loss is instead folded into the surviving finished good's cost, so its Rate/Amount reflects the full cost incurred for this completion (including the failed portion) -- no separate loss write-off is posted, but wastage no longer shows up as a distinct GL line."
+  },
+  {
    "fieldname": "sb_notifications",
    "fieldtype": "Section Break",
    "label": "Notifications & Alerts"

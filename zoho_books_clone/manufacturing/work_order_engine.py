@@ -65,10 +65,16 @@ def _get_work_order(work_order):
 
 def _get_mfg_settings():
     """Return Manufacturing Settings singleton, falling back to safe defaults
-    if the DocType hasn't been migrated yet."""
+    if the DocType hasn't been migrated yet (table doesn't exist at all).
+    Anything else -- e.g. the table exists but a newer field's column is
+    missing because a migration ran partway, a permissions error, etc --
+    is a real bug and must NOT be silently swallowed into "everything is
+    off" defaults; that's exactly the kind of failure that looks like a
+    setting "just isn't taking effect" with no visible error anywhere.
+    """
     try:
         return frappe.get_single("Manufacturing Settings")
-    except Exception:
+    except frappe.db.TableMissingError:
         return frappe._dict({
             "default_source_warehouse": "",
             "default_wip_warehouse": "",
@@ -79,6 +85,7 @@ def _get_mfg_settings():
             "allow_negative_stock": 0,
             "backflush_raw_materials_based_on": "BOM",
             "enable_scrap_reuse": 1,
+            "absorb_abnormal_loss_into_fg_cost": 0,
         })
 
 
@@ -1165,8 +1172,14 @@ def complete_work_order(work_order, qty_manufactured, process_loss_qty=0,
     # consumed too, per consumption_ratio above, but never became stock of
     # its own) into the finished good that did come out -- the standard
     # costing treatment for in-process loss. Abnormal loss (abnormal_loss_value,
-    # carved out above) is deliberately excluded from this pool so it never
-    # capitalizes into fg_unit_rate.
+    # carved out above) is deliberately excluded from this pool -- UNLESS
+    # Manufacturing Settings.absorb_abnormal_loss_into_fg_cost is enabled, in
+    # which case it's folded back in so the surviving finished good absorbs
+    # the full cost of the failed portion too (no separate GL write-off).
+    # This is an explicit opt-in: leaving it off keeps abnormal loss visible
+    # as its own GL line for tracking wastage over time; turning it on trades
+    # that visibility for inventory value reflecting the true cost of getting
+    # a unit out the door.
     #
     # In the unusual case where total_scrap_value alone exceeds the
     # available cost pool (total_consumed_cost + operating_cost_this_run),
@@ -1174,11 +1187,14 @@ def complete_work_order(work_order, qty_manufactured, process_loss_qty=0,
     # would otherwise silently strand the shortfall as an uncleared debit
     # balance in the WIP account forever (nothing ever credits it out).
     # manufacturing_variance_loss captures exactly that shortfall (plus any
-    # abnormal process loss) so _post_gl_entries can write it off to a
-    # loss/variance account instead.
-    raw_pool = total_consumed_cost - total_scrap_value + operating_cost_this_run - abnormal_loss_value
+    # abnormal process loss, when not being absorbed into FG cost) so
+    # _post_gl_entries can write it off to a loss/variance account instead.
+    absorb_loss_into_fg = bool(frappe.utils.cint(ms.get("absorb_abnormal_loss_into_fg_cost")))
+    raw_pool = total_consumed_cost - total_scrap_value + operating_cost_this_run
+    if not absorb_loss_into_fg:
+        raw_pool -= abnormal_loss_value
     fg_unit_rate = 0.0
-    manufacturing_variance_loss = abnormal_loss_value
+    manufacturing_variance_loss = 0.0 if absorb_loss_into_fg else abnormal_loss_value
     if qty_manufactured > 0:
         fg_unit_rate = max(raw_pool, 0.0) / qty_manufactured
         if raw_pool < 0:
@@ -1186,7 +1202,10 @@ def complete_work_order(work_order, qty_manufactured, process_loss_qty=0,
 
     se.remarks += f" (operating cost absorbed this run: {operating_cost_this_run:.2f})"
     if abnormal_loss_value:
-        se.remarks += f" (abnormal process loss expensed: {abnormal_loss_value:.2f})"
+        if absorb_loss_into_fg:
+            se.remarks += f" (abnormal process loss absorbed into FG cost: {abnormal_loss_value:.2f})"
+        else:
+            se.remarks += f" (abnormal process loss expensed: {abnormal_loss_value:.2f})"
     se.operating_cost_absorbed = operating_cost_this_run
     se.manufacturing_variance_loss = manufacturing_variance_loss
     se.process_loss_qty = process_loss_qty

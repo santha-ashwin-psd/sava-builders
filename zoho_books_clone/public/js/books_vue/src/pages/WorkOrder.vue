@@ -717,12 +717,16 @@
                     <div class="bomx-cost-item-val bomx-cost-item-val--total">₹ {{ fmt(totalWorkOrderCost) }}</div>
                   </div>
                   <div class="bomx-cost-item bomx-cost-item--total" v-if="actualAbsorbedCost !== null" style="margin-top:6px">
-                    <div class="bomx-cost-item-lbl" title="Actual cost posted into finished-good stock across every completion recorded so far, from the Manufacture Stock Entries (raw material + operating cost, net of scrap credit) -- not the BOM-load-time snapshot above.">Total Cost (Actual)</div>
-                    <div class="bomx-cost-item-val bomx-cost-item-val--total">₹ {{ fmt(actualAbsorbedCost) }}</div>
+                    <div class="bomx-cost-item-lbl" title="Everything actually spent on this Work Order's completions so far: raw material consumed + operating cost absorbed, before any split between what was capitalized into the finished good and what was written off as abnormal loss.">Total Cost (Actual)</div>
+                    <div class="bomx-cost-item-val bomx-cost-item-val--total">₹ {{ fmt(actualAbsorbedCost + manufacturingVarianceLoss) }}</div>
                   </div>
-                  <div class="bomx-cost-item bomx-cost-item--total" v-if="manufacturingVarianceLoss > 0" style="margin-top:6px">
-                    <div class="bomx-cost-item-lbl" style="color:var(--bx-red)" title="Abnormal process loss and/or scrap value exceeding the available cost pool -- written off as a loss instead of being capitalized into the finished good's cost. Posted to a variance/loss account in the GL.">Manufacturing Variance Loss</div>
-                    <div class="bomx-cost-item-val bomx-cost-item-val--total" style="color:var(--bx-red)">₹ {{ fmt(manufacturingVarianceLoss) }}</div>
+                  <div class="bomx-cost-item" style="flex-basis:100%;margin-top:2px;padding-left:14px" v-if="actualAbsorbedCost !== null">
+                    <div class="bomx-cost-item-lbl" title="Portion of the actual cost above that was capitalized into the finished good's stock value.">↳ Capitalized into Finished Good</div>
+                    <div class="bomx-cost-item-val" style="font-size:14px">₹ {{ fmt(actualAbsorbedCost) }}</div>
+                  </div>
+                  <div class="bomx-cost-item" style="flex-basis:100%;margin-top:2px;padding-left:14px" v-if="manufacturingVarianceLoss > 0">
+                    <div class="bomx-cost-item-lbl" style="color:var(--bx-red)" title="Portion of the actual cost above that was abnormal process loss and/or scrap value exceeding the available cost pool -- written off instead of being capitalized into the finished good's cost. Posted to a variance/loss account in the GL.">↳ Manufacturing Variance Loss (written off)</div>
+                    <div class="bomx-cost-item-val" style="font-size:14px;color:var(--bx-red)">₹ {{ fmt(manufacturingVarianceLoss) }}</div>
                   </div>
                 </div>
               </div>

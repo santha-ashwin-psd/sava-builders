@@ -254,6 +254,8 @@
    "report": 1,
    "role": "Books Admin",
    "share": 1,
+   "submit": 1,
+   "cancel": 1,
    "write": 1
   },
   {
@@ -266,6 +268,7 @@
    "role": "Accountant",
    "share": 1,
    "submit": 1,
+   "cancel": 1,
    "write": 1
   },
   {

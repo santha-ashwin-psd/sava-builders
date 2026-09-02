@@ -40,6 +40,7 @@ def get_manufacturing_defaults():
         "warn_if_bom_not_default": 1,
         "warn_on_missing_job_cards": 1,
         "enable_scrap_reuse": 1,
+        "absorb_abnormal_loss_into_fg_cost": 0,
     }
 
     try:
@@ -48,7 +49,7 @@ def get_manufacturing_defaults():
             val = ms.get(key)
             if val is not None:
                 defaults[key] = val
-    except Exception:
+    except frappe.db.TableMissingError:
         pass
 
     return defaults

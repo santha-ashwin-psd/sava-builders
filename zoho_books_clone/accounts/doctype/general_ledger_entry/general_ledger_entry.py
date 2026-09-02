@@ -187,14 +187,18 @@ def _reverse_gl_entries(voucher_type: str, voucher_no: str) -> set[str]:
     instead of deleting the originals.
     Returns set of affected account names for balance refresh.
     """
-    # Idempotency: if reversals already exist for this voucher, skip.
-    already = frappe.db.sql("""
-        SELECT COUNT(*) FROM `tabGeneral Ledger Entry`
-        WHERE voucher_type = %s AND voucher_no = %s AND is_reversal = 1
-    """, (voucher_type, voucher_no))[0][0]
-    if already:
-        return set()
-
+    # Idempotency is inherent in the query below: it only selects rows that
+    # are still active (is_cancelled=0, is_reversal=0). If a prior reversal
+    # already cancelled everything active for this voucher, this returns no
+    # rows and the loop below does nothing — no separate "has this voucher_no
+    # ever had a reversal" check is needed. (A blanket "any is_reversal=1
+    # row exists for this voucher_no" check was here before, but that's
+    # wrong: a voucher can legitimately go through submit → cancel →
+    # resubmit → cancel multiple times, and each cycle has its own active
+    # rows needing their own reversal. That check caused a real bug — see
+    # EXP-2026-00804 — where a second cancel silently skipped reversing the
+    # resubmitted posting because an earlier reversal already existed for
+    # the same voucher_no.)
     rows = frappe.db.sql("""
         SELECT name, account, debit, credit, party_type, party,
                cost_center, currency, company, fiscal_year, is_opening
