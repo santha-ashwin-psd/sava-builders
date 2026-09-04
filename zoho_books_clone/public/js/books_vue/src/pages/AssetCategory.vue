@@ -138,6 +138,11 @@
             </div>
           </div>
 
+          <div class="inv-view-footer" v-if="selectedCategory?.owner">
+            Created by {{ ownerName(selectedCategory.owner) }} on {{ fmtDate(selectedCategory.creation) }}
+            <template v-if="selectedCategory.modified_by"> · Last modified by {{ ownerName(selectedCategory.modified_by) }} on {{ fmtDate(selectedCategory.modified) }}</template>
+          </div>
+
           <!-- View actions -->
           <div class="ac-form-actions">
             <button class="ac-action-btn ac-action-btn--primary" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="enterEditMode">
@@ -360,7 +365,8 @@ import { apiGet, apiList, apiSave, apiDelete, apiPOST, resolveCompany } from "..
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
-import { flt } from "../utils/format.js";
+import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast }   = useToast();
@@ -450,7 +456,7 @@ async function load() {
   loading.value = true;
   try {
     const rows = await apiList("Asset Category", {
-      fields: ["name", "category_name", "description", "is_active"],
+      fields: ["name", "category_name", "description", "is_active", "owner", "creation", "modified_by", "modified"],
       order: "name asc", limit: 200,
     });
     categories.value = rows || [];

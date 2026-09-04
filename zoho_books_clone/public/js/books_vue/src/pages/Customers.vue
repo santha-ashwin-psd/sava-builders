@@ -1260,6 +1260,11 @@
             <textarea v-model="form.notes" class="inv-fi" rows="14" style="resize:vertical;line-height:1.6;min-height:280px" placeholder="Add any internal notes about this customer — payment behaviour, communication preferences, account history…"></textarea>
           </template>
 
+          <div class="inv-view-footer" v-if="drawerMode==='edit' && form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
+
         </div>
 
         <!-- Footer -->
@@ -1406,6 +1411,7 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import AddressManager from "../components/AddressManager.vue";
 import DocLink from "../components/DocLink.vue";
 import { fmt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import {
@@ -1799,6 +1805,7 @@ function resetForm() {
   Object.keys(formErrors).forEach((k) => delete formErrors[k]);
   Object.assign(form, {
     name: "", customer_name: "", customer_type: "Company", salutation: "",
+    owner: "", creation: "", modified: "", modified_by: "",
     first_name: "", last_name: "", company_name: "",
     customer_group: "", territory: "",
     gst_treatment: "Registered Business",
@@ -1829,6 +1836,10 @@ async function openEdit(name) {
     const mno = doc.mobile_no || "";
     Object.assign(form, {
       name: doc.name,
+      owner: doc.owner || "",
+      creation: doc.creation || "",
+      modified: doc.modified || "",
+      modified_by: doc.modified_by || "",
       customer_name: doc.customer_name || "",
       customer_type: doc.customer_type || "Company",
       salutation: doc.salutation || "",

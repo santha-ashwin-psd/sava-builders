@@ -291,6 +291,11 @@
             </div>
 
           </template>
+
+          <div class="inv-view-footer" v-if="repair.owner">
+            Created by {{ ownerName(repair.owner) }} on {{ fmtDate(repair.creation) }}
+            <template v-if="repair.modified_by"> · Last modified by {{ ownerName(repair.modified_by) }} on {{ fmtDate(repair.modified) }}</template>
+          </div>
         </div>
 
         <!-- Footer -->
@@ -324,6 +329,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { apiGet, apiList, apiSave, apiSubmit, apiCancel } from '@/api/client.js';
+import { fmtDate } from '@/utils/format.js';
+import { ownerName } from '@/utils/userNames.js';
 import { useToast } from '@/composables/useToast.js';
 import { useConfirm } from '@/composables/useConfirm.js';
 import { icon } from '@/utils/icons.js';

@@ -1154,7 +1154,7 @@
 
           <!-- Footer -->
           <div class="inv-view-footer" v-if="viewInv.owner">
-            Created by {{ viewInv.owner }} on {{ fmtDateTime(viewInv.creation) }}
+            Created by {{ ownerName(viewInv.owner) }} on {{ fmtDateTime(viewInv.creation) }}
           </div>
         </template>
 
@@ -1478,6 +1478,7 @@ import { useReturnNote } from "../composables/useReturnNote.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import IrnQrCode from "../components/IrnQrCode.vue";
 import { useLivePreview } from "../composables/useLivePreview.js";

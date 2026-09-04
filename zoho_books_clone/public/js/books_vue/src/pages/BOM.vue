@@ -687,6 +687,10 @@
 
           </div>
 
+          <div class="inv-view-footer" v-if="!isNew && bom.owner">
+            Created by {{ ownerName(bom.owner) }} on {{ fmtDate(bom.creation) }}
+            <template v-if="bom.modified_by"> · Last modified by {{ ownerName(bom.modified_by) }} on {{ fmtDate(bom.modified) }}</template>
+          </div>
 
           <!-- Footer -->
           <div class="bomx-footer">
@@ -786,6 +790,8 @@ import { useRoute, useRouter } from "vue-router";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { apiGet, apiList, apiSave, apiDelete, apiSubmit, apiCancel, apiAmend, apiCall } from "../api/client.js";
+import { fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import DocLink from "../components/DocLink.vue";
 import BulkActionBar from "../components/BulkActionBar.vue";
 

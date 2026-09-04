@@ -313,6 +313,11 @@
             </div>
 
           </template>
+
+          <div class="inv-view-footer" v-if="disposal.owner">
+            Created by {{ ownerName(disposal.owner) }} on {{ fmtDate(disposal.creation) }}
+            <template v-if="disposal.modified_by"> · Last modified by {{ ownerName(disposal.modified_by) }} on {{ fmtDate(disposal.modified) }}</template>
+          </div>
         </div>
 
         <!-- Footer -->
@@ -347,6 +352,8 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { apiGet, apiList, apiSave, apiSubmit, apiCancel } from '@/api/client.js';
+import { fmtDate } from '@/utils/format.js';
+import { ownerName } from '@/utils/userNames.js';
 import { useToast } from '@/composables/useToast.js';
 import { useConfirm } from '@/composables/useConfirm.js';
 import { icon } from '@/utils/icons.js';

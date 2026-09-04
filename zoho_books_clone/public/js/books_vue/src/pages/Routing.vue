@@ -239,6 +239,11 @@
             <!-- Description -->
             <div class="bomx-section-lbl" style="margin-top:22px">Description</div>
             <textarea class="bomx-fi" v-model="doc.description" style="width:100%;min-height:110px;resize:vertical" placeholder="Describe this routing (optional)…"></textarea>
+
+            <div class="inv-view-footer" v-if="!isNew && doc.owner">
+              Created by {{ ownerName(doc.owner) }} on {{ fmtDate(doc.creation) }}
+              <template v-if="doc.modified_by"> · Last modified by {{ ownerName(doc.modified_by) }} on {{ fmtDate(doc.modified) }}</template>
+            </div>
           </div>
 
           <!-- Footer -->
@@ -264,6 +269,8 @@ import { useRoute, useRouter } from "vue-router";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { apiGet, apiList, apiSave, apiDelete } from "../api/client.js";
+import { fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 
 const route = useRoute();
 const router = useRouter();

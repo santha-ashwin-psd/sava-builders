@@ -328,6 +328,11 @@
 
           </div>
 
+          <div class="inv-view-footer" v-if="viewDoc.owner">
+            Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
+            <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
+          </div>
+
           <!-- Footer -->
           <div class="inv-dfooter delivery-challan-footer">
             <span class="inv-hdr-badge" :class="statusClass(viewDoc)" style="margin-right:auto">{{ statusLabel(viewDoc) }}</span>
@@ -681,7 +686,8 @@ import DocLink from "../components/DocLink.vue";
 import Pagination from "../components/Pagination.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import { icon } from "../utils/icons.js";
-import { flt } from "../utils/format.js";
+import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
@@ -935,6 +941,10 @@ async function openView(r) {
         vehicle_no:           doc?.vehicle_no || "",
         lr_date:              doc?.lr_date || "",
         posting_time:         doc?.posting_time || "",
+        owner:                doc?.owner,
+        creation:             doc?.creation,
+        modified:             doc?.modified,
+        modified_by:          doc?.modified_by,
       };
     } else {
       // Sales Order — fetch delivered lines

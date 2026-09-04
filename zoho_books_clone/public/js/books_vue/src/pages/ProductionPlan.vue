@@ -392,6 +392,11 @@
               </div>
             </template>
 
+            <div class="inv-view-footer" v-if="!isNew && pp.owner">
+              Created by {{ ownerName(pp.owner) }} on {{ fmtDate(pp.creation) }}
+              <template v-if="pp.modified_by"> · Last modified by {{ ownerName(pp.modified_by) }} on {{ fmtDate(pp.modified) }}</template>
+            </div>
+
           </div>
         </template>
   </div>
@@ -431,6 +436,7 @@
 import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiSave, apiList, apiSubmit, apiCancel, apiAmend, apiCall, apiDelete, resolveCompany } from "../api/client.js";
+import { ownerName } from "../utils/userNames.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 

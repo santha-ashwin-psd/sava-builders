@@ -77,6 +77,11 @@
             </div>
           </div>
 
+          <div class="inv-view-footer" v-if="isEdit && form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
+
         </div>
 
         <!-- Footer -->
@@ -98,6 +103,8 @@ import { icon } from "../utils/icons.js";
 import { apiList } from "../api/client.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useToast } from "../composables/useToast.js";
+import { ownerName } from "../utils/userNames.js";
+import { fmtDate } from "../utils/format.js";
 
 const props = defineProps({
   isEdit: Boolean,

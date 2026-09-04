@@ -1023,6 +1023,11 @@
             <textarea v-model="form.notes" class="inv-fi" rows="14" style="resize:vertical;line-height:1.6;min-height:280px" placeholder="Add any internal notes about this vendor — payment behaviour, communication preferences, account history…"></textarea>
           </template>
 
+          <div class="inv-view-footer" v-if="drawerMode==='edit' && form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
+
         </div>
 
         <div class="inv-dfooter" style="border-top:1px solid #e8ecf0;padding:14px 24px;background:#fafbfd">
@@ -1168,6 +1173,7 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import AddressManager from "../components/AddressManager.vue";
 import DocLink from "../components/DocLink.vue";
 import { fmt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import {
@@ -1312,6 +1318,7 @@ function resetForm() {
   pendingAddresses.value = [];
   Object.assign(form, {
     name: "", supplier_name: "", supplier_type: "Company",
+    owner: "", creation: "", modified: "", modified_by: "",
     supplier_group: "",
     tax_id: "", default_currency: "INR", payment_terms: "",
     email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
@@ -1361,6 +1368,10 @@ async function openEdit(name) {
     const mno = doc.mobile_no || "";
     Object.assign(form, {
       name: doc.name,
+      owner: doc.owner || "",
+      creation: doc.creation || "",
+      modified: doc.modified || "",
+      modified_by: doc.modified_by || "",
       supplier_name: doc.supplier_name || "",
       supplier_type: doc.supplier_type || "Company",
       supplier_group: doc.supplier_group || "",

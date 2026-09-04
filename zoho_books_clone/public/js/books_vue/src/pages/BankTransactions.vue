@@ -188,6 +188,11 @@
             label="Bank Transaction"
             :currency="viewDoc.currency || 'INR'"
           />
+
+          <div class="inv-view-footer" v-if="viewDoc.owner">
+            Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
+            <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
+          </div>
         </div>
         <div class="bt-dfooter">
 
@@ -419,7 +424,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from "vue";
-import { apiList, apiPOST, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiPOST, resolveCompany } from "../api/client.js";
 
 // Import format guide + sample templates
 const showFormatGuide = ref(false);
@@ -686,6 +691,7 @@ import { useToast } from "../composables/useToast.js";
 import { useRoute } from "vue-router";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
 import JournalTab from "../components/JournalTab.vue";
@@ -755,7 +761,13 @@ const counts = computed(() => ({
   ).length
 }));
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
-function openView(t){viewDoc.value=t;viewOpen.value=true;}
+async function openView(t){
+  viewDoc.value=t;viewOpen.value=true;
+  try{
+    const full=await apiGet("Bank Transaction",t.name);
+    if(viewDoc.value && viewDoc.value.name===t.name) viewDoc.value={...t,...full};
+  }catch(e){}
+}
 
 const { page, pageSize, paged } = usePagination(sorted, { storageKey: "bank-transactions" });
 

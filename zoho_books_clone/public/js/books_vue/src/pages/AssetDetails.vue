@@ -380,6 +380,11 @@
             </div>
           </div>
 
+          <div class="inv-view-footer" v-if="!isNew && asset.owner">
+            Created by {{ ownerName(asset.owner) }} on {{ fmtDate(asset.creation) }}
+            <template v-if="asset.modified_by"> · Last modified by {{ ownerName(asset.modified_by) }} on {{ fmtDate(asset.modified) }}</template>
+          </div>
+
         </div>
 
         <!-- Footer -->
@@ -426,6 +431,8 @@ import { apiGet, apiList, apiSave, apiSubmit, apiCancel, apiDelete, apiLinkValue
 import { useToast } from '@/composables/useToast.js';
 import { useConfirm } from '@/composables/useConfirm.js';
 import { icon } from '@/utils/icons.js';
+import { fmtDate } from '@/utils/format.js';
+import { ownerName } from '@/utils/userNames.js';
 import SearchableSelect from '@/components/SearchableSelect.vue';
 
 const route = useRoute();

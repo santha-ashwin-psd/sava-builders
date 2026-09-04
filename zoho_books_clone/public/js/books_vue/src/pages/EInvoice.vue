@@ -249,6 +249,11 @@
 
           </div>
 
+          <div class="inv-view-footer" v-if="viewing.owner">
+            Created by {{ ownerName(viewing.owner) }} on {{ fmtDate(viewing.creation) }}
+            <template v-if="viewing.modified_by"> · Last modified by {{ ownerName(viewing.modified_by) }} on {{ fmtDate(viewing.modified) }}</template>
+          </div>
+
           <!-- Footer -->
           <div class="ei-panel-footer">
             <button class="ei-btn-ghost" @click="closeView">Close</button>
@@ -280,10 +285,11 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from "vue";
-import { apiList, apiPOST, resolveCompany, apiGET } from "../api/client.js";
+import { apiList, apiPOST, resolveCompany, apiGET, apiGet } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import IrnQrCode from "../components/IrnQrCode.vue";
 
 const { toast } = useToast();
@@ -397,10 +403,14 @@ const sorted = computed(() => {
 function sort(col) { if(sortCol.value===col) sortDir.value=sortDir.value==="asc"?"desc":"asc"; else{sortCol.value=col;sortDir.value="asc";} }
 function sortArrow(col) { if(sortCol.value!==col) return '<span style="color:#d1d5db">⇅</span>'; return sortDir.value==="asc"?"↑":"↓"; }
 
-function openView(inv) {
+async function openView(inv) {
   viewing.value = {...inv};
   showManualForm.value = false;
   manualForm.value = { irn:"", ack_no:"", ack_date:new Date().toISOString().slice(0,10) };
+  try{
+    const full=await apiGet("Sales Invoice",inv.name);
+    if(viewing.value && viewing.value.name===inv.name) viewing.value={...viewing.value,...full};
+  }catch(e){}
 }
 function closeView() { viewing.value = null; }
 

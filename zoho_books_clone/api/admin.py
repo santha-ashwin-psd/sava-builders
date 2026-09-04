@@ -551,6 +551,34 @@ def get_company_members():
     return get_users_list()
 
 
+@frappe.whitelist()
+def get_company_user_names():
+    """Lightweight email -> full_name map for everyone in the caller's company.
+    Unlike get_users_list this does NOT require company-admin rights, since it's
+    used just to render "Created by <name>" in document view drawers for any
+    logged-in member. Returns {} if the caller isn't attached to a company."""
+    company = _resolve_company_for()
+    if not company:
+        return {}
+    members = frappe.get_all(
+        "Books Company Member",
+        filters={"company": company},
+        fields=["user"],
+        ignore_permissions=True,
+        limit=1000,
+    )
+    user_names = [m["user"] for m in members]
+    if not user_names:
+        return {}
+    user_rows = frappe.get_all(
+        "User",
+        filters=[["name", "in", user_names]],
+        fields=["name", "full_name"],
+        ignore_permissions=True,
+    )
+    return {u["name"]: (u.get("full_name") or u["name"]) for u in user_rows}
+
+
 @frappe.whitelist(methods=["POST"])
 def invite_member(email, first_name, last_name="", role="Books Viewer", password=None, modules=None):
     """Alias for invite_user. If `password` is supplied, it's set directly on the
@@ -1255,7 +1283,7 @@ def get_email_templates():
     try:
         rows = frappe.get_all(
             "Email Template",
-            fields=["name", "subject", "use_html", "modified"],
+            fields=["name", "subject", "use_html", "modified", "owner", "creation", "modified_by"],
             filters=[["name", "like", prefix + "%"]],
             limit=200,
             ignore_permissions=True,
@@ -1280,6 +1308,10 @@ def get_email_template(name):
             "subject": doc.subject or "",
             "response": doc.response or "",
             "use_html": doc.use_html or 0,
+            "owner": doc.owner,
+            "creation": doc.creation,
+            "modified_by": doc.modified_by,
+            "modified": doc.modified,
         }
     except Exception:
         return {}
@@ -1348,7 +1380,8 @@ def get_payment_terms():
         return frappe.get_all(
             "Payment Term",
             fields=["name", "due_date_based_on", "payment_days",
-                    "discount_percentage", "discount_days", "description"],
+                    "discount_percentage", "discount_days", "description",
+                    "owner", "creation", "modified_by", "modified"],
             limit=200,
             ignore_permissions=True,
         )

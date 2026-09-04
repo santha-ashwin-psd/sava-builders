@@ -248,7 +248,7 @@ async function load() {
   loading.value = true;
   try {
     const rows = await apiList("Department", {
-      fields: ["name", "department_name", "description"],
+      fields: ["name", "department_name", "description", "owner", "creation", "modified_by", "modified"],
       order: "department_name asc",
       limit: 500,
     });

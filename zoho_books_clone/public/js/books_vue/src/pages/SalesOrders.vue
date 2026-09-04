@@ -830,7 +830,7 @@
 
               <!-- Footer -->
               <div class="inv-view-footer" v-if="viewDoc.owner">
-                Created by {{ viewDoc.owner }} on {{ fmtDate(viewDoc.creation) }}
+                Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
               </div>
             </template>
 
@@ -1177,6 +1177,7 @@ import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import { templateHeadlineRate } from "../composables/useTaxCalc.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 

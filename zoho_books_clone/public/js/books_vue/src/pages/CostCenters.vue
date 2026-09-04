@@ -248,6 +248,11 @@
             </template>
           </template>
         </div>
+
+        <div class="inv-view-footer" v-if="selectedCC.owner">
+          Created by {{ ownerName(selectedCC.owner) }} on {{ fmtDate(selectedCC.creation) }}
+          <template v-if="selectedCC.modified_by"> · Last modified by {{ ownerName(selectedCC.modified_by) }} on {{ fmtDate(selectedCC.modified) }}</template>
+        </div>
       </template>
     </div>
   </div>
@@ -385,6 +390,7 @@ import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { usePagination } from "../composables/usePagination.js";
 import { fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
@@ -436,7 +442,7 @@ async function load() {
   loading.value = true;
   try {
     const ccs = await apiList("Cost Center", {
-      fields: ["name", "cost_center_name", "cost_center_number", "parent_cost_center", "is_group", "disabled", "description", "budget", "budget_period", "alert_pct", "budget_action", "cc_type", "color_tag", "modified"],
+      fields: ["name", "cost_center_name", "cost_center_number", "parent_cost_center", "is_group", "disabled", "description", "budget", "budget_period", "alert_pct", "budget_action", "cc_type", "color_tag", "modified", "owner", "creation", "modified_by"],
       order: "name asc", limit: 200,
     }) || [];
     allCC.value = ccs.map((c) => ({
@@ -445,6 +451,7 @@ async function load() {
       budget_period: c.budget_period || "Annual", alert_pct: c.alert_pct || 80,
       budget_action: c.budget_action || "Warn", is_group: c.is_group ? 1 : 0,
       status: c.disabled ? "Inactive" : "Active", desc: c.description || "", modified: c.modified || "",
+      owner: c.owner || "", creation: c.creation || "", modified_by: c.modified_by || "",
     }));
     // Real actual spend per cost center, summed from posted GL entries.
     try {

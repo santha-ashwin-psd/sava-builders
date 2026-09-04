@@ -156,6 +156,11 @@
               <textarea class="aix-fi" style="width:100%;resize:vertical;" rows="3" v-model="rec.description" placeholder="Why this is a valid alternative…"></textarea>
             </div>
 
+            <div class="inv-view-footer" v-if="!isNew && rec.owner">
+              Created by {{ ownerName(rec.owner) }} on {{ fmtDate(rec.creation) }}
+              <template v-if="rec.modified_by"> · Last modified by {{ ownerName(rec.modified_by) }} on {{ fmtDate(rec.modified) }}</template>
+            </div>
+
           </div>
 
           <!-- Footer -->
@@ -180,6 +185,8 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiList, apiSave, apiCall } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
+import { ownerName } from "../utils/userNames.js";
+import { fmtDate } from "../utils/format.js";
 
 const route = useRoute();
 const router = useRouter();

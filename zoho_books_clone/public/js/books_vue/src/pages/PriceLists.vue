@@ -414,6 +414,11 @@
               <span v-if="formErrors.valid_upto" class="pl-field-err">{{ formErrors.valid_upto }}</span>
             </div>
           </div>
+
+          <div class="inv-view-footer" v-if="drawerMode === 'edit' && form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
         </div>
 
         <div class="pl-drawer-foot">
@@ -637,6 +642,7 @@ import { useToast }   from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon }       from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast }   = useToast();
@@ -693,6 +699,7 @@ const saving     = ref(false);
 const form       = reactive({
   name: "", price_list: "", item_code: "", item_name: "",
   price_list_rate: "", uom: "Nos", packing_unit: "", valid_from: "", valid_upto: "",
+  owner: "", creation: "", modified_by: "", modified: "",
 });
 const formErrors  = reactive({ item_code: "", price_list_rate: "", valid_upto: "" });
 const dupWarning  = ref("");
@@ -806,7 +813,7 @@ async function loadItemPrices() {
   loadingPrices.value = true;
   try {
     itemPrices.value = await apiList("Item Price", {
-      fields: ["name", "item_code", "item_name", "price_list_rate", "uom", "packing_unit", "valid_from", "valid_upto"],
+      fields: ["name", "item_code", "item_name", "price_list_rate", "uom", "packing_unit", "valid_from", "valid_upto", "owner", "creation", "modified_by", "modified"],
       filters: [["price_list", "=", selectedList.value.name]],
       limit: 2000,
       order: "item_code asc",
@@ -974,6 +981,7 @@ function openAddDrawer() {
     name: "", price_list: selectedList.value.name,
     item_code: "", item_name: "", price_list_rate: "",
     uom: "Nos", packing_unit: "", valid_from: "", valid_upto: "",
+    owner: "", creation: "", modified_by: "", modified: "",
   });
   Object.assign(formErrors, { item_code: "", price_list_rate: "", valid_upto: "" });
   dupWarning.value  = "";
@@ -994,6 +1002,8 @@ function openEditDrawer(p) {
     packing_unit: p.packing_unit || "",
     valid_from:  p.valid_from || "",
     valid_upto:  p.valid_upto || "",
+    owner: p.owner || "", creation: p.creation || "",
+    modified_by: p.modified_by || "", modified: p.modified || "",
   });
   Object.assign(formErrors, { item_code: "", price_list_rate: "", valid_upto: "" });
   dupWarning.value = "";

@@ -420,7 +420,7 @@
         <div class="rec-timeline">
           <div class="rec-tl-step" :class="{done:true}">
             <div class="rec-tl-dot"></div>
-            <div class="rec-tl-lbl">Created<br/><span class="rec-tl-sub">{{ fmtDate(viewDoc.creation) }}</span></div>
+            <div class="rec-tl-lbl">Created<br/><span class="rec-tl-sub">{{ fmtDate(viewDoc.creation) }}<template v-if="viewDoc.owner"> · {{ ownerName(viewDoc.owner) }}</template></span></div>
           </div>
           <div class="rec-tl-line" :class="{done:viewDoc.ui_status!=='Paused'}"></div>
           <div class="rec-tl-step" :class="{done:viewDoc.ui_status==='Active' || viewDoc.runs_count>0, current:viewDoc.ui_status==='Active'}">
@@ -542,6 +542,7 @@ import Pagination from "../components/Pagination.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();

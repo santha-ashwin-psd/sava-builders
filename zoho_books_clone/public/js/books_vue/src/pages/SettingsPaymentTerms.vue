@@ -78,6 +78,11 @@
           <div v-if="form.name" style="background:#f0f9f4;border:1px solid #8CE99A;border-radius:8px;padding:12px;font-size:12.5px;color:#2F9E44">
             <b>Preview:</b> {{summaryLabel(form)}}
           </div>
+
+          <div class="inv-view-footer" v-if="drawerMode === 'edit' && form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
         </div>
         <div class="nim-footer">
           <button class="nim-btn nim-btn-ghost" @click="showDrawer=false">Cancel</button>
@@ -105,6 +110,8 @@ import { ref, reactive, onMounted } from "vue";
 import { apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
+import { ownerName } from "../utils/userNames.js";
+import { fmtDate } from "../utils/format.js";
 
 const { toast } = useToast();
 
@@ -118,6 +125,7 @@ const delTarget  = ref(null);
 const form = reactive({
   name: "", due_date_based_on: "Day(s) after invoice date",
   payment_days: 0, discount_days: 0, discount_percentage: 0, description: "",
+  owner: "", creation: "", modified_by: "", modified: "",
 });
 
 const DUE_OPTIONS = [
@@ -157,6 +165,7 @@ function openAdd() {
   Object.assign(form, {
     name: "", due_date_based_on: "Day(s) after invoice date",
     payment_days: 30, discount_days: 0, discount_percentage: 0, description: "",
+    owner: "", creation: "", modified_by: "", modified: "",
   });
   showDrawer.value = true;
 }
@@ -170,6 +179,8 @@ function openEdit(t) {
     discount_days: t.discount_days || 0,
     discount_percentage: t.discount_percentage || 0,
     description: t.description || "",
+    owner: t.owner || "", creation: t.creation || "",
+    modified_by: t.modified_by || "", modified: t.modified || "",
   });
   showDrawer.value = true;
 }

@@ -439,6 +439,10 @@
           </div>
           <div v-else class="qct-param-empty">No parameters defined for this template</div>
 
+          <div class="inv-view-footer" v-if="viewDoc.owner">
+            Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
+            <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
+          </div>
         </div>
         <div class="qct-dfooter">
           <button class="qct-btn-ghost" @click="viewOpen=false">Close</button>
@@ -583,6 +587,8 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiCall, apiList } from "../api/client.js";
+import { fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import SearchableSelect from "../components/SearchableSelect.vue";

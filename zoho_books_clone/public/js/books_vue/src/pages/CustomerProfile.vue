@@ -22,6 +22,10 @@
             <span v-if="customer.territory" class="cp-chip cp-chip-muted">{{ customer.territory }}</span>
             <span v-if="customer.disabled" class="cp-chip cp-chip-danger">Disabled</span>
           </div>
+          <div class="inv-view-footer" style="padding:6px 0 0" v-if="customer.owner">
+            Created by {{ ownerName(customer.owner) }} on {{ fmtDate(customer.creation) }}
+            <template v-if="customer.modified_by"> · Last modified by {{ ownerName(customer.modified_by) }} on {{ fmtDate(customer.modified) }}</template>
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:8px">
@@ -206,6 +210,7 @@ import { apiGet, apiGET, apiList, apiSave, apiSubmit } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import DocLink from "../components/DocLink.vue";
 import AddressManager from "../components/AddressManager.vue";
 

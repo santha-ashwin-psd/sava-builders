@@ -86,6 +86,11 @@
           </div>
 
           <label class="tt-check"><input type="checkbox" :checked="form.disabled" @change="form.disabled = $event.target.checked ? 1 : 0" /> Disabled</label>
+
+          <div class="inv-view-footer" v-if="form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
         </div>
 
         <div class="tt-foot">
@@ -105,6 +110,8 @@ import { apiList, apiSave, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
+import { ownerName } from "../utils/userNames.js";
+import { fmtDate } from "../utils/format.js";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
@@ -119,13 +126,13 @@ const drawer      = ref(false);
 const editing     = ref(null);
 const saving      = ref(false);
 
-const form = reactive({ category_name: "", description: "", disabled: 0 });
+const form = reactive({ category_name: "", description: "", disabled: 0, owner: null, creation: null, modified_by: null, modified: null });
 
 async function load() {
   loading.value = true;
   try {
     list.value = await apiList("Expense Category", {
-      fields: ["name", "category_name", "description", "disabled"],
+      fields: ["name", "category_name", "description", "disabled", "owner", "creation", "modified_by", "modified"],
       order: "category_name asc", limit: 200,
     }) || [];
   } catch (e) { toast(e.message || "Failed to load expense categories", "error"); list.value = []; }
@@ -150,7 +157,7 @@ const filtered = computed(() => {
 
 function openNew() {
   editing.value = null;
-  Object.assign(form, { category_name: "", description: "", disabled: 0 });
+  Object.assign(form, { category_name: "", description: "", disabled: 0, owner: null, creation: null, modified_by: null, modified: null });
   drawer.value = true;
 }
 function openEdit(c) {
@@ -159,6 +166,10 @@ function openEdit(c) {
     category_name: c.category_name,
     description: c.description || "",
     disabled: c.disabled ? 1 : 0,
+    owner: c.owner || null,
+    creation: c.creation || null,
+    modified_by: c.modified_by || null,
+    modified: c.modified || null,
   });
   drawer.value = true;
 }

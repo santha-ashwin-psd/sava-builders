@@ -814,6 +814,11 @@
                   </div>
                 </div>
               </template>
+
+              <div class="inv-view-footer" v-if="viewDoc.owner">
+                Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
+                <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
+              </div>
             </div>
           </template>
 
@@ -1010,6 +1015,7 @@ import { useConfirm } from "../composables/useConfirm.js";
 import { useLivePreview } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
@@ -1491,7 +1497,8 @@ async function openView(b) {
       billing_address_name: doc.billing_address_name, remark: doc.remark || "",
       discount_type: doc.discount_type || "Percentage",
       additional_discount_percentage: doc.additional_discount_percentage,
-      additional_discount_amount: doc.additional_discount_amount };
+      additional_discount_amount: doc.additional_discount_amount,
+      owner: doc.owner, creation: doc.creation, modified: doc.modified, modified_by: doc.modified_by };
     // Resolve billing address object for card display
     if (doc?.billing_address_name && !viewAddressCache.value[doc.billing_address_name]) {
       apiGet("Address", doc.billing_address_name).then(a => { if (a) viewAddressCache.value = { ...viewAddressCache.value, [doc.billing_address_name]: a }; }).catch(() => {});

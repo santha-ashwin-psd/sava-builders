@@ -348,7 +348,7 @@ def get_fiscal_years():
     if company:
         rows = frappe.db.sql("""
             SELECT name, year, year_start_date, year_end_date, is_closed,
-                   company, lock_date
+                   company, lock_date, owner, creation, modified_by, modified
             FROM `tabFiscal Year`
             WHERE LOWER(company) = LOWER(%s)
             ORDER BY year_start_date DESC
@@ -357,7 +357,7 @@ def get_fiscal_years():
     else:
         rows = frappe.db.sql("""
             SELECT name, year, year_start_date, year_end_date, is_closed,
-                   company, lock_date
+                   company, lock_date, owner, creation, modified_by, modified
             FROM `tabFiscal Year`
             ORDER BY year_start_date DESC
             LIMIT 100
@@ -370,6 +370,8 @@ def get_fiscal_years():
         r["year_start_date"] = str(r["year_start_date"] or "")
         r["year_end_date"]   = str(r["year_end_date"] or "")
         r["lock_date"]       = str(r["lock_date"] or "")
+        r["creation"]        = str(r["creation"] or "")
+        r["modified"]        = str(r["modified"] or "")
     return {"company": company, "years": rows}
 
 

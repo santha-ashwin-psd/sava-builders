@@ -306,6 +306,11 @@
             </template>
 
           </template>
+
+          <div class="inv-view-footer" v-if="!isNew && lcv.owner">
+            Created by {{ ownerName(lcv.owner) }} on {{ fmtDate(lcv.creation) }}
+            <template v-if="lcv.modified_by"> · Last modified by {{ ownerName(lcv.modified_by) }} on {{ fmtDate(lcv.modified) }}</template>
+          </div>
         </div>
 
         <div class="inv-dfooter">
@@ -340,6 +345,8 @@ import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import DocLink from "../components/DocLink.vue";
 import { apiGet, apiSave, apiList, apiSubmit, apiCancel, apiAmend, apiCall, resolveCompany } from "../api/client.js";
+import { fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import { useToast } from "../composables/useToast.js";
 import Pagination from "../components/Pagination.vue";
 import SearchableSelect from "../components/SearchableSelect.vue";

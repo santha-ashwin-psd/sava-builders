@@ -535,8 +535,9 @@
           <div class="se-view-section">
             <div style="display:flex;gap:16px;flex-wrap:wrap">
               <div v-if="viewDoc.company"><span class="se-meta-lbl">Company</span><div style="font-size:12.5px;margin-top:2px">{{ viewDoc.company }}</div></div>
-              <div v-if="viewDoc.owner"><span class="se-meta-lbl">Created by</span><div style="font-size:12.5px;margin-top:2px">{{ viewDoc.owner }}</div></div>
+              <div v-if="viewDoc.owner"><span class="se-meta-lbl">Created by</span><div style="font-size:12.5px;margin-top:2px">{{ ownerName(viewDoc.owner) }}</div></div>
               <div v-if="viewDoc.creation"><span class="se-meta-lbl">Created</span><div style="font-size:12.5px;margin-top:2px;">{{ fmtDate(viewDoc.creation?.slice(0,10)) }}</div></div>
+              <div v-if="viewDoc.modified_by"><span class="se-meta-lbl">Last Modified By</span><div style="font-size:12.5px;margin-top:2px">{{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified?.slice(0,10)) }}</div></div>
             </div>
           </div>
 
@@ -573,6 +574,7 @@ import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import JournalTab from "../components/JournalTab.vue";
 import DocLink from "../components/DocLink.vue";

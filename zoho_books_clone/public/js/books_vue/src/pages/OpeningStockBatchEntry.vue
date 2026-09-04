@@ -356,6 +356,10 @@
             <button class="ob-btn-cancel" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="openEdit(viewDoc); viewOpen=false"><span v-html="icon('edit',13)"></span> Edit</button>
             <button class="ob-btn-primary" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="submitEntry(viewDoc.name)"><span v-html="icon('check',13)"></span> Submit</button>
           </div>
+          <div class="inv-view-footer" v-if="viewDoc.owner">
+            Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
+            <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
+          </div>
         </div>
       </template>
     </div>
@@ -369,6 +373,7 @@ import { apiList, apiGet, apiPOST, apiSave, apiSubmit, resolveCompany, apiLinkVa
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();

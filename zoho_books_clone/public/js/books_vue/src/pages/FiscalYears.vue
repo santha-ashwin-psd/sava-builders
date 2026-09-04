@@ -245,6 +245,11 @@
             <div><div style="font-size:11px;color:#868E96;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Default Year</div><div style="font-weight:600">{{selectedYearData.is_default?"Yes":"No"}}</div></div>
           </div>
         </div>
+
+        <div class="inv-view-footer" v-if="selectedYearData.owner">
+          Created by {{ ownerName(selectedYearData.owner) }} on {{ fmtDate(selectedYearData.creation) }}
+          <template v-if="selectedYearData.modified_by"> · Last modified by {{ ownerName(selectedYearData.modified_by) }} on {{ fmtDate(selectedYearData.modified) }}</template>
+        </div>
       </template>
     </div>
   </div>
@@ -395,6 +400,7 @@ import { apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { usePermissions } from "../composables/usePermissions.js";
+import { ownerName } from "../utils/userNames.js";
 
 const { toast } = useToast();
 const { canCreate, canEdit } = usePermissions();
@@ -498,6 +504,7 @@ async function load() {
         period_type: "Monthly", closing_acct: "Retained Earnings",
         auto_close: 0, is_default: 0, is_closed: y.is_closed ? 1 : 0,
         company: y.company || "",
+        owner: y.owner || "", creation: y.creation || "", modified_by: y.modified_by || "", modified: y.modified || "",
         periods: generatePeriods(y.year_start_date, y.year_end_date, "Monthly",
           serverLockDate
             ? generatePeriods(y.year_start_date, y.year_end_date, "Monthly").map(p =>

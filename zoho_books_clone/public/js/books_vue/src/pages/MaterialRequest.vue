@@ -157,6 +157,11 @@
 
             <div class="bomx-section-lbl">Remarks</div>
             <textarea class="bomx-fi" v-model="mr.remarks" rows="3" :disabled="readOnly" style="width:100%;min-height:90px;resize:vertical" placeholder="Optional notes…"></textarea>
+
+            <div class="inv-view-footer" v-if="!isNew && mr.owner">
+              Created by {{ ownerName(mr.owner) }} on {{ fmtDate(mr.creation) }}
+              <template v-if="mr.modified_by"> · Last modified by {{ ownerName(mr.modified_by) }} on {{ fmtDate(mr.modified) }}</template>
+            </div>
           </div>
         </template>
       </template>
@@ -170,6 +175,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiSave, apiList, apiSubmit, apiCancel, apiAmend, resolveCompany } from "../api/client.js";
+import { ownerName } from "../utils/userNames.js";
 import DocLink from "../components/DocLink.vue";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";

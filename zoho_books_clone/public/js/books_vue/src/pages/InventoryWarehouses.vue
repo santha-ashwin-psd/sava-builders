@@ -761,6 +761,11 @@
               <span v-html="icon('plus', 13)"></span> Add Rack
             </button>
           </template>
+
+          <div class="inv-view-footer" v-if="form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
         </div>
         <div class="nim-footer">
           <div></div>
@@ -836,7 +841,8 @@
 import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiList, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
-import { fmt, flt } from "../utils/format.js";
+import { fmt, flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
@@ -1036,7 +1042,8 @@ async function load() {
   try {
     list.value = await apiList("Warehouse", {
       fields: ["name","warehouse_name","warehouse_type","parent_warehouse",
-               "city","state","address_line1","pincode","is_group","disabled"],
+               "city","state","address_line1","pincode","is_group","disabled",
+               "owner","creation","modified_by","modified"],
       limit: 100000,
     }) || [];
     // Auto-select: restore last-used group, else fall back to first group
@@ -1406,6 +1413,7 @@ function openAddGroup() {
     name: "", warehouse_name: "", warehouse_type: "Stores",
     parent_warehouse: "", city: "", state: "", address_line1: "", pincode: "",
     is_group: 1, disabled: 0, racks: [],
+    owner: null, creation: null, modified_by: null, modified: null,
   });
   showDrawer.value = true;
 }
@@ -1417,6 +1425,7 @@ function openAddChild() {
     parent_warehouse: selectedWH.value?.name || "",
     city: "", state: "", address_line1: "", pincode: "",
     is_group: 0, disabled: 0, racks: [],
+    owner: null, creation: null, modified_by: null, modified: null,
   });
   showDrawer.value = true;
 }
@@ -1433,6 +1442,8 @@ async function openEdit(wh) {
     is_group: wh.is_group ? 1 : 0,
     disabled: wh.disabled ? 1 : 0,
     racks: [],
+    owner: wh.owner || null, creation: wh.creation || null,
+    modified_by: wh.modified_by || null, modified: wh.modified || null,
   });
   showDrawer.value = true;
   // Racks live only on leaf (non-group) warehouses; fetch the full doc for

@@ -265,6 +265,11 @@
             <div class="cash-section-hdr"><span v-html="icon('file',13)"></span> Remarks</div>
             <div class="cash-remark">{{ viewDoc.remarks }}</div>
           </template>
+
+          <div class="inv-view-footer" v-if="viewDoc.owner">
+            Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
+            <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
+          </div>
         </div>
         <div class="cash-dfooter">
           <button class="cash-btn-danger-ghost" @click="deleteEntry(viewDoc)" :disabled="actionBusy || !$canDelete('banking')" :title="!$canDelete('banking') ? 'Not permitted' : ''"><span v-html="icon('trash',13)"></span> Delete</button>
@@ -416,11 +421,12 @@
 </template>
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from "vue";
-import { apiList, apiSave, apiSubmit, apiCancel, apiDelete, resolveCompany, apiGET, apiPOST } from "../api/client.js";
+import { apiList, apiGet, apiSave, apiSubmit, apiCancel, apiDelete, resolveCompany, apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import Pagination from "../components/Pagination.vue";
@@ -616,7 +622,13 @@ async function fetchParties(q=""){
 watch(()=>form.payment_type,()=>{form.party="";form.custom_purpose="";form.custom_expense_category="";if(drawerOpen.value){fetchParties("");if(form.payment_type==="Pay")fetchExpenseCategories("");}});
 
 function openNew(){Object.assign(form,{payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",custom_purpose:"",custom_expense_category:"",remarks:""});partyOptions.value=[];expenseCategoryOptions.value=[];fetchParties("");drawerOpen.value=true;}
-function openView(p){viewDoc.value=p;viewOpen.value=true;}
+async function openView(p){
+  viewDoc.value=p;viewOpen.value=true;
+  try{
+    const doc=await apiGet(p._dt||"Payment Entry",p.name);
+    if(doc) viewDoc.value={...p,owner:doc.owner,creation:doc.creation,modified:doc.modified,modified_by:doc.modified_by};
+  }catch{}
+}
 
 async function saveCash(){
   if(!flt(form.paid_amount))return toast.error("Amount is required");

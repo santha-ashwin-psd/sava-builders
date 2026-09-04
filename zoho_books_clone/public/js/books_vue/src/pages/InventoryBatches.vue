@@ -223,6 +223,11 @@
             Disabled
           </label>
         </div>
+
+        <div class="inv-view-footer" v-if="editingName && form.owner">
+          Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+          <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+        </div>
       </div>
 
       <div class="bt-dfooter">
@@ -242,6 +247,7 @@ import { apiList, apiSave, apiSubmit, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate, today } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
 
@@ -260,6 +266,7 @@ const drawerOpen = ref(false), editingName = ref(null), saving = ref(false);
 const emptyForm = () => ({
   batch_no: "", item: "", stock_uom: "", warehouse: "", manufacturing_date: "",
   expiry_date: "", supplier: "", disabled: 0, add_qty: 0,
+  owner: "", creation: "", modified_by: "", modified: "",
 });
 const form = reactive(emptyForm());
 
@@ -267,7 +274,7 @@ async function load() {
   loading.value = true; loaded.value = true;
   try {
     const rows = await apiList("Batch", {
-      fields: ["name", "batch_no", "item", "warehouse", "manufacturing_date", "expiry_date", "batch_qty", "supplier", "disabled"],
+      fields: ["name", "batch_no", "item", "warehouse", "manufacturing_date", "expiry_date", "batch_qty", "supplier", "disabled", "owner", "creation", "modified_by", "modified"],
       filters: [],
       limit: 100000,
       order: "expiry_date asc",
@@ -404,6 +411,8 @@ function openEdit(b) {
     supplier: b.supplier || "",
     disabled: !!b.disabled,
     batch_qty: flt(b.batch_qty),
+    owner: b.owner || "", creation: b.creation || "",
+    modified_by: b.modified_by || "", modified: b.modified || "",
   });
   drawerOpen.value = true;
 }

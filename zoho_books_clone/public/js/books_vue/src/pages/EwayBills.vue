@@ -538,6 +538,14 @@
                 <span class="ew-kv-lbl">Prepared On</span>
                 <span class="ew-kv-val mono-sm">{{ fmtDate(viewDoc.creation) }}</span>
               </div>
+              <div class="ew-kv-row" v-if="viewDoc.owner">
+                <span class="ew-kv-lbl">Created By</span>
+                <span class="ew-kv-val">{{ ownerName(viewDoc.owner) }}</span>
+              </div>
+              <div class="ew-kv-row" v-if="viewDoc.modified_by">
+                <span class="ew-kv-lbl">Last Modified By</span>
+                <span class="ew-kv-val">{{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</span>
+              </div>
               <div class="ew-kv-row" v-if="viewDoc.uploaded_on">
                 <span class="ew-kv-lbl">Imported On</span>
                 <span class="ew-kv-val mono-sm">{{ fmtDate(viewDoc.uploaded_on) }}</span>
@@ -581,6 +589,7 @@ import Pagination from "../components/Pagination.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 
 const { toast } = useToast();
 const route = useRoute();

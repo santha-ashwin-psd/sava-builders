@@ -374,6 +374,11 @@
         </template>
       </div>
 
+      <div class="inv-view-footer" v-if="item.owner">
+        Created by {{ ownerName(item.owner) }} on {{ fmtDate(item.creation) }}
+        <template v-if="item.modified_by"> · Last modified by {{ ownerName(item.modified_by) }} on {{ fmtDate(item.modified) }}</template>
+      </div>
+
     </template>
 
     <ItemEditDrawer ref="itemDrawer" @saved="load" />
@@ -387,7 +392,8 @@ import { useRoute } from "vue-router";
 import { apiGET, apiPOST, apiList } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
-import { fmt, flt } from "../utils/format.js";
+import { fmt, flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
 import ItemEditDrawer from "../components/ItemEditDrawer.vue";
 import DocLink from "../components/DocLink.vue";

@@ -149,6 +149,11 @@
             <input v-model="bounceReason" type="text" placeholder="Insufficient funds / Account closed / …"/>
             <button class="chq-life-confirm" @click="confirmBounce" :disabled="busy || !bounceReason.trim() || !$canEdit('banking')">Confirm</button>
           </div>
+
+          <div class="inv-view-footer" v-if="viewDoc.owner">
+            Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
+            <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
+          </div>
         </div>
         <div class="chq-dfooter"><button class="chq-btn-ghost" @click="viewOpen=false">Close</button></div>
       </template>
@@ -157,10 +162,11 @@
 </template>
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { apiGET, apiPOST, resolveCompany } from "../api/client.js";
+import { apiGET, apiGet, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";
@@ -267,13 +273,17 @@ async function bulkClear(){
   }finally{bulkBusy.value=false;}
 }
 
-function openView(p) {
+async function openView(p) {
   viewDoc.value = p;
   viewOpen.value = true;
   showClearedDate.value = false;
   showBounceForm.value = false;
   clearedDate.value = new Date().toISOString().slice(0, 10);
   bounceReason.value = "";
+  try {
+    const doc = await apiGet("Payment Entry", p.name);
+    if (doc) viewDoc.value = { ...p, owner: doc.owner, creation: doc.creation, modified: doc.modified, modified_by: doc.modified_by };
+  } catch {}
 }
 function isStatus(s) { return (viewDoc.value?.cheque_status || "Issued") === s; }
 function statusBadge(s) {

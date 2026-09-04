@@ -569,6 +569,11 @@
             <div style="font-size:24px;margin-bottom:6px">📋</div>
             No account lines found for this entry.
           </div>
+
+          <div class="inv-view-footer" v-if="viewEntry.owner">
+            Created by {{ ownerName(viewEntry.owner) }} on {{ fmtDate(viewEntry.creation) }}
+            <template v-if="viewEntry.modified_by"> · Last modified by {{ ownerName(viewEntry.modified_by) }} on {{ fmtDate(viewEntry.modified) }}</template>
+          </div>
         </div>
         <div class="coa-dfooter" style="justify-content:space-between">
           <div style="font-size:12px;color:#868e96"></div>
@@ -613,7 +618,8 @@ import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiGet, apiSave, apiDelete, apiSubmit, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
-import { flt } from "../utils/format.js";
+import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import DocLink from "../components/DocLink.vue";
 import { useRoute } from "vue-router";
@@ -778,6 +784,10 @@ async function openView(name) {
         lines: (doc.accounts || []).map((a) => ({
           account: a.account, dr: a.debit || 0, cr: a.credit || 0,
         })),
+        owner: doc.owner,
+        creation: doc.creation,
+        modified: doc.modified,
+        modified_by: doc.modified_by,
       };
     }
   } catch {}

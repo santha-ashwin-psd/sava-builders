@@ -196,6 +196,11 @@
             </div>
           </div>
 
+          <div class="inv-view-footer" v-if="viewDoc.owner">
+            Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
+            <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
+          </div>
+
         </div>
         <div class="qcar-dfooter">
           <button class="qcar-btn-ghost" @click="viewOpen=false">Close</button>
@@ -208,11 +213,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { apiCall } from "../api/client.js";
+import { apiCall, apiGet } from "../api/client.js";
 import DocLink from "../components/DocLink.vue";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 
 const { toast } = useToast();
 
@@ -282,9 +288,13 @@ async function load() {
   }
 }
 
-function openView(r) {
+async function openView(r) {
   viewDoc.value = { ...r };
   viewOpen.value = true;
+  try {
+    const full = await apiGet("Material Substitution Log", r.name);
+    if (viewDoc.value && viewDoc.value.name === r.name) viewDoc.value = { ...viewDoc.value, ...full };
+  } catch (e) {}
   actionRemarks.value = "";
   rejectReason.value = "";
   showRejectReason.value = false;

@@ -159,6 +159,11 @@
             </div>
 
           </template>
+
+          <div class="inv-view-footer" v-if="doc.owner">
+            Created by {{ ownerName(doc.owner) }} on {{ fmtDate(doc.creation) }}
+            <template v-if="doc.modified_by"> · Last modified by {{ ownerName(doc.modified_by) }} on {{ fmtDate(doc.modified) }}</template>
+          </div>
         </div>
 
         <div class="inv-dfooter">
@@ -191,6 +196,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { apiGet, apiList, apiSave, apiSubmit, apiCancel } from '@/api/client.js';
+import { fmtDate } from '@/utils/format.js';
+import { ownerName } from '@/utils/userNames.js';
 import { useToast } from '@/composables/useToast.js';
 import { icon } from '@/utils/icons.js';
 import SearchableSelect from '@/components/SearchableSelect.vue';

@@ -195,6 +195,11 @@
               ></textarea>
             </div>
           </div>
+
+          <div class="inv-view-footer" v-if="drawerMode === 'edit' && form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
         </div>
 
         <!-- ── Tab: Email Body ─────────────────────────────────── -->
@@ -271,6 +276,8 @@ import { ref, reactive, computed, onMounted, nextTick } from "vue";
 import { apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
+import { ownerName } from "../utils/userNames.js";
+import { fmtDate } from "../utils/format.js";
 
 const { toast } = useToast();
 
@@ -287,7 +294,7 @@ const activeTab     = ref("settings");
 const bodyTextarea  = ref(null);
 const bodyTextarea2 = ref(null);
 const codeLines     = ref([""]);
-const form          = reactive({ name: "", subject: "", response: "" });
+const form          = reactive({ name: "", subject: "", response: "", owner: "", creation: "", modified_by: "", modified: "" });
 
 const DOC_TYPE_NAMES = [
   "Sales Invoice", "Purchase Invoice", "Quotation",
@@ -333,7 +340,7 @@ async function load() {
 
 function openAdd() {
   drawerMode.value = "add";
-  Object.assign(form, { name: "", subject: "", response: "" });
+  Object.assign(form, { name: "", subject: "", response: "", owner: "", creation: "", modified_by: "", modified: "" });
   preview.value = false;
   activeTab.value = "settings";
   codeLines.value = [""];
@@ -346,9 +353,9 @@ async function openEdit(t) {
   activeTab.value = "settings";
   try {
     const d = await apiGET("zoho_books_clone.api.admin.get_email_template", { name: t.name });
-    Object.assign(form, { name: d.name, subject: d.subject || "", response: d.response || "" });
+    Object.assign(form, { name: d.name, subject: d.subject || "", response: d.response || "", owner: d.owner || "", creation: d.creation || "", modified_by: d.modified_by || "", modified: d.modified || "" });
   } catch {
-    Object.assign(form, { name: t.name, subject: t.subject || "", response: "" });
+    Object.assign(form, { name: t.name, subject: t.subject || "", response: "", owner: t.owner || "", creation: t.creation || "", modified_by: t.modified_by || "", modified: t.modified || "" });
   }
   codeLines.value = (form.response || "").split("\n");
   showDrawer.value = true;

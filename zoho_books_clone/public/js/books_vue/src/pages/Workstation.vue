@@ -211,6 +211,11 @@
               <div class="bomx-field-hint">Used for calculating manufacturing costs.</div>
             </div>
           </template>
+
+          <div class="inv-view-footer" v-if="!isNew && doc.owner">
+            Created by {{ ownerName(doc.owner) }} on {{ fmtDate(doc.creation) }}
+            <template v-if="doc.modified_by"> · Last modified by {{ ownerName(doc.modified_by) }} on {{ fmtDate(doc.modified) }}</template>
+          </div>
         </div>
 
         <div class="bomx-drawer-footer">
@@ -234,6 +239,8 @@ import { useRoute, useRouter } from "vue-router";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { apiGet, apiList, apiSave, apiDelete } from "../api/client.js";
+import { ownerName } from "../utils/userNames.js";
+import { fmtDate } from "../utils/format.js";
 
 const route = useRoute();
 const router = useRouter();

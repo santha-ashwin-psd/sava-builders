@@ -413,7 +413,7 @@ async function load() {
   try {
     const [rows, assets] = await Promise.all([
       apiList("Maintenance Log", {
-        fields: ["name", "asset", "maintenance_date", "technician", "cost", "work_done", "status"],
+        fields: ["name", "asset", "maintenance_date", "technician", "cost", "work_done", "status", "owner", "creation", "modified_by", "modified"],
         order: "modified desc",
         limit: 500,
       }),

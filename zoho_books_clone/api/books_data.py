@@ -2285,7 +2285,7 @@ def get_chart_of_accounts(company=None):
 
     # Always-safe fields that exist in every Frappe Account doctype
     fields = ["name", "account_name", "account_number", "account_type",
-              "is_group", "parent_account"]
+              "is_group", "parent_account", "owner", "creation", "modified_by", "modified"]
 
     # Optional fields — only include if the column exists in this installation
     for opt in ["root_type", "opening_balance", "balance_must_be", "lft", "rgt", "disabled"]:
@@ -2320,7 +2320,8 @@ def get_chart_of_accounts(company=None):
         try:
             accounts = frappe.db.get_all(
                 "Account",
-                fields=["name", "account_name", "account_type", "is_group", "parent_account"],
+                fields=["name", "account_name", "account_type", "is_group", "parent_account",
+                        "owner", "creation", "modified_by", "modified"],
                 order_by="account_name asc",
                 limit=1000
             )

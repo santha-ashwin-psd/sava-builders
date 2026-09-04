@@ -743,6 +743,11 @@
               </div>
               <div class="bomx-section-lbl">Remarks</div>
               <textarea class="bomx-fi" v-model="wo.remarks" rows="3" :disabled="readOnly" style="width:100%;min-height:90px;resize:vertical"></textarea>
+
+              <div class="inv-view-footer" v-if="!isNew && wo.owner">
+                Created by {{ ownerName(wo.owner) }} on {{ fmtDate(wo.creation) }}
+                <template v-if="wo.modified_by"> · Last modified by {{ ownerName(wo.modified_by) }} on {{ fmtDate(wo.modified) }}</template>
+              </div>
             </template>
 
           </div>
@@ -927,6 +932,7 @@ import { apiGet, apiSave, apiList, apiSubmit, apiCancel, apiDelete, apiAmend, ap
 import DocLink from "../components/DocLink.vue";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
+import { ownerName } from "../utils/userNames.js";
 
 const route = useRoute();
 const router = useRouter();

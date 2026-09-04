@@ -254,6 +254,11 @@
 
           </div>
 
+          <div class="inv-view-footer" v-if="!isNew && ps.owner">
+            Created by {{ ownerName(ps.owner) }} on {{ fmtDate(ps.creation) }}
+            <template v-if="ps.modified_by"> · Last modified by {{ ownerName(ps.modified_by) }} on {{ fmtDate(ps.modified) }}</template>
+          </div>
+
           <!-- Footer -->
           <div class="psx-footer">
             <div style="flex:1"></div>
@@ -274,6 +279,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiList, apiSave, apiCall, resolveCompany } from "../api/client.js";
+import { ownerName } from "../utils/userNames.js";
 import DocLink from "../components/DocLink.vue";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";

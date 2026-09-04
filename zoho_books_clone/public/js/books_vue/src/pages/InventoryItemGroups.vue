@@ -191,6 +191,11 @@
           </div>
         </div>
 
+        <div class="inv-view-footer" v-if="selectedGroup?.owner">
+          Created by {{ ownerName(selectedGroup.owner) }} on {{ fmtDate(selectedGroup.creation) }}
+          <template v-if="selectedGroup.modified_by"> · Last modified by {{ ownerName(selectedGroup.modified_by) }} on {{ fmtDate(selectedGroup.modified) }}</template>
+        </div>
+
         <!-- View actions -->
         <div class="ig-form-actions">
           <button class="ig-action-btn ig-action-btn--primary" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="enterEditMode">
@@ -385,7 +390,8 @@ import { apiList, apiSave, apiDelete, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
-import { flt } from "../utils/format.js";
+import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 
 const { toast }   = useToast();
 const { confirm } = useConfirm();
@@ -422,7 +428,7 @@ async function load() {
   loading.value = true;
   try {
     const rows = await apiList("Item Group", {
-      fields: ["name", "parent_item_group", "is_group", "description", "allow_partial_issue"],
+      fields: ["name", "parent_item_group", "is_group", "description", "allow_partial_issue", "owner", "creation", "modified_by", "modified"],
       order: "name asc", limit: 200,
     });
     allGroups.value = rows || [];

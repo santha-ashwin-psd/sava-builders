@@ -415,6 +415,8 @@
               <div v-if="viewDoc.verified_by"><span class="qc-meta-lbl">Verified By</span><div style="font-size:12.5px;margin-top:2px">{{ viewDoc.verified_by }}</div></div>
               <div v-if="viewDoc.qc_inspection_template"><span class="qc-meta-lbl">Template</span><div style="font-size:12.5px;margin-top:2px">{{ viewDoc.qc_inspection_template }}</div></div>
               <div v-if="viewDoc.creation"><span class="qc-meta-lbl">Created</span><div style="font-size:12.5px;margin-top:2px">{{ fmtDate(viewDoc.creation?.slice(0,10)) }}</div></div>
+              <div v-if="viewDoc.owner"><span class="qc-meta-lbl">Created By</span><div style="font-size:12.5px;margin-top:2px">{{ ownerName(viewDoc.owner) }}</div></div>
+              <div v-if="viewDoc.modified_by"><span class="qc-meta-lbl">Last Modified By</span><div style="font-size:12.5px;margin-top:2px">{{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified?.slice(0,10)) }}</div></div>
             </div>
           </div>
 
@@ -578,6 +580,7 @@ import { apiCall, apiList } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import DocLink from "../components/DocLink.vue";
 

@@ -402,6 +402,11 @@
             <label class="coa-lbl">Description / Notes</label>
             <textarea v-model="form.notes" class="coa-fi" rows="2" style="resize:vertical" placeholder="Optional description..."></textarea>
           </div>
+
+          <div class="inv-view-footer" v-if="editingName && form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
         </div>
         <div class="coa-dfooter">
           <button class="b-btn b-btn-ghost" @click="drawerOpen=false">Cancel</button>
@@ -543,6 +548,8 @@ import { apiGET, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { flt } from "../utils/format.js";
+import { fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import DocLink from "../components/DocLink.vue";
 import { usePermissions } from "../composables/usePermissions.js";
@@ -611,6 +618,7 @@ const deleteTarget   = ref(null);
 const form = reactive({
   name: "", code: "", root_type: "", account_type: "", parent: "",
   is_group: 0, bs_item: 1, opening: "", bal_type: "Debit", notes: "",
+  owner: "", creation: "", modified_by: "", modified: "",
 });
 
 const typeStats = computed(() =>
@@ -782,7 +790,7 @@ async function load() {
 
 function openAdd(parentName) {
   editingName.value = null;
-  Object.assign(form, { name: "", code: "", root_type: "", account_type: "", parent: parentName || "", is_group: 0, bs_item: 1, opening: "", bal_type: "Debit", notes: "" });
+  Object.assign(form, { name: "", code: "", root_type: "", account_type: "", parent: parentName || "", is_group: 0, bs_item: 1, opening: "", bal_type: "Debit", notes: "", owner: "", creation: "", modified_by: "", modified: "" });
   drawerOpen.value = true;
 }
 
@@ -801,6 +809,8 @@ function openEdit(acctName) {
     opening: a.opening || "",
     bal_type: a.bal_type || "Debit",
     notes: a.notes || "",
+    owner: a.owner || "", creation: a.creation || "",
+    modified_by: a.modified_by || "", modified: a.modified || "",
   });
   drawerOpen.value = true;
 }

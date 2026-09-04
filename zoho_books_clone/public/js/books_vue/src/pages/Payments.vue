@@ -492,6 +492,11 @@
             </template>
             <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">Journal entries are posted once the payment is submitted.</div>
           </div>
+
+          <div class="inv-view-footer" v-if="viewPmt.owner">
+            Created by {{ ownerName(viewPmt.owner) }} on {{ fmtDate(viewPmt.creation) }}
+            <template v-if="viewPmt.modified_by"> · Last modified by {{ ownerName(viewPmt.modified_by) }} on {{ fmtDate(viewPmt.modified) }}</template>
+          </div>
         </div>
 
         <!-- ── Footer ── -->
@@ -630,6 +635,7 @@ import { useToast } from "../composables/useToast.js";
 import { usePermissions } from "../composables/usePermissions.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 
 const { toast } = useToast();
@@ -806,7 +812,7 @@ async function openView(p) {
   // Fetch full doc to get references child table
   try {
     const doc = await apiGet("Payment Entry", p.name);
-    viewPmt.value = { ...p, references: doc.references || [] };
+    viewPmt.value = { ...p, references: doc.references || [], owner: doc.owner, creation: doc.creation, modified: doc.modified, modified_by: doc.modified_by };
   } catch {}
 }
 

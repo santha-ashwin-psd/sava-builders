@@ -164,6 +164,11 @@
             <label class="tt-check"><input type="checkbox" :checked="form.is_default" @change="form.is_default = $event.target.checked ? 1 : 0" /> Set as default</label>
             <label class="tt-check"><input type="checkbox" :checked="form.disabled" @change="form.disabled = $event.target.checked ? 1 : 0" /> Disabled</label>
           </div>
+
+          <div class="inv-view-footer" v-if="form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
         </div>
 
         <div class="tt-foot">
@@ -184,6 +189,8 @@ import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import { ownerName } from "../utils/userNames.js";
+import { fmtDate } from "../utils/format.js";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
@@ -210,7 +217,7 @@ const editing   = ref(null);
 const saving    = ref(false);
 const quick     = ref(null);
 
-const form = reactive({ template_name: "", applies_to: "Both", tax_type: "GST", is_default: 0, disabled: 0, rows: [] });
+const form = reactive({ template_name: "", applies_to: "Both", tax_type: "GST", is_default: 0, disabled: 0, rows: [], owner: null, creation: null, modified_by: null, modified: null });
 
 const allowedComponents = computed(() => COMPONENTS_BY_TYPE[form.tax_type] || COMPONENTS_BY_TYPE.Custom);
 
@@ -274,7 +281,7 @@ async function load() {
   loading.value = true;
   try {
     const rows = await apiList("Tax Template", {
-      fields: ["name", "template_name", "tax_type", "applies_to", "is_default", "disabled"],
+      fields: ["name", "template_name", "tax_type", "applies_to", "is_default", "disabled", "owner", "creation", "modified_by", "modified"],
       order: "template_name asc", limit: 200,
     }) || [];
     // Was previously one apiGet() per row here (N+1 -- up to 200 extra
@@ -329,7 +336,7 @@ const filtered = computed(() => {
 function openNew() {
   editing.value = null;
   quick.value = null;
-  Object.assign(form, { template_name: "", applies_to: "Both", tax_type: "GST", is_default: 0, disabled: 0, rows: [] });
+  Object.assign(form, { template_name: "", applies_to: "Both", tax_type: "GST", is_default: 0, disabled: 0, rows: [], owner: null, creation: null, modified_by: null, modified: null });
   drawer.value = true;
 }
 function openEdit(t) {
@@ -348,6 +355,10 @@ function openEdit(t) {
     is_default: t.is_default ? 1 : 0,
     disabled: t.disabled ? 1 : 0,
     rows,
+    owner: t.owner || null,
+    creation: t.creation || null,
+    modified_by: t.modified_by || null,
+    modified: t.modified || null,
   });
   drawer.value = true;
 }

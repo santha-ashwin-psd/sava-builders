@@ -350,6 +350,11 @@
             <input type="checkbox" v-model="form.disabled" id="sp-disabled"/>
             <label for="sp-disabled" style="font-size:13px;color:#374151">Disabled</label>
           </div>
+
+          <div class="inv-view-footer" v-if="drawerMode === 'edit' && form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
         </div>
 
         <div class="inv-dfooter" style="display:flex;gap:10px;padding:16px 24px;border-top:1px solid #e8ecf0">
@@ -368,6 +373,8 @@ import { icon } from "../utils/icons.js";
 import { apiList, apiGet, apiSave, apiPOST, apiDelete } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
+import { ownerName } from "../utils/userNames.js";
+import { fmtDate } from "../utils/format.js";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();

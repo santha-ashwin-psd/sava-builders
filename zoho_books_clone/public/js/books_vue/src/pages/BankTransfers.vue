@@ -210,6 +210,11 @@
             label="Bank Transfer"
             :currency="viewDoc.currency || 'INR'"
           />
+
+          <div class="inv-view-footer" v-if="viewDoc.owner">
+            Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
+            <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
+          </div>
         </div>
         <div class="btr-dfooter">
           <button class="btr-btn-danger-ghost" @click="deleteTransfer(viewDoc)" :disabled="actionBusy || !$canDelete('banking')" :title="!$canDelete('banking') ? 'Not permitted' : ''"><span v-html="icon('trash',13)"></span> Delete</button>
@@ -222,12 +227,13 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from "vue";
-import { apiList, apiGET, apiPOST, resolveCompany } from "../api/client.js";
+import { apiList, apiGET, apiGet, apiPOST, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { useRoute } from "vue-router";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
@@ -317,7 +323,13 @@ async function bulkDelete(){
 }
 
 function openNew(){Object.assign(form,{posting_date:new Date().toISOString().slice(0,10),amount:0,from_account:"",to_account:"",purpose:"",remark:""});accounts.value=[];fetchAccounts("");drawerOpen.value=true;}
-function openView(t){viewDoc.value=t;viewOpen.value=true;}
+async function openView(t){
+  viewDoc.value=t;viewOpen.value=true;
+  try{
+    const doc=await apiGet("Bank Transaction",t.from_transaction||t.to_transaction);
+    if(doc) viewDoc.value={...t,owner:doc.owner,creation:doc.creation,modified:doc.modified,modified_by:doc.modified_by};
+  }catch{}
+}
 async function fetchAccounts(q=""){try{const co=await resolveCompany();const r=await apiList("Bank Account",{fields:["name","account_name"],filters:[["company","=",co],...(q?[["account_name","like",`%${q}%`]]:[])],limit:50});accounts.value=r.map(x=>({label:x.account_name||x.name,value:x.name}));}catch{accounts.value=[];}}
 
 async function saveTransfer(){

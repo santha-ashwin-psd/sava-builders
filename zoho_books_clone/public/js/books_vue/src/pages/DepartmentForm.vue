@@ -15,6 +15,11 @@
             <label for="description">Description</label>
             <textarea id="description" v-model="form.description" rows="3" placeholder="Brief description of this department"></textarea>
           </div>
+          <div class="inv-view-footer" v-if="isEdit && form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
+
           <div class="form-actions">
             <button type="button" class="btn-secondary" @click="$emit('close')">Cancel</button>
             <button type="submit" class="btn-primary" :disabled="saving || !(isEdit ? $canEdit('inventory') : $canCreate('inventory'))">{{ saving ? 'Saving…' : 'Save' }}</button>
@@ -27,6 +32,8 @@
 
 <script setup>
 import { ref, defineProps, defineEmits } from 'vue';
+import { ownerName } from '../utils/userNames.js';
+import { fmtDate } from '../utils/format.js';
 
 const props = defineProps({
   isEdit: Boolean,
