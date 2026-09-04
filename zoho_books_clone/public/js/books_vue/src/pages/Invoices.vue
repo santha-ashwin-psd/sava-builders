@@ -1155,6 +1155,7 @@
           <!-- Footer -->
           <div class="inv-view-footer" v-if="viewInv.owner">
             Created by {{ ownerName(viewInv.owner) }} on {{ fmtDateTime(viewInv.creation) }}
+            <template v-if="viewInv.modified_by"> · Last modified by {{ ownerName(viewInv.modified_by) }} on {{ fmtDateTime(viewInv.modified) }}</template>
           </div>
         </template>
 
