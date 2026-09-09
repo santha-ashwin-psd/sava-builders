@@ -165,10 +165,29 @@ def allocate_charges(
 
 
 def _rate(row: dict) -> float:
+    """New landed-cost-inclusive valuation rate for one item row.
+
+    The base is the item's CURRENT stock valuation rate (row["valuation_rate"],
+    populated from Bin.valuation_rate by get_source_items — already reflects
+    this purchase blended with any existing stock at another rate). The
+    allocated charge is layered on top of that, per unit. It must NOT be
+    based on this row's own purchase_amount/qty: purchase_amount is just
+    this one receipt/invoice line's amount, which routinely differs from the
+    item's actual current valuation rate (e.g. existing stock at a different
+    weighted-average rate) — using it as the base silently drops that
+    existing valuation and can even make New Rate come out BELOW Old Rate,
+    which should never happen since landed costs only ever add value.
+
+    Falls back to purchase_amount/qty when no valuation_rate is supplied
+    (e.g. these engine unit tests, which are pure and don't stub
+    Bin.valuation_rate) so behavior without that field stays predictable.
+    """
     qty = flt(row.get("received_qty"))
     if qty <= 0:
         return 0.0
-    return round((flt(row.get("purchase_amount")) + flt(row.get("allocated_amount"))) / qty, 4)
+    old_rate = row.get("valuation_rate")
+    old_rate = flt(old_rate) if old_rate not in (None, "") else flt(row.get("purchase_amount")) / qty
+    return round(old_rate + (flt(row.get("allocated_amount")) / qty), 4)
 
 
 # ─── Partial-consumption capitalization (Phase 5) ──────────────────────────────

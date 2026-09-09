@@ -241,6 +241,46 @@ class LandedCostVoucher(Document):
             # GL-side failure never blocks the (higher-priority) stock
             # reversal that already happened above.
             frappe.log_error(frappe.get_traceback(), "Landed Cost GL reversal failed")
+        self._cancel_expense_entries()
+
+    def _cancel_expense_entries(self):
+        """Cancel every Expense that _create_expense_entries() auto-created
+        and submitted for this LCV's charge rows on submit, so a cancelled
+        LCV doesn't leave a still-Submitted Expense behind with its own
+        live Dr expense_account / Cr paid_through GL entries -- those are
+        posted independently by Expense.on_submit() (post_expense) and are
+        NOT touched by the LCV's own gl_map reversal above.
+
+        Charge rows whose reference_doctype isn't "Expense" (the charge was
+        booked against an existing Bill/Journal Entry instead) are left
+        alone -- cancelling someone else's document here would be out of
+        scope and wrong.
+
+        Best-effort per row, same convention as the GL reversal above: one
+        Expense that fails to cancel (e.g. already reconciled/locked
+        downstream) shouldn't block cancelling the rest.
+        """
+        for row in self.charges:
+            if row.reference_doctype != "Expense" or not row.reference_name:
+                continue
+            try:
+                expense = frappe.get_doc("Expense", row.reference_name)
+                if expense.docstatus == 1:
+                    # Same convention as _create_expense_entries()'s
+                    # expense.insert(ignore_permissions=True): the user
+                    # cancelling the LCV may not have direct write access
+                    # to the Expense doctype -- Expense.cancel() internally
+                    # calls save(), which checks that permission and
+                    # throws PermissionError otherwise. This Expense isn't
+                    # something the user is editing directly; it's LCV
+                    # bookkeeping the LCV itself is responsible for tidying
+                    # up on cancel, same as it was on submit.
+                    expense.flags.ignore_permissions = True
+                    expense.cancel()
+            except Exception:
+                frappe.log_error(
+                    frappe.get_traceback(), "Landed Cost linked Expense cancellation failed"
+                )
 
     def _default_expense_category(self) -> str | None:
         """Resolve the "Miscellaneous" Expense Category doc for this LCV's
@@ -286,7 +326,11 @@ class LandedCostVoucher(Document):
                 "doctype": "Expense",
                 "posting_date": self.posting_date,
                 "expense_type": row.expense_type or self._default_expense_category(),
-                "description": row.description or f"Landed cost charge — {self.name}",
+                "description": (
+                    f"Landed cost charge — {self.name}: {row.description}"
+                    if row.description
+                    else f"Landed cost charge — {self.name}"
+                ),
                 "amount": flt(row.amount),
                 "expense_account": row.account,
                 "paid_through": row.paid_through,

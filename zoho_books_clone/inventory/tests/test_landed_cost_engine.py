@@ -98,6 +98,26 @@ class TestAllocateCharges(unittest.TestCase):
     def test_empty_items_returns_empty(self):
         self.assertEqual(allocate_charges([], [{"amount": 100}], "By Value"), [])
 
+    def test_new_rate_bases_on_valuation_rate_not_purchase_amount(self):
+        # Regression: existing stock already valued at 120/unit (moving
+        # average, includes this purchase blended with prior stock), but
+        # THIS purchase line's own amount is only 400 for 20 units (20/unit)
+        # -- a much lower rate. New Rate must build on the real current
+        # valuation rate (120), not this line's own purchase_amount/qty, or
+        # it can come out lower than Old Rate, which should never happen
+        # since landed costs only ever add value.
+        items = [{
+            "item_code": "Lipicure Label", "received_qty": 20,
+            "purchase_amount": 400, "valuation_rate": 120,
+        }]
+        charges = [{"amount": 1000}]
+
+        result = allocate_charges(items, charges, "By Value")
+
+        self.assertAlmostEqual(result[0]["allocated_amount"], 1000.0, places=2)
+        # 120 + (1000/20) = 170, NOT (400+1000)/20 = 70
+        self.assertAlmostEqual(result[0]["new_valuation_rate"], 170.0, places=2)
+
 
 class TestComputeCapitalizableAmount(unittest.TestCase):
     """Phase 5 guardrail — partial-consumption capitalization math."""
