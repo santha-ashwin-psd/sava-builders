@@ -484,7 +484,7 @@ const LEDGER_RANGES=[
   {key:"all",        label:"All"},
   {key:"custom",     label:"Custom"},
 ];
-const ledgerRange=ref("all");
+const ledgerRange=ref("today");
 const ledgerCustomFrom=ref(""),ledgerCustomTo=ref(new Date().toISOString().slice(0,10));
 function toISO(d){return d.toISOString().slice(0,10);}
 // Weeks run Monday–Sunday.
@@ -507,7 +507,7 @@ const ledgerEffectiveFrom=computed(()=>ledgerRangeToDates().from);
 const ledgerEffectiveTo=computed(()=>ledgerRangeToDates().to);
 function openLedger(account){
   ledgerAccount.value=account||cashAccount.value||cashAccounts.value[0]||"";
-  ledgerRange.value="all";
+  ledgerRange.value="today";
   ledgerSearch.value="";ledgerTypeFilter.value="";ledgerVisible.value=ledgerPageSize;
   ledgerOpen.value=true;
   loadLedger();
@@ -557,7 +557,7 @@ const ledgerFilteredEntries=computed(()=>{
   return rows;
 });
 function resetLedgerFilters(){
-  ledgerRange.value="all";ledgerSearch.value="";ledgerTypeFilter.value="";
+  ledgerRange.value="today";ledgerSearch.value="";ledgerTypeFilter.value="";
   ledgerSortKey.value="";ledgerSortDir.value=1;
   loadLedger();
 }
