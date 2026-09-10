@@ -103,6 +103,9 @@
                   <span class="se-wh-tag se-wh-tag-to" v-if="e.to_warehouse">{{ shortWH(e.to_warehouse) }}</span>
                   <span v-if="!e.from_warehouse && !e.to_warehouse" class="text-muted" style="font-size:12px">—</span>
                 </div>
+                <div v-if="e.sales_person" style="font-size:11px;color:#9a3412;margin-top:3px">
+                  Issued to: {{ salesPersonLabel(e.sales_person) }}
+                </div>
               </td>
               <td class="ta-r"><span class="se-item-cnt">{{ e._itemCount||'—' }}</span></td>
               <td class="ta-r">
@@ -165,6 +168,9 @@
                 {{ flt(e.value_difference)>=0?'+':'' }}{{ fmtCur(e.value_difference) }}
               </span>
             </div>
+            <div v-if="e.sales_person" style="font-size:11px;color:#9a3412;margin-top:4px">
+              Issued to: {{ salesPersonLabel(e.sales_person) }}
+            </div>
           </div>
         </template>
       </div>
@@ -209,6 +215,10 @@
           <div class="se-field">
             <label class="se-label">Adjustment Reason</label>
             <input v-model="form.adjustment_reason" class="se-input" placeholder="e.g. Annual count, damage…"/>
+          </div>
+          <div class="se-field" v-if="form.stock_entry_type === 'Material Issue'">
+            <label class="se-label">Issued To (Sales Person)</label>
+            <SearchableSelect v-model="form.sales_person" :options="salesPersons" placeholder="Who took this stock…" @search="fetchSalesPersons" />
           </div>
           <div class="se-field" v-if="showFromWh">
             <label class="se-label">From Warehouse <span v-if="fromWhRequired" class="req">*</span></label>
@@ -396,6 +406,9 @@
               <template v-else>
                 <span style="font-size:12.5px;color:#9ca3af">Created manually</span>
               </template>
+            </div>
+            <div v-if="viewDoc.sales_person" style="margin-top:8px;font-size:12.5px;color:#9a3412">
+              Issued to (Sales Person): <strong>{{ salesPersonLabel(viewDoc.sales_person) }}</strong>
             </div>
           </div>
 
@@ -601,6 +614,7 @@ const viewOpen    = ref(false);
 const viewDoc     = ref(null);
 const viewLoading = ref(false);
 const warehouses  = ref([]);
+const salesPersons = ref([]);
 const items       = ref([]);
 const lines       = ref([]);
 const sortCol     = ref("posting_date");
@@ -615,7 +629,7 @@ const form = reactive({
   stock_entry_type: "Material Receipt",
   posting_date: new Date().toISOString().slice(0, 10),
   from_warehouse: "", to_warehouse: "",
-  adjustment_reason: "", remarks: "",
+  adjustment_reason: "", sales_person: "", remarks: "",
 });
 
 const TYPE_META = {
@@ -780,7 +794,7 @@ async function load() {
       fields: ["name", "stock_entry_type", "posting_date", "from_warehouse", "to_warehouse",
                "value_difference", "total_incoming_value", "total_outgoing_value",
                "docstatus", "remarks", "reference_doctype", "reference_name", "work_order",
-               "adjustment_reason", "company", "owner", "creation"],
+               "adjustment_reason", "sales_person", "company", "owner", "creation"],
       filters: [["company", "=", co]],
       limit: 100000, order: "posting_date desc, creation desc",
     });
@@ -823,6 +837,16 @@ async function fetchWarehouses(q = "") {
     });
     warehouses.value = r.map(x => ({ label: x.name, value: x.name }));
   } catch { warehouses.value = []; }
+}
+async function fetchSalesPersons(q = "") {
+  try {
+    const r = await apiList("Sales Person", {
+      fields: ["name", "sales_person_name"],
+      filters: [["disabled", "=", 0], ...(q ? [["sales_person_name", "like", `%${q}%`]] : [])],
+      limit: 20, order: "sales_person_name asc",
+    });
+    salesPersons.value = r.map(x => ({ label: x.sales_person_name || x.name, value: x.name }));
+  } catch { salesPersons.value = []; }
 }
 async function fetchItems(q = "") {
   try {
@@ -895,10 +919,10 @@ function openNew() {
   Object.assign(form, {
     stock_entry_type: "Material Receipt",
     posting_date: new Date().toISOString().slice(0, 10),
-    from_warehouse: "", to_warehouse: "", adjustment_reason: "", remarks: "",
+    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "",
   });
   lines.value = [blankLine()];
-  fetchWarehouses(""); fetchItems("");
+  fetchWarehouses(""); fetchSalesPersons(""); fetchItems("");
   drawerOpen.value = true;
 }
 
@@ -909,10 +933,10 @@ async function openEdit(e, { force = false } = {}) {
     stock_entry_type: e.stock_entry_type || "Material Receipt",
     posting_date: e.posting_date || new Date().toISOString().slice(0, 10),
     from_warehouse: e.from_warehouse || "", to_warehouse: e.to_warehouse || "",
-    adjustment_reason: e.adjustment_reason || "", remarks: e.remarks || "",
+    adjustment_reason: e.adjustment_reason || "", sales_person: e.sales_person || "", remarks: e.remarks || "",
   });
   lines.value = [blankLine()];
-  fetchWarehouses(""); fetchItems("");
+  fetchWarehouses(""); fetchSalesPersons(""); fetchItems("");
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Stock Entry", e.name);
@@ -1120,6 +1144,7 @@ async function saveEntry(submit) {
       from_warehouse: form.from_warehouse || null,
       to_warehouse: form.to_warehouse || null,
       adjustment_reason: form.adjustment_reason || "",
+      sales_person: form.stock_entry_type === "Material Issue" ? (form.sales_person || "") : "",
       remarks: form.remarks || "",
       items: usable.map(l => ({
         doctype: "Stock Entry Detail",
@@ -1168,8 +1193,14 @@ function exportCSV() {
 
 onMounted(async () => {
   await load();
+  fetchSalesPersons("");
   if (route.query.open) openView({ name: String(route.query.open) });
 });
+function salesPersonLabel(code) {
+  if (!code) return "";
+  const m = salesPersons.value.find(x => x.value === code);
+  return m ? m.label : code;
+}
 </script>
 
 <style scoped>

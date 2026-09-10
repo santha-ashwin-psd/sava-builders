@@ -573,9 +573,9 @@
                 <div>
                   <div class="bomx-hf-label" style="display:flex;justify-content:space-between">
                     <span>Description</span>
-                    <span class="bomx-field-hint" style="margin:0" :style="(bom.description||'').length > 500 ? 'color:#e03131' : ''">{{ (bom.description||'').length }}/500</span>
+                    <span class="bomx-field-hint" style="margin:0" :style="(bom.description||'').length > 1000 ? 'color:#e03131' : ''">{{ (bom.description||'').length }}/1000</span>
                   </div>
-                  <textarea class="bomx-fi" v-model="bom.description" maxlength="500" rows="3" :disabled="readOnly" style="width:100%;resize:vertical"></textarea>
+                  <textarea class="bomx-fi" v-model="bom.description" maxlength="1000" rows="3" :disabled="readOnly" style="width:100%;resize:vertical"></textarea>
                 </div>
                 <div>
                   <div class="bomx-hf-label">Internal Notes</div>
@@ -1810,9 +1810,9 @@ async function save() {
   bom.value.scrap_items = (bom.value.scrap_items || []).filter(s => s.item_code);
   bom.value.packing_items = (bom.value.packing_items || []).filter(p => p.item_code);
 
-  if (bom.value.description && bom.value.description.length > 500) {
-    bom.value.description = bom.value.description.slice(0, 500);
-    toast("Description trimmed to 500 characters", "error");
+  if (bom.value.description && bom.value.description.length > 1000) {
+    bom.value.description = bom.value.description.slice(0, 1000);
+    toast("Description trimmed to 1000 characters", "error");
   }
 
   if (!bom.value.item) return toast("Please select a Production Item", "error");

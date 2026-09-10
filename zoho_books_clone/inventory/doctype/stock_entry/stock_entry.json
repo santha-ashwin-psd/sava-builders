@@ -10,6 +10,7 @@
  "field_order": [
   "naming_series",
   "stock_entry_type",
+  "sales_person",
   "posting_date",
   "posting_time",
   "col1",
@@ -36,7 +37,8 @@
   "reference_name",
   "adjustment_reason",
   "adjustment_account",
-  "amended_from"
+  "amended_from",
+  "work_order"
  ],
  "fields": [
   {
@@ -218,6 +220,14 @@
    "fieldname": "adjustment_reason",
    "fieldtype": "Data",
    "label": "Adjustment Reason"
+  },
+  {
+   "fieldname": "sales_person",
+   "fieldtype": "Link",
+   "label": "Issued To (Sales Person)",
+   "options": "Sales Person",
+   "depends_on": "eval:doc.stock_entry_type==\"Material Issue\"",
+   "description": "Who this stock was handed to \u2014 e.g. for free physician samples."
   },
   {
    "fieldname": "adjustment_account",

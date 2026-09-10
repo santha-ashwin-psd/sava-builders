@@ -231,6 +231,37 @@
         <div v-else class="sp-v-empty" style="font-style:italic">No address on file</div>
       </div>
     </div>
+
+    <!-- Issued stock (Material Issue entries attributed to this person) -->
+    <div class="sp-info-card" style="margin-top:16px">
+      <div class="sp-info-section" style="flex:1 1 100%">
+        <div class="sp-section-title">Stock Issued To This Person</div>
+        <div v-if="issuedLoading" class="sp-v-empty">Loading…</div>
+        <div v-else-if="!issuedEntries.length" class="sp-v-empty" style="font-style:italic">
+          No stock has been issued to {{selectedSP.sales_person_name||'this person'}} yet.
+        </div>
+        <table v-else class="vt-table" style="margin-top:4px">
+          <thead>
+            <tr>
+              <th class="vt-th">Entry #</th>
+              <th class="vt-th">Date</th>
+              <th class="vt-th">Warehouse</th>
+              <th class="vt-th vt-th-num">Value</th>
+              <th class="vt-th">Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="e in issuedEntries" :key="e.name" class="vt-tr">
+              <td class="vt-td vt-td-primary">{{e.name}}</td>
+              <td class="vt-td vt-td-secondary">{{e.posting_date}}</td>
+              <td class="vt-td vt-td-secondary">{{e.from_warehouse||'—'}}</td>
+              <td class="vt-td vt-td-num">{{fmtCur(Math.abs(e.value_difference||0))}}</td>
+              <td class="vt-td vt-td-secondary">{{e.remarks||'—'}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
 
@@ -392,6 +423,9 @@ const bulkBusy      = ref(false);
 const performance  = ref({});
 const perfLoading   = ref(false);
 
+const issuedEntries = ref([]);
+const issuedLoading = ref(false);
+
 const showDrawer   = ref(false);
 const drawerMode    = ref("add");
 const drawerLoading = ref(false);
@@ -486,6 +520,8 @@ async function selectSP(s) {
   selectedSP.value = s;
   performance.value = {};
   perfLoading.value = true;
+  issuedEntries.value = [];
+  issuedLoading.value = true;
   try {
     performance.value = await apiPOST("zoho_books_clone.api.sales_person.get_sales_person_performance", { sales_person: s.name })
       .catch(() => apiGET_fallback(s.name));
@@ -493,6 +529,18 @@ async function selectSP(s) {
     // non-fatal — performance tile just stays empty
   } finally {
     perfLoading.value = false;
+  }
+  try {
+    issuedEntries.value = await apiList("Stock Entry", {
+      fields: ["name", "posting_date", "from_warehouse", "value_difference", "remarks"],
+      filters: [["sales_person", "=", s.name], ["stock_entry_type", "=", "Material Issue"], ["docstatus", "=", 1]],
+      order: "posting_date desc",
+      limit: 20,
+    });
+  } catch (e) {
+    // non-fatal — section just stays empty
+  } finally {
+    issuedLoading.value = false;
   }
 }
 // get_sales_person_performance is a GET endpoint; apiPOST works too since apiPOST/apiGET both
