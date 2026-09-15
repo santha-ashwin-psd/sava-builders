@@ -240,7 +240,7 @@ def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
         items = frappe.get_all(
             "Item",
             filters={"name": ["in", item_codes]},
-            fields=["name", "item_name", "item_group", "stock_uom", "disabled",
+            fields=["name", "item_name", "item_group", "item_type", "stock_uom", "disabled",
                     "has_batch_no", "purchase_uom"],
         )
         for it in items:
@@ -298,6 +298,7 @@ def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
             "item_code":       b.item_code,
             "item_name":       item.get("item_name") or b.item_code,
             "item_group":      item.get("item_group") or "",
+            "item_type":       item.get("item_type") or "",
             "warehouse":       b.warehouse,
             "uom":             b.stock_uom or item.get("stock_uom") or "Nos",
             "actual_qty":      flt(b.actual_qty),
@@ -321,7 +322,7 @@ def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
             default_items = frappe.get_all(
                 "Item",
                 filters={"default_warehouse": warehouse, "is_stock_item": 1, "disabled": 0},
-                fields=["name", "item_name", "item_group", "stock_uom", "reorder_level", "reorder_qty"],
+                fields=["name", "item_name", "item_group", "item_type", "stock_uom", "reorder_level", "reorder_qty"],
                 limit=500,
             )
             for it in default_items:
@@ -333,6 +334,7 @@ def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
                     "item_code":      it.name,
                     "item_name":      it.item_name or it.name,
                     "item_group":     it.item_group or "",
+                    "item_type":      it.item_type or "",
                     "warehouse":      warehouse,
                     "uom":            it.stock_uom or "Nos",
                     "actual_qty":     0.0,

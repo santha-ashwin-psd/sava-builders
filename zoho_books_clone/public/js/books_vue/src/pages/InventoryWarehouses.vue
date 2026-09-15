@@ -441,7 +441,10 @@
           <div v-for="r in sortedStockItems" :key="'mc-' + r.item_code + '-' + r.warehouse" class="wh-stock-mc">
             <div class="wh-smc-top">
               <div class="wh-smc-name-wrap">
-                <div class="wh-smc-name">{{ r.item_name }}</div>
+                <div class="wh-smc-name">
+                  {{ r.item_name }}
+                  <span v-if="r.item_type" class="wh-item-type-tag">{{ r.item_type }}</span>
+                </div>
                 <div class="wh-smc-code">{{ r.item_code }}</div>
                 <div v-if="!selectedChild && r.warehouse" class="wh-item-wh">📍 {{ warehouseLabel(r.warehouse) }}</div>
               </div>
@@ -528,7 +531,10 @@
                   </span>
                 </td>
                 <td class="wh-td">
-                  <div class="wh-item-name">{{ r.item_name }}</div>
+                  <div class="wh-item-name">
+                    {{ r.item_name }}
+                    <span v-if="r.item_type" class="wh-item-type-tag">{{ r.item_type }}</span>
+                  </div>
                   <div class="wh-item-code">{{ r.item_code }}</div>
                   <div v-if="!selectedChild && r.warehouse" class="wh-item-wh">📍 {{ warehouseLabel(r.warehouse) }}</div>
                 </td>
@@ -2169,6 +2175,19 @@ onMounted(() => { load(); loadItems(); });
 .wh-item-name { font-size: 13px; font-weight: 600; color: #0f172a; }
 .wh-item-code { font-size: 11px; color: #94a3b8; margin-top: 2px; }
 .wh-item-wh { font-size: 10.5px; font-weight: 600; color: #2563eb; margin-top: 2px; }
+.wh-item-type-tag {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .2px;
+  color: #7c3aed;
+  background: #f3e8ff;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
 
 .wh-rack-panel {
   border: 1px solid #e2e8f0; border-radius: 12px;
