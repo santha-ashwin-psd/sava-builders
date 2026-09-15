@@ -70,91 +70,6 @@
         @click="exportInvoiceProfitCSV">
         Export CSV
       </button>
-      <button v-if="activeReport === 'stockval' && stockVal?.by_warehouse?.length"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportStockValCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'mis' && dailyMis?.days?.length"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportDailyMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'sales_mis' && salesMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportSalesMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'receivables' && receivablesMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportReceivablesCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'purchase_mis' && purchaseMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportPurchaseMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'inventory_mis' && inventoryMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportInventoryMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'production_mis' && productionMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportProductionMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'product_mis' && productMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportProductMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'dispatch_mis' && dispatchMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportDispatchMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'order_mis' && orderMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportOrderMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'profitability_mis' && profitabilityMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportProfitabilityMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'expense_mis' && expenseMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportExpenseMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'payables_mis' && payablesMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportPayablesMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'cash_bank_mis' && cashBankMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportCashBankMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'customer_mis' && customerMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportCustomerMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'supplier_mis' && supplierMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportSupplierMisCSV">
-        Export CSV
-      </button>
-      <button v-if="activeReport === 'employee_mis' && employeeMis"
-        class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
-        @click="exportEmployeeMisCSV">
-        Export CSV
-      </button>
     </div>
 
     <!-- P&L -->
@@ -222,6 +137,11 @@
                 <div class="pl-dash-sub">Income vs Expense over the selected period</div>
               </div>
             </div>
+            <div class="pl-trend-toggle">
+              <button :class="{active: trendPeriod==='monthly'}" @click="trendPeriod='monthly'">Monthly</button>
+              <button :class="{active: trendPeriod==='quarterly'}" @click="trendPeriod='quarterly'">Quarterly</button>
+              <button :class="{active: trendPeriod==='yearly'}" @click="trendPeriod='yearly'">Yearly</button>
+            </div>
           </div>
 
           <div class="pl-trend-body">
@@ -260,75 +180,265 @@
     </div>
 
     <!-- Balance sheet -->
-    <div v-if="activeReport === 'bs'" class="books-card report-card">
-      <div class="books-card-title">Balance Sheet</div>
+    <div v-if="activeReport === 'bs'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 6v2h18V6z"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8"/><path d="M3 20h18"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Balance Sheet</div>
+          <div class="bs-page-head-sub">What the business owns and owes</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportBsCSV" :disabled="!bs">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
       <template v-if="bsLoading"><div class="loading-shimmer" style="height:120px;border-radius:8px"></div></template>
       <template v-else-if="bs">
-        <div class="bs-grid">
-          <div class="bs-block assets">
-            <div class="bs-section-title">Assets</div>
-            <div class="bs-amount">{{ fmt(bs.total_assets) }}</div>
+        <div class="bs-kpi-row">
+          <div class="bs-kpi bs-kpi-assets">
+            <div class="bs-kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>
+            </div>
+            <div class="bs-kpi-body">
+              <div class="bs-kpi-label">Total Assets</div>
+              <div class="bs-kpi-amount">{{ fmt(bs.total_assets) }}</div>
+            </div>
           </div>
-          <div class="bs-block liabilities">
-            <div class="bs-section-title">Liabilities</div>
-            <div class="bs-amount">{{ fmt(bs.total_liabilities) }}</div>
+          <div class="bs-kpi bs-kpi-liabilities">
+            <div class="bs-kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            </div>
+            <div class="bs-kpi-body">
+              <div class="bs-kpi-label">Total Liabilities</div>
+              <div class="bs-kpi-amount">{{ fmt(bs.total_liabilities) }}</div>
+            </div>
           </div>
-          <div class="bs-block equity">
-            <div class="bs-section-title">Equity</div>
-            <div class="bs-amount">{{ fmt(bs.total_equity) }}</div>
-            <div v-if="bs.retained_earnings != null" class="bs-eq-sub">
-              <span>Capital {{ fmt(bs.equity_capital) }}</span>
-              <span>Retained {{ fmt(bs.retained_earnings) }}</span>
+          <div class="bs-kpi bs-kpi-equity">
+            <div class="bs-kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>
+            </div>
+            <div class="bs-kpi-body">
+              <div class="bs-kpi-label">Total Equity</div>
+              <div class="bs-kpi-amount">{{ fmt(bs.total_equity) }}</div>
             </div>
           </div>
         </div>
-        <div class="bs-balance-check" :class="bsBalanced ? 'bs-ok' : 'bs-bad'">
-          <span class="bs-bc-icon">{{ bsBalanced ? '✓' : '✕' }}</span>
-          Assets = Liabilities + Equity
-          <span class="bs-bc-eq">{{ fmt(bs.total_assets) }} = {{ fmt(bs.total_liabilities) }} + {{ fmt(bs.total_equity) }}</span>
+        <div class="bs-sum-status" :class="bsBalanced ? 'bs-ok' : 'bs-bad'">
+          <span class="bs-sum-status-icon">{{ bsBalanced ? '✓' : '✕' }}</span>
+          <div class="bs-sum-status-body">
+            <div class="bs-sum-status-title">{{ bsBalanced ? 'Assets = Liabilities + Equity' : 'Balance sheet out of balance' }}</div>
+            <div class="bs-sum-status-eq">{{ fmt(bs.total_assets) }} = {{ fmt(bs.total_liabilities) }} + {{ fmt(bs.total_equity) }}</div>
+          </div>
+        </div>
+        <div class="bs-acc">
+          <div v-for="g in bsGroups" :key="g.key" class="bs-acc-group" :class="g.cls">
+            <div class="bs-acc-head" @click="bsToggle(g.key)">
+              <div class="bs-acc-icon" v-html="g.icon"></div>
+              <div class="bs-acc-head-text">
+                <div class="bs-acc-label">{{ g.label }}</div>
+                <div class="bs-acc-desc">{{ g.desc }}</div>
+              </div>
+              <div class="bs-acc-amount">{{ fmt(g.total) }}</div>
+              <div class="bs-acc-chevron" :class="{ open: bsExpanded[g.key] }">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+              </div>
+            </div>
+            <div v-if="bsExpanded[g.key]" class="bs-acc-items">
+              <div v-for="it in g.items" :key="it.label" class="bs-acc-item">
+                <div class="bs-acc-item-icon" v-html="it.icon"></div>
+                <div class="bs-acc-item-text">
+                  <div class="bs-acc-item-label">{{ it.label }}</div>
+                  <div v-if="it.desc" class="bs-acc-item-desc">{{ it.desc }}</div>
+                </div>
+                <div class="bs-acc-item-amount">{{ fmt(it.value) }}</div>
+                <div class="bs-acc-item-caret">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
       <div v-else class="empty-msg">Run the report to see results.</div>
     </div>
 
     <!-- Cash flow -->
-    <div v-if="activeReport === 'cf'" class="books-card report-card">
-      <div class="books-card-title">Cash Flow</div>
+    <div v-if="activeReport === 'cf'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon cf-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Cash Flow Statement</div>
+          <div class="bs-page-head-sub">Track the movement of cash in and out of your business</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportCfCSV" :disabled="!cf">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
       <template v-if="cfLoading"><div class="loading-shimmer" style="height:120px;border-radius:8px"></div></template>
       <template v-else-if="cf">
-        <div class="cf-rows">
-          <div class="cf-row"><span>Operating Activities <span class="cf-hint">P&amp;L + working capital</span></span><span class="mono" :class="cf.operating >= 0 ? 'green':'red'">{{ fmt(cf.operating) }}</span></div>
-          <div class="cf-row"><span>Investing Activities <span class="cf-hint">asset changes</span></span><span class="mono" :class="cf.investing >= 0 ? 'green':'red'">{{ fmt(cf.investing) }}</span></div>
-          <div class="cf-row"><span>Financing Activities <span class="cf-hint">equity / debt</span></span><span class="mono" :class="cf.financing >= 0 ? 'green':'red'">{{ fmt(cf.financing) }}</span></div>
-          <div class="pl-divider"></div>
-          <div class="cf-row net"><span>Net Change in Cash</span><span class="mono" :class="cf.net_change >= 0 ? 'green':'red'">{{ fmt(cf.net_change) }}</span></div>
-          <template v-if="cf.opening_cash != null">
-            <div class="cf-row cf-sub"><span>Opening Cash &amp; Bank</span><span class="mono">{{ fmt(cf.opening_cash) }}</span></div>
-            <div class="cf-row cf-sub"><span>Closing Cash &amp; Bank</span><span class="mono">{{ fmt(cf.closing_cash) }}</span></div>
-          </template>
+        <div class="cf-grid">
+          <div class="cf-acc">
+            <div class="cf-acc-row cf-row-operating">
+              <div class="cf-acc-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1z"/></svg></div>
+              <div class="cf-acc-text">
+                <div class="cf-acc-label">Operating Activities</div>
+                <div class="cf-acc-desc">P&amp;L + working capital changes</div>
+              </div>
+              <div class="cf-acc-amount" :class="cf.operating >= 0 ? 'green' : 'red'">{{ fmt(cf.operating) }}</div>
+            </div>
+            <div class="cf-acc-row cf-row-investing">
+              <div class="cf-acc-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></div>
+              <div class="cf-acc-text">
+                <div class="cf-acc-label">Investing Activities</div>
+                <div class="cf-acc-desc">Asset purchases and sales</div>
+              </div>
+              <div class="cf-acc-amount" :class="cf.investing >= 0 ? 'green' : 'red'">{{ fmt(cf.investing) }}</div>
+            </div>
+            <div class="cf-acc-row cf-row-financing">
+              <div class="cf-acc-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 3 6v2h18V6z"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8"/><path d="M3 20h18"/></svg></div>
+              <div class="cf-acc-text">
+                <div class="cf-acc-label">Financing Activities</div>
+                <div class="cf-acc-desc">Equity, loans and debt</div>
+              </div>
+              <div class="cf-acc-amount" :class="cf.financing >= 0 ? 'green' : 'red'">{{ fmt(cf.financing) }}</div>
+            </div>
+            <div class="cf-acc-row cf-row-net">
+              <div class="cf-acc-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg></div>
+              <div class="cf-acc-text">
+                <div class="cf-acc-label">Net Change in Cash</div>
+                <div class="cf-acc-desc">{{ cf.net_change >= 0 ? 'Increase' : 'Decrease' }} in cash during this period</div>
+              </div>
+              <div class="cf-acc-amount" :class="cf.net_change >= 0 ? 'green' : 'red'">{{ fmt(cf.net_change) }}</div>
+            </div>
+            <template v-if="cf.opening_cash != null">
+              <div class="cf-flow-row">
+                <div class="cf-flow-icon cf-flow-icon-open"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+                <div class="cf-acc-text">
+                  <div class="cf-acc-label" style="font-size:13px">Opening Cash &amp; Bank</div>
+                  <div class="cf-acc-desc">Balance at the beginning of the period</div>
+                </div>
+                <div class="cf-acc-amount" :class="cf.opening_cash >= 0 ? 'green' : 'red'">{{ fmt(cf.opening_cash) }}</div>
+              </div>
+              <div class="cf-flow-row">
+                <div class="cf-flow-icon cf-flow-icon-close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 5 5 12 12 19"/></svg></div>
+                <div class="cf-acc-text">
+                  <div class="cf-acc-label" style="font-size:13px">Closing Cash &amp; Bank</div>
+                  <div class="cf-acc-desc">Balance at the end of the period</div>
+                </div>
+                <div class="cf-acc-amount" :class="cf.closing_cash >= 0 ? 'green' : 'red'">{{ fmt(cf.closing_cash) }}</div>
+              </div>
+            </template>
+          </div>
+
+          <div class="cf-side">
+            <div class="cf-trend-box">
+              <div class="cf-trend-box-head">
+                <div>
+                  <div class="cf-trend-box-title">Cash Flow Trend</div>
+                  <div class="cf-trend-box-sub">Monthly cash flow movement</div>
+                </div>
+                <div class="cf-trend-period">Monthly</div>
+              </div>
+              <div v-if="cfMonthly.length" class="cf-trend-chart">
+                <div class="cf-trend-baseline"></div>
+                <div v-for="m in cfMonthly" :key="m.month" class="cf-trend-col">
+                  <div class="cf-trend-bar operating" :style="cfBarStyle(m.operating)" :title="'Operating: ' + fmt(m.operating)"></div>
+                  <div class="cf-trend-bar investing" :style="cfBarStyle(m.investing)" :title="'Investing: ' + fmt(m.investing)"></div>
+                  <div class="cf-trend-bar financing" :style="cfBarStyle(m.financing)" :title="'Financing: ' + fmt(m.financing)"></div>
+                  <div class="cf-trend-month">{{ m.month }}</div>
+                </div>
+              </div>
+              <div v-else class="empty-msg" style="padding:20px 0">No monthly data for this range.</div>
+              <div class="cf-trend-legend">
+                <span><span class="dot" style="background:#10b981"></span>Operating</span>
+                <span><span class="dot" style="background:#2563eb"></span>Investing</span>
+                <span><span class="dot" style="background:#7c3aed"></span>Financing</span>
+              </div>
+            </div>
+            <div class="cf-summary-box">
+              <div class="cf-summary-icon">i</div>
+              <div>
+                <div class="cf-summary-title">Summary</div>
+                <div class="cf-summary-text">
+                  Cash {{ cf.net_change >= 0 ? 'increased' : 'decreased' }} by
+                  <span :class="cf.net_change >= 0 ? 'green' : 'red'" style="font-weight:700">{{ fmt(Math.abs(cf.net_change)) }}</span>
+                  during this period, from {{ fmt(cf.opening_cash) }} to {{ fmt(cf.closing_cash) }}.
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
       <div v-else class="empty-msg">Run the report to see results.</div>
     </div>
 
     <!-- GST Summary -->
-    <div v-if="activeReport === 'gst'" class="books-card report-card">
-      <div class="books-card-title">GST Summary</div>
+    <div v-if="activeReport === 'gst'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon gst-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">GST Summary</div>
+          <div class="bs-page-head-sub">Overview of GST collected during the selected period</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportGstCSV" :disabled="!gst?.length">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
       <template v-if="gstLoading"><div class="loading-shimmer" style="height:80px;border-radius:8px"></div></template>
       <template v-else-if="gst?.length">
         <div class="gst-cards">
-          <div v-for="g in gst" :key="g.tax_type" class="gst-card">
-            <div class="gst-card-header">
-              <span class="badge badge-blue">{{ g.tax_type }}</span>
-            </div>
-            <div class="gst-card-body">
-              <div class="gst-kv">
-                <span class="gst-kv-label">Invoice Count</span>
-                <span class="gst-kv-value mono-sm">{{ g.invoice_count }}</span>
+          <div v-for="g in gstCards" :key="g.tax_type" class="gst-card" :class="g.cls">
+            <div class="gst-card-head">
+              <div class="gst-card-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
+              <div>
+                <div class="gst-card-title">{{ g.tax_type }}</div>
+                <div class="gst-card-desc">{{ g.desc }}</div>
               </div>
-              <div class="gst-kv">
-                <span class="gst-kv-label">Total Tax</span>
-                <span class="gst-kv-value mono-sm green fw-600">{{ fmt(g.total_tax) }}</span>
+            </div>
+            <div class="gst-card-stats">
+              <div>
+                <div class="gst-stat-label">Invoice Count</div>
+                <div class="gst-stat-value">{{ g.invoice_count }}</div>
+              </div>
+              <div>
+                <div class="gst-stat-label">Total Tax</div>
+                <div class="gst-stat-value">{{ fmt(g.total_tax) }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="gst-card gst-c-total">
+            <div class="gst-card-head">
+              <div class="gst-card-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="9" y1="13" x2="12" y2="13"/></svg></div>
+              <div>
+                <div class="gst-card-title">Total Summary</div>
+                <div class="gst-card-desc">Combined GST for the selected period</div>
+              </div>
+            </div>
+            <div class="gst-card-stats">
+              <div>
+                <div class="gst-stat-label">Total Invoices</div>
+                <div class="gst-stat-value">{{ gstTotalInvoices }}</div>
+              </div>
+              <div>
+                <div class="gst-stat-label">Total Tax</div>
+                <div class="gst-stat-value">{{ fmt(gstTotalTax) }}</div>
               </div>
             </div>
           </div>
@@ -338,74 +448,119 @@
     </div>
 
     <!-- AR Aging -->
-    <div v-if="activeReport === 'ar'" class="books-card report-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div class="books-card-title" style="margin:0">Accounts Receivable Aging</div>
-        <div v-if="arAging.length" style="font-size:12.5px;color:#868E96">
-          Total: <span style="font-weight:700;color:#C92A2A">₹{{fmtN(arAging.reduce((s,r)=>s+r.total,0))}}</span>
+    <div v-if="activeReport === 'ar'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon ar-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Accounts Receivable Aging</div>
+          <div class="bs-page-head-sub">Outstanding customer balances, grouped by how overdue they are</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="arExportOpen = !arExportOpen" :disabled="!arAging.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="arExportOpen">
+              <div class="iws-menu-backdrop" @click="arExportOpen = false"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="arExportOpen = false; exportAgingCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="arExportOpen = false; copyArAgingToClipboard()">Copy to clipboard</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
-      <template v-if="arLoading"><div class="loading-shimmer" style="height:120px;border-radius:8px"></div></template>
+
+      <template v-if="arLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
       <template v-else-if="arAging.length">
-        <div class="aging-cards">
-          <div v-for="r in arAging" :key="r.customer" class="aging-card">
-            <div class="aging-card-name">{{ r.customer_name || r.customer }}</div>
-            <div class="aging-buckets">
-              <div class="aging-bucket">
-                <span class="bucket-label">Current</span>
-                <span class="bucket-val mono-sm">{{ r.current > 0 ? fmtAmt(r.current) : '—' }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">1–30 days</span>
-                <span class="bucket-val mono-sm" :class="r.days_1_30>0?'text-warn':''">{{ r.days_1_30 > 0 ? fmtAmt(r.days_1_30) : '—' }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">31–60 days</span>
-                <span class="bucket-val mono-sm" :class="r.days_31_60>0?'text-danger':''">{{ r.days_31_60 > 0 ? fmtAmt(r.days_31_60) : '—' }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">61–90 days</span>
-                <span class="bucket-val mono-sm" :class="r.days_61_90>0?'text-danger':''">{{ r.days_61_90 > 0 ? fmtAmt(r.days_61_90) : '—' }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">90+ days</span>
-                <span class="bucket-val mono-sm" :class="r.days_90_plus>0?'text-danger fw-700':''">{{ r.days_90_plus > 0 ? fmtAmt(r.days_90_plus) : '—' }}</span>
-              </div>
+        <div class="iws-body">
+          <div class="iws-total-panel iws-total-panel-neg">
+            <div class="iws-total-icon iws-total-icon-neg">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             </div>
-            <div class="aging-card-total">
-              <span class="bucket-label">Total</span>
-              <span class="mono-sm fw-700 text-danger">{{ fmtAmt(r.total) }}</span>
+            <div class="iws-total-label">Total Outstanding</div>
+            <div class="iws-total-value iws-total-value-neg" :style="totalValStyle(fmtAmt(arTotals.total))">{{ fmtAmt(arTotals.total) }}</div>
+            <div class="iws-total-meta">
+              {{ arAging.length }} {{ arAging.length === 1 ? 'Customer' : 'Customers' }}
+            </div>
+            <div class="iws-total-sub" v-if="arTotals.days_90_plus">
+              <span class="iws-total-sub-label">90+ days overdue</span>
+              <span class="iws-total-sub-value">{{ fmtAmt(arTotals.days_90_plus) }}</span>
             </div>
           </div>
-          <!-- Totals summary card -->
-          <div class="aging-card aging-card-totals">
-            <div class="aging-card-name fw-700">TOTAL</div>
-            <div class="aging-buckets">
-              <div class="aging-bucket">
-                <span class="bucket-label">Current</span>
-                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(arAging.reduce((s,r)=>s+r.current,0)) }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">1–30 days</span>
-                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(arAging.reduce((s,r)=>s+r.days_1_30,0)) }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">31–60 days</span>
-                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(arAging.reduce((s,r)=>s+r.days_31_60,0)) }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">61–90 days</span>
-                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(arAging.reduce((s,r)=>s+r.days_61_90,0)) }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">90+ days</span>
-                <span class="bucket-val mono-sm fw-700 text-danger">{{ fmtAmt(arAging.reduce((s,r)=>s+r.days_90_plus,0)) }}</span>
-              </div>
-            </div>
-            <div class="aging-card-total">
-              <span class="bucket-label">Total</span>
-              <span class="mono-sm fw-700 text-danger">{{ fmtAmt(arAging.reduce((s,r)=>s+r.total,0)) }}</span>
-            </div>
+
+          <div class="iws-table-wrap">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th class="iws-idx">#</th>
+                  <th @click="setArSort('customer')" class="iws-sortable">
+                    <span>Customer</span><span class="iws-sort-ind" :class="arSortCls('customer')">&#8645;</span>
+                  </th>
+                  <th @click="setArSort('current')" class="iws-sortable ta-r">
+                    <span>Current (₹)</span><span class="iws-sort-ind" :class="arSortCls('current')">&#8645;</span>
+                  </th>
+                  <th @click="setArSort('days_1_30')" class="iws-sortable ta-r">
+                    <span>1–30 Days (₹)</span><span class="iws-sort-ind" :class="arSortCls('days_1_30')">&#8645;</span>
+                  </th>
+                  <th @click="setArSort('days_31_60')" class="iws-sortable ta-r">
+                    <span>31–60 Days (₹)</span><span class="iws-sort-ind" :class="arSortCls('days_31_60')">&#8645;</span>
+                  </th>
+                  <th @click="setArSort('days_61_90')" class="iws-sortable ta-r">
+                    <span>61–90 Days (₹)</span><span class="iws-sort-ind" :class="arSortCls('days_61_90')">&#8645;</span>
+                  </th>
+                  <th @click="setArSort('days_90_plus')" class="iws-sortable ta-r">
+                    <span>90+ Days (₹)</span><span class="iws-sort-ind" :class="arSortCls('days_90_plus')">&#8645;</span>
+                  </th>
+                  <th @click="setArSort('total')" class="iws-sortable ta-r">
+                    <span>Total (₹)</span><span class="iws-sort-ind" :class="arSortCls('total')">&#8645;</span>
+                  </th>
+                  <th class="iws-kebab-col"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(r, i) in arAgingSorted" :key="r.customer">
+                  <td class="iws-idx">{{ i + 1 }}</td>
+                  <td class="iws-item-name">{{ r.customer_name || r.customer }}</td>
+                  <td class="ta-r mono-sm">{{ r.current > 0 ? fmtN2(r.current) : '—' }}</td>
+                  <td class="ta-r mono-sm" :class="r.days_1_30>0?'text-warn':''">{{ r.days_1_30 > 0 ? fmtN2(r.days_1_30) : '—' }}</td>
+                  <td class="ta-r mono-sm" :class="r.days_31_60>0?'text-danger':''">{{ r.days_31_60 > 0 ? fmtN2(r.days_31_60) : '—' }}</td>
+                  <td class="ta-r mono-sm" :class="r.days_61_90>0?'text-danger':''">{{ r.days_61_90 > 0 ? fmtN2(r.days_61_90) : '—' }}</td>
+                  <td class="ta-r mono-sm" :class="r.days_90_plus>0?'text-danger fw-700':''">{{ r.days_90_plus > 0 ? fmtN2(r.days_90_plus) : '—' }}</td>
+                  <td class="ta-r mono-sm fw-700 text-danger">{{ fmtAmt(r.total) }}</td>
+                  <td class="iws-kebab-col">
+                    <div class="iws-kebab-wrap">
+                      <button class="iws-kebab" @click="arRowMenu = (arRowMenu === i ? null : i)" title="Row actions">&#8942;</button>
+                      <template v-if="arRowMenu === i">
+                        <div class="iws-menu-backdrop" @click="arRowMenu = null"></div>
+                        <div class="iws-menu iws-menu-row">
+                          <button class="iws-menu-item" @click="arRowMenu = null; copyAgingRow(r, true)">Copy row</button>
+                          <button class="iws-menu-item" @click="arRowMenu = null; exportAgingRowCSV(r, true)">Download row as CSV</button>
+                        </div>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="iws-total-row">
+                  <td class="iws-idx"><span class="iws-sigma">&Sigma;</span></td>
+                  <td class="fw-700">Total</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(arTotals.current) }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(arTotals.days_1_30) }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(arTotals.days_31_60) }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(arTotals.days_61_90) }}</td>
+                  <td class="ta-r fw-700 text-danger">{{ fmtAmt(arTotals.days_90_plus) }}</td>
+                  <td class="ta-r fw-700 text-danger">{{ fmtAmt(arTotals.total) }}</td>
+                  <td class="iws-kebab-col"></td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       </template>
@@ -413,74 +568,119 @@
     </div>
 
     <!-- AP Aging -->
-    <div v-if="activeReport === 'ap'" class="books-card report-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div class="books-card-title" style="margin:0">Accounts Payable Aging</div>
-        <div v-if="apAging.length" style="font-size:12.5px;color:#868E96">
-          Total: <span style="font-weight:700;color:#C92A2A">₹{{fmtN(apAging.reduce((s,r)=>s+r.total,0))}}</span>
+    <div v-if="activeReport === 'ap'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon ap-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Accounts Payable Aging</div>
+          <div class="bs-page-head-sub">Outstanding vendor balances, grouped by how overdue they are</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="apExportOpen = !apExportOpen" :disabled="!apAging.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="apExportOpen">
+              <div class="iws-menu-backdrop" @click="apExportOpen = false"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="apExportOpen = false; exportAgingCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="apExportOpen = false; copyApAgingToClipboard()">Copy to clipboard</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
-      <template v-if="apLoading"><div class="loading-shimmer" style="height:120px;border-radius:8px"></div></template>
+
+      <template v-if="apLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
       <template v-else-if="apAging.length">
-        <div class="aging-cards">
-          <div v-for="r in apAging" :key="r.supplier" class="aging-card">
-            <div class="aging-card-name">{{ r.supplier_name || r.supplier }}</div>
-            <div class="aging-buckets">
-              <div class="aging-bucket">
-                <span class="bucket-label">Current</span>
-                <span class="bucket-val mono-sm">{{ r.current > 0 ? fmtAmt(r.current) : '—' }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">1–30 days</span>
-                <span class="bucket-val mono-sm" :class="r.days_1_30>0?'text-warn':''">{{ r.days_1_30 > 0 ? fmtAmt(r.days_1_30) : '—' }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">31–60 days</span>
-                <span class="bucket-val mono-sm" :class="r.days_31_60>0?'text-danger':''">{{ r.days_31_60 > 0 ? fmtAmt(r.days_31_60) : '—' }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">61–90 days</span>
-                <span class="bucket-val mono-sm" :class="r.days_61_90>0?'text-danger':''">{{ r.days_61_90 > 0 ? fmtAmt(r.days_61_90) : '—' }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">90+ days</span>
-                <span class="bucket-val mono-sm" :class="r.days_90_plus>0?'text-danger fw-700':''">{{ r.days_90_plus > 0 ? fmtAmt(r.days_90_plus) : '—' }}</span>
-              </div>
+        <div class="iws-body">
+          <div class="iws-total-panel iws-total-panel-neg">
+            <div class="iws-total-icon iws-total-icon-neg">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             </div>
-            <div class="aging-card-total">
-              <span class="bucket-label">Total</span>
-              <span class="mono-sm fw-700 text-danger">{{ fmtAmt(r.total) }}</span>
+            <div class="iws-total-label">Total Outstanding</div>
+            <div class="iws-total-value iws-total-value-neg" :style="totalValStyle(fmtAmt(apTotals.total))">{{ fmtAmt(apTotals.total) }}</div>
+            <div class="iws-total-meta">
+              {{ apAging.length }} {{ apAging.length === 1 ? 'Vendor' : 'Vendors' }}
+            </div>
+            <div class="iws-total-sub" v-if="apTotals.days_90_plus">
+              <span class="iws-total-sub-label">90+ days overdue</span>
+              <span class="iws-total-sub-value">{{ fmtAmt(apTotals.days_90_plus) }}</span>
             </div>
           </div>
-          <!-- Totals summary card -->
-          <div class="aging-card aging-card-totals">
-            <div class="aging-card-name fw-700">TOTAL</div>
-            <div class="aging-buckets">
-              <div class="aging-bucket">
-                <span class="bucket-label">Current</span>
-                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(apAging.reduce((s,r)=>s+r.current,0)) }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">1–30 days</span>
-                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(apAging.reduce((s,r)=>s+r.days_1_30,0)) }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">31–60 days</span>
-                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(apAging.reduce((s,r)=>s+r.days_31_60,0)) }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">61–90 days</span>
-                <span class="bucket-val mono-sm fw-700">{{ fmtAmt(apAging.reduce((s,r)=>s+r.days_61_90,0)) }}</span>
-              </div>
-              <div class="aging-bucket">
-                <span class="bucket-label">90+ days</span>
-                <span class="bucket-val mono-sm fw-700 text-danger">{{ fmtAmt(apAging.reduce((s,r)=>s+r.days_90_plus,0)) }}</span>
-              </div>
-            </div>
-            <div class="aging-card-total">
-              <span class="bucket-label">Total</span>
-              <span class="mono-sm fw-700 text-danger">{{ fmtAmt(apAging.reduce((s,r)=>s+r.total,0)) }}</span>
-            </div>
+
+          <div class="iws-table-wrap">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th class="iws-idx">#</th>
+                  <th @click="setApSort('supplier')" class="iws-sortable">
+                    <span>Vendor</span><span class="iws-sort-ind" :class="apSortCls('supplier')">&#8645;</span>
+                  </th>
+                  <th @click="setApSort('current')" class="iws-sortable ta-r">
+                    <span>Current (₹)</span><span class="iws-sort-ind" :class="apSortCls('current')">&#8645;</span>
+                  </th>
+                  <th @click="setApSort('days_1_30')" class="iws-sortable ta-r">
+                    <span>1–30 Days (₹)</span><span class="iws-sort-ind" :class="apSortCls('days_1_30')">&#8645;</span>
+                  </th>
+                  <th @click="setApSort('days_31_60')" class="iws-sortable ta-r">
+                    <span>31–60 Days (₹)</span><span class="iws-sort-ind" :class="apSortCls('days_31_60')">&#8645;</span>
+                  </th>
+                  <th @click="setApSort('days_61_90')" class="iws-sortable ta-r">
+                    <span>61–90 Days (₹)</span><span class="iws-sort-ind" :class="apSortCls('days_61_90')">&#8645;</span>
+                  </th>
+                  <th @click="setApSort('days_90_plus')" class="iws-sortable ta-r">
+                    <span>90+ Days (₹)</span><span class="iws-sort-ind" :class="apSortCls('days_90_plus')">&#8645;</span>
+                  </th>
+                  <th @click="setApSort('total')" class="iws-sortable ta-r">
+                    <span>Total (₹)</span><span class="iws-sort-ind" :class="apSortCls('total')">&#8645;</span>
+                  </th>
+                  <th class="iws-kebab-col"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(r, i) in apAgingSorted" :key="r.supplier">
+                  <td class="iws-idx">{{ i + 1 }}</td>
+                  <td class="iws-item-name">{{ r.supplier_name || r.supplier }}</td>
+                  <td class="ta-r mono-sm">{{ r.current > 0 ? fmtN2(r.current) : '—' }}</td>
+                  <td class="ta-r mono-sm" :class="r.days_1_30>0?'text-warn':''">{{ r.days_1_30 > 0 ? fmtN2(r.days_1_30) : '—' }}</td>
+                  <td class="ta-r mono-sm" :class="r.days_31_60>0?'text-danger':''">{{ r.days_31_60 > 0 ? fmtN2(r.days_31_60) : '—' }}</td>
+                  <td class="ta-r mono-sm" :class="r.days_61_90>0?'text-danger':''">{{ r.days_61_90 > 0 ? fmtN2(r.days_61_90) : '—' }}</td>
+                  <td class="ta-r mono-sm" :class="r.days_90_plus>0?'text-danger fw-700':''">{{ r.days_90_plus > 0 ? fmtN2(r.days_90_plus) : '—' }}</td>
+                  <td class="ta-r mono-sm fw-700 text-danger">{{ fmtAmt(r.total) }}</td>
+                  <td class="iws-kebab-col">
+                    <div class="iws-kebab-wrap">
+                      <button class="iws-kebab" @click="apRowMenu = (apRowMenu === i ? null : i)" title="Row actions">&#8942;</button>
+                      <template v-if="apRowMenu === i">
+                        <div class="iws-menu-backdrop" @click="apRowMenu = null"></div>
+                        <div class="iws-menu iws-menu-row">
+                          <button class="iws-menu-item" @click="apRowMenu = null; copyAgingRow(r, false)">Copy row</button>
+                          <button class="iws-menu-item" @click="apRowMenu = null; exportAgingRowCSV(r, false)">Download row as CSV</button>
+                        </div>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="iws-total-row">
+                  <td class="iws-idx"><span class="iws-sigma">&Sigma;</span></td>
+                  <td class="fw-700">Total</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(apTotals.current) }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(apTotals.days_1_30) }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(apTotals.days_31_60) }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(apTotals.days_61_90) }}</td>
+                  <td class="ta-r fw-700 text-danger">{{ fmtAmt(apTotals.days_90_plus) }}</td>
+                  <td class="ta-r fw-700 text-danger">{{ fmtAmt(apTotals.total) }}</td>
+                  <td class="iws-kebab-col"></td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       </template>
@@ -488,155 +688,370 @@
     </div>
 
     <!-- Item-wise Sales -->
-    <div v-if="activeReport === 'items'" class="books-card report-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div class="books-card-title" style="margin:0">Item-wise Sales</div>
-        <div v-if="itemSales.length" style="font-size:12.5px;color:#868E96">
-          Total: <span style="font-weight:700;color:#2F9E44">₹{{fmtN(itemSales.reduce((s,r)=>s+Number(r.total_amount||0),0))}}</span>
+    <div v-if="activeReport === 'items'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon iws-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Item-wise Sales</div>
+          <div class="bs-page-head-sub">Sales summary by item for the selected period</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="iwsExportOpen = !iwsExportOpen" :disabled="!itemSales.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="iwsExportOpen">
+              <div class="iws-menu-backdrop" @click="iwsExportOpen = false"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="iwsExportOpen = false; exportItemSalesCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="iwsExportOpen = false; copyItemSalesToClipboard()">Copy to clipboard</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
+
       <template v-if="itemsLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
       <template v-else-if="itemSales.length">
-        <table class="books-table aging-table" style="width:100%">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>UOM</th>
-              <th class="ta-r">Invoices</th>
-              <th class="ta-r">Qty Sold</th>
-              <th class="ta-r">Avg Rate</th>
-              <th class="ta-r">Discount</th>
-              <th class="ta-r">Total Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in itemSales" :key="row.item_code">
-              <td>{{ row.item_name || row.item_code }}</td>
-              <td>{{ row.uom || '—' }}</td>
-              <td class="ta-r mono-sm">{{ row.invoice_count }}</td>
-              <td class="ta-r mono-sm">{{ fmtN(row.qty_sold) }}</td>
-              <td class="ta-r mono-sm">{{ fmtAmt(row.avg_rate) }}</td>
-              <td class="ta-r mono-sm red">{{ row.total_discount ? fmtAmt(row.total_discount) : '—' }}</td>
-              <td class="ta-r mono-sm fw-700 green">{{ fmtAmt(row.total_amount) }}</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr class="aging-totals-row">
-              <td colspan="3" class="fw-700">TOTAL</td>
-              <td class="ta-r fw-700">{{ fmtN(itemSales.reduce((s,r)=>s+Number(r.qty_sold||0),0)) }}</td>
-              <td></td>
-              <td class="ta-r fw-700 red">{{ fmtAmt(itemSales.reduce((s,r)=>s+Number(r.total_discount||0),0)) }}</td>
-              <td class="ta-r fw-700 green">{{ fmtAmt(itemSales.reduce((s,r)=>s+Number(r.total_amount||0),0)) }}</td>
-            </tr>
-          </tfoot>
-        </table>
+        <div class="iws-body">
+          <div class="iws-total-panel">
+            <div class="iws-total-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="13"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="9"/></svg>
+            </div>
+            <div class="iws-total-label">Total Sales</div>
+            <div class="iws-total-value" :style="totalValStyle(fmtAmt(itemsTotals.amount))">{{ fmtAmt(itemsTotals.amount) }}</div>
+            <div class="iws-total-meta">
+              {{ itemSales.length }} {{ itemSales.length === 1 ? 'Item' : 'Items' }} &bull;
+              {{ itemsTotals.invoices }} {{ itemsTotals.invoices === 1 ? 'Invoice' : 'Invoices' }}
+            </div>
+          </div>
+
+          <div class="iws-table-wrap">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th class="iws-idx">#</th>
+                  <th @click="setIwsSort('item')" class="iws-sortable">
+                    <span>Item</span><span class="iws-sort-ind" :class="iwsSortCls('item')">&#8645;</span>
+                  </th>
+                  <th @click="setIwsSort('uom')" class="iws-sortable">
+                    <span>UOM</span><span class="iws-sort-ind" :class="iwsSortCls('uom')">&#8645;</span>
+                  </th>
+                  <th @click="setIwsSort('invoice_count')" class="iws-sortable ta-r">
+                    <span>Invoices</span><span class="iws-sort-ind" :class="iwsSortCls('invoice_count')">&#8645;</span>
+                  </th>
+                  <th @click="setIwsSort('qty_sold')" class="iws-sortable ta-r">
+                    <span>Qty Sold</span><span class="iws-sort-ind" :class="iwsSortCls('qty_sold')">&#8645;</span>
+                  </th>
+                  <th @click="setIwsSort('avg_rate')" class="iws-sortable ta-r">
+                    <span>Avg Rate (₹)</span><span class="iws-sort-ind" :class="iwsSortCls('avg_rate')">&#8645;</span>
+                  </th>
+                  <th @click="setIwsSort('total_discount')" class="iws-sortable ta-r">
+                    <span>Discount (₹)</span><span class="iws-sort-ind" :class="iwsSortCls('total_discount')">&#8645;</span>
+                  </th>
+                  <th @click="setIwsSort('total_amount')" class="iws-sortable ta-r">
+                    <span>Total Amount (₹)</span><span class="iws-sort-ind" :class="iwsSortCls('total_amount')">&#8645;</span>
+                  </th>
+                  <th class="iws-kebab-col"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in itemSalesSorted" :key="(row.item_code || row.item_name) + '|' + (row.uom || '') + '|' + i">
+                  <td class="iws-idx">{{ i + 1 }}</td>
+                  <td class="iws-item-name">{{ row.item_name || row.item_code }}</td>
+                  <td><span class="iws-uom">{{ row.uom || '—' }}</span></td>
+                  <td class="ta-r mono-sm">{{ row.invoice_count }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN(row.qty_sold) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN2(row.avg_rate) }}</td>
+                  <td class="ta-r mono-sm red">{{ row.total_discount ? fmtN2(row.total_discount) : '—' }}</td>
+                  <td class="ta-r mono-sm fw-700 green">{{ fmtAmt(row.total_amount) }}</td>
+                  <td class="iws-kebab-col">
+                    <div class="iws-kebab-wrap">
+                      <button class="iws-kebab" @click="iwsRowMenu = (iwsRowMenu === i ? null : i)" title="Row actions">&#8942;</button>
+                      <template v-if="iwsRowMenu === i">
+                        <div class="iws-menu-backdrop" @click="iwsRowMenu = null"></div>
+                        <div class="iws-menu iws-menu-row">
+                          <button class="iws-menu-item" @click="iwsRowMenu = null; copyItemRow(row)">Copy row</button>
+                          <button class="iws-menu-item" @click="iwsRowMenu = null; exportItemRowCSV(row)">Download row as CSV</button>
+                        </div>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="iws-total-row">
+                  <td class="iws-idx"><span class="iws-sigma">&Sigma;</span></td>
+                  <td class="fw-700">Total</td>
+                  <td></td>
+                  <td class="ta-r fw-700">{{ itemsTotals.invoices }}</td>
+                  <td class="ta-r fw-700">{{ fmtN(itemsTotals.qty) }}</td>
+                  <td></td>
+                  <td class="ta-r fw-700 red">{{ fmtAmt(itemsTotals.discount) }}</td>
+                  <td class="ta-r fw-700 green">{{ fmtAmt(itemsTotals.amount) }}</td>
+                  <td class="iws-kebab-col"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
       </template>
       <div v-else class="empty-msg">{{itemsRan ? 'No sales in this period.' : 'Run the report to see results.'}}</div>
     </div>
 
+
     <!-- Customer-wise Sales -->
-    <div v-if="activeReport === 'customers'" class="books-card report-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-        <div class="books-card-title" style="margin:0">Customer-wise Sales</div>
-        <div v-if="customerSales.length" style="font-size:12.5px;color:#868E96">
-          Total: <span style="font-weight:700;color:#2F9E44">₹{{fmtN(customerSales.reduce((s,r)=>s+Number(r.total_amount||0),0))}}</span>
+    <div v-if="activeReport === 'customers'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon cws-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Customer-wise Sales</div>
+          <div class="bs-page-head-sub">Sales summary by customer for the selected period</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="cwsExportOpen = !cwsExportOpen" :disabled="!customerSales.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="cwsExportOpen">
+              <div class="iws-menu-backdrop" @click="cwsExportOpen = false"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="cwsExportOpen = false; exportCustomerSalesCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="cwsExportOpen = false; copyCustomerSalesToClipboard()">Copy to clipboard</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
+
       <template v-if="customersLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
       <template v-else-if="customerSales.length">
-        <table class="books-table aging-table" style="width:100%">
-          <thead>
-            <tr>
-              <th>Customer</th>
-              <th class="ta-r">Invoices</th>
-              <th class="ta-r">Net Total</th>
-              <th class="ta-r">Discount</th>
-              <th class="ta-r">Tax</th>
-              <th class="ta-r">Avg Invoice</th>
-              <th class="ta-r">Outstanding</th>
-              <th class="ta-r">Total Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in customerSales" :key="row.customer">
-              <td>{{ row.customer_name || row.customer }}</td>
-              <td class="ta-r mono-sm">{{ row.invoice_count }}</td>
-              <td class="ta-r mono-sm">{{ fmtAmt(row.net_total) }}</td>
-              <td class="ta-r mono-sm red">{{ row.total_discount ? fmtAmt(row.total_discount) : '—' }}</td>
-              <td class="ta-r mono-sm">{{ fmtAmt(row.total_tax) }}</td>
-              <td class="ta-r mono-sm">{{ fmtAmt(row.avg_invoice_value) }}</td>
-              <td class="ta-r mono-sm" :class="row.outstanding_amount>0?'text-danger':''">{{ row.outstanding_amount ? fmtAmt(row.outstanding_amount) : '—' }}</td>
-              <td class="ta-r mono-sm fw-700 green">{{ fmtAmt(row.total_amount) }}</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr class="aging-totals-row">
-              <td class="fw-700">TOTAL</td>
-              <td class="ta-r fw-700">{{ fmtN(customerSales.reduce((s,r)=>s+Number(r.invoice_count||0),0)) }}</td>
-              <td class="ta-r fw-700">{{ fmtAmt(customerSales.reduce((s,r)=>s+Number(r.net_total||0),0)) }}</td>
-              <td class="ta-r fw-700 red">{{ fmtAmt(customerSales.reduce((s,r)=>s+Number(r.total_discount||0),0)) }}</td>
-              <td class="ta-r fw-700">{{ fmtAmt(customerSales.reduce((s,r)=>s+Number(r.total_tax||0),0)) }}</td>
-              <td></td>
-              <td class="ta-r fw-700 text-danger">{{ fmtAmt(customerSales.reduce((s,r)=>s+Number(r.outstanding_amount||0),0)) }}</td>
-              <td class="ta-r fw-700 green">{{ fmtAmt(customerSales.reduce((s,r)=>s+Number(r.total_amount||0),0)) }}</td>
-            </tr>
-          </tfoot>
-        </table>
+        <div class="iws-body">
+          <div class="iws-total-panel">
+            <div class="iws-total-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="13"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="18" y1="20" x2="18" y2="9"/></svg>
+            </div>
+            <div class="iws-total-label">Total Sales</div>
+            <div class="iws-total-value" :style="totalValStyle(fmtAmt(custTotals.amount))">{{ fmtAmt(custTotals.amount) }}</div>
+            <div class="iws-total-meta">
+              {{ customerSales.length }} {{ customerSales.length === 1 ? 'Customer' : 'Customers' }} &bull;
+              {{ custTotals.invoices }} {{ custTotals.invoices === 1 ? 'Invoice' : 'Invoices' }}
+            </div>
+            <div class="iws-total-sub" v-if="custTotals.outstanding">
+              <span class="iws-total-sub-label">Outstanding</span>
+              <span class="iws-total-sub-value">{{ fmtAmt(custTotals.outstanding) }}</span>
+            </div>
+          </div>
+
+          <div class="iws-table-wrap">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th class="iws-idx">#</th>
+                  <th @click="setCwsSort('customer')" class="iws-sortable">
+                    <span>Customer</span><span class="iws-sort-ind" :class="cwsSortCls('customer')">&#8645;</span>
+                  </th>
+                  <th @click="setCwsSort('invoice_count')" class="iws-sortable ta-r">
+                    <span>Invoices</span><span class="iws-sort-ind" :class="cwsSortCls('invoice_count')">&#8645;</span>
+                  </th>
+                  <th @click="setCwsSort('net_total')" class="iws-sortable ta-r">
+                    <span>Net Total (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('net_total')">&#8645;</span>
+                  </th>
+                  <th @click="setCwsSort('total_discount')" class="iws-sortable ta-r">
+                    <span>Discount (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('total_discount')">&#8645;</span>
+                  </th>
+                  <th @click="setCwsSort('total_tax')" class="iws-sortable ta-r">
+                    <span>Tax (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('total_tax')">&#8645;</span>
+                  </th>
+                  <th @click="setCwsSort('avg_invoice_value')" class="iws-sortable ta-r">
+                    <span>Avg Invoice (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('avg_invoice_value')">&#8645;</span>
+                  </th>
+                  <th @click="setCwsSort('outstanding_amount')" class="iws-sortable ta-r">
+                    <span>Outstanding (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('outstanding_amount')">&#8645;</span>
+                  </th>
+                  <th @click="setCwsSort('total_amount')" class="iws-sortable ta-r">
+                    <span>Total Amount (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('total_amount')">&#8645;</span>
+                  </th>
+                  <th class="iws-kebab-col"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in customerSalesSorted" :key="(row.customer || row.customer_name) + '|' + i">
+                  <td class="iws-idx">{{ i + 1 }}</td>
+                  <td class="iws-item-name">{{ row.customer_name || row.customer }}</td>
+                  <td class="ta-r mono-sm">{{ row.invoice_count }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN2(row.net_total) }}</td>
+                  <td class="ta-r mono-sm red">{{ row.total_discount ? fmtN2(row.total_discount) : '—' }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN2(row.total_tax) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN2(row.avg_invoice_value) }}</td>
+                  <td class="ta-r mono-sm" :class="row.outstanding_amount>0?'red':''">{{ row.outstanding_amount ? fmtAmt(row.outstanding_amount) : '—' }}</td>
+                  <td class="ta-r mono-sm fw-700 green">{{ fmtAmt(row.total_amount) }}</td>
+                  <td class="iws-kebab-col">
+                    <div class="iws-kebab-wrap">
+                      <button class="iws-kebab" @click="cwsRowMenu = (cwsRowMenu === i ? null : i)" title="Row actions">&#8942;</button>
+                      <template v-if="cwsRowMenu === i">
+                        <div class="iws-menu-backdrop" @click="cwsRowMenu = null"></div>
+                        <div class="iws-menu iws-menu-row">
+                          <button class="iws-menu-item" @click="cwsRowMenu = null; copyCustomerRow(row)">Copy row</button>
+                          <button class="iws-menu-item" @click="cwsRowMenu = null; exportCustomerRowCSV(row)">Download row as CSV</button>
+                        </div>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="iws-total-row">
+                  <td class="iws-idx"><span class="iws-sigma">&Sigma;</span></td>
+                  <td class="fw-700">Total</td>
+                  <td class="ta-r fw-700">{{ custTotals.invoices }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(custTotals.net) }}</td>
+                  <td class="ta-r fw-700 red">{{ fmtAmt(custTotals.discount) }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(custTotals.tax) }}</td>
+                  <td></td>
+                  <td class="ta-r fw-700 red">{{ fmtAmt(custTotals.outstanding) }}</td>
+                  <td class="ta-r fw-700 green">{{ fmtAmt(custTotals.amount) }}</td>
+                  <td class="iws-kebab-col"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
       </template>
       <div v-else class="empty-msg">{{customersRan ? 'No sales in this period.' : 'Run the report to see results.'}}</div>
     </div>
 
+
     <!-- Profit-wise Report -->
-    <div v-if="activeReport === 'profit'" class="books-card report-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div class="books-card-title" style="margin:0">Profit-wise Report (by Item)</div>
-        <div v-if="profitReport.length" style="font-size:12.5px;color:#868E96">
-          Total Profit: <span style="font-weight:700" :class="profitTotal>=0?'green':'red'">{{ fmtAmt(profitTotal) }}</span>
+    <div v-if="activeReport === 'profit'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon pw-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Profit-wise Report (by Item)</div>
+          <div class="bs-page-head-sub">Cost is estimated from current average valuation rate per item (excluding WIP warehouses); margins are indicative, not historical FIFO cost.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="pwExportOpen = !pwExportOpen" :disabled="!profitReport.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="pwExportOpen">
+              <div class="iws-menu-backdrop" @click="pwExportOpen = false"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="pwExportOpen = false; exportProfitCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="pwExportOpen = false; copyProfitToClipboard()">Copy to clipboard</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
-      <div v-if="profitReport.length" style="font-size:11.5px;color:#94a3b8;margin-bottom:12px">
-        Cost is estimated from current average valuation rate per item (excluding WIP warehouses); margins are indicative, not historical FIFO cost.
-      </div>
+
       <template v-if="profitLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
       <template v-else-if="profitReport.length">
-        <table class="books-table aging-table" style="width:100%">
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th class="ta-r">Qty Sold</th>
-              <th class="ta-r">Revenue</th>
-              <th class="ta-r">Cost Rate</th>
-              <th class="ta-r">Total Cost</th>
-              <th class="ta-r">Profit</th>
-              <th class="ta-r">Margin %</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in profitReport" :key="row.item_code">
-              <td>
-                {{ row.item_name || row.item_code }}
-                <span v-if="!row.cost_rate" class="badge badge-muted" style="margin-left:6px;font-size:10px" title="No valuation or standard buying rate found for this item — margin below is not meaningful">no cost data</span>
-              </td>
-              <td class="ta-r mono-sm">{{ fmtN(row.qty_sold) }}</td>
-              <td class="ta-r mono-sm">{{ fmtAmt(row.revenue) }}</td>
-              <td class="ta-r mono-sm">{{ row.cost_rate ? fmtAmt(row.cost_rate) : '—' }}</td>
-              <td class="ta-r mono-sm red">{{ row.total_cost ? fmtAmt(row.total_cost) : '—' }}</td>
-              <td class="ta-r mono-sm fw-700" :class="row.profit>=0?'green':'red'">{{ row.cost_rate ? fmtAmt(row.profit) : '—' }}</td>
-              <td class="ta-r mono-sm" :class="row.margin_pct>=0?'green':'red'">{{ row.cost_rate ? Number(row.margin_pct||0).toFixed(1)+'%' : '—' }}</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr class="aging-totals-row">
-              <td class="fw-700">TOTAL</td>
-              <td class="ta-r fw-700">{{ fmtN(profitReport.reduce((s,r)=>s+Number(r.qty_sold||0),0)) }}</td>
-              <td class="ta-r fw-700">{{ fmtAmt(profitReport.reduce((s,r)=>s+Number(r.revenue||0),0)) }}</td>
-              <td></td>
-              <td class="ta-r fw-700 red">{{ fmtAmt(profitReport.filter(r=>r.cost_rate).reduce((s,r)=>s+Number(r.total_cost||0),0)) }}</td>
-              <td class="ta-r fw-700" :class="profitTotal>=0?'green':'red'">{{ fmtAmt(profitTotal) }}</td>
-              <td class="ta-r fw-700" :class="profitMarginTotal>=0?'green':'red'">{{ profitMarginTotal.toFixed(1) }}%</td>
-            </tr>
-          </tfoot>
-        </table>
+        <div class="iws-body">
+          <div class="iws-total-panel" :class="profitTotal>=0 ? '' : 'iws-total-panel-neg'">
+            <div class="iws-total-icon" :class="profitTotal>=0 ? '' : 'iws-total-icon-neg'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <div class="iws-total-label">Total Profit</div>
+            <div class="iws-total-value" :class="profitTotal>=0 ? '' : 'iws-total-value-neg'" :style="totalValStyle(fmtAmt(profitTotal))">{{ fmtAmt(profitTotal) }}</div>
+            <div class="iws-total-meta">
+              {{ profitReport.length }} {{ profitReport.length === 1 ? 'Item' : 'Items' }} &bull;
+              <span :class="profitMarginTotal>=0 ? 'green' : 'red'">{{ profitMarginTotal.toFixed(1) }}% margin</span>
+            </div>
+            <div class="iws-total-sub" v-if="noCostDataCount">
+              <span class="iws-total-sub-label">No cost data</span>
+              <span class="iws-total-sub-value">{{ noCostDataCount }} item{{noCostDataCount>1?'s':''}}</span>
+            </div>
+          </div>
+
+          <div class="iws-table-wrap">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th class="iws-idx">#</th>
+                  <th @click="setPwSort('item')" class="iws-sortable">
+                    <span>Item</span><span class="iws-sort-ind" :class="pwSortCls('item')">&#8645;</span>
+                  </th>
+                  <th @click="setPwSort('qty_sold')" class="iws-sortable ta-r">
+                    <span>Qty Sold</span><span class="iws-sort-ind" :class="pwSortCls('qty_sold')">&#8645;</span>
+                  </th>
+                  <th @click="setPwSort('revenue')" class="iws-sortable ta-r">
+                    <span>Revenue (₹)</span><span class="iws-sort-ind" :class="pwSortCls('revenue')">&#8645;</span>
+                  </th>
+                  <th @click="setPwSort('cost_rate')" class="iws-sortable ta-r">
+                    <span>Cost Rate (₹)</span><span class="iws-sort-ind" :class="pwSortCls('cost_rate')">&#8645;</span>
+                  </th>
+                  <th @click="setPwSort('total_cost')" class="iws-sortable ta-r">
+                    <span>Total Cost (₹)</span><span class="iws-sort-ind" :class="pwSortCls('total_cost')">&#8645;</span>
+                  </th>
+                  <th @click="setPwSort('profit')" class="iws-sortable ta-r">
+                    <span>Profit (₹)</span><span class="iws-sort-ind" :class="pwSortCls('profit')">&#8645;</span>
+                  </th>
+                  <th @click="setPwSort('margin_pct')" class="iws-sortable ta-r">
+                    <span>Margin %</span><span class="iws-sort-ind" :class="pwSortCls('margin_pct')">&#8645;</span>
+                  </th>
+                  <th class="iws-kebab-col"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in profitReportSorted" :key="row.item_code + '|' + i">
+                  <td class="iws-idx">{{ i + 1 }}</td>
+                  <td class="iws-item-name">
+                    {{ row.item_name || row.item_code }}
+                    <span v-if="!row.cost_rate" class="badge badge-muted" style="margin-left:6px;font-size:10px" title="No valuation or standard buying rate found for this item — margin below is not meaningful">no cost data</span>
+                  </td>
+                  <td class="ta-r mono-sm">{{ fmtN(row.qty_sold) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN2(row.revenue) }}</td>
+                  <td class="ta-r mono-sm">{{ row.cost_rate ? fmtN2(row.cost_rate) : '—' }}</td>
+                  <td class="ta-r mono-sm red">{{ row.total_cost ? fmtN2(row.total_cost) : '—' }}</td>
+                  <td class="ta-r mono-sm fw-700" :class="row.profit>=0?'green':'red'">{{ row.cost_rate ? fmtAmt(row.profit) : '—' }}</td>
+                  <td class="ta-r mono-sm" :class="row.margin_pct>=0?'green':'red'">{{ row.cost_rate ? Number(row.margin_pct||0).toFixed(1)+'%' : '—' }}</td>
+                  <td class="iws-kebab-col">
+                    <div class="iws-kebab-wrap">
+                      <button class="iws-kebab" @click="pwRowMenu = (pwRowMenu === i ? null : i)" title="Row actions">&#8942;</button>
+                      <template v-if="pwRowMenu === i">
+                        <div class="iws-menu-backdrop" @click="pwRowMenu = null"></div>
+                        <div class="iws-menu iws-menu-row">
+                          <button class="iws-menu-item" @click="pwRowMenu = null; copyProfitRow(row)">Copy row</button>
+                          <button class="iws-menu-item" @click="pwRowMenu = null; exportProfitRowCSV(row)">Download row as CSV</button>
+                        </div>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="iws-total-row">
+                  <td class="iws-idx"><span class="iws-sigma">&Sigma;</span></td>
+                  <td class="fw-700">Total</td>
+                  <td class="ta-r fw-700">{{ fmtN(profitReport.reduce((s,r)=>s+Number(r.qty_sold||0),0)) }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(profitReport.reduce((s,r)=>s+Number(r.revenue||0),0)) }}</td>
+                  <td></td>
+                  <td class="ta-r fw-700 red">{{ fmtAmt(profitReport.filter(r=>r.cost_rate).reduce((s,r)=>s+Number(r.total_cost||0),0)) }}</td>
+                  <td class="ta-r fw-700" :class="profitTotal>=0?'green':'red'">{{ fmtAmt(profitTotal) }}</td>
+                  <td class="ta-r fw-700" :class="profitMarginTotal>=0?'green':'red'">{{ profitMarginTotal.toFixed(1) }}%</td>
+                  <td class="iws-kebab-col"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
         <div v-if="noCostDataCount" style="font-size:11.5px;color:#94a3b8;margin-top:10px">
           {{ noCostDataCount }} item{{noCostDataCount>1?'s':''}} excluded from the profit/margin totals above — no valuation or standard buying rate found (see "no cost data" tag).
         </div>
@@ -644,66 +1059,135 @@
       <div v-else class="empty-msg">{{profitRan ? 'No sales in this period.' : 'Run the report to see results.'}}</div>
     </div>
 
+
     <!-- Invoice-wise Profit (single + multi-select) -->
-    <div v-if="activeReport === 'invoice_profit'" class="books-card report-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
-        <div class="books-card-title" style="margin:0">Invoice Profitability</div>
-        <div v-if="invoiceProfit.length" style="font-size:12.5px;color:#868E96">
-          Total Profit ({{ invoiceProfit.length }} invoices): <span style="font-weight:700" :class="invoiceProfitTotals.profit>=0?'green':'red'">{{ fmtAmt(invoiceProfitTotals.profit) }}</span>
+    <div v-if="activeReport === 'invoice_profit'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon ip-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="13" y2="11"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Invoice Profitability</div>
+          <div class="bs-page-head-sub">Cost is estimated from current average valuation rate per item (excluding WIP warehouses); margins are indicative, not historical FIFO cost. Tick rows to see profit for a single invoice or any combination of selected invoices.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="ipExportOpen = !ipExportOpen" :disabled="!invoiceProfit.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="ipExportOpen">
+              <div class="iws-menu-backdrop" @click="ipExportOpen = false"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="ipExportOpen = false; exportInvoiceProfitCSV()">Download CSV{{ selectedInvoices.size ? ' (selected)' : '' }}</button>
+                <button class="iws-menu-item" @click="ipExportOpen = false; copyInvoiceProfitToClipboard()">Copy to clipboard</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
-      <div v-if="invoiceProfit.length" style="font-size:11.5px;color:#94a3b8;margin-bottom:12px">
-        Cost is estimated from current average valuation rate per item (excluding WIP warehouses); margins are indicative, not historical FIFO cost. Tick rows to see profit for a single invoice or any combination of selected invoices.
-      </div>
+
       <template v-if="invoiceProfitLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
       <template v-else-if="invoiceProfit.length">
-        <div v-if="selectedInvoices.size" class="books-card" style="background:#F8F9FF;border:1px solid #D0D9FF;padding:10px 14px;margin-bottom:12px;display:flex;gap:22px;flex-wrap:wrap;font-size:12.5px">
-          <span><strong>{{ invoiceProfitSelectedTotals.count }}</strong> selected</span>
-          <span>Revenue: <span class="mono fw-700">{{ fmtAmt(invoiceProfitSelectedTotals.revenue) }}</span></span>
-          <span>Est. Cost: <span class="mono fw-700 red">{{ fmtAmt(invoiceProfitSelectedTotals.total_cost) }}</span></span>
-          <span>Profit: <span class="mono fw-700" :class="invoiceProfitSelectedTotals.profit>=0?'green':'red'">{{ fmtAmt(invoiceProfitSelectedTotals.profit) }}</span></span>
+        <div class="iws-body">
+          <div class="iws-total-panel" :class="invoiceProfitTotals.profit>=0 ? '' : 'iws-total-panel-neg'">
+            <div class="iws-total-icon" :class="invoiceProfitTotals.profit>=0 ? '' : 'iws-total-icon-neg'">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="13" y2="11"/></svg>
+            </div>
+            <div class="iws-total-label">Total Profit</div>
+            <div class="iws-total-value" :class="invoiceProfitTotals.profit>=0 ? '' : 'iws-total-value-neg'" :style="totalValStyle(fmtAmt(invoiceProfitTotals.profit))">{{ fmtAmt(invoiceProfitTotals.profit) }}</div>
+            <div class="iws-total-meta">
+              {{ invoiceProfit.length }} {{ invoiceProfit.length === 1 ? 'Invoice' : 'Invoices' }} &bull;
+              <span :class="invoiceProfitTotals.revenue ? (invoiceProfitTotals.profit>=0 ? 'green' : 'red') : ''">
+                {{ invoiceProfitTotals.revenue ? (invoiceProfitTotals.profit/invoiceProfitTotals.revenue*100).toFixed(1) : '0.0' }}% margin
+              </span>
+            </div>
+            <div class="iws-total-sub" v-if="selectedInvoices.size">
+              <span class="iws-total-sub-label">{{ invoiceProfitSelectedTotals.count }} selected</span>
+              <span class="iws-total-sub-value" :class="invoiceProfitSelectedTotals.profit>=0?'green':'red'" style="color:inherit">{{ fmtAmt(invoiceProfitSelectedTotals.profit) }}</span>
+              <div style="font-size:11px;color:var(--text-3);margin-top:4px">
+                Revenue {{ fmtAmt(invoiceProfitSelectedTotals.revenue) }} &bull; Cost {{ fmtAmt(invoiceProfitSelectedTotals.total_cost) }}
+              </div>
+            </div>
+          </div>
+
+          <div class="iws-table-wrap">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th class="iws-idx"><input type="checkbox" :checked="invoiceProfitAllSelected" @change="toggleAllInvoiceSelection" /></th>
+                  <th @click="setIpSort('invoice')" class="iws-sortable">
+                    <span>Invoice</span><span class="iws-sort-ind" :class="ipSortCls('invoice')">&#8645;</span>
+                  </th>
+                  <th @click="setIpSort('posting_date')" class="iws-sortable">
+                    <span>Date</span><span class="iws-sort-ind" :class="ipSortCls('posting_date')">&#8645;</span>
+                  </th>
+                  <th @click="setIpSort('customer')" class="iws-sortable">
+                    <span>Customer</span><span class="iws-sort-ind" :class="ipSortCls('customer')">&#8645;</span>
+                  </th>
+                  <th @click="setIpSort('revenue')" class="iws-sortable ta-r">
+                    <span>Revenue (₹)</span><span class="iws-sort-ind" :class="ipSortCls('revenue')">&#8645;</span>
+                  </th>
+                  <th @click="setIpSort('total_cost')" class="iws-sortable ta-r">
+                    <span>Est. Cost (₹)</span><span class="iws-sort-ind" :class="ipSortCls('total_cost')">&#8645;</span>
+                  </th>
+                  <th @click="setIpSort('profit')" class="iws-sortable ta-r">
+                    <span>Profit (₹)</span><span class="iws-sort-ind" :class="ipSortCls('profit')">&#8645;</span>
+                  </th>
+                  <th @click="setIpSort('margin_pct')" class="iws-sortable ta-r">
+                    <span>Margin %</span><span class="iws-sort-ind" :class="ipSortCls('margin_pct')">&#8645;</span>
+                  </th>
+                  <th class="iws-kebab-col"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in invoiceProfitSorted" :key="row.invoice" :class="{ 'row-selected': selectedInvoices.has(row.invoice) }">
+                  <td class="iws-idx"><input type="checkbox" :checked="selectedInvoices.has(row.invoice)" @change="toggleInvoiceSelection(row.invoice)" /></td>
+                  <td class="mono-sm">
+                    <a href="#" class="inv-detail-link" @click.prevent="openInvoiceDetail(row.invoice)">{{ row.invoice }}</a>
+                    <span v-if="row.no_cost_lines" class="badge badge-muted" style="margin-left:6px;font-size:10px" title="One or more items on this invoice have no valuation or standard buying rate — cost/margin is understated">partial cost data</span>
+                  </td>
+                  <td class="mono-sm">{{ row.posting_date }}</td>
+                  <td class="iws-item-name">{{ row.customer_name || row.customer }}</td>
+                  <td class="ta-r mono-sm">{{ fmtAmt(row.revenue) }}</td>
+                  <td class="ta-r mono-sm red">{{ fmtAmt(row.total_cost) }}</td>
+                  <td class="ta-r mono-sm fw-700" :class="row.profit>=0?'green':'red'">{{ fmtAmt(row.profit) }}</td>
+                  <td class="ta-r mono-sm" :class="row.margin_pct>=0?'green':'red'">{{ Number(row.margin_pct||0).toFixed(1) }}%</td>
+                  <td class="iws-kebab-col">
+                    <div class="iws-kebab-wrap">
+                      <button class="iws-kebab" @click="ipRowMenu = (ipRowMenu === row.invoice ? null : row.invoice)" title="Row actions">&#8942;</button>
+                      <template v-if="ipRowMenu === row.invoice">
+                        <div class="iws-menu-backdrop" @click="ipRowMenu = null"></div>
+                        <div class="iws-menu iws-menu-row">
+                          <button class="iws-menu-item" @click="ipRowMenu = null; openInvoiceDetail(row.invoice)">View P&amp;L</button>
+                          <button class="iws-menu-item" @click="ipRowMenu = null; copyInvoiceProfitRow(row)">Copy row</button>
+                          <button class="iws-menu-item" @click="ipRowMenu = null; exportInvoiceProfitRowCSV(row)">Download row as CSV</button>
+                        </div>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="iws-total-row">
+                  <td class="iws-idx"><span class="iws-sigma">&Sigma;</span></td>
+                  <td colspan="3" class="fw-700">Total</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(invoiceProfitTotals.revenue) }}</td>
+                  <td class="ta-r fw-700 red">{{ fmtAmt(invoiceProfitTotals.total_cost) }}</td>
+                  <td class="ta-r fw-700" :class="invoiceProfitTotals.profit>=0?'green':'red'">{{ fmtAmt(invoiceProfitTotals.profit) }}</td>
+                  <td class="ta-r fw-700" :class="invoiceProfitTotals.profit>=0?'green':'red'">{{ invoiceProfitTotals.revenue ? (invoiceProfitTotals.profit/invoiceProfitTotals.revenue*100).toFixed(1) : '0.0' }}%</td>
+                  <td class="iws-kebab-col"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
-        <table class="books-table aging-table" style="width:100%">
-          <thead>
-            <tr>
-              <th style="width:32px"><input type="checkbox" :checked="invoiceProfitAllSelected" @change="toggleAllInvoiceSelection" /></th>
-              <th>Invoice</th>
-              <th>Date</th>
-              <th>Customer</th>
-              <th class="ta-r">Revenue</th>
-              <th class="ta-r">Est. Cost</th>
-              <th class="ta-r">Profit</th>
-              <th class="ta-r">Margin %</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in invoiceProfit" :key="row.invoice" :class="{ 'row-selected': selectedInvoices.has(row.invoice) }">
-              <td><input type="checkbox" :checked="selectedInvoices.has(row.invoice)" @change="toggleInvoiceSelection(row.invoice)" /></td>
-              <td class="mono-sm">
-                <a href="#" class="inv-detail-link" @click.prevent="openInvoiceDetail(row.invoice)">{{ row.invoice }}</a>
-                <span v-if="row.no_cost_lines" class="badge badge-muted" style="margin-left:6px;font-size:10px" title="One or more items on this invoice have no valuation or standard buying rate — cost/margin is understated">partial cost data</span>
-              </td>
-              <td class="mono-sm">{{ row.posting_date }}</td>
-              <td>{{ row.customer_name || row.customer }}</td>
-              <td class="ta-r mono-sm">{{ fmtAmt(row.revenue) }}</td>
-              <td class="ta-r mono-sm red">{{ fmtAmt(row.total_cost) }}</td>
-              <td class="ta-r mono-sm fw-700" :class="row.profit>=0?'green':'red'">{{ fmtAmt(row.profit) }}</td>
-              <td class="ta-r mono-sm" :class="row.margin_pct>=0?'green':'red'">{{ Number(row.margin_pct||0).toFixed(1) }}%</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr class="aging-totals-row">
-              <td colspan="4" class="fw-700">TOTAL</td>
-              <td class="ta-r fw-700">{{ fmtAmt(invoiceProfitTotals.revenue) }}</td>
-              <td class="ta-r fw-700 red">{{ fmtAmt(invoiceProfitTotals.total_cost) }}</td>
-              <td class="ta-r fw-700" :class="invoiceProfitTotals.profit>=0?'green':'red'">{{ fmtAmt(invoiceProfitTotals.profit) }}</td>
-              <td class="ta-r fw-700" :class="invoiceProfitTotals.profit>=0?'green':'red'">{{ invoiceProfitTotals.revenue ? (invoiceProfitTotals.profit/invoiceProfitTotals.revenue*100).toFixed(1) : '0.0' }}%</td>
-            </tr>
-          </tfoot>
-        </table>
       </template>
       <div v-else class="empty-msg">{{invoiceProfitRan ? 'No sales in this period.' : 'Run the report to see results.'}}</div>
     </div>
+
 
     <!-- Single-invoice item-level P&L drill-down -->
     <Modal :show="invoiceDetailOpen" width="720px" :title="invoiceDetail ? `Profit & Loss — ${invoiceDetail.invoice.name}` : 'Profit & Loss'" @close="invoiceDetailOpen=false">
@@ -758,155 +1242,409 @@
     </Modal>
 
     <!-- Trial Balance -->
-    <div v-if="activeReport === 'tb'" class="books-card report-card">
-      <div class="books-card-title">Trial Balance</div>
+    <div v-if="activeReport === 'tb'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon tb-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Trial Balance</div>
+          <div class="bs-page-head-sub">Account-wise opening, movement and closing balances for the selected period</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="tbExportOpen = !tbExportOpen" :disabled="!tb?.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="tbExportOpen">
+              <div class="iws-menu-backdrop" @click="tbExportOpen = false"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="tbExportOpen = false; exportTbCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="tbExportOpen = false; copyTbToClipboard()">Copy to clipboard</button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
       <template v-if="tbLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
       <template v-else-if="tb?.length">
-        <div class="tb-cards">
-          <div v-for="row in tb" :key="row.account" class="tb-card">
-            <div class="tb-card-top">
-              <div class="tb-account-name">{{ row.account }}</div>
-              <span class="badge badge-muted" style="font-size:10.5px">{{ row.account_type }}</span>
+        <div class="bs-kpi-row" style="grid-template-columns: repeat(2, 1fr); margin-bottom:14px">
+          <div class="bs-kpi bs-kpi-assets">
+            <div class="bs-kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
             </div>
-            <div class="tb-buckets">
-              <div class="tb-bucket">
-                <span class="bucket-label">Opening</span>
-                <span class="bucket-val mono-sm" :class="row.opening<0?'red':''">{{ fmtAmt(row.opening||0) }}</span>
-              </div>
-              <div class="tb-bucket">
-                <span class="bucket-label">Debit</span>
-                <span class="bucket-val mono-sm green">{{ fmtAmt(row.debit||0) }}</span>
-              </div>
-              <div class="tb-bucket">
-                <span class="bucket-label">Credit</span>
-                <span class="bucket-val mono-sm red">{{ fmtAmt(row.credit||0) }}</span>
-              </div>
-              <div class="tb-bucket">
-                <span class="bucket-label">Closing</span>
-                <span class="bucket-val mono-sm fw-600" :class="row.closing<0?'red':'green'">{{ fmtAmt(row.closing||0) }}</span>
-              </div>
+            <div class="bs-kpi-body">
+              <div class="bs-kpi-label">Total Debit</div>
+              <div class="bs-kpi-amount">{{ fmtAmt(tbTotals.debit) }}</div>
             </div>
           </div>
+          <div class="bs-kpi bs-kpi-liabilities">
+            <div class="bs-kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+            </div>
+            <div class="bs-kpi-body">
+              <div class="bs-kpi-label">Total Credit</div>
+              <div class="bs-kpi-amount">{{ fmtAmt(tbTotals.credit) }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="bs-sum-status" :class="tbBalanced ? 'bs-ok' : 'bs-bad'">
+          <span class="bs-sum-status-icon">{{ tbBalanced ? '✓' : '✕' }}</span>
+          <div class="bs-sum-status-body">
+            <div class="bs-sum-status-title">{{ tbBalanced ? 'Total Debit = Total Credit' : 'Trial balance out of balance' }}</div>
+            <div class="bs-sum-status-eq">{{ fmtAmt(tbTotals.debit) }} vs {{ fmtAmt(tbTotals.credit) }}<template v-if="!tbBalanced"> (diff {{ fmtAmt(tbTotals.debit - tbTotals.credit) }})</template></div>
+          </div>
+        </div>
+
+        <div class="iws-table-wrap" style="margin-top:14px">
+          <table class="iws-table">
+            <thead>
+              <tr>
+                <th class="iws-idx">#</th>
+                <th @click="setTbSort('account')" class="iws-sortable">
+                  <span>Account</span><span class="iws-sort-ind" :class="tbSortCls('account')">&#8645;</span>
+                </th>
+                <th @click="setTbSort('account_type')" class="iws-sortable">
+                  <span>Type</span><span class="iws-sort-ind" :class="tbSortCls('account_type')">&#8645;</span>
+                </th>
+                <th @click="setTbSort('opening')" class="iws-sortable ta-r">
+                  <span>Opening (₹)</span><span class="iws-sort-ind" :class="tbSortCls('opening')">&#8645;</span>
+                </th>
+                <th @click="setTbSort('debit')" class="iws-sortable ta-r">
+                  <span>Debit (₹)</span><span class="iws-sort-ind" :class="tbSortCls('debit')">&#8645;</span>
+                </th>
+                <th @click="setTbSort('credit')" class="iws-sortable ta-r">
+                  <span>Credit (₹)</span><span class="iws-sort-ind" :class="tbSortCls('credit')">&#8645;</span>
+                </th>
+                <th @click="setTbSort('closing')" class="iws-sortable ta-r">
+                  <span>Closing (₹)</span><span class="iws-sort-ind" :class="tbSortCls('closing')">&#8645;</span>
+                </th>
+                <th class="iws-kebab-col"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, i) in tbSorted" :key="row.account">
+                <td class="iws-idx">{{ i + 1 }}</td>
+                <td class="iws-item-name">{{ row.account }}</td>
+                <td><span class="iws-uom" style="background:#f1f5f9;color:#475569">{{ row.account_type }}</span></td>
+                <td class="ta-r mono-sm" :class="row.opening<0?'red':''">{{ fmtN2(row.opening||0) }}</td>
+                <td class="ta-r mono-sm green">{{ row.debit ? fmtN2(row.debit) : '—' }}</td>
+                <td class="ta-r mono-sm red">{{ row.credit ? fmtN2(row.credit) : '—' }}</td>
+                <td class="ta-r mono-sm fw-700" :class="row.closing<0?'red':'green'">{{ fmtAmt(row.closing||0) }}</td>
+                <td class="iws-kebab-col">
+                  <div class="iws-kebab-wrap">
+                    <button class="iws-kebab" @click="tbRowMenu = (tbRowMenu === i ? null : i)" title="Row actions">&#8942;</button>
+                    <template v-if="tbRowMenu === i">
+                      <div class="iws-menu-backdrop" @click="tbRowMenu = null"></div>
+                      <div class="iws-menu iws-menu-row">
+                        <button class="iws-menu-item" @click="tbRowMenu = null; copyTbRow(row)">Copy row</button>
+                        <button class="iws-menu-item" @click="tbRowMenu = null; exportTbRowCSV(row)">Download row as CSV</button>
+                      </div>
+                    </template>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="iws-total-row">
+                <td class="iws-idx"><span class="iws-sigma">&Sigma;</span></td>
+                <td class="fw-700">Total</td>
+                <td></td>
+                <td class="ta-r fw-700">{{ fmtAmt(tbTotals.opening) }}</td>
+                <td class="ta-r fw-700 green">{{ fmtAmt(tbTotals.debit) }}</td>
+                <td class="ta-r fw-700 red">{{ fmtAmt(tbTotals.credit) }}</td>
+                <td class="ta-r fw-700">{{ fmtAmt(tbTotals.closing) }}</td>
+                <td class="iws-kebab-col"></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </template>
       <div v-else class="empty-msg">Run the report to see results.</div>
     </div>
 
+
     <!-- Stock vs GL Reconciliation -->
-    <div v-if="activeReport === 'stockgl'" class="books-card report-card">
-      <div class="books-card-title">Stock Ledger vs Inventory GL</div>
-      <div style="font-size:11.5px;color:#94a3b8;margin-bottom:12px">
-        Compares the operational Stock Ledger (Bin valuation) against the financial General Ledger
-        (Inventory Asset account balance). These are two independently-maintained ledgers — this
-        check is the tripwire that catches drift immediately instead of at year-end audit.
+    <div v-if="activeReport === 'stockgl'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon sgl-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Stock Ledger vs Inventory GL</div>
+          <div class="bs-page-head-sub">Compares the operational Stock Ledger (Bin valuation) against the financial General Ledger (Inventory Asset account balance) — this check is the tripwire that catches drift immediately instead of at year-end audit.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="sglExportOpen = !sglExportOpen" :disabled="!stockGl">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="sglExportOpen">
+              <div class="iws-menu-backdrop" @click="sglExportOpen = false"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="sglExportOpen = false; exportSglAccountsCSV()">Download account summary (CSV)</button>
+                <button class="iws-menu-item" @click="sglExportOpen = false; exportSglItemsCSV()">Download item-level detail (CSV)</button>
+                <button class="iws-menu-item" @click="sglExportOpen = false; copySglItemsToClipboard()">Copy item-level detail</button>
+              </div>
+            </template>
+          </div>
+        </div>
       </div>
+
       <template v-if="stockGlLoading"><div class="loading-shimmer" style="height:160px;border-radius:8px"></div></template>
       <template v-else-if="stockGl">
-        <div class="bs-balance-check" :class="stockGl.is_reconciled ? 'bs-ok' : 'bs-bad'">
-          <span class="bs-bc-icon">{{ stockGl.is_reconciled ? '✓' : '✕' }}</span>
-          Bin Stock Value = Inventory GL Balance
-          <span class="bs-bc-eq">{{ fmt(stockGl.total_bin_value) }} vs {{ fmt(stockGl.total_gl_balance) }}
-            <template v-if="!stockGl.is_reconciled"> (diff {{ fmt(stockGl.total_difference) }})</template>
-          </span>
+        <div class="bs-kpi-row" style="grid-template-columns: repeat(3, 1fr); margin-bottom:14px">
+          <div class="bs-kpi bs-kpi-assets">
+            <div class="bs-kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            </div>
+            <div class="bs-kpi-body">
+              <div class="bs-kpi-label">Bin Stock Value</div>
+              <div class="bs-kpi-amount">{{ fmtAmt(stockGl.total_bin_value) }}</div>
+            </div>
+          </div>
+          <div class="bs-kpi bs-kpi-equity">
+            <div class="bs-kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="3" x2="8" y2="21"/></svg>
+            </div>
+            <div class="bs-kpi-body">
+              <div class="bs-kpi-label">Inventory GL Balance</div>
+              <div class="bs-kpi-amount">{{ fmtAmt(stockGl.total_gl_balance) }}</div>
+            </div>
+          </div>
+          <div class="bs-kpi" :class="stockGl.is_reconciled ? 'bs-kpi-assets' : 'bs-kpi-liabilities'">
+            <div class="bs-kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <div class="bs-kpi-body">
+              <div class="bs-kpi-label">Difference</div>
+              <div class="bs-kpi-amount" :class="stockGl.is_reconciled ? '' : 'text-danger'">{{ fmtAmt(stockGl.total_difference) }}</div>
+            </div>
+          </div>
         </div>
 
-        <div v-if="stockGl.grir_account" style="margin-top:12px;font-size:12.5px;color:#64748b">
-          Stock Received (GR/IR): <span class="mono-sm fw-600">{{ fmt(stockGl.grir_balance) }}</span>
-          <span style="color:#94a3b8"> — goods received, awaiting bill. Nonzero is normal.</span>
+        <div class="bs-sum-status" :class="stockGl.is_reconciled ? 'bs-ok' : 'bs-bad'">
+          <span class="bs-sum-status-icon">{{ stockGl.is_reconciled ? '✓' : '✕' }}</span>
+          <div class="bs-sum-status-body">
+            <div class="bs-sum-status-title">{{ stockGl.is_reconciled ? 'Bin Stock Value = Inventory GL Balance' : 'Stock and GL are out of sync' }}</div>
+            <div class="bs-sum-status-eq">{{ fmtAmt(stockGl.total_bin_value) }} vs {{ fmtAmt(stockGl.total_gl_balance) }}<template v-if="!stockGl.is_reconciled"> (diff {{ fmtAmt(stockGl.total_difference) }})</template></div>
+          </div>
         </div>
 
-        <table v-if="stockGl.accounts?.length" class="books-table aging-table" style="width:100%;margin-top:16px">
-          <thead>
-            <tr>
-              <th>Inventory Account</th>
-              <th class="ta-r">Bin Stock Value</th>
-              <th class="ta-r">GL Balance</th>
-              <th class="ta-r">Difference</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in stockGl.accounts" :key="row.account">
-              <td>{{ row.account }}</td>
-              <td class="ta-r mono-sm">{{ fmt(row.bin_stock_value) }}</td>
-              <td class="ta-r mono-sm">{{ fmt(row.gl_balance) }}</td>
-              <td class="ta-r mono-sm" :class="row.is_reconciled ? '' : 'text-danger fw-700'">{{ fmt(row.difference) }}</td>
-              <td><span class="badge" :class="row.is_reconciled ? 'badge-blue' : 'badge-danger'">{{ row.is_reconciled ? 'OK' : 'DRIFT' }}</span></td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div v-if="stockGl.items?.length" style="margin-top:20px">
-          <div class="books-card-title" style="font-size:13px;margin-bottom:10px">Item-level Bin Detail</div>
-          <table class="books-table aging-table" style="width:100%">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Warehouse</th>
-                <th class="ta-r">Qty</th>
-                <th class="ta-r">Valuation Rate</th>
-                <th class="ta-r">Stock Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in stockGl.items" :key="row.item_code + row.warehouse">
-                <td>{{ row.item_name || row.item_code }}</td>
-                <td>{{ row.warehouse }}</td>
-                <td class="ta-r mono-sm">{{ fmtN(row.actual_qty) }}</td>
-                <td class="ta-r mono-sm">{{ fmtAmt(row.valuation_rate) }}</td>
-                <td class="ta-r mono-sm">{{ fmtAmt(row.stock_value) }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-if="stockGl.grir_account" class="sgl-grir-note">
+          <strong>Stock Received (GR/IR):</strong> <span class="mono-sm fw-600">{{ fmtAmt(stockGl.grir_balance) }}</span>
+          <span> — goods received, awaiting bill. Nonzero is normal.</span>
         </div>
+
+        <template v-if="stockGl.accounts?.length">
+          <div class="iws-section-label">By Inventory Account</div>
+          <div class="iws-table-wrap" style="margin-bottom:20px">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th class="iws-idx">#</th>
+                  <th @click="setSglAccSort('account')" class="iws-sortable">
+                    <span>Inventory Account</span><span class="iws-sort-ind" :class="sglAccSortCls('account')">&#8645;</span>
+                  </th>
+                  <th @click="setSglAccSort('bin_stock_value')" class="iws-sortable ta-r">
+                    <span>Bin Stock Value (₹)</span><span class="iws-sort-ind" :class="sglAccSortCls('bin_stock_value')">&#8645;</span>
+                  </th>
+                  <th @click="setSglAccSort('gl_balance')" class="iws-sortable ta-r">
+                    <span>GL Balance (₹)</span><span class="iws-sort-ind" :class="sglAccSortCls('gl_balance')">&#8645;</span>
+                  </th>
+                  <th @click="setSglAccSort('difference')" class="iws-sortable ta-r">
+                    <span>Difference (₹)</span><span class="iws-sort-ind" :class="sglAccSortCls('difference')">&#8645;</span>
+                  </th>
+                  <th>Status</th>
+                  <th class="iws-kebab-col"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in sglAccountsSorted" :key="row.account">
+                  <td class="iws-idx">{{ i + 1 }}</td>
+                  <td class="iws-item-name">{{ row.account }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN2(row.bin_stock_value) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN2(row.gl_balance) }}</td>
+                  <td class="ta-r mono-sm" :class="row.is_reconciled ? '' : 'text-danger fw-700'">{{ fmtN2(row.difference) }}</td>
+                  <td><span class="badge" :class="row.is_reconciled ? 'badge-blue' : 'badge-danger'">{{ row.is_reconciled ? 'OK' : 'DRIFT' }}</span></td>
+                  <td class="iws-kebab-col">
+                    <div class="iws-kebab-wrap">
+                      <button class="iws-kebab" @click="sglAccRowMenu = (sglAccRowMenu === i ? null : i)" title="Row actions">&#8942;</button>
+                      <template v-if="sglAccRowMenu === i">
+                        <div class="iws-menu-backdrop" @click="sglAccRowMenu = null"></div>
+                        <div class="iws-menu iws-menu-row">
+                          <button class="iws-menu-item" @click="sglAccRowMenu = null; copySglAccountRow(row)">Copy row</button>
+                        </div>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
+
+        <template v-if="stockGl.items?.length">
+          <div class="iws-section-label">Item-level Bin Detail</div>
+          <div class="iws-table-wrap">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th class="iws-idx">#</th>
+                  <th @click="setSglItemSort('item')" class="iws-sortable">
+                    <span>Item</span><span class="iws-sort-ind" :class="sglItemSortCls('item')">&#8645;</span>
+                  </th>
+                  <th @click="setSglItemSort('warehouse')" class="iws-sortable">
+                    <span>Warehouse</span><span class="iws-sort-ind" :class="sglItemSortCls('warehouse')">&#8645;</span>
+                  </th>
+                  <th @click="setSglItemSort('actual_qty')" class="iws-sortable ta-r">
+                    <span>Qty</span><span class="iws-sort-ind" :class="sglItemSortCls('actual_qty')">&#8645;</span>
+                  </th>
+                  <th @click="setSglItemSort('valuation_rate')" class="iws-sortable ta-r">
+                    <span>Valuation Rate (₹)</span><span class="iws-sort-ind" :class="sglItemSortCls('valuation_rate')">&#8645;</span>
+                  </th>
+                  <th @click="setSglItemSort('stock_value')" class="iws-sortable ta-r">
+                    <span>Stock Value (₹)</span><span class="iws-sort-ind" :class="sglItemSortCls('stock_value')">&#8645;</span>
+                  </th>
+                  <th class="iws-kebab-col"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in sglItemsSorted" :key="row.item_code + row.warehouse">
+                  <td class="iws-idx">{{ i + 1 }}</td>
+                  <td class="iws-item-name">{{ row.item_name || row.item_code }}</td>
+                  <td><span class="iws-uom">{{ row.warehouse }}</span></td>
+                  <td class="ta-r mono-sm">{{ fmtN(row.actual_qty) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN2(row.valuation_rate) }}</td>
+                  <td class="ta-r mono-sm fw-700 green">{{ fmtAmt(row.stock_value) }}</td>
+                  <td class="iws-kebab-col">
+                    <div class="iws-kebab-wrap">
+                      <button class="iws-kebab" @click="sglItemRowMenu = (sglItemRowMenu === i ? null : i)" title="Row actions">&#8942;</button>
+                      <template v-if="sglItemRowMenu === i">
+                        <div class="iws-menu-backdrop" @click="sglItemRowMenu = null"></div>
+                        <div class="iws-menu iws-menu-row">
+                          <button class="iws-menu-item" @click="sglItemRowMenu = null; copySglItemRow(row)">Copy row</button>
+                          <button class="iws-menu-item" @click="sglItemRowMenu = null; exportSglItemRowCSV(row)">Download row as CSV</button>
+                        </div>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="iws-total-row">
+                  <td class="iws-idx"><span class="iws-sigma">&Sigma;</span></td>
+                  <td colspan="3" class="fw-700">Total</td>
+                  <td></td>
+                  <td class="ta-r fw-700 green">{{ fmtAmt(sglItemsTotal) }}</td>
+                  <td class="iws-kebab-col"></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </template>
       </template>
       <div v-else class="empty-msg">{{stockGlRan ? 'No stock on hand for this company.' : 'Run the report to see results.'}}</div>
     </div>
 
     <!-- Stock Valuation Summary -->
-    <div v-if="activeReport === 'stockval'" class="books-card report-card">
-      <div class="books-card-title">Stock Valuation Summary</div>
-      <div style="font-size:11.5px;color:#94a3b8;margin-bottom:12px">
-        Total stock value per warehouse, from current Bin valuation. Reflects live stock on hand —
-        not a historical point-in-time snapshot, since stock quantities aren't tracked by date.
-      </div>
-      <template v-if="stockValLoading"><div class="loading-shimmer" style="height:120px;border-radius:8px"></div></template>
-      <template v-else-if="stockVal">
-        <div class="pl-row net profit">
-          <span>Grand Total Stock Value</span>
-          <span class="mono">{{ fmt(stockVal.grand_total) }}</span>
+    <div v-if="activeReport === 'stockval'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon sv-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
         </div>
-        <table v-if="stockVal.by_warehouse?.length" class="books-table aging-table" style="width:100%;margin-top:16px">
-          <thead>
-            <tr>
-              <th>Warehouse</th>
-              <th class="ta-r">Stock Value</th>
-              <th class="ta-r">% of Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in stockVal.by_warehouse" :key="row.warehouse">
-              <td>{{ row.warehouse }}</td>
-              <td class="ta-r mono-sm">{{ fmt(row.stock_value) }}</td>
-              <td class="ta-r mono-sm">{{ stockVal.grand_total ? ((row.stock_value / stockVal.grand_total) * 100).toFixed(1) + '%' : '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Stock Valuation Summary</div>
+          <div class="bs-page-head-sub">Total stock value per warehouse, from current Bin valuation. Reflects live stock on hand — not a historical point-in-time snapshot, since stock quantities aren't tracked by date.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportStockValCSV" :disabled="!stockVal?.by_warehouse?.length">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
+
+      <template v-if="stockValLoading"><div class="loading-shimmer" style="height:160px;border-radius:8px"></div></template>
+      <template v-else-if="stockVal">
+        <div class="bs-kpi-row" style="grid-template-columns: 1fr; margin-bottom:14px">
+          <div class="bs-kpi bs-kpi-assets">
+            <div class="bs-kpi-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            </div>
+            <div class="bs-kpi-body">
+              <div class="bs-kpi-label">Grand Total Stock Value</div>
+              <div class="bs-kpi-amount">{{ fmtAmt(stockVal.grand_total) }}</div>
+            </div>
+          </div>
+        </div>
+
+        <template v-if="stockVal.by_warehouse?.length">
+          <div class="iws-section-label">By Warehouse</div>
+          <div class="iws-table-wrap">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th class="iws-idx">#</th>
+                  <th>Warehouse</th>
+                  <th class="ta-r">Stock Value (₹)</th>
+                  <th class="ta-r">% of Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in stockVal.by_warehouse" :key="row.warehouse">
+                  <td class="iws-idx">{{ i + 1 }}</td>
+                  <td class="iws-item-name">{{ row.warehouse }}</td>
+                  <td class="ta-r mono-sm fw-700 green">{{ fmtAmt(row.stock_value) }}</td>
+                  <td class="ta-r mono-sm">{{ stockVal.grand_total ? ((row.stock_value / stockVal.grand_total) * 100).toFixed(1) + '%' : '—' }}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="iws-total-row">
+                  <td class="iws-idx"><span class="iws-sigma">&Sigma;</span></td>
+                  <td class="fw-700">Total</td>
+                  <td class="ta-r fw-700 green">{{ fmtAmt(stockVal.grand_total) }}</td>
+                  <td class="ta-r fw-700">100.0%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </template>
         <div v-else class="empty-msg">No stock on hand in any warehouse.</div>
       </template>
       <div v-else class="empty-msg">{{stockValRan ? 'No stock on hand for this company.' : 'Run the report to see results.'}}</div>
     </div>
 
     <!-- Daily Business MIS -->
-    <div v-if="activeReport === 'mis'" class="books-card report-card">
-      <div class="books-card-title">Daily Business MIS</div>
-      <div style="font-size:11.5px;color:#94a3b8;margin-bottom:12px">
-        Day-by-day snapshot of Sales, Collection, Purchase, Expenses, Dispatch, Production,
-        Stock Inward/Outward and running Outstanding for the selected period.
+    <div v-if="activeReport === 'mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon mis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Daily Business MIS</div>
+          <div class="bs-page-head-sub">Day-by-day snapshot of Sales, Collection, Purchase, Expenses, Dispatch, Production, Stock Inward/Outward and running Outstanding for the selected period.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportDailyMisCSV" :disabled="!dailyMis?.days?.length">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
       </div>
+
       <template v-if="misLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
       <template v-else-if="dailyMis">
-        <div class="mis-summary-grid">
+        <div class="mis-summary-grid" style="margin-bottom:18px">
           <div class="mis-summary-card">
             <span class="bucket-label">Daily Sales</span>
             <span class="mis-summary-val">{{ fmtAmt(dailyMis.totals.sales_amount) }}</span>
@@ -941,58 +1679,78 @@
           </div>
         </div>
 
-        <table v-if="dailyMis.days?.length" class="books-table aging-table" style="width:100%;margin-top:18px">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th class="ta-r">Sales</th>
-              <th class="ta-r">Collection</th>
-              <th class="ta-r">Purchase</th>
-              <th class="ta-r">Expenses</th>
-              <th class="ta-r">Dispatch Qty</th>
-              <th class="ta-r">Production Qty</th>
-              <th class="ta-r">Stock In</th>
-              <th class="ta-r">Stock Out</th>
-              <th class="ta-r">Outstanding</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in dailyMis.days" :key="row.date">
-              <td>{{ row.date }}</td>
-              <td class="ta-r mono-sm">{{ fmtAmt(row.sales_amount) }}</td>
-              <td class="ta-r mono-sm green">{{ fmtAmt(row.collection_amount) }}</td>
-              <td class="ta-r mono-sm">{{ fmtAmt(row.purchase_amount) }}</td>
-              <td class="ta-r mono-sm red">{{ fmtAmt(row.expense_amount) }}</td>
-              <td class="ta-r mono-sm">{{ fmtN(row.dispatch_qty) }}</td>
-              <td class="ta-r mono-sm">{{ fmtN(row.production_qty) }}</td>
-              <td class="ta-r mono-sm">{{ fmtN(row.stock_inward_qty) }}</td>
-              <td class="ta-r mono-sm">{{ fmtN(row.stock_outward_qty) }}</td>
-              <td class="ta-r mono-sm fw-600">{{ fmtAmt(row.outstanding) }}</td>
-            </tr>
-          </tbody>
-          <tfoot>
-            <tr class="aging-totals-row">
-              <td class="fw-700">TOTAL</td>
-              <td class="ta-r fw-700">{{ fmtAmt(dailyMis.totals.sales_amount) }}</td>
-              <td class="ta-r fw-700 green">{{ fmtAmt(dailyMis.totals.collection_amount) }}</td>
-              <td class="ta-r fw-700">{{ fmtAmt(dailyMis.totals.purchase_amount) }}</td>
-              <td class="ta-r fw-700 red">{{ fmtAmt(dailyMis.totals.expense_amount) }}</td>
-              <td class="ta-r fw-700">{{ fmtN(dailyMis.totals.dispatch_qty) }}</td>
-              <td class="ta-r fw-700">{{ fmtN(dailyMis.totals.production_qty) }}</td>
-              <td class="ta-r fw-700">{{ fmtN(dailyMis.totals.stock_inward_qty) }}</td>
-              <td class="ta-r fw-700">{{ fmtN(dailyMis.totals.stock_outward_qty) }}</td>
-              <td class="ta-r fw-700">{{ fmtAmt(dailyMis.totals.closing_outstanding) }}</td>
-            </tr>
-          </tfoot>
-        </table>
+        <template v-if="dailyMis.days?.length">
+          <div class="iws-section-label">Day by Day</div>
+          <div class="iws-table-wrap">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th class="ta-r">Sales</th>
+                  <th class="ta-r">Collection</th>
+                  <th class="ta-r">Purchase</th>
+                  <th class="ta-r">Expenses</th>
+                  <th class="ta-r">Dispatch Qty</th>
+                  <th class="ta-r">Production Qty</th>
+                  <th class="ta-r">Stock In</th>
+                  <th class="ta-r">Stock Out</th>
+                  <th class="ta-r">Outstanding</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in dailyMis.days" :key="row.date">
+                  <td class="iws-item-name">{{ row.date }}</td>
+                  <td class="ta-r mono-sm">{{ fmtAmt(row.sales_amount) }}</td>
+                  <td class="ta-r mono-sm green">{{ fmtAmt(row.collection_amount) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtAmt(row.purchase_amount) }}</td>
+                  <td class="ta-r mono-sm red">{{ fmtAmt(row.expense_amount) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN(row.dispatch_qty) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN(row.production_qty) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN(row.stock_inward_qty) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtN(row.stock_outward_qty) }}</td>
+                  <td class="ta-r mono-sm fw-600">{{ fmtAmt(row.outstanding) }}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr class="iws-total-row">
+                  <td class="fw-700">TOTAL</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(dailyMis.totals.sales_amount) }}</td>
+                  <td class="ta-r fw-700 green">{{ fmtAmt(dailyMis.totals.collection_amount) }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(dailyMis.totals.purchase_amount) }}</td>
+                  <td class="ta-r fw-700 red">{{ fmtAmt(dailyMis.totals.expense_amount) }}</td>
+                  <td class="ta-r fw-700">{{ fmtN(dailyMis.totals.dispatch_qty) }}</td>
+                  <td class="ta-r fw-700">{{ fmtN(dailyMis.totals.production_qty) }}</td>
+                  <td class="ta-r fw-700">{{ fmtN(dailyMis.totals.stock_inward_qty) }}</td>
+                  <td class="ta-r fw-700">{{ fmtN(dailyMis.totals.stock_outward_qty) }}</td>
+                  <td class="ta-r fw-700">{{ fmtAmt(dailyMis.totals.closing_outstanding) }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </template>
         <div v-else class="empty-msg">No activity in this period.</div>
       </template>
       <div v-else class="empty-msg">{{misRan ? 'No data for this period.' : 'Run the report to see results.'}}</div>
     </div>
 
     <!-- Sales MIS -->
-    <div v-if="activeReport === 'sales_mis'" class="books-card report-card">
-      <div class="books-card-title">Sales MIS</div>
+    <div v-if="activeReport === 'sales_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon smis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Sales MIS</div>
+          <div class="bs-page-head-sub">Sales performance broken down by summary, target, product, customer, salesperson, branch, returns, discounts, pending orders and conversion.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportSalesMisCSV" :disabled="!salesMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in salesMisTabs" :key="t.key" class="report-tab"
@@ -1191,8 +1949,23 @@
     </div>
 
     <!-- Collection & Receivables MIS -->
-    <div v-if="activeReport === 'receivables'" class="books-card report-card">
-      <div class="books-card-title">Collection & Receivables MIS</div>
+    <div v-if="activeReport === 'receivables'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon rmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Collection & Receivables MIS</div>
+          <div class="bs-page-head-sub">Total receivables, customer outstanding, ageing, collection targets and efficiency for the selected period.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportReceivablesCSV" :disabled="!receivablesMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in receivablesTabs" :key="t.key" class="report-tab"
@@ -1360,8 +2133,23 @@
     </div>
 
     <!-- Purchase MIS -->
-    <div v-if="activeReport === 'purchase_mis'" class="books-card report-card">
-      <div class="books-card-title">Purchase MIS</div>
+    <div v-if="activeReport === 'purchase_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon pmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 16l-5.1-5.1-2.8 2.8L7 10"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Purchase MIS</div>
+          <div class="bs-page-head-sub">Purchase performance broken down by summary, supplier, product, target vs actual, price variance and pending orders/receipts.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportPurchaseMisCSV" :disabled="!purchaseMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in purchaseMisTabs" :key="t.key" class="report-tab"
@@ -1530,8 +2318,23 @@
     </div>
 
     <!-- Inventory MIS -->
-    <div v-if="activeReport === 'inventory_mis'" class="books-card report-card">
-      <div class="books-card-title">Inventory MIS</div>
+    <div v-if="activeReport === 'inventory_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon invmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Inventory MIS</div>
+          <div class="bs-page-head-sub">Current stock, valuation, movement speed, ageing, reorder points and adjustments across all warehouses.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportInventoryMisCSV" :disabled="!inventoryMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in inventoryMisTabs" :key="t.key" class="report-tab"
@@ -1776,8 +2579,23 @@
     </div>
 
     <!-- Production MIS -->
-    <div v-if="activeReport === 'production_mis'" class="books-card report-card">
-      <div class="books-card-title">Production MIS</div>
+    <div v-if="activeReport === 'production_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon prodmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Production MIS</div>
+          <div class="bs-page-head-sub">Production plan vs actual, WIP status, material availability and consumption, cost, efficiency and rejection/scrap for work orders.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportProductionMisCSV" :disabled="!productionMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in productionMisTabs" :key="t.key" class="report-tab"
@@ -2026,8 +2844,23 @@
     </div>
 
     <!-- Product MIS -->
-    <div v-if="activeReport === 'product_mis'" class="books-card report-card">
-      <div class="books-card-title">Product MIS</div>
+    <div v-if="activeReport === 'product_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon prdmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Product MIS</div>
+          <div class="bs-page-head-sub">Product-wise sales, profit, cost, margin, production, stock and wastage, plus top and low selling products for the period.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportProductMisCSV" :disabled="!productMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in productMisTabs" :key="t.key" class="report-tab"
@@ -2216,8 +3049,23 @@
     </div>
 
     <!-- Dispatch & Delivery MIS -->
-    <div v-if="activeReport === 'dispatch_mis'" class="books-card report-card">
-      <div class="books-card-title">Dispatch & Delivery MIS</div>
+    <div v-if="activeReport === 'dispatch_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon dmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Dispatch & Delivery MIS</div>
+          <div class="bs-page-head-sub">Dispatch summary, pending and delayed deliveries, customer-wise pending delivery and transport-wise dispatch for the period.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportDispatchMisCSV" :disabled="!dispatchMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in dispatchMisTabs" :key="t.key" class="report-tab"
@@ -2366,8 +3214,23 @@
     </div>
 
     <!-- Order MIS -->
-    <div v-if="activeReport === 'order_mis'" class="books-card report-card">
-      <div class="books-card-title">Order MIS</div>
+    <div v-if="activeReport === 'order_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon omis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Order MIS</div>
+          <div class="bs-page-head-sub">Sales order pipeline — new, pending, under production, ready for dispatch, delayed, delivered, cancelled and order-wise profitability.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportOrderMisCSV" :disabled="!orderMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in orderMisTabs" :key="t.key" class="report-tab"
@@ -2582,8 +3445,23 @@
     </div>
 
     <!-- Profitability MIS -->
-    <div v-if="activeReport === 'profitability_mis'" class="books-card report-card">
-      <div class="books-card-title">Profitability MIS</div>
+    <div v-if="activeReport === 'profitability_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon pfmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Profitability MIS</div>
+          <div class="bs-page-head-sub">Gross profit and margin by product, customer, order, branch and salesperson, plus the monthly profit trend. Excludes sales returns; cost is current average valuation, falling back to Standard Buying Rate.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportProfitabilityMisCSV" :disabled="!profitabilityMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in profitabilityMisTabs" :key="t.key" class="report-tab"
@@ -2723,8 +3601,23 @@
     </div>
 
     <!-- Expense MIS -->
-    <div v-if="activeReport === 'expense_mis'" class="books-card report-card">
-      <div class="books-card-title">Expense MIS</div>
+    <div v-if="activeReport === 'expense_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon emis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Expense MIS</div>
+          <div class="bs-page-head-sub">Total expenses by department and category, budget vs actual, fixed vs variable, trend and unusual/excess spend. Submitted Expense records only — Purchase Invoices and GL journal entries are not included here.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportExpenseMisCSV" :disabled="!expenseMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in expenseMisTabs" :key="t.key" class="report-tab"
@@ -2883,8 +3776,23 @@
     </div>
 
     <!-- Payables MIS -->
-    <div v-if="activeReport === 'payables_mis'" class="books-card report-card">
-      <div class="books-card-title">Payables MIS</div>
+    <div v-if="activeReport === 'payables_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon payblmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Payables MIS</div>
+          <div class="bs-page-head-sub">Supplier outstanding, payable ageing, overdue payables, amounts due this week/month, supplier-wise outstanding and payment due forecast.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportPayablesMisCSV" :disabled="!payablesMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in payablesMisTabs" :key="t.key" class="report-tab"
@@ -3012,8 +3920,23 @@
     </div>
 
     <!-- Cash & Bank MIS -->
-    <div v-if="activeReport === 'cash_bank_mis'" class="books-card report-card">
-      <div class="books-card-title">Cash &amp; Bank MIS</div>
+    <div v-if="activeReport === 'cash_bank_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon cbmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Cash & Bank MIS</div>
+          <div class="bs-page-head-sub">Cash position, bank balance, daily cash flow and bank movement, receipts, payments, cash forecast and fund requirement for the period.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportCashBankMisCSV" :disabled="!cashBankMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in cashBankMisTabs" :key="t.key" class="report-tab"
@@ -3195,8 +4118,23 @@
     </div>
 
     <!-- Customer MIS -->
-    <div v-if="activeReport === 'customer_mis'" class="books-card report-card">
-      <div class="books-card-title">Customer MIS</div>
+    <div v-if="activeReport === 'customer_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon custmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Customer MIS</div>
+          <div class="bs-page-head-sub">New, active, repeat and inactive customers, customer-wise sales/outstanding/profit, retention rate, and top customers for the period.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportCustomerMisCSV" :disabled="!customerMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in customerMisTabs" :key="t.key" class="report-tab"
@@ -3406,8 +4344,23 @@
     </div>
 
     <!-- Supplier MIS -->
-    <div v-if="activeReport === 'supplier_mis'" class="books-card report-card">
-      <div class="books-card-title">Supplier MIS</div>
+    <div v-if="activeReport === 'supplier_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon suppmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Supplier MIS</div>
+          <div class="bs-page-head-sub">Supplier-wise purchase and outstanding, payment ageing, price comparison, delivery/supplier performance and quality/rejection for the period.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportSupplierMisCSV" :disabled="!supplierMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
+      </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
         <button v-for="t in supplierMisTabs" :key="t.key" class="report-tab"
@@ -3604,10 +4557,22 @@
     </div>
 
     <!-- Employee / Performance MIS -->
-    <div v-if="activeReport === 'employee_mis'" class="books-card report-card">
-      <div class="books-card-title">Employee / Performance MIS</div>
-      <div style="font-size:11.5px;color:#94a3b8;margin-bottom:10px">
-        This app has no HR/Payroll module — figures below are built from Job Card time logs and Sales Person records, so they only cover employees who had time logged or are set up as a Sales Person.
+    <div v-if="activeReport === 'employee_mis'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon empmis-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Employee / Performance MIS</div>
+          <div class="bs-page-head-sub">This app has no HR/Payroll module — figures below are built from Job Card time logs and Sales Person records, so they only cover employees who had time logged or are set up as a Sales Person.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
+          <button class="bs-export-btn" @click="exportEmployeeMisCSV" :disabled="!employeeMis">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export
+          </button>
+        </div>
       </div>
 
       <div class="report-tabs" style="margin-bottom:14px">
@@ -3815,6 +4780,16 @@ import Modal from "../components/Modal.vue";
 const fmt    = formatCurrency;
 const fmtAmt = (v) => v != null ? "₹" + Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
 const fmtN   = (v) => Number(v||0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const fmtN2  = (v) => Number(v||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function totalValStyle(text) {
+  const len = String(text || "").length;
+  let size = 24;
+  if (len > 18) size = 15;
+  else if (len > 15) size = 17;
+  else if (len > 12) size = 19;
+  else if (len > 10) size = 21;
+  return { fontSize: size + "px" };
+}
 
 const today    = new Date();
 const fromDate = ref(new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10));
@@ -3831,9 +4806,273 @@ const { data: cf,  loading: cfLoading,  execute: loadCf  } = useFrappeCall("zoho
 const { data: gst, loading: gstLoading, execute: loadGst } = useFrappeCall("zoho_books_clone.db.queries.get_gst_summary");
 const { data: tb,  loading: tbLoading,  execute: loadTb  } = useFrappeCall("zoho_books_clone.db.queries.get_trial_balance");
 
+const tbExportOpen = ref(false);
+const tbRowMenu     = ref(null);
+const tbSort        = ref({ key: "", dir: "asc" });
+
+function sumTb(rows, field) { return (rows || []).reduce((s, r) => s + Number(r[field] || 0), 0); }
+const tbTotals = computed(() => ({
+  opening: sumTb(tb.value, "opening"),
+  debit:   sumTb(tb.value, "debit"),
+  credit:  sumTb(tb.value, "credit"),
+  closing: sumTb(tb.value, "closing"),
+}));
+const tbBalanced = computed(() => Math.abs(tbTotals.value.debit - tbTotals.value.credit) < 0.01);
+
+const tbSorted = computed(() => {
+  const rows = [...(tb.value || [])];
+  const key = tbSort.value.key;
+  if (!key) return rows;
+  const mul = tbSort.value.dir === "desc" ? -1 : 1;
+  const val = (r) => (key === "account" || key === "account_type")
+    ? String(r[key] || "").toLowerCase()
+    : Number(r[key] || 0);
+  rows.sort((a, b) => {
+    const x = val(a), y = val(b);
+    if (typeof x === "string") return mul * x.localeCompare(y);
+    return mul * (x - y);
+  });
+  return rows;
+});
+
+function setTbSort(key) {
+  if (tbSort.value.key === key) {
+    tbSort.value = { key, dir: tbSort.value.dir === "asc" ? "desc" : "asc" };
+  } else {
+    tbSort.value = { key, dir: "asc" };
+  }
+}
+function tbSortCls(key) {
+  if (tbSort.value.key !== key) return "";
+  return tbSort.value.dir === "asc" ? "iws-sort-asc" : "iws-sort-desc";
+}
+
+const TB_HEADER = ["Account", "Type", "Opening", "Debit", "Credit", "Closing"];
+function tbRowValues(r) {
+  return [r.account, r.account_type, r.opening || 0, r.debit || 0, r.credit || 0, r.closing || 0];
+}
+function copyTbToClipboard() {
+  const rows = tbSorted.value.map(r => tbRowValues(r).join("\t"));
+  const t = tbTotals.value;
+  rows.push(["Total", "", t.opening, t.debit, t.credit, t.closing].join("\t"));
+  const text = [TB_HEADER.join("\t"), ...rows].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function copyTbRow(row) {
+  const text = [TB_HEADER.join("\t"), tbRowValues(row).join("\t")].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function exportTbRowCSV(row) {
+  const csv = [TB_HEADER.join(","), tbRowValues(row).join(",")].join("\n");
+  const slug = String(row.account || "account").replace(/[^A-Za-z0-9_-]+/g, "_");
+  iwsDownload(csv, "trial_balance_" + slug + "_" + toDate.value + ".csv");
+}
+function exportTbCSV() {
+  if (!tb.value?.length) return;
+  const lines = tbSorted.value.map(r => tbRowValues(r).join(","));
+  const t = tbTotals.value;
+  lines.push(["Total", "", t.opening, t.debit, t.credit, t.closing].join(","));
+  const csv = [TB_HEADER.join(","), ...lines].join("\n");
+  iwsDownload(csv, "trial_balance_" + toDate.value + ".csv");
+}
+
 const arAging  = ref([]);
 const apAging  = ref([]);
+
+const arExportOpen = ref(false);
+const arRowMenu     = ref(null);
+const arSort        = ref({ key: "", dir: "asc" });
+
+function sumAging(rows, field) { return rows.reduce((s, r) => s + Number(r[field] || 0), 0); }
+const arTotals = computed(() => ({
+  current:      sumAging(arAging.value, "current"),
+  days_1_30:    sumAging(arAging.value, "days_1_30"),
+  days_31_60:   sumAging(arAging.value, "days_31_60"),
+  days_61_90:   sumAging(arAging.value, "days_61_90"),
+  days_90_plus: sumAging(arAging.value, "days_90_plus"),
+  total:        sumAging(arAging.value, "total"),
+}));
+
+const arAgingSorted = computed(() => {
+  const rows = [...(arAging.value || [])];
+  const key = arSort.value.key;
+  if (!key) return rows;
+  const mul = arSort.value.dir === "desc" ? -1 : 1;
+  const val = (r) => key === "customer"
+    ? String(r.customer_name || r.customer || "").toLowerCase()
+    : Number(r[key] || 0);
+  rows.sort((a, b) => {
+    const x = val(a), y = val(b);
+    if (typeof x === "string") return mul * x.localeCompare(y);
+    return mul * (x - y);
+  });
+  return rows;
+});
+
+function setArSort(key) {
+  if (arSort.value.key === key) {
+    arSort.value = { key, dir: arSort.value.dir === "asc" ? "desc" : "asc" };
+  } else {
+    arSort.value = { key, dir: "asc" };
+  }
+}
+function arSortCls(key) {
+  if (arSort.value.key !== key) return "";
+  return arSort.value.dir === "asc" ? "iws-sort-asc" : "iws-sort-desc";
+}
+
+function agingRowValues(r, isAR) {
+  return [isAR ? (r.customer_name || r.customer) : (r.supplier_name || r.supplier), r.current, r.days_1_30, r.days_31_60, r.days_61_90, r.days_90_plus, r.total];
+}
+function agingHeader(isAR) {
+  return [isAR ? "Customer" : "Vendor", "Current", "1-30 Days", "31-60 Days", "61-90 Days", "90+ Days", "Total"];
+}
+function copyArAgingToClipboard() {
+  const header = agingHeader(true);
+  const rows = arAgingSorted.value.map(r => agingRowValues(r, true).join("\t"));
+  const t = arTotals.value;
+  rows.push(["Total", t.current, t.days_1_30, t.days_31_60, t.days_61_90, t.days_90_plus, t.total].join("\t"));
+  const text = [header.join("\t"), ...rows].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function copyAgingRow(row, isAR) {
+  const header = agingHeader(isAR);
+  const text = [header.join("\t"), agingRowValues(row, isAR).join("\t")].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function exportAgingRowCSV(row, isAR) {
+  const header = agingHeader(isAR);
+  const csv = [header.join(","), agingRowValues(row, isAR).join(",")].join("\n");
+  const slug = String((isAR ? row.customer : row.supplier) || "party").replace(/[^A-Za-z0-9_-]+/g, "_");
+  iwsDownload(csv, (isAR ? "ar_aging_" : "ap_aging_") + slug + "_" + toDate.value + ".csv");
+}
+
+const apExportOpen = ref(false);
+const apRowMenu     = ref(null);
+const apSort        = ref({ key: "", dir: "asc" });
+
+const apTotals = computed(() => ({
+  current:      sumAging(apAging.value, "current"),
+  days_1_30:    sumAging(apAging.value, "days_1_30"),
+  days_31_60:   sumAging(apAging.value, "days_31_60"),
+  days_61_90:   sumAging(apAging.value, "days_61_90"),
+  days_90_plus: sumAging(apAging.value, "days_90_plus"),
+  total:        sumAging(apAging.value, "total"),
+}));
+
+const apAgingSorted = computed(() => {
+  const rows = [...(apAging.value || [])];
+  const key = apSort.value.key;
+  if (!key) return rows;
+  const mul = apSort.value.dir === "desc" ? -1 : 1;
+  const val = (r) => key === "supplier"
+    ? String(r.supplier_name || r.supplier || "").toLowerCase()
+    : Number(r[key] || 0);
+  rows.sort((a, b) => {
+    const x = val(a), y = val(b);
+    if (typeof x === "string") return mul * x.localeCompare(y);
+    return mul * (x - y);
+  });
+  return rows;
+});
+
+function setApSort(key) {
+  if (apSort.value.key === key) {
+    apSort.value = { key, dir: apSort.value.dir === "asc" ? "desc" : "asc" };
+  } else {
+    apSort.value = { key, dir: "asc" };
+  }
+}
+function apSortCls(key) {
+  if (apSort.value.key !== key) return "";
+  return apSort.value.dir === "asc" ? "iws-sort-asc" : "iws-sort-desc";
+}
+
+function copyApAgingToClipboard() {
+  const header = agingHeader(false);
+  const rows = apAgingSorted.value.map(r => agingRowValues(r, false).join("\t"));
+  const t = apTotals.value;
+  rows.push(["Total", t.current, t.days_1_30, t.days_31_60, t.days_61_90, t.days_90_plus, t.total].join("\t"));
+  const text = [header.join("\t"), ...rows].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
 const plMonthly = ref([]);
+const cfMonthly = ref([]);
+const cfMaxVal = computed(() => Math.max(
+  ...cfMonthly.value.flatMap(m => [Math.abs(m.operating || 0), Math.abs(m.investing || 0), Math.abs(m.financing || 0)]),
+  1
+));
+function cfBarStyle(v) {
+  const half = 60;
+  const px = Math.round((Math.abs(Number(v) || 0) / cfMaxVal.value) * half);
+  return (Number(v) || 0) >= 0
+    ? { height: px + "px", bottom: "50%", top: "auto" }
+    : { height: px + "px", top: "50%", bottom: "auto" };
+}
+function monthRangesBetween(from, to) {
+  if (!from || !to) return [];
+  const start = new Date(from), end = new Date(to);
+  if (isNaN(start) || isNaN(end) || start > end) return [];
+  const out = [];
+  let cur = new Date(start.getFullYear(), start.getMonth(), 1);
+  while (cur <= end) {
+    const monthStart = new Date(cur.getFullYear(), cur.getMonth(), 1);
+    const monthEnd = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+    const rangeFrom = monthStart < start ? start : monthStart;
+    const rangeTo = monthEnd > end ? end : monthEnd;
+    out.push({
+      from: rangeFrom.toISOString().slice(0, 10),
+      to: rangeTo.toISOString().slice(0, 10),
+      month: cur.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+    });
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+  return out;
+}
+function exportCfCSV() {
+  if (!cf.value) return;
+  const header = ["Line", "Amount"].join(",");
+  const lines = [
+    ["Operating Activities", cf.value.operating].join(","),
+    ["Investing Activities", cf.value.investing].join(","),
+    ["Financing Activities", cf.value.financing].join(","),
+    ["Net Change in Cash", cf.value.net_change].join(","),
+    ["Opening Cash & Bank", cf.value.opening_cash].join(","),
+    ["Closing Cash & Bank", cf.value.closing_cash].join(","),
+  ];
+  const csv = [header, ...lines].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "cash_flow_" + toDate.value + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const gstTaxDesc = { CGST: "Central Goods and Services Tax", SGST: "State Goods and Services Tax", IGST: "Integrated Goods and Services Tax", UTGST: "Union Territory Goods and Services Tax" };
+const gstColors = ["gst-c-blue", "gst-c-emerald", "gst-c-cyan", "gst-c-amber", "gst-c-violet"];
+const gstCards = computed(() => (gst.value || []).map((g, i) => ({
+  ...g,
+  desc: gstTaxDesc[g.tax_type] || "Goods and Services Tax",
+  cls: gstColors[i % gstColors.length],
+})));
+const gstTotalInvoices = computed(() => (gst.value || []).reduce((s, g) => s + (Number(g.invoice_count) || 0), 0));
+const gstTotalTax = computed(() => (gst.value || []).reduce((s, g) => s + (Number(g.total_tax) || 0), 0));
+function exportGstCSV() {
+  if (!gst.value?.length) return;
+  const header = ["Tax Type", "Invoice Count", "Total Tax"].join(",");
+  const lines = gst.value.map(g => [g.tax_type, g.invoice_count, g.total_tax].join(","));
+  lines.push(["Total", gstTotalInvoices.value, gstTotalTax.value].join(","));
+  const csv = [header, ...lines].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "gst_summary_" + toDate.value + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
 const arLoading = ref(false);
 const apLoading = ref(false);
 const arRan = ref(false);
@@ -3874,6 +5113,105 @@ async function openInvoiceDetail(invoiceName) {
 const stockGl        = ref(null);
 const stockGlLoading = ref(false);
 const stockGlRan     = ref(false);
+
+const sglExportOpen   = ref(false);
+const sglAccRowMenu   = ref(null);
+const sglItemRowMenu  = ref(null);
+const sglAccSort      = ref({ key: "", dir: "asc" });
+const sglItemSort     = ref({ key: "", dir: "asc" });
+
+function genericSort(rows, sortState, strKeys) {
+  const key = sortState.key;
+  if (!key) return rows;
+  const mul = sortState.dir === "desc" ? -1 : 1;
+  const val = (r) => strKeys.includes(key) ? String(r[key] || "").toLowerCase() : Number(r[key] || 0);
+  return [...rows].sort((a, b) => {
+    const x = val(a), y = val(b);
+    if (typeof x === "string") return mul * x.localeCompare(y);
+    return mul * (x - y);
+  });
+}
+
+const sglAccountsSorted = computed(() => genericSort(stockGl.value?.accounts || [], sglAccSort.value, ["account"]));
+function setSglAccSort(key) {
+  sglAccSort.value = sglAccSort.value.key === key
+    ? { key, dir: sglAccSort.value.dir === "asc" ? "desc" : "asc" }
+    : { key, dir: "asc" };
+}
+function sglAccSortCls(key) {
+  if (sglAccSort.value.key !== key) return "";
+  return sglAccSort.value.dir === "asc" ? "iws-sort-asc" : "iws-sort-desc";
+}
+
+const sglItemsSorted = computed(() => {
+  const rows = [...(stockGl.value?.items || [])];
+  const key = sglItemSort.value.key;
+  if (!key) return rows;
+  const mul = sglItemSort.value.dir === "desc" ? -1 : 1;
+  const val = (r) => {
+    if (key === "item") return String(r.item_name || r.item_code || "").toLowerCase();
+    if (key === "warehouse") return String(r.warehouse || "").toLowerCase();
+    return Number(r[key] || 0);
+  };
+  rows.sort((a, b) => {
+    const x = val(a), y = val(b);
+    if (typeof x === "string") return mul * x.localeCompare(y);
+    return mul * (x - y);
+  });
+  return rows;
+});
+function setSglItemSort(key) {
+  sglItemSort.value = sglItemSort.value.key === key
+    ? { key, dir: sglItemSort.value.dir === "asc" ? "desc" : "asc" }
+    : { key, dir: "asc" };
+}
+function sglItemSortCls(key) {
+  if (sglItemSort.value.key !== key) return "";
+  return sglItemSort.value.dir === "asc" ? "iws-sort-asc" : "iws-sort-desc";
+}
+const sglItemsTotal = computed(() => (stockGl.value?.items || []).reduce((s, r) => s + Number(r.stock_value || 0), 0));
+
+const SGL_ACC_HEADER = ["Inventory Account", "Bin Stock Value", "GL Balance", "Difference", "Status"];
+function sglAccRowValues(r) {
+  return [r.account, r.bin_stock_value, r.gl_balance, r.difference, r.is_reconciled ? "OK" : "DRIFT"];
+}
+function copySglAccountRow(row) {
+  const text = [SGL_ACC_HEADER.join("\t"), sglAccRowValues(row).join("\t")].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function exportSglAccountsCSV() {
+  if (!stockGl.value?.accounts?.length) return;
+  const lines = sglAccountsSorted.value.map(r => sglAccRowValues(r).join(","));
+  const csv = [SGL_ACC_HEADER.join(","), ...lines].join("\n");
+  iwsDownload(csv, "stock_vs_gl_accounts_" + toDate.value + ".csv");
+}
+
+const SGL_ITEM_HEADER = ["Item", "Warehouse", "Qty", "Valuation Rate", "Stock Value"];
+function sglItemRowValues(r) {
+  return [r.item_name || r.item_code, r.warehouse, r.actual_qty, r.valuation_rate, r.stock_value];
+}
+function copySglItemRow(row) {
+  const text = [SGL_ITEM_HEADER.join("\t"), sglItemRowValues(row).join("\t")].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function copySglItemsToClipboard() {
+  const rows = sglItemsSorted.value.map(r => sglItemRowValues(r).join("\t"));
+  rows.push(["Total", "", "", "", sglItemsTotal.value].join("\t"));
+  const text = [SGL_ITEM_HEADER.join("\t"), ...rows].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function exportSglItemRowCSV(row) {
+  const csv = [SGL_ITEM_HEADER.join(","), sglItemRowValues(row).join(",")].join("\n");
+  const slug = String(row.item_code || row.item_name || "item").replace(/[^A-Za-z0-9_-]+/g, "_") + "_" + String(row.warehouse || "").replace(/[^A-Za-z0-9_-]+/g, "_");
+  iwsDownload(csv, "stock_vs_gl_item_" + slug + ".csv");
+}
+function exportSglItemsCSV() {
+  if (!stockGl.value?.items?.length) return;
+  const lines = sglItemsSorted.value.map(r => sglItemRowValues(r).join(","));
+  lines.push(["Total", "", "", "", sglItemsTotal.value].join(","));
+  const csv = [SGL_ITEM_HEADER.join(","), ...lines].join("\n");
+  iwsDownload(csv, "stock_vs_gl_items_" + toDate.value + ".csv");
+}
 
 const stockVal        = ref(null);
 const stockValLoading = ref(false);
@@ -4131,12 +5469,74 @@ function spAchievementPct(r) {
   return target ? (Number(r.total_amount) / target * 100) : 0;
 }
 
+function exportBsCSV() {
+  const header = ["Section", "Line", "Amount"].join(",");
+  const lines = [];
+  bsGroups.value.forEach(g => {
+    lines.push([g.label, "", g.total].join(","));
+    g.items.forEach(it => lines.push([g.label, it.label, it.value].join(",")));
+  });
+  const csv = [header, ...lines].join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "balance_sheet_" + toDate.value + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const bsBalanced = computed(() => {
   if (!bs.value) return false;
   const a = Number(bs.value.total_assets) || 0;
   const l = Number(bs.value.total_liabilities) || 0;
   const e = Number(bs.value.total_equity) || 0;
   return Math.abs(a - (l + e)) < 1;
+});
+const bsExpanded = ref({ assets: true, liabilities: true, equity: true });
+function bsToggle(key) { bsExpanded.value[key] = !bsExpanded.value[key]; }
+const bsGroups = computed(() => {
+  const b = bs.value || {};
+  const n = (v) => Number(v) || 0;
+  return [
+    {
+      key: "assets", label: "Assets", desc: "What the business owns",
+      total: n(b.total_assets), cls: "bs-acc-assets",
+      icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>`,
+      items: [
+        { label: "Current Assets", desc: "Cash, Bank, Debtors, Stock, etc.",
+          value: n(b.cash_and_bank) + n(b.receivables) + n(b.inventory_value),
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="14.5" r="1"/></svg>` },
+        { label: "Non-Current Assets", desc: "Fixed Assets, Investments, etc.",
+          value: n(b.other_assets) + n(b.itc_receivable),
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-6h6v6"/></svg>` },
+      ],
+    },
+    {
+      key: "liabilities", label: "Liabilities", desc: "What the business owes",
+      total: n(b.total_liabilities), cls: "bs-acc-liabilities",
+      icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+      items: [
+        { label: "Current Liabilities", desc: "Creditors, Short-term Loans, etc.",
+          value: n(b.payables) + n(b.gst_liability) + n(b.stock_received_not_billed),
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17" cy="9" r="2.5"/><path d="M16 20c.2-2.3 1.9-4 4-4"/></svg>` },
+        { label: "Non-Current Liabilities", desc: "Long-term Loans, Provisions, etc.",
+          value: n(b.other_liabilities),
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l3 3v17H6z"/><path d="M15 2v3h3"/><path d="M9 12h6M9 16h6"/></svg>` },
+      ],
+    },
+    {
+      key: "equity", label: "Equity", desc: "Owner's interest in the business",
+      total: n(b.total_equity), cls: "bs-acc-equity",
+      icon: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="3" width="4" height="18"/></svg>`,
+      items: [
+        { label: "Capital", desc: "", value: n(b.equity_capital),
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>` },
+        { label: "Retained Earnings", desc: "", value: n(b.retained_earnings),
+          icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 3"/></svg>` },
+      ],
+    },
+  ];
 });
 const maxMonthlyVal = computed(() => Math.max(...plMonthly.value.flatMap(m => [m.income||0, m.expense||0]), 1));
 function barH(v) { return Math.round((Math.max(0,v) / maxMonthlyVal.value) * 130); }
@@ -4199,6 +5599,57 @@ const profitMarginTotal = computed(() => {
 });
 const noCostDataCount = computed(() => profitReport.value.filter(r => !r.cost_rate).length);
 
+const pwExportOpen = ref(false);
+const pwRowMenu     = ref(null);
+const pwSort        = ref({ key: "", dir: "asc" });
+
+const profitReportSorted = computed(() => {
+  const rows = [...(profitReport.value || [])];
+  const key = pwSort.value.key;
+  if (!key) return rows;
+  const mul = pwSort.value.dir === "desc" ? -1 : 1;
+  const val = (r) => key === "item"
+    ? String(r.item_name || r.item_code || "").toLowerCase()
+    : Number(r[key] || 0);
+  rows.sort((a, b) => {
+    const x = val(a), y = val(b);
+    if (typeof x === "string") return mul * x.localeCompare(y);
+    return mul * (x - y);
+  });
+  return rows;
+});
+
+function setPwSort(key) {
+  if (pwSort.value.key === key) {
+    pwSort.value = { key, dir: pwSort.value.dir === "asc" ? "desc" : "asc" };
+  } else {
+    pwSort.value = { key, dir: "asc" };
+  }
+}
+function pwSortCls(key) {
+  if (pwSort.value.key !== key) return "";
+  return pwSort.value.dir === "asc" ? "iws-sort-asc" : "iws-sort-desc";
+}
+
+const PW_HEADER = ["Item", "Qty Sold", "Revenue", "Cost Rate", "Total Cost", "Profit", "Margin %"];
+function pwRowValues(r) {
+  return [r.item_name || r.item_code, r.qty_sold, r.revenue, r.cost_rate, r.total_cost, r.profit, Number(r.margin_pct||0).toFixed(1)];
+}
+function copyProfitToClipboard() {
+  const rows = profitReportSorted.value.map(r => pwRowValues(r).join("\t"));
+  const text = [PW_HEADER.join("\t"), ...rows].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function copyProfitRow(row) {
+  const text = [PW_HEADER.join("\t"), pwRowValues(row).join("\t")].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function exportProfitRowCSV(row) {
+  const csv = [PW_HEADER.join(","), pwRowValues(row).join(",")].join("\n");
+  const slug = String(row.item_code || row.item_name || "item").replace(/[^A-Za-z0-9_-]+/g, "_");
+  iwsDownload(csv, "profit_wise_report_" + slug + "_" + fromDate.value + "_to_" + toDate.value + ".csv");
+}
+
 const invoiceProfitSelectedRows = computed(() =>
   invoiceProfit.value.filter(r => selectedInvoices.value.has(r.invoice))
 );
@@ -4228,6 +5679,58 @@ const invoiceProfitSelectedTotals = computed(() => ({
   profit: sumField(invoiceProfitSelectedRows.value, "profit"),
 }));
 
+const ipExportOpen = ref(false);
+const ipRowMenu     = ref(null);
+const ipSort        = ref({ key: "", dir: "asc" });
+
+const invoiceProfitSorted = computed(() => {
+  const rows = [...(invoiceProfit.value || [])];
+  const key = ipSort.value.key;
+  if (!key) return rows;
+  const mul = ipSort.value.dir === "desc" ? -1 : 1;
+  const val = (r) => {
+    if (key === "invoice" || key === "posting_date") return String(r[key] || "");
+    if (key === "customer") return String(r.customer_name || r.customer || "").toLowerCase();
+    return Number(r[key] || 0);
+  };
+  rows.sort((a, b) => {
+    const x = val(a), y = val(b);
+    if (typeof x === "string") return mul * x.localeCompare(y);
+    return mul * (x - y);
+  });
+  return rows;
+});
+
+function setIpSort(key) {
+  if (ipSort.value.key === key) {
+    ipSort.value = { key, dir: ipSort.value.dir === "asc" ? "desc" : "asc" };
+  } else {
+    ipSort.value = { key, dir: "asc" };
+  }
+}
+function ipSortCls(key) {
+  if (ipSort.value.key !== key) return "";
+  return ipSort.value.dir === "asc" ? "iws-sort-asc" : "iws-sort-desc";
+}
+
+const IP_HEADER = ["Invoice", "Date", "Customer", "Revenue", "Est. Cost", "Profit", "Margin %"];
+function ipRowValues(r) {
+  return [r.invoice, r.posting_date, r.customer_name || r.customer, r.revenue, r.total_cost, r.profit, Number(r.margin_pct||0).toFixed(1)];
+}
+function copyInvoiceProfitToClipboard() {
+  const rows = (selectedInvoices.value.size ? invoiceProfitSelectedRows.value : invoiceProfitSorted.value).map(r => ipRowValues(r).join("\t"));
+  const text = [IP_HEADER.join("\t"), ...rows].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function copyInvoiceProfitRow(row) {
+  const text = [IP_HEADER.join("\t"), ipRowValues(row).join("\t")].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function exportInvoiceProfitRowCSV(row) {
+  const csv = [IP_HEADER.join(","), ipRowValues(row).join(",")].join("\n");
+  iwsDownload(csv, "invoice_profitability_" + row.invoice + ".csv");
+}
+
 async function runReport() {
   const needsRange = !['ar','ap','stockval','payables_mis'].includes(activeReport.value);
   if (needsRange && fromDate.value && toDate.value && fromDate.value > toDate.value) {
@@ -4246,7 +5749,16 @@ async function runReport() {
     } catch { plMonthly.value = []; }
   }
   if (activeReport.value === "bs")  await loadBs({ company, as_of_date: toDate.value });
-  if (activeReport.value === "cf")  await loadCf(args);
+  if (activeReport.value === "cf") {
+    await loadCf(args);
+    try {
+      const months = monthRangesBetween(fromDate.value, toDate.value);
+      const results = await Promise.all(months.map(m =>
+        apiGET("zoho_books_clone.db.queries.get_cash_flow", { company, from_date: m.from, to_date: m.to })
+      ));
+      cfMonthly.value = months.map((m, i) => ({ month: m.month, ...(results[i] || {}) }));
+    } catch { cfMonthly.value = []; }
+  }
   if (activeReport.value === "gst") await loadGst(args);
   if (activeReport.value === "tb")  await loadTb(args);
   if (activeReport.value === "ar") {
@@ -4396,26 +5908,154 @@ async function runReport() {
   }
 }
 
-function exportItemSalesCSV() {
-  const header = ["Item","UOM","Invoices","Qty Sold","Avg Rate","Discount","Total Amount"].join(",");
-  const lines = itemSales.value.map(r =>
-    [r.item_name || r.item_code, r.uom || "", r.invoice_count, r.qty_sold, r.avg_rate, r.total_discount || 0, r.total_amount].join(",")
-  );
-  const csv = [header, ...lines].join("\n");
+const iwsExportOpen = ref(false);
+const iwsRowMenu    = ref(null);
+const iwsSort       = ref({ key: "", dir: "asc" });
+
+const itemsTotals = computed(() => (itemSales.value || []).reduce((acc, r) => ({
+  invoices: acc.invoices + (Number(r.invoice_count) || 0),
+  qty:      acc.qty      + (Number(r.qty_sold) || 0),
+  discount: acc.discount + (Number(r.total_discount) || 0),
+  amount:   acc.amount   + (Number(r.total_amount) || 0),
+}), { invoices: 0, qty: 0, discount: 0, amount: 0 }));
+
+const itemSalesSorted = computed(() => {
+  const rows = [...(itemSales.value || [])];
+  const key = iwsSort.value.key;
+  if (!key) return rows;
+  const mul = iwsSort.value.dir === "desc" ? -1 : 1;
+  const val = (r) => {
+    if (key === "item") return String(r.item_name || r.item_code || "").toLowerCase();
+    if (key === "uom")  return String(r.uom || "").toLowerCase();
+    return Number(r[key] || 0);
+  };
+  rows.sort((a, b) => {
+    const x = val(a), y = val(b);
+    if (typeof x === "string") return mul * x.localeCompare(y);
+    return mul * (x - y);
+  });
+  return rows;
+});
+
+function setIwsSort(key) {
+  if (iwsSort.value.key === key) {
+    iwsSort.value = { key, dir: iwsSort.value.dir === "asc" ? "desc" : "asc" };
+  } else {
+    iwsSort.value = { key, dir: "asc" };
+  }
+}
+function iwsSortCls(key) {
+  if (iwsSort.value.key !== key) return "";
+  return iwsSort.value.dir === "asc" ? "iws-sort-asc" : "iws-sort-desc";
+}
+
+const IWS_HEADER = ["Item", "UOM", "Invoices", "Qty Sold", "Avg Rate", "Discount", "Total Amount"];
+function iwsRowValues(r) {
+  return [r.item_name || r.item_code, r.uom || "", r.invoice_count, r.qty_sold, r.avg_rate, r.total_discount || 0, r.total_amount];
+}
+function iwsDownload(csv, name) {
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "item_wise_sales_" + fromDate.value + "_to_" + toDate.value + ".csv";
+  a.download = name;
   a.click();
   URL.revokeObjectURL(url);
 }
+function copyItemSalesToClipboard() {
+  const rows = itemSalesSorted.value.map(r => iwsRowValues(r).join("\t"));
+  const t = itemsTotals.value;
+  rows.push(["Total", "", t.invoices, t.qty, "", t.discount, t.amount].join("\t"));
+  const text = [IWS_HEADER.join("\t"), ...rows].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function copyItemRow(row) {
+  const text = [IWS_HEADER.join("\t"), iwsRowValues(row).join("\t")].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function exportItemRowCSV(row) {
+  const csv = [IWS_HEADER.join(","), iwsRowValues(row).join(",")].join("\n");
+  const slug = String(row.item_code || row.item_name || "item").replace(/[^A-Za-z0-9_-]+/g, "_");
+  iwsDownload(csv, "item_wise_sales_" + slug + "_" + fromDate.value + "_to_" + toDate.value + ".csv");
+}
+
+function exportItemSalesCSV() {
+  if (!itemSales.value?.length) return;
+  const lines = itemSalesSorted.value.map(r => iwsRowValues(r).join(","));
+  const t = itemsTotals.value;
+  lines.push(["Total", "", t.invoices, t.qty, "", t.discount, t.amount].join(","));
+  const csv = [IWS_HEADER.join(","), ...lines].join("\n");
+  iwsDownload(csv, "item_wise_sales_" + fromDate.value + "_to_" + toDate.value + ".csv");
+}
+
+const cwsExportOpen = ref(false);
+const cwsRowMenu    = ref(null);
+const cwsSort       = ref({ key: "", dir: "asc" });
+
+const custTotals = computed(() => (customerSales.value || []).reduce((acc, r) => ({
+  invoices:    acc.invoices    + (Number(r.invoice_count) || 0),
+  net:         acc.net         + (Number(r.net_total) || 0),
+  discount:    acc.discount    + (Number(r.total_discount) || 0),
+  tax:         acc.tax         + (Number(r.total_tax) || 0),
+  outstanding: acc.outstanding + (Number(r.outstanding_amount) || 0),
+  amount:      acc.amount      + (Number(r.total_amount) || 0),
+}), { invoices: 0, net: 0, discount: 0, tax: 0, outstanding: 0, amount: 0 }));
+
+const customerSalesSorted = computed(() => {
+  const rows = [...(customerSales.value || [])];
+  const key = cwsSort.value.key;
+  if (!key) return rows;
+  const mul = cwsSort.value.dir === "desc" ? -1 : 1;
+  const val = (r) => key === "customer"
+    ? String(r.customer_name || r.customer || "").toLowerCase()
+    : Number(r[key] || 0);
+  rows.sort((a, b) => {
+    const x = val(a), y = val(b);
+    if (typeof x === "string") return mul * x.localeCompare(y);
+    return mul * (x - y);
+  });
+  return rows;
+});
+
+function setCwsSort(key) {
+  if (cwsSort.value.key === key) {
+    cwsSort.value = { key, dir: cwsSort.value.dir === "asc" ? "desc" : "asc" };
+  } else {
+    cwsSort.value = { key, dir: "asc" };
+  }
+}
+function cwsSortCls(key) {
+  if (cwsSort.value.key !== key) return "";
+  return cwsSort.value.dir === "asc" ? "iws-sort-asc" : "iws-sort-desc";
+}
+
+const CWS_HEADER = ["Customer", "Invoices", "Net Total", "Discount", "Tax", "Avg Invoice", "Outstanding", "Total Amount"];
+function cwsRowValues(r) {
+  return [r.customer_name || r.customer, r.invoice_count, r.net_total, r.total_discount || 0, r.total_tax, r.avg_invoice_value, r.outstanding_amount || 0, r.total_amount];
+}
+function copyCustomerSalesToClipboard() {
+  const rows = customerSalesSorted.value.map(r => cwsRowValues(r).join("\t"));
+  const t = custTotals.value;
+  rows.push(["Total", t.invoices, t.net, t.discount, t.tax, "", t.outstanding, t.amount].join("\t"));
+  const text = [CWS_HEADER.join("\t"), ...rows].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function copyCustomerRow(row) {
+  const text = [CWS_HEADER.join("\t"), cwsRowValues(row).join("\t")].join("\n");
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text);
+}
+function exportCustomerRowCSV(row) {
+  const csv = [CWS_HEADER.join(","), cwsRowValues(row).join(",")].join("\n");
+  const slug = String(row.customer || row.customer_name || "customer").replace(/[^A-Za-z0-9_-]+/g, "_");
+  iwsDownload(csv, "customer_wise_sales_" + slug + "_" + fromDate.value + "_to_" + toDate.value + ".csv");
+}
 
 function exportCustomerSalesCSV() {
-  const header = ["Customer","Invoices","Net Total","Discount","Tax","Avg Invoice","Outstanding","Total Amount"].join(",");
-  const lines = customerSales.value.map(r =>
-    [r.customer_name || r.customer, r.invoice_count, r.net_total, r.total_discount || 0, r.total_tax, r.avg_invoice_value, r.outstanding_amount || 0, r.total_amount].join(",")
-  );
+  if (!customerSales.value?.length) return;
+  const header = CWS_HEADER.join(",");
+  const lines = customerSalesSorted.value.map(r => cwsRowValues(r).join(","));
+  const t = custTotals.value;
+  lines.push(["Total", t.invoices, t.net, t.discount, t.tax, "", t.outstanding, t.amount].join(","));
   const csv = [header, ...lines].join("\n");
   const blob = new Blob([csv], { type: "text/csv" });
   const url = URL.createObjectURL(blob);
@@ -4427,34 +6067,18 @@ function exportCustomerSalesCSV() {
 }
 
 function exportProfitCSV() {
-  const header = ["Item","Qty Sold","Revenue","Cost Rate","Total Cost","Profit","Margin %"].join(",");
-  const lines = profitReport.value.map(r =>
-    [r.item_name || r.item_code, r.qty_sold, r.revenue, r.cost_rate, r.total_cost, r.profit, Number(r.margin_pct||0).toFixed(1)].join(",")
-  );
-  const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "profit_wise_report_" + fromDate.value + "_to_" + toDate.value + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  if (!profitReport.value?.length) return;
+  const lines = profitReportSorted.value.map(r => pwRowValues(r).join(","));
+  const csv = [PW_HEADER.join(","), ...lines].join("\n");
+  iwsDownload(csv, "profit_wise_report_" + fromDate.value + "_to_" + toDate.value + ".csv");
 }
 
 function exportInvoiceProfitCSV() {
-  const header = ["Invoice","Date","Customer","Revenue","Est. Cost","Profit","Margin %"].join(",");
-  const rows = invoiceProfitSelectedRows.value.length ? invoiceProfitSelectedRows.value : invoiceProfit.value;
-  const lines = rows.map(r =>
-    [r.invoice, r.posting_date, r.customer_name || r.customer, r.revenue, r.total_cost, r.profit, Number(r.margin_pct||0).toFixed(1)].join(",")
-  );
-  const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "invoice_profitability_" + fromDate.value + "_to_" + toDate.value + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  if (!invoiceProfit.value?.length) return;
+  const rows = invoiceProfitSelectedRows.value.length ? invoiceProfitSelectedRows.value : invoiceProfitSorted.value;
+  const lines = rows.map(r => ipRowValues(r).join(","));
+  const csv = [IP_HEADER.join(","), ...lines].join("\n");
+  iwsDownload(csv, "invoice_profitability_" + fromDate.value + "_to_" + toDate.value + ".csv");
 }
 
 function exportStockValCSV() {
@@ -5283,41 +6907,326 @@ function tabColor(i) {
 .pl-row.loss   .mono { color: var(--red);   }
 .pl-divider { height: 2px; background: var(--border); margin: 4px 0; }
 
-.bs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-@media (max-width: 700px) { .bs-grid { grid-template-columns: 1fr; } }
-.bs-block { background: var(--surface-2); border-radius: var(--radius-sm); padding: 18px; }
-.bs-section-title { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-3); margin-bottom: 10px; }
-.assets .bs-amount    { color: var(--accent); font-size: 20px; font-weight: 700; }
-.liabilities .bs-amount { color: var(--red);    font-size: 20px; font-weight: 700; }
-.equity .bs-amount    { color: var(--amber);  font-size: 20px; font-weight: 700; }
-.bs-eq-sub { display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; font-size:11px; color:#94a3b8; }
-.bs-balance-check {
-  margin-top: 14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-  padding: 10px 14px; border-radius: 8px; font-size: 12.5px; font-weight: 600;
+.bs-card { overflow: visible; display: block; align-items: initial; cursor: default; }
+.bs-card:hover { border-color: var(--border); color: inherit; }
+.bs-page-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+.bs-page-head-icon {
+  width: 34px; height: 34px; flex: 0 0 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: #e0e7ff; color: #4338ca;
 }
-.bs-balance-check.bs-ok  { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
-.bs-balance-check.bs-bad { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
-.bs-bc-icon { font-weight:800; }
-.bs-bc-eq { margin-left:auto; font-weight:500; opacity:.85; }
+.bs-page-head-text { flex: 1; min-width: 0; }
+.bs-page-head-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.bs-page-head-sub { font-size: 12px; color: var(--text-3); margin-top: 1px; }
+.bs-page-head-actions { display: flex; align-items: center; gap: 10px; }
+.bs-asof {
+  font-size: 12.5px; font-weight: 600; color: var(--text-2);
+  border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px;
+}
+.bs-export-btn {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 600; color: #1d4ed8;
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px;
+  padding: 7px 12px; cursor: pointer;
+}
+.bs-export-btn:hover { background: #dbeafe; }
+.bs-export-btn:disabled { opacity: .5; cursor: not-allowed; }
 
-.cf-rows { display: flex; flex-direction: column; gap: 0; }
-.cf-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
-.cf-row.net { border-bottom: none; font-weight: 700; font-size: 15px; margin-top: 4px; }
-.cf-row.cf-sub { font-size: 12.5px; color: #64748b; padding: 6px 0; border-bottom: none; }
-.cf-hint { font-size: 11px; color: #94a3b8; font-weight: 400; margin-left: 4px; }
+.bs-kpi-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
+@media (max-width: 700px) { .bs-kpi-row { grid-template-columns: 1fr; } }
+.bs-kpi { display: flex; align-items: center; gap: 12px; border-radius: 12px; padding: 14px 16px; }
+.bs-kpi-icon {
+  width: 34px; height: 34px; flex: 0 0 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+}
+.bs-kpi-label { font-size: 12px; color: var(--text-3); margin-bottom: 3px; }
+.bs-kpi-amount { font-size: 17px; font-weight: 700; }
+.bs-kpi-assets { background: #eef2ff; }
+.bs-kpi-assets .bs-kpi-icon { background: #e0e7ff; color: #4338ca; }
+.bs-kpi-assets .bs-kpi-amount { color: #1e293b; }
+.bs-kpi-liabilities { background: #fef2f2; }
+.bs-kpi-liabilities .bs-kpi-icon { background: #fee2e2; color: #dc2626; }
+.bs-kpi-liabilities .bs-kpi-amount { color: #1e293b; }
+.bs-kpi-equity { background: #fffbeb; }
+.bs-kpi-equity .bs-kpi-icon { background: #fef3c7; color: #b45309; }
+.bs-kpi-equity .bs-kpi-amount { color: #1e293b; }
+
+.bs-acc { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+
+.bs-acc-group { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.bs-acc-head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; cursor: pointer; background: var(--surface-2);
+}
+.bs-acc-icon {
+  width: 34px; height: 34px; flex: 0 0 34px;
+  border-radius: 9px; display: flex; align-items: center; justify-content: center;
+}
+.bs-acc-head-text { flex: 1; min-width: 0; }
+.bs-acc-label { font-weight: 700; font-size: 14px; }
+.bs-acc-desc { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
+.bs-acc-amount { font-weight: 700; font-size: 15px; margin-right: 4px; white-space: nowrap; }
+.bs-acc-chevron { display: flex; color: var(--text-3); transition: transform .15s ease; }
+.bs-acc-chevron.open { transform: rotate(0deg); }
+.bs-acc-chevron:not(.open) { transform: rotate(180deg); }
+
+.bs-acc-items { display: flex; flex-direction: column; }
+.bs-acc-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px 12px 20px; border-top: 1px solid var(--border);
+}
+.bs-acc-item-icon {
+  width: 26px; height: 26px; flex: 0 0 26px;
+  border-radius: 7px; display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2);
+}
+.bs-acc-item-text { flex: 1; min-width: 0; }
+.bs-acc-item-label { font-weight: 600; font-size: 13px; }
+.bs-acc-item-desc { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.bs-acc-item-amount { font-weight: 600; font-size: 13px; white-space: nowrap; }
+.bs-acc-item-caret { display: flex; color: var(--text-3); flex: 0 0 auto; }
+
+.bs-acc-assets .bs-acc-amount   { color: #15803d; }
+.bs-acc-assets .bs-acc-icon     { background: #dbeafe; color: #2563eb; }
+.bs-acc-liabilities .bs-acc-amount { color: #dc2626; }
+.bs-acc-liabilities .bs-acc-icon   { background: #fee2e2; color: #dc2626; }
+.bs-acc-equity .bs-acc-amount   { color: #b45309; }
+.bs-acc-equity .bs-acc-icon     { background: #fef3c7; color: #b45309; }
+
+.bs-sum-status { margin-top: 14px; }
+.bs-sum-status {
+  display: flex; align-items: center; gap: 12px;
+  border-radius: 12px; padding: 16px;
+  font-size: 12.5px;
+}
+.bs-sum-status.bs-ok  { background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0; }
+.bs-sum-status.bs-bad { background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; }
+.bs-sum-status-icon {
+  width: 28px; height: 28px; flex: 0 0 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; background: rgba(255,255,255,.6);
+}
+.bs-sum-status-title { font-weight: 600; }
+.bs-sum-status-eq { font-weight: 500; opacity:.85; margin-top: 2px; }
+
+.cf-page-head-icon { background: #dbeafe; color: #2563eb; }
+
+.cf-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; align-items: start; margin-top: 14px; }
+@media (max-width: 900px) { .cf-grid { grid-template-columns: 1fr; } }
+
+.cf-acc { display: flex; flex-direction: column; gap: 10px; }
+.cf-acc-row {
+  display: flex; align-items: center; gap: 12px;
+  border-radius: 10px; padding: 14px 16px;
+}
+.cf-acc-icon {
+  width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+}
+.cf-acc-text { flex: 1; min-width: 0; }
+.cf-acc-label { font-weight: 700; font-size: 13.5px; }
+.cf-acc-desc { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
+.cf-acc-amount { font-weight: 700; font-size: 14.5px; margin-right: 4px; white-space: nowrap; }
+
+.cf-row-operating { background: #ecfdf5; }
+.cf-row-operating .cf-acc-icon { background: #d1fae5; color: #059669; }
+.cf-row-investing { background: #eff6ff; }
+.cf-row-investing .cf-acc-icon { background: #dbeafe; color: #2563eb; }
+.cf-row-financing { background: #f5f3ff; }
+.cf-row-financing .cf-acc-icon { background: #ede9fe; color: #7c3aed; }
+.cf-row-net { background: #ecfdf5; cursor: default; }
+.cf-row-net .cf-acc-icon { background: #d1fae5; color: #059669; }
+
+.cf-flow-row { display: flex; align-items: center; gap: 12px; padding: 6px 16px; }
+.cf-flow-icon {
+  width: 26px; height: 26px; flex: 0 0 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.cf-flow-icon-open  { background: #d1fae5; color: #059669; }
+.cf-flow-icon-close { background: #fee2e2; color: #dc2626; }
+
+.cf-side { display: flex; flex-direction: column; gap: 14px; }
+.cf-trend-box { border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+.cf-trend-box-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.cf-trend-box-title { font-weight: 700; font-size: 13.5px; }
+.cf-trend-box-sub { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
+.cf-trend-period { font-size: 11.5px; color: var(--text-3); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; }
+
+.cf-trend-chart { position: relative; display: flex; align-items: stretch; gap: 16px; height: 140px; margin-bottom: 8px; }
+.cf-trend-baseline { position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--border); }
+.cf-trend-col { position: relative; flex: 1; min-width: 30px; }
+.cf-trend-bar { position: absolute; width: 7px; border-radius: 2px; }
+.cf-trend-bar.operating { background: #10b981; left: calc(50% - 12px); }
+.cf-trend-bar.investing { background: #2563eb; left: calc(50% - 3px); }
+.cf-trend-bar.financing { background: #7c3aed; left: calc(50% + 6px); }
+.cf-trend-month { position: absolute; bottom: -20px; left: 0; right: 0; text-align: center; font-size: 10.5px; color: var(--text-3); }
+
+.cf-trend-legend { display: flex; gap: 14px; font-size: 11px; color: var(--text-3); margin-top: 22px; flex-wrap: wrap; }
+.cf-trend-legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+
+.cf-summary-box { display: flex; gap: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px; }
+.cf-summary-icon {
+  width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%;
+  background: #2563eb; color: #fff; font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.cf-summary-title { font-weight: 700; font-size: 12.5px; margin-bottom: 2px; }
+.cf-summary-text { font-size: 12px; color: var(--text-2); line-height: 1.5; }
 
 .aging-table th, .aging-table td { padding: 9px 12px; white-space: nowrap; }
 .aging-total { background: #F8F9FA; }
 .aging-totals-row td { border-top: 2px solid #E2E8F0; background: #F8F9FA; }
 
 /* GST Cards */
-.gst-cards { display: flex; flex-direction: column; gap: 10px; }
-.gst-card { background: var(--surface-2); border-radius: var(--radius-sm); padding: 14px 16px; }
-.gst-card-header { margin-bottom: 10px; }
-.gst-card-body { display: flex; flex-direction: column; gap: 6px; }
-.gst-kv { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
-.gst-kv-label { color: var(--text-3); font-size: 12px; }
-.gst-kv-value { font-weight: 600; }
+.gst-page-head-icon { background: #dbeafe; color: #2563eb; }
+
+/* ---- Item-wise Sales ---- */
+.iws-page-head-icon { background: #dbeafe; color: #2563eb; }
+.cws-page-head-icon { background: #ede9fe; color: #7c3aed; }
+.pw-page-head-icon { background: #fef3c7; color: #b45309; }
+.ip-page-head-icon { background: #dbeafe; color: #2563eb; }
+.ar-page-head-icon { background: #fee2e2; color: #dc2626; }
+.ap-page-head-icon { background: #fef3c7; color: #b45309; }
+.tb-page-head-icon { background: #e0e7ff; color: #4338ca; }
+.sgl-page-head-icon { background: #cffafe; color: #0e7490; }
+.sv-page-head-icon { background: #ede9fe; color: #6d28d9; }
+.mis-page-head-icon { background: #dcfce7; color: #15803d; }
+.smis-page-head-icon { background: #fce7f3; color: #be185d; }
+.rmis-page-head-icon { background: #fef9c3; color: #a16207; }
+.pmis-page-head-icon { background: #dbeafe; color: #1d4ed8; }
+.invmis-page-head-icon { background: #cffafe; color: #0e7490; }
+.prodmis-page-head-icon { background: #ffedd5; color: #c2410c; }
+.prdmis-page-head-icon { background: #e0e7ff; color: #4338ca; }
+.dmis-page-head-icon { background: #d1fae5; color: #047857; }
+.omis-page-head-icon { background: #e0f2fe; color: #0369a1; }
+.pfmis-page-head-icon { background: #dcfce7; color: #16a34a; }
+.emis-page-head-icon { background: #fee2e2; color: #b91c1c; }
+.payblmis-page-head-icon { background: #fef3c7; color: #b45309; }
+.cbmis-page-head-icon { background: #cffafe; color: #0e7490; }
+.custmis-page-head-icon { background: #ede9fe; color: #6d28d9; }
+.suppmis-page-head-icon { background: #d1fae5; color: #047857; }
+.empmis-page-head-icon { background: #ffe4e6; color: #be123c; }
+
+/* Report sub-tabs (used across MIS reports) */
+.report-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.report-tab {
+  padding: 7px 13px; border-radius: 999px; border: 1px solid var(--border, #e2e8f0);
+  background: var(--surface, #fff); color: var(--text-3, #64748b);
+  font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .15s;
+  font-family: var(--font); white-space: nowrap;
+}
+.report-tab:hover { border-color: var(--accent, #4C6EF5); color: var(--text, #1e293b); }
+.report-tab.active { background: var(--accent, #4C6EF5); border-color: var(--accent, #4C6EF5); color: #fff; }
+.iws-export-wrap { position: relative; }
+.iws-menu-backdrop { position: fixed; inset: 0; z-index: 40; }
+.iws-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 41;
+  min-width: 180px; padding: 6px; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+}
+.iws-menu-item {
+  display: block; width: 100%; text-align: left; border: 0; background: transparent;
+  padding: 8px 10px; border-radius: 7px; font-size: 12.5px; color: var(--text); cursor: pointer;
+}
+.iws-menu-item:hover { background: var(--surface-2); }
+
+.iws-body { display: flex; align-items: flex-start; gap: 14px; }
+@media (max-width: 900px) { .iws-body { flex-direction: column; } }
+
+.iws-total-panel {
+  flex: 0 0 200px; width: 200px; align-self: stretch;
+  background: #f0fdf4; border: 1px solid #dcfce7; border-radius: 12px; padding: 18px 16px;
+  height: fit-content;
+}
+@media (max-width: 900px) { .iws-total-panel { flex: 1 1 auto; width: 100%; } }
+.iws-total-icon {
+  width: 44px; height: 44px; border-radius: 12px; margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: center;
+  background: #dcfce7; color: #16a34a;
+}
+.iws-total-label { font-size: 12.5px; color: var(--text-3); }
+.iws-total-value { font-size: 24px; font-weight: 800; color: #16a34a; margin-top: 4px; letter-spacing: -.4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.iws-total-meta { font-size: 11.5px; color: var(--text-3); margin-top: 6px; }
+.iws-total-sub { margin-top: 12px; padding-top: 10px; border-top: 1px solid #dcfce7; }
+.iws-total-sub-label { display: block; font-size: 11.5px; color: var(--text-3); }
+.iws-total-sub-value { font-size: 14px; font-weight: 700; color: #dc2626; }
+.iws-total-panel-neg { background: #fef2f2; border-color: #fecaca; }
+.iws-total-icon-neg { background: #fee2e2; color: #dc2626; }
+.iws-total-value-neg { color: #dc2626; }
+
+.iws-section-label { font-size: 12.5px; font-weight: 700; color: var(--text); margin: 4px 0 10px; }
+.sgl-grir-note {
+  font-size: 12px; color: #475569; background: #f8fafc; border: 1px solid var(--border);
+  border-radius: 9px; padding: 10px 14px; margin: 14px 0;
+}
+
+.iws-table-wrap { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.iws-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.iws-table thead th {
+  background: var(--surface-2); color: var(--text-3);
+  font-size: 11.5px; font-weight: 600; text-align: left;
+  padding: 11px 12px; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+.iws-table thead th.ta-r { text-align: right; }
+.iws-sortable { cursor: pointer; user-select: none; }
+.iws-sortable:hover { color: var(--text); }
+.iws-sort-ind { margin-left: 5px; opacity: .35; font-size: 11px; }
+.iws-sort-asc, .iws-sort-desc { opacity: 1; color: #2563eb; }
+.iws-table tbody td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.iws-table tbody tr:hover { background: var(--surface-2); }
+.iws-idx { width: 42px; color: var(--text-3); font-size: 12px; }
+.iws-item-name { font-weight: 600; color: var(--text); }
+.iws-uom {
+  display: inline-block; padding: 3px 9px; border-radius: 999px;
+  background: #dbeafe; color: #1d4ed8; font-size: 11.5px; font-weight: 600;
+}
+.iws-kebab-col { width: 38px; text-align: center; }
+.iws-kebab-wrap { position: relative; display: inline-block; }
+.iws-kebab {
+  border: 0; background: transparent; cursor: pointer; color: var(--text-3);
+  font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 6px;
+}
+.iws-kebab:hover { background: var(--surface-2); color: var(--text); }
+.iws-menu-row { min-width: 190px; }
+.iws-table tfoot .iws-total-row td {
+  background: #eff6ff; border-top: 1px solid #bfdbfe; padding: 13px 12px; font-size: 13.5px;
+}
+.iws-sigma {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 7px; background: #dbeafe; color: #2563eb; font-weight: 700;
+}
+.gst-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 14px; }
+.gst-card { border-radius: 12px; padding: 16px; background: var(--surface-2); }
+.gst-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.gst-card-icon {
+  width: 34px; height: 34px; flex: 0 0 34px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.gst-card-title { font-weight: 700; font-size: 14px; }
+.gst-card-desc { font-size: 11.5px; color: var(--text-3); margin-top: 1px; }
+.gst-card-stats { display: flex; gap: 24px; }
+.gst-stat-label { font-size: 11.5px; color: var(--text-3); margin-bottom: 3px; }
+.gst-stat-value { font-size: 18px; font-weight: 700; }
+
+.gst-c-blue    { background: #eff6ff; }
+.gst-c-blue .gst-card-icon    { background: #dbeafe; color: #2563eb; }
+.gst-c-blue .gst-stat-value   { color: #2563eb; }
+.gst-c-emerald { background: #ecfdf5; }
+.gst-c-emerald .gst-card-icon { background: #d1fae5; color: #059669; }
+.gst-c-emerald .gst-stat-value{ color: #059669; }
+.gst-c-cyan    { background: #ecfeff; }
+.gst-c-cyan .gst-card-icon    { background: #cffafe; color: #0891b2; }
+.gst-c-cyan .gst-stat-value   { color: #0891b2; }
+.gst-c-amber   { background: #fffbeb; }
+.gst-c-amber .gst-card-icon   { background: #fef3c7; color: #b45309; }
+.gst-c-amber .gst-stat-value  { color: #b45309; }
+.gst-c-violet  { background: #f5f3ff; }
+.gst-c-violet .gst-card-icon  { background: #ede9fe; color: #7c3aed; }
+.gst-c-violet .gst-stat-value { color: #7c3aed; }
+.gst-c-total { background: var(--surface-2); }
+.gst-c-total .gst-card-icon { background: #e2e8f0; color: #475569; }
+.gst-c-total .gst-stat-value { color: var(--text); }
 
 /* Aging Cards */
 .aging-cards { display: flex; flex-direction: column; gap: 10px; }
