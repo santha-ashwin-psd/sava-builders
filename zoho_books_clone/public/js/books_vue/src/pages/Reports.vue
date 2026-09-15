@@ -1,33 +1,50 @@
 <template>
   <div class="page-reports">
 
-    <!-- Report selector tabs -->
-    <div class="report-tabs">
+    <!-- Page header -->
+    <div class="reports-header">
+      <div>
+        <p class="reports-subtitle">Get detailed insights into your business performance</p>
+      </div>
+      <div class="reports-header-right">
+        <div class="reports-header-icons">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="4" height="10" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="13" width="4" height="7" rx="1"/></svg>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l7 3"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report selector grid -->
+    <div class="report-grid">
       <button
-        v-for="r in reports"
+        v-for="(r, i) in reports"
         :key="r.key"
-        class="report-tab"
-        :class="{ active: activeReport === r.key }"
+        class="report-card"
+        :class="[tabColor(i), { active: activeReport === r.key }]"
         @click="activeReport = r.key"
       >
-        <span v-html="r.icon"></span>
-        {{ r.label }}
+        <span class="report-card-icon" v-html="r.icon"></span>
+        <span class="report-card-label">{{ r.label }}</span>
       </button>
     </div>
 
     <!-- Date range picker (hidden for aging reports which use as-of-date) -->
     <div class="books-card date-range-bar">
       <template v-if="['ar','ap','stockval','payables_mis'].includes(activeReport)">
+        <span class="dr-icon">📅</span>
         <label class="dr-label">As of Date</label>
         <input type="date" v-model="toDate" class="dr-input" />
       </template>
       <template v-else>
-        <label class="dr-label">From</label>
+        <span class="dr-icon">📅</span>
+        <label class="dr-label">Date Range</label>
         <input type="date" v-model="fromDate" class="dr-input" />
-        <label class="dr-label">To</label>
+        <span class="dr-to">To</span>
         <input type="date" v-model="toDate" class="dr-input" />
       </template>
-      <button class="books-btn books-btn-primary" @click="runReport">Run Report</button>
+      <button class="books-btn books-btn-primary" @click="runReport">▷ Run Report</button>
+      <button class="books-btn dr-reset" @click="resetDateRange">⟳ Reset</button>
+      <span class="dr-spacer"></span>
       <button v-if="['ar','ap'].includes(activeReport) && (arAging.length||apAging.length)"
         class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
         @click="exportAgingCSV">
@@ -141,59 +158,105 @@
     </div>
 
     <!-- P&L -->
-    <div v-if="activeReport === 'pl'" class="books-card report-card">
-      <div class="books-card-title">Profit & Loss</div>
+    <div v-if="activeReport === 'pl'" class="pl-dash">
+      <div class="pl-dash-header">
+        <div class="pl-dash-title">
+          <span class="pl-dash-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="4" height="10" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="13" width="4" height="7" rx="1"/></svg>
+          </span>
+          <div>
+            <div class="pl-dash-h">Profit &amp; Loss</div>
+            <div class="pl-dash-sub">Overview of your income, expenses and profitability</div>
+          </div>
+        </div>
+        <div class="pl-dash-range">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+          {{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }} <span class="pl-dash-range-caret">▾</span>
+        </div>
+      </div>
+
       <template v-if="plLoading"><div class="loading-shimmer" style="height:120px;border-radius:8px"></div></template>
       <template v-else-if="pl">
-        <div class="pl-row income">
-          <span>Total Income</span>
-          <span class="mono green">{{ fmt(pl.total_income) }}</span>
+        <div class="pl-kpi-grid">
+          <div class="pl-kpi c-emerald">
+            <div class="pl-kpi-top"><span class="pl-kpi-icon">🪙</span><span class="pl-kpi-label">Total Income</span></div>
+            <div class="pl-kpi-val green">{{ fmt(pl.total_income) }}</div>
+            <div class="pl-kpi-trend" :class="trendClass(incomeChangePct)">{{ trendText(incomeChangePct) }}</div>
+          </div>
+          <div v-if="pl.cogs" class="pl-kpi c-pink">
+            <div class="pl-kpi-top"><span class="pl-kpi-icon">🛒</span><span class="pl-kpi-label">Cost of Goods Sold</span></div>
+            <div class="pl-kpi-val red">{{ fmt(pl.cogs) }}</div>
+            <div class="pl-kpi-trend muted">vs previous period</div>
+          </div>
+          <div v-if="pl.cogs" class="pl-kpi c-amber">
+            <div class="pl-kpi-top"><span class="pl-kpi-icon">📊</span><span class="pl-kpi-label">Gross Profit</span></div>
+            <div class="pl-kpi-val" :class="pl.gross_profit >= 0 ? 'green' : 'red'">{{ fmt(pl.gross_profit) }}</div>
+            <div class="pl-kpi-trend muted">vs previous period</div>
+          </div>
+          <div class="pl-kpi c-violet">
+            <div class="pl-kpi-top"><span class="pl-kpi-icon">📄</span><span class="pl-kpi-label">Total Expense</span></div>
+            <div class="pl-kpi-val red">{{ fmt(pl.total_expense) }}</div>
+            <div class="pl-kpi-trend" :class="trendClass(expenseChangePct, true)">{{ trendText(expenseChangePct) }}</div>
+          </div>
+          <div v-if="pl.stock_adjustment" class="pl-kpi c-blue">
+            <div class="pl-kpi-top"><span class="pl-kpi-icon">📦</span><span class="pl-kpi-label">Stock Adjustment</span></div>
+            <div class="pl-kpi-val" :class="pl.stock_adjustment > 0 ? 'red' : 'green'">{{ fmt(pl.stock_adjustment) }}</div>
+            <div class="pl-kpi-trend muted">vs previous period</div>
+          </div>
+          <div class="pl-kpi" :class="pl.net_profit >= 0 ? 'c-emerald' : 'c-pink'">
+            <div class="pl-kpi-top"><span class="pl-kpi-icon">📈</span><span class="pl-kpi-label">Net Profit</span></div>
+            <div class="pl-kpi-val" :class="pl.net_profit >= 0 ? 'green' : 'red'">{{ fmt(pl.net_profit) }}</div>
+            <div class="pl-kpi-trend" :class="trendClass(netChangePct)">{{ trendText(netChangePct) }}</div>
+          </div>
         </div>
-        <div v-if="pl.cogs" class="pl-row expense">
-          <span>Cost of Goods Sold</span>
-          <span class="mono red">{{ fmt(pl.cogs) }}</span>
-        </div>
-        <div v-if="pl.cogs" class="pl-row" :class="pl.gross_profit >= 0 ? 'profit' : 'loss'">
-          <span>Gross Profit</span>
-          <span class="mono">{{ fmt(pl.gross_profit) }}</span>
-        </div>
-        <div class="pl-row expense">
-          <span>Total Expense</span>
-          <span class="mono red">{{ fmt(pl.total_expense) }}</span>
-        </div>
-        <div v-if="pl.stock_adjustment" class="pl-row expense">
-          <span>Stock Adjustment</span>
-          <span class="mono" :class="pl.stock_adjustment > 0 ? 'red' : 'green'">{{ fmt(pl.stock_adjustment) }}</span>
-        </div>
-        <div class="pl-divider"></div>
-        <div class="pl-row net" :class="pl.net_profit >= 0 ? 'profit' : 'loss'">
-          <span>Net Profit</span>
-          <span class="mono">{{ fmt(pl.net_profit) }}</span>
+
+        <!-- Monthly Trend -->
+        <div v-if="plMonthly.length" class="pl-trend-card">
+          <div class="pl-trend-header">
+            <div class="pl-dash-title">
+              <span class="pl-dash-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="10" width="4" height="10" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="13" width="4" height="7" rx="1"/></svg>
+              </span>
+              <div>
+                <div class="pl-dash-h" style="font-size:14px">Monthly Trend</div>
+                <div class="pl-dash-sub">Income vs Expense over the selected period</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pl-trend-body">
+            <div class="pl-trend-chart-wrap">
+              <div class="pl-trend-yaxis">
+                <span v-for="t in chartTicks" :key="t">₹{{ fmtN(t) }}</span>
+              </div>
+              <div class="pl-trend-chart">
+                <div v-for="m in plMonthly" :key="m.month" class="pl-trend-col">
+                  <div class="pl-trend-bars">
+                    <div class="pl-trend-bar income" :style="{height:barH(m.income)+'px'}" :title="'Income: ₹'+fmtN(m.income)"></div>
+                    <div class="pl-trend-bar expense" :style="{height:barH(m.expense)+'px'}" :title="'Expense: ₹'+fmtN(m.expense)"></div>
+                  </div>
+                  <div class="pl-trend-month">{{ m.month.slice(5) }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="pl-insights">
+              <div class="pl-insights-title">💡 Insights</div>
+              <div v-for="(ins, idx) in plInsights" :key="idx" class="pl-insight-item">
+                <span class="pl-insight-icon" :class="ins.tone">{{ ins.icon }}</span>
+                <div>
+                  <div class="pl-insight-title">{{ ins.title }}</div>
+                  <div class="pl-insight-desc">{{ ins.desc }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="pl-trend-legend">
+            <span><span class="dot income"></span>Income</span>
+            <span><span class="dot expense"></span>Expense</span>
+          </div>
         </div>
       </template>
       <div v-else class="empty-msg">Run the report to see results.</div>
-    </div>
-
-    <!-- P&L Monthly Chart -->
-    <div v-if="activeReport === 'pl' && plMonthly.length" class="books-card report-card">
-      <div class="books-card-title" style="margin-bottom:16px">Monthly Trend</div>
-      <div style="overflow-x:auto">
-        <div style="display:flex;align-items:flex-end;gap:6px;min-width:400px;height:140px;padding:0 4px">
-          <div v-for="m in plMonthly" :key="m.month" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
-            <div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;justify-content:flex-end">
-              <div :style="{width:'60%',background:'#4C6EF5',borderRadius:'3px 3px 0 0',height:barH(m.income)+'px',minHeight:'2px',transition:'height .3s'}" :title="'Income: ₹'+fmtN(m.income)"></div>
-            </div>
-            <div style="width:100%;display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;justify-content:flex-end">
-              <div :style="{width:'60%',background:'#FA5252',borderRadius:'3px 3px 0 0',height:barH(m.expense)+'px',minHeight:'2px',transition:'height .3s'}" :title="'Expense: ₹'+fmtN(m.expense)"></div>
-            </div>
-            <div style="font-size:10px;color:#868E96;margin-top:4px;white-space:nowrap">{{m.month.slice(5)}}</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:16px;justify-content:center;margin-top:10px;font-size:11.5px">
-          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#4C6EF5;border-radius:2px;display:inline-block"></span>Income</span>
-          <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;background:#FA5252;border-radius:2px;display:inline-block"></span>Expense</span>
-        </div>
-      </div>
     </div>
 
     <!-- Balance sheet -->
@@ -3756,6 +3819,10 @@ const fmtN   = (v) => Number(v||0).toLocaleString("en-IN", { maximumFractionDigi
 const today    = new Date();
 const fromDate = ref(new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10));
 const toDate   = ref(today.toISOString().slice(0,10));
+function resetDateRange() {
+  fromDate.value = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
+  toDate.value = today.toISOString().slice(0,10);
+}
 const activeReport = ref("pl");
 
 const { data: pl,  loading: plLoading,  execute: loadPl  } = useFrappeCall("zoho_books_clone.db.queries.get_profit_and_loss");
@@ -4072,7 +4139,56 @@ const bsBalanced = computed(() => {
   return Math.abs(a - (l + e)) < 1;
 });
 const maxMonthlyVal = computed(() => Math.max(...plMonthly.value.flatMap(m => [m.income||0, m.expense||0]), 1));
-function barH(v) { return Math.round((Math.max(0,v) / maxMonthlyVal.value) * 80); }
+function barH(v) { return Math.round((Math.max(0,v) / maxMonthlyVal.value) * 130); }
+const chartTicks = computed(() => {
+  const max = maxMonthlyVal.value;
+  return [max, max*0.66, max*0.33, 0].map(v => Math.round(v));
+});
+function fmtDate(d) {
+  if (!d) return "";
+  const dt = new Date(d + "T00:00:00");
+  return dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+const trendPeriod = ref("monthly");
+function pctChange(curr, prev) {
+  if (prev == null || curr == null) return null;
+  if (prev === 0) return curr === 0 ? 0 : null;
+  return ((curr - prev) / Math.abs(prev)) * 100;
+}
+const prevMonthPl = computed(() => plMonthly.value.length > 1 ? plMonthly.value[plMonthly.value.length - 2] : null);
+const currMonthPl = computed(() => plMonthly.value.length ? plMonthly.value[plMonthly.value.length - 1] : null);
+const incomeChangePct = computed(() => currMonthPl.value && prevMonthPl.value ? pctChange(currMonthPl.value.income, prevMonthPl.value.income) : null);
+const expenseChangePct = computed(() => currMonthPl.value && prevMonthPl.value ? pctChange(currMonthPl.value.expense, prevMonthPl.value.expense) : null);
+const netChangePct = computed(() => {
+  if (!currMonthPl.value || !prevMonthPl.value) return null;
+  return pctChange((currMonthPl.value.income||0) - (currMonthPl.value.expense||0), (prevMonthPl.value.income||0) - (prevMonthPl.value.expense||0));
+});
+function trendClass(pct, invert) {
+  if (pct === null) return "muted";
+  if (pct === 0) return "neutral";
+  const up = pct > 0;
+  const good = invert ? !up : up;
+  return good ? "up" : "down";
+}
+function trendText(pct) {
+  if (pct === null) return "— No change";
+  if (pct === 0) return "— No change";
+  const arrow = pct > 0 ? "↑" : "↓";
+  return `${arrow} ${Math.abs(Math.round(pct))}% vs previous period`;
+}
+const plInsights = computed(() => {
+  if (!pl.value) return [];
+  const out = [];
+  if (Number(pl.value.total_expense) > Number(pl.value.total_income)) {
+    out.push({ icon: "↗", tone: "warn", title: "Expenses are higher", desc: "Your expenses are higher than income in this period." });
+  }
+  if (Number(pl.value.net_profit) < 0) {
+    out.push({ icon: "↘", tone: "loss", title: "Net loss", desc: `You had a net loss of ${fmt(Math.abs(pl.value.net_profit))} in the selected period.` });
+  } else if (Number(pl.value.net_profit) > 0) {
+    out.push({ icon: "↗", tone: "good", title: "Net profit", desc: `You made a net profit of ${fmt(pl.value.net_profit)} in the selected period.` });
+  }
+  return out;
+});
 
 const profitTotal = computed(() => profitReport.value.filter(r => r.cost_rate).reduce((s,r) => s + Number(r.profit||0), 0));
 const profitMarginTotal = computed(() => {
@@ -5013,6 +5129,11 @@ const reports = [
   { key: "supplier_mis", label: "Supplier MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>` },
   { key: "employee_mis", label: "Employee / Performance MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>` },
 ];
+
+const tabPalette = ["c-blue","c-slate","c-cyan","c-amber","c-pink","c-slate","c-emerald","c-violet","c-blue","c-blue"];
+function tabColor(i) {
+  return tabPalette[i % tabPalette.length];
+}
 </script>
 
 <style scoped>
@@ -5022,27 +5143,136 @@ const reports = [
 .inv-detail-link { color: var(--accent, #4C6EF5); text-decoration: none; font-weight: 600; }
 .inv-detail-link:hover { text-decoration: underline; }
 .page-reports { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
-.report-tabs  { display: flex; gap: 8px; flex-wrap: wrap; }
-.report-tab {
-  display: flex; align-items: center; gap: 7px;
-  padding: 8px 16px; border-radius: var(--radius-sm);
+
+/* Page header */
+.reports-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.reports-title { font-size: 22px; font-weight: 700; color: var(--text); margin: 0; font-family: var(--font); }
+.reports-subtitle { font-size: 13px; color: var(--text-3); margin: 0; }
+.reports-header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.reports-header-icons { display: flex; gap: 10px; color: var(--accent); opacity: .55; }
+
+/* Report selector grid */
+.report-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px;
+}
+@media (max-width: 1100px) { .report-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 700px)  { .report-grid { grid-template-columns: repeat(2, 1fr); } }
+.report-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; border-radius: var(--radius-sm);
   border: 1px solid var(--border); background: var(--surface);
   color: var(--text-3); cursor: pointer; font-size: 13px; font-weight: 600;
-  transition: all .15s; font-family: var(--font);
+  transition: all .15s; font-family: var(--font); text-align: left;
 }
-.report-tab:hover { border-color: var(--accent); color: var(--text); }
-.report-tab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.report-card:hover { border-color: var(--accent); color: var(--text); }
+.report-card-icon {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+}
+.report-card-label { line-height: 1.3; }
+.report-card.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.report-card.active .report-card-icon { background: var(--accent); color: #fff; }
+
+.report-card.c-blue    .report-card-icon { background: #E7F5FF; color: #1971C2; }
+.report-card.c-slate   .report-card-icon { background: #F1F3F5; color: #495057; }
+.report-card.c-cyan    .report-card-icon { background: #E3FAFC; color: #0C8599; }
+.report-card.c-amber   .report-card-icon { background: #FFF4E6; color: #E8590C; }
+.report-card.c-pink    .report-card-icon { background: #FFF0F6; color: #C2255C; }
+.report-card.c-emerald .report-card-icon { background: #EBFBEE; color: #2F9E44; }
+.report-card.c-violet  .report-card-icon { background: #F3F0FF; color: #7048E8; }
+.report-card.active .report-card-icon { background: var(--accent) !important; color: #fff !important; }
 
 .date-range-bar {
   display: flex; align-items: center; gap: 12px; padding: 14px 20px; flex-wrap: wrap;
 }
+.dr-icon { font-size: 13px; opacity: .7; }
 .dr-label { font-size: 12px; font-family: var(--font); color: var(--text-3); letter-spacing: .06em; }
+.dr-to { font-size: 12px; color: var(--text-3); }
 .dr-input {
   background: var(--surface-2); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: 6px 10px; color: var(--text);
   font-size: 12.5px; font-family: var(--font); outline: none;
 }
 .dr-input:focus { border-color: var(--accent); }
+.dr-reset { background: var(--surface); border: 1px solid var(--border); color: var(--text-3); }
+.dr-spacer { flex: 1; }
+
+/* Profit & Loss dashboard */
+.pl-dash { display: flex; flex-direction: column; gap: 16px; }
+.pl-dash-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 14px 18px;
+}
+.pl-dash-title { display: flex; align-items: center; gap: 12px; }
+.pl-dash-icon {
+  width: 36px; height: 36px; border-radius: 10px; background: #E7F5FF; color: #1971C2;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.pl-dash-h { font-size: 15px; font-weight: 700; color: var(--text); }
+.pl-dash-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.pl-dash-range {
+  display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 7px 12px; font-weight: 600;
+}
+.pl-dash-range-caret { color: var(--text-3); font-size: 10px; }
+
+.pl-kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+@media (max-width: 1100px) { .pl-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 650px)  { .pl-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+.pl-kpi { border-radius: var(--radius-sm); padding: 14px 16px; border: 1px solid transparent; }
+.pl-kpi-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 12.5px; font-weight: 600; color: var(--text); }
+.pl-kpi-icon { font-size: 14px; }
+.pl-kpi-val { font-size: 18px; font-weight: 700; font-family: var(--font); margin-bottom: 6px; }
+.pl-kpi-val.green { color: var(--green); }
+.pl-kpi-val.red   { color: var(--red); }
+.pl-kpi-trend { font-size: 11px; font-weight: 600; }
+.pl-kpi-trend.up      { color: var(--green); }
+.pl-kpi-trend.down    { color: var(--red); }
+.pl-kpi-trend.neutral,
+.pl-kpi-trend.muted   { color: var(--text-3); font-weight: 500; }
+.pl-kpi.c-emerald { background: #EBFBEE; }
+.pl-kpi.c-pink    { background: #FFF0F6; }
+.pl-kpi.c-amber   { background: #FFF4E6; }
+.pl-kpi.c-violet  { background: #F3F0FF; }
+.pl-kpi.c-blue    { background: #E7F5FF; }
+
+.pl-trend-card {
+  background: var(--surface); border-radius: var(--radius-sm);
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 14px;
+}
+.pl-trend-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pl-trend-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.pl-trend-toggle button {
+  border: none; background: var(--surface); color: var(--text-3); padding: 6px 14px;
+  font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--font);
+}
+.pl-trend-toggle button.active { background: var(--accent); color: #fff; }
+.pl-trend-body { display: flex; gap: 20px; align-items: stretch; }
+.pl-trend-chart-wrap { flex: 1; display: flex; gap: 8px; min-width: 0; }
+.pl-trend-yaxis { display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; color: var(--text-3); padding: 2px 0; }
+.pl-trend-chart { flex: 1; display: flex; align-items: flex-end; gap: 6px; min-height: 150px; overflow-x: auto; border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 0 8px; }
+.pl-trend-col { flex: 1; min-width: 40px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pl-trend-bars { width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 4px; }
+.pl-trend-bar { width: 16px; border-radius: 3px 3px 0 0; min-height: 2px; transition: height .3s; }
+.pl-trend-bar.income  { background: #4C6EF5; }
+.pl-trend-bar.expense { background: #FA5252; }
+.pl-trend-month { font-size: 10.5px; color: var(--text-3); }
+.pl-trend-legend { display: flex; gap: 16px; justify-content: center; font-size: 11.5px; color: var(--text-3); }
+.pl-trend-legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 4px; vertical-align: middle; }
+.pl-trend-legend .dot.income { background: #4C6EF5; }
+.pl-trend-legend .dot.expense { background: #FA5252; }
+
+.pl-insights { width: 240px; flex-shrink: 0; background: var(--surface-2); border-radius: var(--radius-sm); padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+@media (max-width: 800px) { .pl-trend-body { flex-direction: column; } .pl-insights { width: auto; } }
+.pl-insights-title { font-size: 12.5px; font-weight: 700; color: var(--text); }
+.pl-insight-item { display: flex; gap: 10px; align-items: flex-start; }
+.pl-insight-icon { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
+.pl-insight-icon.warn { background: #FFF0F6; color: #C2255C; }
+.pl-insight-icon.loss { background: #E7F5FF; color: #1971C2; }
+.pl-insight-icon.good { background: #EBFBEE; color: #2F9E44; }
+.pl-insight-title { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.pl-insight-desc { font-size: 11.5px; color: var(--text-3); margin-top: 2px; line-height: 1.4; }
 
 .pl-row {
   display: flex; justify-content: space-between; align-items: center;

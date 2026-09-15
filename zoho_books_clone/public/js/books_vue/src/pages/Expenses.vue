@@ -8,11 +8,33 @@
       <div class="sales-pills">
         <button v-for="t in tabs" :key="t.key" class="sales-pill" :class="{active:activeTab===t.key, ['pill-'+t.key]: t.key!=='all'}" @click="activeTab=t.key">{{ t.label }}</button>
       </div>
+      <div class="exp-toolbar-filters">
+        <select v-model="categoryFilter" class="inv-fi">
+          <option value="">All Categories</option>
+          <option v-for="c in expenseCategories" :key="c.value" :value="c.value">{{ c.label }}</option>
+        </select>
+        <select v-model="expRange" class="inv-fi">
+          <option v-for="r in EXP_RANGES" :key="r.key" :value="r.key">{{ r.label }}</option>
+        </select>
+      </div>
       <div style="display:flex;gap:8px;margin-left:auto">
         <button class="sales-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
         <button class="sales-btn-primary" @click="openNew" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''"><span v-html="icon('plus',13)"></span> New Expense</button>
       </div>
     </div>
+
+    <template v-if="expRange==='custom'">
+      <div class="exp-filter-row">
+        <div class="exp-filter-item">
+          <label class="exp-filter-label">From</label>
+          <input type="date" v-model="expCustomFrom" class="inv-fi" />
+        </div>
+        <div class="exp-filter-item">
+          <label class="exp-filter-label">To</label>
+          <input type="date" v-model="expCustomTo" class="inv-fi" />
+        </div>
+      </div>
+    </template>
 
     <!-- ── KPI Cards ── -->
     <div class="bk-kpi-grid bk-kpi-grid-4">
@@ -400,6 +422,36 @@ function categoryLabel(name){
 }
 
 const list=ref([]),loading=ref(false),search=ref(""),selected=ref(new Set());
+const categoryFilter=ref("");
+const EXP_RANGES=[
+  {key:"all",        label:"All Dates"},
+  {key:"today",      label:"Today"},
+  {key:"yesterday",  label:"Yesterday"},
+  {key:"this_week",  label:"This Week"},
+  {key:"last_week",  label:"Last Week"},
+  {key:"this_month", label:"This Month"},
+  {key:"last_month", label:"Last Month"},
+  {key:"custom",     label:"Custom"},
+];
+const expRange=ref("all");
+const expCustomFrom=ref(""),expCustomTo=ref(new Date().toISOString().slice(0,10));
+function _expToISO(d){return d.toISOString().slice(0,10);}
+function _expStartOfWeek(d){const x=new Date(d);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return x;}
+function expRangeToDates(){
+  const now=new Date();
+  switch(expRange.value){
+    case "today": return {from:_expToISO(now),to:_expToISO(now)};
+    case "yesterday": {const d=new Date(now);d.setDate(d.getDate()-1);return{from:_expToISO(d),to:_expToISO(d)};}
+    case "this_week": {const s=_expStartOfWeek(now);const e=new Date(s);e.setDate(e.getDate()+6);return{from:_expToISO(s),to:_expToISO(e)};}
+    case "last_week": {const s=_expStartOfWeek(now);s.setDate(s.getDate()-7);const e=new Date(s);e.setDate(e.getDate()+6);return{from:_expToISO(s),to:_expToISO(e)};}
+    case "this_month": {const s=new Date(now.getFullYear(),now.getMonth(),1);const e=new Date(now.getFullYear(),now.getMonth()+1,0);return{from:_expToISO(s),to:_expToISO(e)};}
+    case "last_month": {const s=new Date(now.getFullYear(),now.getMonth()-1,1);const e=new Date(now.getFullYear(),now.getMonth(),0);return{from:_expToISO(s),to:_expToISO(e)};}
+    case "custom": return {from:expCustomFrom.value||"",to:expCustomTo.value||""};
+    case "all":
+    default: return {from:"",to:""};
+  }
+}
+function resetExpFilters(){categoryFilter.value="";expRange.value="all";expCustomFrom.value="";expCustomTo.value=new Date().toISOString().slice(0,10);}
 const drawerOpen=ref(false),drawerSaving=ref(false),editingName=ref("");
 const expCollapsed=reactive({basic:false,payment:false,notes:true});
 const viewOpen=ref(false),viewDoc=ref(null);
@@ -504,7 +556,17 @@ const expTrends = computed(()=>({
   draft:     _exTr(list.value.filter(e=>e.docstatus===0).length, list.value.filter(e=>(e.posting_date||'').startsWith(_exLYM())&&e.docstatus===0).length),
 }));
 function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
-const filtered=computed(()=>{let r=list.value;if(activeTab.value==="draft")r=r.filter(e=>e.docstatus===0);if(activeTab.value==="submitted")r=r.filter(e=>e.docstatus===1);if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(x=>(x.name||"").toLowerCase().includes(q)||(x.expense_type||"").toLowerCase().includes(q));}return r;});
+const filtered=computed(()=>{
+  let r=list.value;
+  if(activeTab.value==="draft")r=r.filter(e=>e.docstatus===0);
+  if(activeTab.value==="submitted")r=r.filter(e=>e.docstatus===1);
+  if(categoryFilter.value) r=r.filter(e=>e.expense_type===categoryFilter.value);
+  const {from,to}=expRangeToDates();
+  if(from) r=r.filter(e=>(e.posting_date||"")>=from);
+  if(to) r=r.filter(e=>(e.posting_date||"")<=to);
+  if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(x=>(x.name||"").toLowerCase().includes(q)||(x.expense_type||"").toLowerCase().includes(q));}
+  return r;
+});
 const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 const { page, pageSize, paged } = usePagination(sorted, { storageKey: "expenses" });
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
@@ -679,6 +741,14 @@ watch(() => route.query.open, (n) => { if (n) _openFromQuery(); });
 </script>
 
 <style scoped>
+.exp-filter-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: -4px 0 4px; }
+.exp-toolbar-filters { display: flex; align-items: center; gap: 8px; }
+.exp-filter-item { display: flex; flex-direction: column; gap: 4px; min-width: 150px; }
+.exp-filter-label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+.exp-filter-reset { align-self: flex-end; }
+@media (max-width: 900px) {
+  .exp-toolbar-filters { width: 100%; order: 3; }
+}
 /* ── Paid Type badge (Cash / Bank) ── */
 .exp-paid-type-badge { display:inline-flex; align-items:center; padding:3px 10px; border-radius:10px; font-size:11.5px; font-weight:700; text-transform:capitalize; }
 .exp-paid-type-cash { background:#fef3c7; color:#92400e; }
