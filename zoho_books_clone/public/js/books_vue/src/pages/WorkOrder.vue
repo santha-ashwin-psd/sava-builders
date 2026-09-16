@@ -222,7 +222,7 @@
                   <div class="bomx-hf-label">BOM <span style="color:var(--bx-red)">*</span></div>
                   <select class="bomx-fi" v-model="wo.bom" @change="onBomChange" :disabled="readOnly" style="width:100%">
                     <option value="">— Select Submitted BOM —</option>
-                    <option v-for="b in filteredBomList" :key="b.name" :value="b.name">{{ b.name }} — {{ b.item_name || b.item }}</option>
+                    <option v-for="b in filteredBomList" :key="b.name" :value="b.name">{{ b.name }} — {{ b.item_name || b.item }} ({{ b.bom_type || 'Manufacturing' }})</option>
                   </select>
                   <div class="bomx-field-hint" v-if="wo.item_name">Manufactures: <strong>{{ wo.item_name }}</strong> ({{ wo.stock_uom }})</div>
                   <div class="bomx-field-hint" style="color:var(--bx-amber);font-weight:600" v-if="warnBomNotDefault && wo.bom && selectedBomIsNotDefault">
