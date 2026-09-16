@@ -102,6 +102,10 @@
           <label class="msx-toggle"><input type="checkbox" v-model="s.auto_create_job_cards" :true-value="1" :false-value="0"/> Auto-Create Job Cards on Submit</label>
           <label class="msx-toggle"><input type="checkbox" v-model="s.allow_negative_stock" :true-value="1" :false-value="0"/> Allow Negative Stock</label>
         </div>
+        <div class="msx-toggle-row">
+          <label class="msx-toggle"><input type="checkbox" v-model="s.absorb_abnormal_loss_into_fg_cost" :true-value="1" :false-value="0"/> Absorb Abnormal Process Loss into Finished Good Cost</label>
+        </div>
+        <div class="msx-hint" style="padding:0 0 4px 0">Off (default): process loss beyond the BOM's expected shrinkage % is written off separately as Manufacturing Variance Loss, visible as its own line on the Work Order's Cost Breakdown. On: that loss is folded into the finished good's cost instead — no separate write-off, but wastage no longer shows as a distinct line.</div>
       </div>
 
       <!-- Capacity Planning -->
@@ -213,6 +217,7 @@ const s = ref({
   auto_create_job_cards: 1,
   over_production_allowance_pct: 0,
   allow_negative_stock: 0,
+  absorb_abnormal_loss_into_fg_cost: 0,
   backflush_raw_materials_based_on: "BOM",
   default_bom_type: "Manufacturing",
   set_rate_of_sub_assembly_item_based_on_bom: 0,
@@ -268,6 +273,7 @@ async function save() {
         auto_create_job_cards: s.value.auto_create_job_cards,
         over_production_allowance_pct: pct,
         allow_negative_stock: s.value.allow_negative_stock,
+        absorb_abnormal_loss_into_fg_cost: s.value.absorb_abnormal_loss_into_fg_cost,
         backflush_raw_materials_based_on: s.value.backflush_raw_materials_based_on,
         default_bom_type: s.value.default_bom_type,
         set_rate_of_sub_assembly_item_based_on_bom: s.value.set_rate_of_sub_assembly_item_based_on_bom,

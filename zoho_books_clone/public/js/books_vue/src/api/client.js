@@ -127,6 +127,14 @@ function _parseResponse(json, status, opts) {
       throw new Error(match[1].trim());
     }
     let fallbackMsg = json.exc_type || "Server error " + status;
+    if (json.exc_type === "PermissionError") {
+      // Bare exc_type with no _server_messages/exc text means the server's
+      // human-readable frappe.throw() message (e.g. "Your Inventory access
+      // (View) doesn't allow you to cancel Stock Entry.") never made it into
+      // this response — surface something actionable instead of the raw
+      // exception class name.
+      fallbackMsg = "You don't have permission to do that. Check your role's access level for this module.";
+    }
     if (json.message) {
       if (typeof json.message === 'object' && json.message.name && typeof json.message.docstatus !== 'undefined') {
         console.warn("Server returned exception but also returned document. Proceeding with document.", excStr);

@@ -153,7 +153,7 @@ def _membership(user: str) -> dict:
                 "role": "", "mods": {m: False for m in MODULES},
                 "levels": {m: "None" for m in MODULES}}
 
-    admin = bool(row.get("is_company_admin"))
+    admin = bool(row.get("is_company_admin")) or (row.get("books_role") == "Books Admin")
     readonly = (row.get("books_role") == "Books Viewer")
     mods = {m: (admin or bool(row.get(f"mod_{m}"))) for m in MODULES}
     customized = bool(row.get("levels_customized"))

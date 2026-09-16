@@ -2012,6 +2012,15 @@ def reverse_material_issue(work_order, stock_entry):
             ).format(row.item_code))
 
     se.flags.ignore_manufacturing_guard = True
+    # assert_can() above is this app's authoritative permission gate (matching
+    # every other write in this file, which inserts/saves with
+    # ignore_permissions=True). Without this, Frappe's own framework-level
+    # doctype permission check on cancel() runs against a freshly-fetched Doc
+    # that never went through that insert/save call, and can reject a
+    # Books Admin whose custom role isn't separately granted cancel rights
+    # in the Frappe Role Permissions Manager -- even though assert_can()
+    # already confirmed they're allowed.
+    se.flags.ignore_permissions = True
     se.cancel()
 
     for row in affected:
@@ -2113,6 +2122,11 @@ def reverse_manufacture_entry(work_order, stock_entry):
     over_production_qty_this_entry = flt(se.over_production_qty)
 
     se.flags.ignore_manufacturing_guard = True
+    # See the identical note in reverse_material_issue() above: assert_can()
+    # is the real gate here, so this freshly-fetched Doc needs
+    # ignore_permissions explicitly set too, or Frappe's own framework
+    # permission check on cancel() can still block a Books Admin.
+    se.flags.ignore_permissions = True
     se.cancel()
 
     for row in consumption_rows:
