@@ -8,6 +8,10 @@
           <input v-model="search" placeholder="Search item / group…" class="sv-search-input" />
         </div>
       </div>
+      <div class="sv-fld sv-fld-item">
+        <label class="sv-fld-lbl">Item</label>
+        <SearchableSelect v-model="filters.item" :options="items" placeholder="All items" @search="fetchItems" />
+      </div>
       <div class="sv-fld sv-fld-wh">
         <label class="sv-fld-lbl">Warehouse</label>
         <SearchableSelect v-model="filters.warehouse" :options="warehouses" placeholder="All warehouses" @search="fetchWarehouses" />
@@ -128,9 +132,9 @@ async function loadLandedBreakdown(rows){
     landedByBin.value=r||{};
   }catch(e){ landedByBin.value={}; } // non-fatal — base rate still shows fine without the breakdown
 }
-const warehouses=ref([]),itemGroups=ref([]);
+const warehouses=ref([]),itemGroups=ref([]),items=ref([]);
 const sortCol=ref("stock_value"),sortDir=ref("desc");
-const filters=reactive({warehouse:"",item_group:""});
+const filters=reactive({warehouse:"",item_group:"",item:""});
 async function load(){
   loading.value=true;
   try{
@@ -147,9 +151,11 @@ async function load(){
   }catch(e){toast.error(e.message||"Failed to load valuation");}finally{loading.value=false;}
 }
 const filteredRows=computed(()=>{
-  if(!search.value.trim())return list.value;
+  let rows=list.value;
+  if(filters.item)rows=rows.filter(i=>i.item_code===filters.item);
+  if(!search.value.trim())return rows;
   const q=search.value.toLowerCase();
-  return list.value.filter(i=>(i.item_code||"").toLowerCase().includes(q)||(i.item_name||"").toLowerCase().includes(q)||(i.item_group||"").toLowerCase().includes(q));
+  return rows.filter(i=>(i.item_code||"").toLowerCase().includes(q)||(i.item_name||"").toLowerCase().includes(q)||(i.item_group||"").toLowerCase().includes(q));
 });
 const sorted=computed(()=>{const col=sortCol.value;return[...filteredRows.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
@@ -177,7 +183,8 @@ function exportCSV(){
 }
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 async function fetchItemGroups(q=""){try{const r=await apiLinkValues("Item Group",q);itemGroups.value=r.map(x=>({label:x.name,value:x.name}));}catch{itemGroups.value=[];}}
-onMounted(()=>{load();fetchWarehouses("");fetchItemGroups("");});
+async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
+onMounted(()=>{load();fetchWarehouses("");fetchItemGroups("");fetchItems("");});
 </script>
 <style scoped>
 .sv-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
@@ -185,6 +192,7 @@ onMounted(()=>{load();fetchWarehouses("");fetchItemGroups("");});
 .sv-filterbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;}
 .sv-fld{display:flex;flex-direction:column;gap:5px;}
 .sv-fld-search{flex:1 1 240px;max-width:320px;}
+.sv-fld-item{flex:1 1 220px;max-width:300px;}
 .sv-fld-wh{flex:1 1 220px;max-width:300px;}
 .sv-fld-grp{flex:1 1 200px;max-width:260px;}
 .sv-fld-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;}
