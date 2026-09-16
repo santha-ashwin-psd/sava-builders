@@ -27,6 +27,10 @@
 
   <!-- ── Desktop action bar (hidden on 375–425px) ── -->
   <div class="b-action-bar jen-desktop-bar" style="margin-bottom:14px;flex-wrap:wrap;gap:10px">
+    <div class="b-search" style="border-radius:20px;padding:6px 12px">
+      <span v-html="icon('search',13)"></span>
+      <input v-model="searchQ" placeholder="Search JE, narration..." style="border:none;outline:none;font-size:13px;background:transparent;width:180px"/>
+    </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="jen-pill" :class="{active:currentFilter==='all'}" @click="currentFilter='all'">All</button>
       <button class="jen-pill" :class="{active:currentFilter==='Draft'}" @click="currentFilter='Draft'">
@@ -39,16 +43,12 @@
         Cancelled <span class="jen-pc" style="background:#ffe3e3;color:#c92a2a">{{counts.Cancelled}}</span>
       </button>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:auto">
       <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#868e96">
         <span>From</span>
         <input type="date" v-model="dateFrom" class="jen-date-input"/>
         <span>To</span>
         <input type="date" v-model="dateTo" class="jen-date-input"/>
-      </div>
-      <div class="b-search" style="border-radius:20px;padding:6px 12px">
-        <span v-html="icon('search',13)"></span>
-        <input v-model="searchQ" placeholder="Search JE, narration..." style="border:none;outline:none;font-size:13px;background:transparent;width:180px"/>
       </div>
       <button class="b-btn b-btn-ghost" @click="load"><span v-html="icon('refresh',13)"></span> Refresh</button>
       <button class="b-btn b-btn-primary" @click="openAdd" :disabled="!$canCreate('accounts')" :title="!$canCreate('accounts') ? 'Read-only access' : ''"><span v-html="icon('plus',13)"></span> New Entry</button>

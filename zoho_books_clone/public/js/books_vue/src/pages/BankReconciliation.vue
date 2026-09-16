@@ -2,6 +2,10 @@
   <div class="br-page">
     <div class="br-actions">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="br-search-wrap">
+          <span v-html="icon('search',13)" style="color:#94a3b8;flex-shrink:0"></span>
+          <input v-model="search" placeholder="Search statement…" class="br-search-input" />
+        </div>
         <select v-model="form.bank_account" class="br-select" style="min-width:220px">
           <option value="">— Select Bank Account —</option>
           <option v-for="a in bankAccounts" :key="a.name" :value="a.name">{{ a.account_name||a.name }}</option>
@@ -27,11 +31,7 @@
           {{ s.label }} <span class="br-fpill-count">{{ s.count }}</span>
         </button>
       </div>
-      <div class="br-toolbar-right">
-        <div class="br-search-wrap">
-          <span v-html="icon('search',13)" style="color:#94a3b8;flex-shrink:0"></span>
-          <input v-model="search" placeholder="Search statement…" class="br-search-input" />
-        </div>
+      <div class="br-toolbar-right" style="margin-left:auto">
         <button class="br-btn-ghost" @click="exportCSV" :disabled="!displayRows.length">
           <span v-html="icon('download',14)"></span> Export
         </button>

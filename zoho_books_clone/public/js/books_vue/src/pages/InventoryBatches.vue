@@ -3,6 +3,13 @@
 
     <!-- ── Toolbar ── -->
     <div class="bt-toolbar">
+      <div class="bt-fld bt-fld-search">
+        <label class="bt-fld-lbl">Search</label>
+        <div class="bt-search-wrap">
+          <span v-html="icon('search', 13)" style="color:#94a3b8;flex-shrink:0"></span>
+          <input v-model="search" placeholder="Search batch / item / warehouse / supplier…" class="bt-search-input" />
+        </div>
+      </div>
       <div class="bt-fld bt-fld-item">
         <label class="bt-fld-lbl">Item</label>
         <SearchableSelect v-model="filters.item" :options="itemOptions" placeholder="All items" @search="fetchItems" />
@@ -31,7 +38,7 @@
       { label: 'Expired', tone: 'danger', value: expiredCount, valueClass: expiredCount ? 'red' : '' },
     ]" />
 
-    <!-- ── Status pills + search ── -->
+    <!-- ── Status pills ── -->
     <div v-if="loaded && list.length" class="bt-subbar">
       <div class="bt-filter-pills">
         <button v-for="s in statusTabs" :key="s.key" class="bt-fpill" :class="{ active: statusFilter === s.key }" @click="statusFilter = s.key">
@@ -40,10 +47,6 @@
       </div>
       <div class="bt-subbar-right">
         <span class="bt-result">{{ sorted.length }} of {{ list.length }}</span>
-        <div class="bt-search-wrap">
-          <span v-html="icon('search', 13)" style="color:#94a3b8;flex-shrink:0"></span>
-          <input v-model="search" placeholder="Search batch / item / warehouse / supplier…" class="bt-search-input" />
-        </div>
       </div>
     </div>
 
@@ -574,6 +577,7 @@ onMounted(() => {
 
 .bt-toolbar { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px 16px; }
 .bt-fld { display: flex; flex-direction: column; gap: 5px; }
+.bt-fld-search { flex: 1 1 240px; max-width: 320px; }
 .bt-fld-item { flex: 1 1 220px; max-width: 300px; }
 .bt-fld-wh { flex: 1 1 200px; max-width: 260px; }
 .bt-fld-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #94a3b8; }

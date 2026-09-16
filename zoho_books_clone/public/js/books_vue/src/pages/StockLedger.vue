@@ -1,6 +1,13 @@
 <template>
   <div class="sl-page">
     <div class="sl-filterbar">
+      <div class="sl-fld sl-fld-search">
+        <label class="sl-fld-lbl">Search</label>
+        <div class="sl-search-wrap">
+          <span v-html="icon('search',13)" style="color:#94a3b8;flex-shrink:0"></span>
+          <input v-model="search" placeholder="Search item / voucher / warehouse…" class="sl-search-input" />
+        </div>
+      </div>
       <div class="sl-fld sl-fld-item">
         <label class="sl-fld-lbl">Item</label>
         <SearchableSelect v-model="filters.item" :options="items" placeholder="All items" @search="fetchItems" />
@@ -36,10 +43,6 @@
       </div>
       <div class="sl-toolbar-right">
         <span class="sl-result">{{ sorted.length }} of {{ list.length }}</span>
-        <div class="sl-search-wrap">
-          <span v-html="icon('search',13)" style="color:#94a3b8;flex-shrink:0"></span>
-          <input v-model="search" placeholder="Search item / voucher / warehouse…" class="sl-search-input" />
-        </div>
       </div>
     </div>
 
@@ -211,6 +214,7 @@ onMounted(()=>{fetchItems("");fetchWarehouses("");});
 /* premium filter bar */
 .sl-filterbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;}
 .sl-fld{display:flex;flex-direction:column;gap:5px;}
+.sl-fld-search{flex:1 1 240px;max-width:320px;}
 .sl-fld-item{flex:1 1 220px;max-width:300px;}
 .sl-fld-wh{flex:1 1 200px;max-width:260px;}
 .sl-fld-date{width:160px;}

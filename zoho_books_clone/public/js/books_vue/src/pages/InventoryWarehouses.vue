@@ -9,6 +9,12 @@
 
   <div class="wh-toolbar">
 
+    <!-- Search (left) -->
+    <div class="wh-tb-search-wrap">
+      <span v-html="icon('search')" class="wh-tb-search-icon"></span>
+      <input v-model="search" class="wh-tb-search-input" placeholder="Search…" />
+    </div>
+
     <!-- Group dropdown -->
     <div class="wh-group-wrap">
       <span class="wh-group-prefix">Group</span>
@@ -55,7 +61,7 @@
     <!-- Spacer -->
     <div style="flex:1"></div>
 
-    <!-- Actions + search (right side) -->
+    <!-- Actions (right side) -->
     <div class="wh-tb-actions">
       <button class="wh-action-btn" @click="load">
         <span v-html="icon('refresh', 14)"></span>
@@ -63,12 +69,6 @@
       <button class="wh-action-btn wh-action-btn--primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openAddChild">
         <span v-html="icon('plus', 13)"></span><span class="wh-btn-label"> New Warehouse</span>
       </button>
-    </div>
-
-    <!-- Search (right corner) -->
-    <div class="wh-tb-search-wrap">
-      <span v-html="icon('search')" class="wh-tb-search-icon"></span>
-      <input v-model="search" class="wh-tb-search-input" placeholder="Search…" />
     </div>
 
   </div>

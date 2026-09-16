@@ -3,21 +3,19 @@
   <!-- ── FLAT TABLE VIEW ── -->
   <div v-if="!selectedSP" class="list-page">
     <div class="sales-toolbar">
-      <div class="cust-toolbar-left">
-        <div class="sales-pills">
-          <button v-for="f in [{k:'all',l:'All'},{k:'active',l:'Active'},{k:'disabled',l:'Disabled'}]"
-            :key="f.k" class="sales-pill" :class="{'active': activeFilter===f.k}"
-            @click="activeFilter=f.k">
-            {{f.l}}
-            <span class="sales-pill-count" :class="activeFilter===f.k?'':'zb-pc-muted'">{{counts[f.k]}}</span>
-          </button>
-        </div>
+      <div class="sales-search">
+        <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+        <input v-model="search" placeholder="Search sales persons…" class="sales-search-input" autocomplete="off"/>
       </div>
-      <div class="cust-toolbar-right">
-        <div class="sales-search">
-          <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-          <input v-model="search" placeholder="Search sales persons…" class="sales-search-input" autocomplete="off"/>
-        </div>
+      <div class="sales-pills">
+        <button v-for="f in [{k:'all',l:'All'},{k:'active',l:'Active'},{k:'disabled',l:'Disabled'}]"
+          :key="f.k" class="sales-pill" :class="{'active': activeFilter===f.k}"
+          @click="activeFilter=f.k">
+          {{f.l}}
+          <span class="sales-pill-count" :class="activeFilter===f.k?'':'zb-pc-muted'">{{counts[f.k]}}</span>
+        </button>
+      </div>
+      <div class="cust-toolbar-right" style="margin-left:auto">
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
         <button class="sales-btn-primary" :disabled="!$canCreate('customers')" :title="!$canCreate('customers') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> New Sales Person</button>
       </div>

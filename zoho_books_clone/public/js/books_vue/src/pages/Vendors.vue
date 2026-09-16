@@ -4,25 +4,23 @@
   <!-- ── FLAT TABLE VIEW (default, nothing selected) ── -->
   <div v-if="!selectedVendor" class="list-page">
     <div class="sales-toolbar">
-      <div class="cust-toolbar-left">
-        <div class="sales-pills">
-          <button v-for="f in [{k:'all',l:'All'},{k:'active',l:'Active'},{k:'disabled',l:'Disabled'},{k:'dealer',l:'🏪 Dealers'},{k:'distributor',l:'🚚 Distributors'}]"
-            :key="f.k" class="sales-pill" :class="{'active': activeFilter===f.k}"
-            @click="activeFilter=f.k">
-            {{f.l}}
-            <span class="sales-pill-count" :class="activeFilter===f.k?'':'zb-pc-muted'">{{counts[f.k]}}</span>
-          </button>
-        </div>
+      <div class="sales-search">
+        <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
+        <input v-model="search" placeholder="Search vendors…" class="sales-search-input" autocomplete="off"/>
       </div>
-      <div class="cust-toolbar-right">
+      <div class="sales-pills">
+        <button v-for="f in [{k:'all',l:'All'},{k:'active',l:'Active'},{k:'disabled',l:'Disabled'},{k:'dealer',l:'🏪 Dealers'},{k:'distributor',l:'🚚 Distributors'}]"
+          :key="f.k" class="sales-pill" :class="{'active': activeFilter===f.k}"
+          @click="activeFilter=f.k">
+          {{f.l}}
+          <span class="sales-pill-count" :class="activeFilter===f.k?'':'zb-pc-muted'">{{counts[f.k]}}</span>
+        </button>
+      </div>
+      <div class="cust-toolbar-right" style="margin-left:auto">
         <select v-if="supplierGroups.length" class="sales-select" v-model="groupFilterV" title="Filter by supplier group">
           <option value="">All Groups</option>
           <option v-for="g in supplierGroups" :key="g" :value="g">{{ g }}</option>
         </select>
-        <div class="sales-search">
-          <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-          <input v-model="search" placeholder="Search vendors…" class="sales-search-input" autocomplete="off"/>
-        </div>
         <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
         <button class="sales-btn-ghost" :disabled="!$canCreate('customers')" :title="!$canCreate('customers') ? 'Read-only access' : 'Import vendors from CSV'" @click="triggerImport"><span v-html="icon('upload',13)"></span> Import</button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> Export</button>
