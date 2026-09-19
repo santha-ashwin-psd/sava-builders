@@ -41,6 +41,7 @@
         <thead><tr>
           <th @click="sort('item_code')" class="sortable">Item <span v-html="sortArrow('item_code')"></span></th>
           <th @click="sort('item_name')" class="sortable">Item Name <span v-html="sortArrow('item_name')"></span></th>
+          <th @click="sort('warehouse')" class="sortable">Warehouse <span v-html="sortArrow('warehouse')"></span></th>
           <th @click="sort('item_group')" class="sortable">Group <span v-html="sortArrow('item_group')"></span></th>
           <th>UOM</th>
           <th @click="sort('actual_qty')" class="sortable ta-r">Qty <span v-html="sortArrow('actual_qty')"></span></th>
@@ -50,11 +51,12 @@
           <th style="width:80px"></th>
         </tr></thead>
         <tbody>
-          <template v-if="loading"><tr v-for="n in 10" :key="n"><td colspan="9"><div class="sv-shimmer"></div></td></tr></template>
+          <template v-if="loading"><tr v-for="n in 10" :key="n"><td colspan="10"><div class="sv-shimmer"></div></td></tr></template>
           <template v-else>
             <tr v-for="i in sorted" :key="i.item_code+i.warehouse" class="sv-row">
               <td><span class="sv-code">{{ i.item_code }}</span></td>
               <td>{{ i.item_name||i.item_code }}</td>
+              <td class="text-muted">{{ i.warehouse||'—' }}</td>
               <td class="text-muted">{{ i.item_group||'—' }}</td>
               <td class="text-muted">{{ i.stock_uom||'—' }}</td>
               <td class="ta-r mono-sm" :class="flt(i.actual_qty)<=0?'red':''">{{ fmtQty(i.actual_qty) }}</td>
@@ -66,7 +68,7 @@
               <td class="ta-r mono-sm font-medium">{{ fmtCur(i.stock_value) }}</td>
               <td class="ta-r"><button class="sv-adjust-btn" @click="goAdjust(i)">Adjust</button></td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="9" class="sv-empty">{{ list.length ? 'No items match your search' : 'No stock data found' }}</td></tr>
+            <tr v-if="!sorted.length"><td colspan="10" class="sv-empty">{{ list.length ? 'No items match your search' : 'No stock data found' }}</td></tr>
           </template>
         </tbody>
       </table>
@@ -90,7 +92,7 @@
               <span class="sv-mc-code">{{ i.item_code }}</span>
               <span class="sv-mc-value">{{ fmtCur(i.stock_value) }}</span>
             </div>
-            <div class="sv-mc-mid">{{ i.item_name||i.item_code }}</div>
+            <div class="sv-mc-mid">{{ i.item_name||i.item_code }} <span class="text-muted" style="font-weight:400">· {{ i.warehouse||'—' }}</span></div>
             <div class="sv-mc-meta">
               <span :class="flt(i.actual_qty)<=0?'sv-mc-neg':''">{{ fmtQty(i.actual_qty) }} {{ i.stock_uom||'' }}</span>
               <span v-if="landedInfo(i).has_landed_cost" class="sv-landed-badge" :title="rateTooltip(i)">🚚 landed</span>
