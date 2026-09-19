@@ -26,13 +26,40 @@ def _is_bypass(user: str) -> bool:
 
 
 def get_user_company(user: str | None = None) -> str | None:
-    """Return the Books Company name the user belongs to, or None."""
+    """Return the Books Company name the user belongs to, or None.
+
+    A user can hold more than one `Books Company Member` row (e.g. invited
+    into a second company later). Previously this queried
+    `{"user": user}` with no `company` filter and no explicit order, so on
+    a multi-membership user it returned whichever row MySQL happened to
+    hand back first — not necessarily the company the SPA session/sidebar
+    was actually showing (api/session.py's `_get_company` resolves the
+    per-user default company first). That mismatch is what let a request
+    get permission-checked against a *different* company's membership row
+    than the one the UI displayed, e.g. an admin on Company A getting
+    denied because an unrelated Company B row (a lower role, or one
+    missing granular module access) won that unordered lookup instead.
+
+    Resolution order now mirrors session.py exactly: the user's own
+    per-user default company first (if they actually have a membership row
+    for it), falling back to their oldest membership row, deterministically,
+    only when no default is set.
+    """
     user = user or frappe.session.user
     if not user or user in ("Guest", ""):
         return None
     if _is_bypass(user):
         return None  # bypass = no filter applied
-    return frappe.db.get_value("Books Company Member", {"user": user}, "company")
+
+    default_company = frappe.defaults.get_user_default("company", user)
+    if default_company and frappe.db.exists(
+        "Books Company Member", {"user": user, "company": default_company}
+    ):
+        return default_company
+
+    return frappe.db.get_value(
+        "Books Company Member", {"user": user}, "company", order_by="creation asc"
+    )
 
 
 def _meta_has_company(doctype: str) -> bool:
@@ -102,6 +129,20 @@ def assert_doc_in_user_company(doc):
     Called from the central validator on save/submit. No-op for bypass roles."""
     user = frappe.session.user
     if _is_bypass(user):
+        return
+
+    # This guard exists to stop internal Books staff from saving a document
+    # against a company other than the one they belong to. Portal customers
+    # (customer_portal's API, e.g. place_order) are a different kind of
+    # session entirely — they're Website Users with no Books Company Member
+    # row at all, by design, and they insert with ignore_permissions=True
+    # after the caller has already resolved/validated the correct company
+    # itself (see customer_portal api/orders.py). Treat that flag as the
+    # signal that trusted server-side code already vetted doc.company,
+    # the same way Frappe's own permission layer would; otherwise every
+    # portal-originated Sales Order gets rejected as "not linked to any
+    # Books Company" since the customer was never meant to have one.
+    if getattr(doc.flags, "ignore_permissions", False):
         return
 
     doc_company = getattr(doc, "company", None)

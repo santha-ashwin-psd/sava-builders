@@ -143,9 +143,19 @@ def _membership(user: str) -> dict:
                 "role": "Books Admin", "mods": {m: True for m in MODULES},
                 "levels": {m: "Delete" for m in MODULES}}
 
+    # Scope the lookup to the same company session.py's _get_company() (and
+    # now get_user_company()) resolves, and pick deterministically even
+    # without a company match — a plain {"user": user} filter with no
+    # `company` and no order let a multi-membership user get checked
+    # against an arbitrary row instead of the one their session/sidebar
+    # was actually showing. See get_user_company()'s docstring for the
+    # full story.
+    company = get_user_company(user)
+    filters = {"user": user, "company": company} if company else {"user": user}
     row = frappe.db.get_value(
-        "Books Company Member", {"user": user},
-        ["books_role", "is_company_admin", "levels_customized", *_MOD_FIELDS, *_LVL_FIELDS], as_dict=True,
+        "Books Company Member", filters,
+        ["books_role", "is_company_admin", "levels_customized", *_MOD_FIELDS, *_LVL_FIELDS],
+        as_dict=True, order_by="creation asc",
     )
     if not row:
         # No membership and not a bypass user → no access (read-only, no modules).

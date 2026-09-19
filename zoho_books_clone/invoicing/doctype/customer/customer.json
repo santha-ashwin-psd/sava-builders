@@ -33,7 +33,8 @@
   "section_accounts",
   "default_receivable_account",
   "credit_limit",
-  "disabled"
+  "disabled",
+  "portal_users"
  ],
  "fields": [
   {
@@ -186,10 +187,16 @@
    "fieldname": "disabled",
    "fieldtype": "Check",
    "label": "Disabled"
+  },
+  {
+   "fieldname": "portal_users",
+   "fieldtype": "Table",
+   "label": "Portal Users",
+   "options": "Portal User"
   }
  ],
  "links": [],
- "modified": "2026-07-06 18:24:20.383897",
+ "modified": "2026-09-17 10:48:45.808239",
  "modified_by": "Administrator",
  "module": "Invoicing",
  "name": "Customer",

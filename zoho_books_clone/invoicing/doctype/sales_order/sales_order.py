@@ -38,6 +38,14 @@ class SalesOrder(Document):
 
     def on_submit(self):
         self._update_reserved_qty(direction=+1)
+        # `status` otherwise stays blank until a Delivery Note or Sales
+        # Invoice is created against this order (see delivery_note.py /
+        # api/docs.py, both of which call _so_status_from_fulfillment and
+        # write the result via db_set). Nothing stamped it at submit time,
+        # so any consumer reading `status` right after approval (e.g. the
+        # customer portal) saw an empty value instead of "To Deliver".
+        from zoho_books_clone.api.docs import _so_status_from_fulfillment
+        self.db_set("status", _so_status_from_fulfillment(self.name), update_modified=False)
 
     def on_cancel(self):
         self._update_reserved_qty(direction=-1)

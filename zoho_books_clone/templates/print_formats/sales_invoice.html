@@ -1,6 +1,5 @@
 {% set inv = doc %}
-{% set company = frappe.db.get_single_value("Global Defaults","default_company") or "Your Company" %}
-{% set company_doc = frappe.get_doc("Company", company) if frappe.db.exists("Company", company) else None %}
+{% set company = company or "Your Company" %}
 {% set cur = inv.currency or "INR" %}
 {% set cur_sym = frappe.db.get_value("Currency", cur, "symbol") or cur %}
 {% macro fc(amount) %}{{ cur_sym }}{{ "{:,.2f}".format(amount|float) }}{% endmacro %}
@@ -339,7 +338,7 @@
   <!-- ── HEADER ── -->
   <div class="header-wrap">
     <div class="logo-col">
-      {% set logo_url = company_doc.company_logo if company_doc and company_doc.company_logo else None %}
+      {% set logo_url = company_doc.get("company_logo") if company_doc else None %}
       {% if logo_url %}
         <img src="{{ logo_url }}" alt="{{ company }} logo" />
       {% else %}
@@ -348,9 +347,9 @@
       <div class="company-info">
         <div class="company-name">{{ company }}</div>
         {% if company_doc %}
-          {{ company_doc.address or "" }}<br>
-          {% if company_doc.city %}{{ company_doc.city }}, {% endif %}{{ company_doc.country or "India" }}<br>
-          {% if company_doc.tax_id %}<strong style="color:var(--ink-700)">GSTIN:</strong> {{ company_doc.tax_id }}{% endif %}
+          {{ company_doc.get("address") or "" }}<br>
+          {% if company_doc.get("city") %}{{ company_doc.get("city") }}, {% endif %}{{ company_doc.get("country") or "India" }}<br>
+          {% if company_doc.get("tax_id") %}<strong style="color:var(--ink-700)">GSTIN:</strong> {{ company_doc.get("tax_id") }}{% endif %}
         {% else %}
           Tamil Nadu, India
         {% endif %}
@@ -366,7 +365,7 @@
         <span class="lbl">Due Date</span>
         <span class="val">{{ frappe.format(inv.due_date, "Date") }}</span>
         <span class="lbl">Terms</span>
-        <span class="val">{{ inv.payment_terms_template or "Due on Receipt" }}</span>
+        <span class="val">{{ inv.get("payment_terms") or "Due on Receipt" }}</span>
         {% if inv.po_no %}
         <span class="lbl">P.O. #</span>
         <span class="val">{{ inv.po_no }}</span>
@@ -383,7 +382,7 @@
       <div class="party-label">Bill To</div>
       <div class="party-name">{{ inv.customer_name }}</div>
       <div class="party-detail">
-        {{ inv.address_display | replace("<br>", "\n") | striptags | replace("\n", "<br>") if inv.address_display else inv.customer }}
+        {{ inv.get("billing_address") | replace("<br>", "\n") | striptags | replace("\n", "<br>") if inv.get("billing_address") else inv.customer }}
       </div>
     </div>
     <div class="party-col" style="flex:0 0 200px; text-align:center;">
@@ -420,7 +419,7 @@
             {% if item.description and item.description != item.item_name %}
               <div class="item-desc">{{ item.description }}</div>
             {% endif %}
-            {% if item.gst_hsn_code %}<div class="item-hsn">HSN: {{ item.gst_hsn_code }}</div>{% endif %}
+            {% if item.get("hsn_code") %}<div class="item-hsn">HSN: {{ item.hsn_code }}</div>{% endif %}
           </td>
           <td class="mono">{{ item.qty }}&nbsp;<span style="font-size:10.5px;color:var(--ink-500)">{{ item.uom or "pcs" }}</span></td>
           <td class="mono">{{ fc(item.rate) }}</td>
@@ -447,9 +446,9 @@
       {% if cur == "INR" %}
       <div class="qr-card">
         <div class="card-title">Pay via UPI</div>
-        <div id="qr-canvas"></div>
+        <div id="qr-canvas" data-company="{{ company }}" data-inv-name="{{ inv.name }}"></div>
         <div class="qr-upi-id" id="upi-id-display">
-          {{ company_doc.custom_upi_id if company_doc and company_doc.get("custom_upi_id") else "yourupi@bank" }}
+          {{ company_doc.get("custom_upi_id") if company_doc and company_doc.get("custom_upi_id") else "yourupi@bank" }}
         </div>
         <div class="qr-amount">
           Balance: {{ fc(inv.outstanding_amount or inv.grand_total) }}
@@ -476,10 +475,11 @@
             <td class="t-lbl">Total</td>
             <td class="t-val">{{ fc(inv.grand_total) }}</td>
           </tr>
-          {% if inv.total_advance > 0 %}
+          {% set advance = inv.get("total_advance") %}
+          {% if advance and advance > 0 %}
           <tr class="payment-row">
             <td class="t-lbl">Payment Made</td>
-            <td class="t-val">(–) {{ fc(inv.total_advance) }}</td>
+            <td class="t-val">(–) {{ fc(advance) }}</td>
           </tr>
           {% endif %}
           {% if inv.outstanding_amount > 0 %}
@@ -489,8 +489,8 @@
           </tr>
           {% endif %}
         </table>
-        {% if inv.in_words %}
-        <div class="total-words">{{ inv.in_words }}</div>
+        {% if inv.get("in_words") %}
+        <div class="total-words">{{ inv.get("in_words") }}</div>
         {% endif %}
       </div>
     </div>
@@ -511,7 +511,7 @@
       </div>
     </div>
     <div class="einv-qr">
-      <div id="einv-qr-canvas"></div>
+      <div id="einv-qr-canvas" data-irn="{{ inv.irn or '' }}"></div>
     </div>
   </div>
   {% endif %}
@@ -537,14 +537,14 @@
     var upiId = document.getElementById("upi-id-display").textContent.trim();
     var amountEl = document.querySelector(".qr-amount");
     var amountText = amountEl ? amountEl.textContent.replace(/[^0-9.]/g,"").trim() : "0";
-    var companyName = {{ company | tojson }};
-    var invName = {{ inv.name | tojson }};
+    var container = document.getElementById("qr-canvas");
+    var companyName = container ? container.dataset.company : "";
+    var invName = container ? container.dataset.invName : "";
     var upiString = "upi://pay?pa=" + encodeURIComponent(upiId)
       + "&pn=" + encodeURIComponent(companyName)
       + "&am=" + encodeURIComponent(amountText)
       + "&cu=INR"
       + "&tn=" + encodeURIComponent("Payment for " + invName);
-    var container = document.getElementById("qr-canvas");
     new QRCode(container, {
       text: upiString,
       width: 100, height: 100,
@@ -564,8 +564,8 @@
 <script>
 (function() {
   try {
-    var irn = {{ inv.irn | tojson }};
     var container = document.getElementById("einv-qr-canvas");
+    var irn = container ? container.dataset.irn : "";
     if (container && irn) {
       new QRCode(container, {
         text: irn,

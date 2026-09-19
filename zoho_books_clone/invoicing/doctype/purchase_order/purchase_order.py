@@ -33,9 +33,26 @@ class PurchaseOrder(Document):
 
     def on_submit(self):
         self._update_ordered_qty(direction=+1)
+        self._sync_material_request_status()
 
     def on_cancel(self):
         self._update_ordered_qty(direction=-1)
+        self._sync_material_request_status()
+
+    def _sync_material_request_status(self):
+        """Keep the source Material Request's status in step with whether it
+        still has a submitted Purchase Order against it."""
+        if not self.material_request:
+            return
+        still_ordered = frappe.db.exists(
+            "Purchase Order",
+            {"material_request": self.material_request, "docstatus": 1, "name": ["!=", self.name]},
+        ) or self.docstatus == 1
+        mr_docstatus = frappe.db.get_value("Material Request", self.material_request, "docstatus")
+        if mr_docstatus != 1:
+            return  # only touch status while the MR itself is a submitted doc
+        new_status = "Ordered" if still_ordered else "Submitted"
+        frappe.db.set_value("Material Request", self.material_request, "status", new_status)
 
     def _update_ordered_qty(self, direction: int):
         """Increase (submit) or decrease (cancel) ordered_qty in Bin for each PO line.

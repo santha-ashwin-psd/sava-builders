@@ -483,7 +483,21 @@
                 </div>
                 <div style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
                   <span style="color:#6B7280">Portal Status</span>
-                  <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280">● Disabled</span>
+                  <span style="display:flex;align-items:center;gap:8px">
+                    <span
+                      style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px"
+                      :style="portalStatus.has_login && portalStatus.enabled
+                        ? 'background:#dcfce7;color:#16a34a'
+                        : portalStatus.has_login
+                          ? 'background:#fff7ed;color:#b45309'
+                          : 'background:#F3F4F6;color:#6B7280'"
+                    >● {{ portalStatus.has_login ? (portalStatus.enabled ? 'Active' : 'Disabled') : 'Not Set Up' }}</span>
+                    <a href="#" style="font-size:11.5px;color:#2563EB;text-decoration:none" @click.prevent="openPortalModal">{{ portalStatus.has_login ? 'Manage' : 'Set Up' }}</a>
+                  </span>
+                </div>
+                <div v-if="portalStatus.has_login" style="display:flex;justify-content:space-between;font-size:12.5px">
+                  <span style="color:#6B7280">Portal Login Email</span>
+                  <span style="font-weight:600;color:#111827">{{ portalStatus.email }}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;font-size:12.5px">
                   <span style="color:#6B7280">Customer Type</span>
@@ -799,6 +813,38 @@
       </div>
     </div>
 
+    <div v-if="showPortalModal" class="cus-pay-modal-overlay" @click.self="closePortalModal">
+      <div class="cus-pay-modal">
+        <div style="font-size:16px;font-weight:700;color:#111827;margin-bottom:2px">Customer Portal Login</div>
+        <div style="font-size:12px;color:#6B7280;margin-bottom:14px">Lets this customer log in and view their orders, invoices and balances on the customer portal.</div>
+
+        <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px;font-size:12.5px;color:#374151;font-weight:600">
+          <span>Login Email</span>
+          <input type="email" v-model.trim="portalForm.email" placeholder="customer@example.com"
+            style="border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit"/>
+        </label>
+
+        <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:6px;font-size:12.5px;color:#374151;font-weight:600">
+          <span>{{ portalStatus.has_login ? "New Password (leave blank to keep current)" : "Password" }}</span>
+          <input type="password" v-model="portalForm.password" placeholder="At least 8 characters" autocomplete="new-password"
+            style="border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit"/>
+        </label>
+        <div v-if="portalForm.password && portalForm.password.length < 8" style="font-size:11.5px;color:#dc2626;margin-bottom:6px">Password must be at least 8 characters</div>
+
+        <label style="display:flex;align-items:center;gap:8px;margin:12px 0 4px;font-size:12.5px;color:#374151;font-weight:600;cursor:pointer">
+          <input type="checkbox" v-model="portalForm.enabled" style="width:15px;height:15px"/>
+          <span>Login enabled</span>
+        </label>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+          <button class="nim-btn" style="background:#fff;color:#374151;border:1px solid #E5E7EB" @click="closePortalModal">Cancel</button>
+          <button class="nim-btn nim-btn-primary" :disabled="portalLoading || !$canEdit('customers')" :title="!$canEdit('customers') ? 'Read-only access' : ''" @click="submitPortalLogin">
+            {{ portalLoading ? "Saving…" : (portalStatus.has_login ? "Save Changes" : "Create Login") }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showDrawer" class="inv-drawer-bg" @click.self="showDrawer=false">
       <div class="inv-drawer-panel" :class="{open:showDrawer}" style="width:680px;max-width:98vw">
 
@@ -1005,9 +1051,16 @@
 
             <div style="height:1px;background:#e8ecf0;margin-bottom:20px"></div>
 
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+              <input type="checkbox" id="cus-portal-user" v-model="form.is_portal_user" style="width:16px;height:16px;cursor:pointer"
+                @change="if(!form.is_portal_user){ delete formErrors.email_id; delete formErrors.portal_password; }"/>
+              <label for="cus-portal-user" style="font-size:13px;font-weight:600;color:#374151;cursor:pointer;user-select:none">Portal User</label>
+              <span style="font-size:11.5px;color:#9ca3af">Give this customer a login to the customer portal</span>
+            </div>
+
             <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
               <div>
-                <label class="inv-lbl">Email Address</label>
+                <label class="inv-lbl">Email Address<span v-if="form.is_portal_user" style="color:#dc2626"> *</span></label>
                 <input v-model="form.email_id" class="inv-fi" placeholder="name@company.com"
                   :style="formErrors.email_id?'border-color:#dc2626;background:#fff5f5':form.email_id&&EMAIL_REGEX.test(form.email_id)?'border-color:#2f9e44':''"
                   @input="delete formErrors.email_id"
@@ -1019,6 +1072,21 @@
                 <div v-else-if="form.email_id&&EMAIL_REGEX.test(form.email_id)" style="margin-top:4px;font-size:12px;color:#2f9e44;display:flex;align-items:center;gap:4px">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                   Valid email
+                </div>
+              </div>
+              <div>
+                <label class="inv-lbl">Portal Login Password <span v-if="form.is_portal_user&&!existingPortalLogin" style="color:#dc2626">*</span><span v-else style="font-size:11px;font-weight:400;color:#9ca3af">(optional)</span></label>
+                <input v-model="form.portal_password" type="password" class="inv-fi" :placeholder="existingPortalLogin?'Leave blank to keep current password':'Leave blank to skip portal login'"
+                  autocomplete="new-password"
+                  :style="formErrors.portal_password?'border-color:#dc2626;background:#fff5f5':''"
+                  @input="delete formErrors.portal_password"
+                  @blur="validateField('portal_password')"/>
+                <div v-if="formErrors.portal_password" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
+                  {{formErrors.portal_password}}
+                </div>
+                <div v-else style="margin-top:4px;font-size:11.5px;color:#9ca3af">
+                  {{existingPortalLogin ? 'Leave blank to keep the current password.' : 'Sets this email up to log into the customer portal. At least 8 characters.'}}
                 </div>
               </div>
               <div>
@@ -1480,6 +1548,12 @@ const viewMode     = ref("table"); // "table" | "grid"
 const showDrawer = ref(false);
 const drawerMode = ref("add");
 const drawerLoading = ref(false);
+// Whether the customer currently being edited already has a portal login
+// (fetched via get_portal_login_status when the edit drawer opens). Lets
+// saveCustomer() tell "user unchecked Portal User for someone who never had
+// one" (no-op) apart from "user unchecked it for someone who did" (disable
+// the existing login instead of silently leaving it untouched).
+const existingPortalLogin = ref(false);
 const saving = ref(false);
 const showDelete = ref(false);
 const deleteTarget = ref(null);
@@ -1544,7 +1618,7 @@ const GST_TREATMENT_OPTIONS = Object.keys(GST_RULES);
 
 const FIELD_TAB = {
   customer_name: "overview", first_name: "overview", last_name: "overview",
-  company_name: "overview", email_id: "overview", mobile_no: "overview",
+  company_name: "overview", email_id: "overview", portal_password: "overview", mobile_no: "overview",
   phone: "overview", website: "overview", credit_limit: "overview",
   tax_id: "overview", pan_no: "overview",
   place_of_supply: "other", opening_balance: "other",
@@ -1560,7 +1634,7 @@ const form = reactive({
   customer_group: "", territory: "",
   gst_treatment: "Registered Business",
   tax_id: "", default_currency: "INR", credit_limit: 0,
-  email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
+  email_id: "", portal_password: "", is_portal_user: false, mobile_code: "+91", mobile_no: "", phone: "", website: "",
   dispatched_through: "", destination: "",
   address_line1: "", address_line2: "",
   city: "", state: "", pincode: "", country: "India",
@@ -1600,6 +1674,14 @@ function validateField(field) {
     formErrors.first_name = "First name must contain letters only";
   if (field === "last_name" && s && !/^[\p{L}\s.'\-]+$/u.test(s))
     formErrors.last_name = "Last name must contain letters only";
+  if (field === "portal_password" && s) {
+    if (s.length < 8) formErrors.portal_password = "Password must be at least 8 characters";
+    else if (!form.email_id.trim()) formErrors.portal_password = "Add an email address first to set up portal login";
+  }
+  if (field === "portal_password" && form.is_portal_user && !existingPortalLogin.value && !s)
+    formErrors.portal_password = "Password is required for a portal user";
+  if (field === "email_id" && form.is_portal_user && !s)
+    formErrors.email_id = "Email is required for a portal user";
   if (field === "company_name" && form.customer_type !== "Individual" && !s)
     formErrors.company_name = "Company name is required for " + form.customer_type + " customers";
   if (field === "email_id" && s && !EMAIL_REGEX.test(s))
@@ -1656,8 +1738,18 @@ function validateCustomerForm() {
     formErrors.first_name = "First name must contain letters only";
   if (form.last_name && !/^[\p{L}\s.'\-]+$/u.test(form.last_name.trim()))
     formErrors.last_name = "Last name must contain letters only";
-  if (form.email_id && !EMAIL_REGEX.test(form.email_id.trim()))
+  if (form.is_portal_user && !form.email_id.trim())
+    formErrors.email_id = "Email is required for a portal user";
+  else if (form.email_id && !EMAIL_REGEX.test(form.email_id.trim()))
     formErrors.email_id = "Invalid email address";
+  if (form.is_portal_user && !form.portal_password.trim() && !existingPortalLogin.value)
+    formErrors.portal_password = "Password is required for a portal user";
+  else if (form.portal_password) {
+    if (form.portal_password.length < 8)
+      formErrors.portal_password = "Password must be at least 8 characters";
+    else if (!form.email_id.trim())
+      formErrors.portal_password = "Add an email address first to set up portal login";
+  }
   if (form.mobile_no) {
     const err = validateMobile(form.mobile_no.replace(/\D/g, ""), form.mobile_code);
     if (err) formErrors.mobile_no = err;
@@ -1800,6 +1892,7 @@ function resetForm() {
   drawerTab.value = "overview";
   shipSameAsBilling.value = false;
   pendingAddresses.value = [];
+  existingPortalLogin.value = false;
   Object.keys(formErrors).forEach((k) => delete formErrors[k]);
   Object.assign(form, {
     name: "", customer_name: "", customer_type: "Company", salutation: "",
@@ -1808,7 +1901,7 @@ function resetForm() {
     customer_group: "", territory: "",
     gst_treatment: "Registered Business",
     tax_id: "", default_currency: "INR", credit_limit: 0,
-    email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
+    email_id: "", portal_password: "", is_portal_user: false, mobile_code: "+91", mobile_no: "", phone: "", website: "",
     dispatched_through: "", destination: "",
     address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India",
     ship_address_line1: "", ship_address_line2: "", ship_city: "", ship_state: "", ship_pincode: "", ship_country: "India",
@@ -1882,6 +1975,21 @@ async function openEdit(name) {
       notes: doc.notes || "",
       disabled: doc.disabled || 0,
     });
+
+    // Prefill the Portal User section from the customer's actual portal
+    // login (which may use a different email than the doc's own email_id).
+    // Best-effort: if this fails, the section just falls back to "no login"
+    // — it shouldn't block opening the customer for edit.
+    try {
+      const status = await apiGET("zoho_books_clone.api.customer_portal_access.get_portal_login_status", {
+        customer: doc.name,
+      });
+      existingPortalLogin.value = !!status.has_login;
+      form.is_portal_user = !!status.has_login;
+      if (status.has_login && status.email) form.email_id = status.email;
+    } catch (e) {
+      existingPortalLogin.value = false;
+    }
   } catch (e) {
     toast("Could not load customer: " + (e.message || e), "error");
     showDrawer.value = false;
@@ -1958,6 +2066,47 @@ async function saveCustomer() {
     }
     const savedDoc = await apiSave(doc_to_save);
     const savedName = savedDoc?.name || form.name;
+
+    // Portal login. Add mode: unchanged legacy behavior (only acts if a
+    // password was actually typed). Edit mode now mirrors the inline
+    // checkbox against the same set_portal_login/toggle_portal_login
+    // endpoints the separate Portal Status "Manage" modal already uses, so
+    // the two stay in sync instead of edit mode silently ignoring the
+    // checkbox. Best-effort either way: the customer record is already
+    // saved at this point, so a failure here isn't reported as a failure
+    // to save the customer.
+    if (drawerMode.value === "add" && savedName && form.portal_password.trim()) {
+      try {
+        await apiPOST("zoho_books_clone.api.customer_portal_access.set_portal_login", {
+          customer: savedName,
+          email: form.email_id.trim().toLowerCase(),
+          password: form.portal_password.trim(),
+          enabled: 1,
+        });
+      } catch (e) {
+        toast("Customer created, but portal login could not be set up: " + (e.message || e), "error");
+      }
+    } else if (drawerMode.value === "edit" && savedName) {
+      try {
+        if (form.is_portal_user) {
+          await apiPOST("zoho_books_clone.api.customer_portal_access.set_portal_login", {
+            customer: savedName,
+            email: form.email_id.trim().toLowerCase(),
+            password: form.portal_password.trim() || undefined,
+            enabled: 1,
+          });
+        } else if (existingPortalLogin.value) {
+          // Was on, now unchecked — disable rather than delete, matching
+          // what the Portal Status modal's own toggle does.
+          await apiPOST("zoho_books_clone.api.customer_portal_access.toggle_portal_login", {
+            customer: savedName,
+            enabled: 0,
+          });
+        }
+      } catch (e) {
+        toast("Customer updated, but portal login could not be updated: " + (e.message || e), "error");
+      }
+    }
 
     // Flush pending addresses (add mode) → Address doctype
     if (drawerMode.value === "add" && savedName && pendingAddresses.value.length) {
@@ -2042,6 +2191,51 @@ const showPayModal = ref(false);
 const payLoading = ref(false);
 const payForm = reactive({ amount: 0, bank_cash_account: "", payment_date: new Date().toISOString().slice(0, 10), mode_of_payment: "Cash" });
 const paymentModes = ref(["Cash", "Bank Transfer", "Cheque", "Credit Card", "UPI", "NEFT", "RTGS"]);
+
+// ── Customer Portal login (email + password on the Customer record) ──
+const portalStatus = reactive({ has_login: false, email: null, enabled: false });
+const showPortalModal = ref(false);
+const portalLoading = ref(false);
+const portalForm = reactive({ email: "", password: "", enabled: true });
+
+async function loadPortalStatus() {
+  if (!selectedCustomer.value) return;
+  const status = await apiGET("zoho_books_clone.api.customer_portal_access.get_portal_login_status", {
+    customer: selectedCustomer.value.name,
+  }).catch(() => ({ has_login: false, email: null, enabled: false }));
+  Object.assign(portalStatus, status);
+}
+
+function openPortalModal() {
+  portalForm.email = portalStatus.email || "";
+  portalForm.password = "";
+  portalForm.enabled = portalStatus.has_login ? !!portalStatus.enabled : true;
+  showPortalModal.value = true;
+}
+function closePortalModal() { showPortalModal.value = false; }
+
+async function submitPortalLogin() {
+  if (!selectedCustomer.value) return;
+  const email = (portalForm.email || "").trim().toLowerCase();
+  if (!email) { toast("Login email is required", "error"); return; }
+  if (!portalStatus.has_login && !portalForm.password) { toast("A password is required to create a new login", "error"); return; }
+  if (portalForm.password && portalForm.password.length < 8) { toast("Password must be at least 8 characters", "error"); return; }
+
+  portalLoading.value = true;
+  try {
+    await apiPOST("zoho_books_clone.api.customer_portal_access.set_portal_login", {
+      customer: selectedCustomer.value.name,
+      email,
+      password: portalForm.password || undefined,
+      enabled: portalForm.enabled ? 1 : 0,
+    });
+    toast(portalStatus.has_login ? "Portal login updated" : "Portal login created", "success");
+    showPortalModal.value = false;
+    await loadPortalStatus();
+  } catch (e) {
+    toast(e.message || "Could not save portal login", "error");
+  } finally { portalLoading.value = false; }
+}
 
 // "Cash" mode of payment only shows Cash-in-Hand accounts; every other mode
 // (Cheque, Bank Transfer, UPI, NEFT, RTGS, Credit Card, etc.) is a bank
@@ -2154,7 +2348,9 @@ async function selectCustomer(c) {
   txnPage.value     = 1;
   Object.assign(custSectionCollapsed, { address: false, otherDetails: false, notes: false });
   obInfo.value = { has_opening_je: false };
+  Object.assign(portalStatus, { has_login: false, email: null, enabled: false });
   loadOpeningBalance();
+  loadPortalStatus();
   // Only load the full customer doc (lightweight) — tabs load on demand
   custTxnsLoading.value = true;
   try {
@@ -2165,7 +2361,7 @@ async function selectCustomer(c) {
   } catch (e) { /* keep panel open */ }
   custTxnsLoading.value = false;
 }
-function closeCustomer()   { selectedCustomer.value = null; showPayModal.value = false; }
+function closeCustomer()   { selectedCustomer.value = null; showPayModal.value = false; showPortalModal.value = false; }
 function custDocTypeFor(type) {
   return type === "Invoice" ? "Sales Invoice"
     : type === "Credit Note" ? "Credit Note"

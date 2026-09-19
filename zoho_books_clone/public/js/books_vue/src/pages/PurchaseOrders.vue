@@ -1032,7 +1032,7 @@ const form = reactive({
   supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
   billing_address: "", delivery_address: "",
   billing_address_name: "", delivery_address_name: "",
-  set_warehouse: "", purchase_type: "Goods", terms: "",
+  set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "",
 });
 const warehouses = ref([]);
 async function fetchWarehouses(q = "") {
@@ -1264,7 +1264,7 @@ const threeWayMismatch = computed(() =>
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "" });
+  Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "" });
   fetchWarehouses("");
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems("");
@@ -1278,6 +1278,7 @@ async function openEdit(o) {
     billing_address: o.billing_address || "", delivery_address: o.delivery_address || "",
     billing_address_name: "", delivery_address_name: "",
     set_warehouse: "", purchase_type: o.purchase_type || "Goods", terms: o.terms || "",
+    material_request: o.material_request || "",
   });
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses("");
@@ -1512,6 +1513,7 @@ async function savePO(newStatus) {
       billing_address_name: form.billing_address_name || "",
       delivery_address_name: form.delivery_address_name || "",
       set_warehouse: form.set_warehouse || "",
+      material_request: form.material_request || "",
       status: newStatus || "Draft",
       docstatus: newStatus === "Draft" ? 0 : 1,
       terms: form.terms || "",
@@ -1748,6 +1750,7 @@ onMounted(async () => {
         editingName.value = "";
         form.supplier = "";
         form.transaction_date = draft.transaction_date;
+        form.material_request = draft.material_request || "";
         lines.value = (draft.items || []).map(r => ({
           id: _id++,
           item_code: r.item_code,

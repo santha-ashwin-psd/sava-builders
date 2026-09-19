@@ -46,6 +46,7 @@ def after_migrate():
     seed_books_company_field()
     seed_qc_item_fields()
     seed_manufacturing_settings()
+    seed_print_formats()
     _normalize_company_names()
     frappe.db.commit()
 

@@ -19,6 +19,7 @@
   "delivery_address_name",
   "billing_address_name",
   "set_warehouse",
+  "material_request",
   "items",
   "taxes",
   "net_total",
@@ -101,6 +102,12 @@
    "fieldtype": "Link",
    "label": "Receiving Warehouse",
    "options": "Warehouse"
+  },
+  {
+   "fieldname": "material_request",
+   "fieldtype": "Link",
+   "label": "Material Request",
+   "options": "Material Request"
   },
   {
    "fieldname": "items",

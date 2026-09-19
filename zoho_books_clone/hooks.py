@@ -317,6 +317,15 @@ website_route_rules = [
     {"from_route": "/login", "to_route": "login"},
     {"from_route": "/login/<path:path>", "to_route": "login"},
 
+    # Same reasoning for /logout: without this exclusion the wildcard below
+    # swallows it and renders the Books dashboard instead of ever reaching
+    # Frappe's actual logout handler — the session never gets torn down and
+    # the user lands on /books instead of /login. This bit customer_portal's
+    # plain `<a href="/logout">` sidebar link, which navigates the browser
+    # straight to /logout rather than hitting /api/method/logout first.
+    {"from_route": "/logout", "to_route": "logout"},
+    {"from_route": "/logout/<path:path>", "to_route": "logout"},
+
     # Catch-all: anything else that would otherwise 404 lands on the Books
     # dashboard instead of Frappe's default error page. Frappe's own core
     # paths (/app, /api, /assets, /files, etc.) are registered as their own,

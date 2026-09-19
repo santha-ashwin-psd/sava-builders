@@ -3829,6 +3829,7 @@ def submit_sales_order(sales_order):
     }, update_modified=True)
     frappe.db.commit()
     so.reload()
+    _notify_portal("so_on_submit", so)
     return so.as_dict()
 
 
@@ -3856,6 +3857,7 @@ def cancel_sales_order_safe(sales_order):
         # non-submittable build: just set status
         frappe.db.set_value("Sales Order", sales_order, "status", "Cancelled",
                             update_modified=True)
+        _notify_portal("so_on_cancel", so)
     frappe.db.commit()
     return {"sales_order": sales_order, "status": "Cancelled"}
 
@@ -6324,3 +6326,15 @@ def refund_debit_note(debit_note_name, amount, refund_mode="Bank Transfer", refe
     je.submit()
     frappe.db.commit()
     return {"journal_entry": je.name}
+
+
+def _notify_portal(fn_name, doc):
+    """Create customer-portal notifications (no-op if customer_portal isn't installed)."""
+    try:
+        import importlib
+        getattr(importlib.import_module("customer_portal.notify"), fn_name)(doc)
+        frappe.db.commit()
+    except ImportError:
+        pass
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "Portal notify from Books failed")

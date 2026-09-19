@@ -838,6 +838,24 @@ const REDIRECT_TO = "{{ redirect_to | e }}";
 const PAGE_CSRF = "{{ csrf_token | e }}";
 const AVATAR_COLORS = ["#1A237E","#1B4D3E","#7B3F00","#4A1C8B","#0C8599","#C92A2A","#E67700"];
 
+// REDIRECT_TO is only what the URL said *before* anyone was logged in, so
+// it has no idea whether the person signing in is a Books user or a
+// customer_portal Customer. Once a login actually succeeds we ask the
+// server (which now knows frappe.session.user and its roles) where this
+// session really belongs, and use that instead of trusting REDIRECT_TO
+// blindly. Falls back to REDIRECT_TO/"/books" if the check itself fails,
+// same as the old behavior, so login never gets stuck on a broken redirect.
+async function resolvePostLoginRedirect() {
+  try {
+    const dest = await postFrappe("/api/method/zoho_books_clone.api.auth.get_post_login_redirect", {
+      redirect_to: REDIRECT_TO,
+    });
+    return dest || REDIRECT_TO || "/books";
+  } catch (e) {
+    return REDIRECT_TO || "/books";
+  }
+}
+
 let currentStep = "email";
 let otpResendIv = null;
 let verifyResendIv = null;
@@ -1039,12 +1057,20 @@ async function submitLogin() {
       body: new URLSearchParams({usr: email, pwd: password}).toString(),
     });
     const j = await r.json();
-    if (j.message === "Logged In") {
+    // Frappe's /api/method/login returns message: "Logged In" for Desk-capable
+    // users, but for a Website User with no desk app (exactly what a portal
+    // Customer is) it instead returns message: "No App" — even though the
+    // session was created successfully. A real login always sets a
+    // `home_page` on the response regardless of which message string comes
+    // back, so treat that as the authoritative success signal instead of
+    // relying on the literal "Logged In" string.
+    if (j.message === "Logged In" || j.home_page) {
       localStorage.setItem("books_last_email", email);
-      const name = document.getElementById("user-display-name").textContent;
+      const name = j.full_name || document.getElementById("user-display-name").textContent;
       document.getElementById("success-msg").textContent = "Welcome back, " + name + "! Loading your workspace...";
       goStep("success");
-      animateProgress();
+      const dest = await resolvePostLoginRedirect();
+      animateProgress(dest);
     } else if (j.tmp_id || (j.message || "").toLowerCase().includes("otp")) {
       setLoading("login-btn", false);
       document.getElementById("otp-sub").textContent = "Enter the 6-digit code sent to your email or authenticator app";
@@ -1130,13 +1156,14 @@ async function submitOTP() {
   }
 }
 
-function loginSuccess() {
+async function loginSuccess() {
   const email = document.getElementById("email-input").value.trim();
   if (email) localStorage.setItem("books_last_email", email);
   const name = document.getElementById("user-display-name").textContent;
   document.getElementById("success-msg").textContent = "Welcome back, " + name + "!";
   goStep("success");
-  animateProgress();
+  const dest = await resolvePostLoginRedirect();
+  animateProgress(dest);
 }
 
 function startResendTimer() {
@@ -1273,8 +1300,13 @@ async function submitNewPassword() {
     document.getElementById("success-msg").textContent =
       "Password reset successful! Signing you in...";
     goStep("success");
-    animateProgress();
-    // Auto-login with new password
+    // Auto-login with new password, then resolve where this session
+    // actually belongs before animating/navigating — animateProgress()
+    // does its own navigation at the end, so it must not fire until we
+    // know the real destination (a Customer resetting their password
+    // must not fall back to /books). Previously this called
+    // animateProgress() immediately with no destination and then raced
+    // it against a second, separately-timed navigation below.
     try {
       const lr = await fetch("/api/method/login", {
         method: "POST", credentials: "same-origin",
@@ -1287,7 +1319,8 @@ async function submitNewPassword() {
       });
       const lj = await lr.json();
       if (lj.message === "Logged In") {
-        setTimeout(() => window.location.href = REDIRECT_TO, 1500);
+        const dest = await resolvePostLoginRedirect();
+        animateProgress(dest);
       } else {
         setTimeout(() => window.location.href = "/login", 2000);
       }
@@ -1651,7 +1684,8 @@ async function submitVerify() {
       document.getElementById("success-msg").textContent =
         "Account created! Please sign in with your new credentials.";
       goStep("success");
-      setTimeout(() => window.location.href = "/login?redirect-to=" + encodeURIComponent(REDIRECT_TO), 2000);
+      const fallbackDest = await resolvePostLoginRedirect();
+      setTimeout(() => window.location.href = "/login?redirect-to=" + encodeURIComponent(fallbackDest), 2000);
     }
   } catch(e) {
     showErr("verify-err", e.message || "Invalid code. Please try again.");
@@ -1691,7 +1725,7 @@ async function submitOnboarding() {
 
 // ─── Progress animation ──────────────────────────────────────────────
 
-function animateProgress() {
+function animateProgress(dest) {
   const bar = document.getElementById("progress-bar");
   const msgs = [
     "Fetching your workspace...",
@@ -1713,7 +1747,7 @@ function animateProgress() {
       clearInterval(iv);
       setTimeout(() => {
         if (bar) bar.style.width = "100%";
-        setTimeout(() => { window.location.href = REDIRECT_TO || "/books"; }, 300);
+        setTimeout(() => { window.location.href = dest || REDIRECT_TO || "/books"; }, 300);
       }, 600);
     }
   }, 80);

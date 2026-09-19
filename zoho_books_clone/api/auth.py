@@ -21,6 +21,38 @@ def _signup_cache_key(email):
     return f"books_signup:{email.strip().lower()}"
 
 
+def _safe_redirect(redirect_to):
+    """Only ever accept same-origin paths, never an auth route itself."""
+    if not redirect_to or not isinstance(redirect_to, str) or not redirect_to.startswith("/"):
+        return "/books"
+    if redirect_to.startswith("/login"):
+        return "/books"
+    return redirect_to
+
+
+@frappe.whitelist(allow_guest=False)
+def get_post_login_redirect(redirect_to=None):
+    """Where the *current session* should land after a successful login.
+
+    The shared /login page (zoho_books_clone) has no idea, at page-load
+    time, whether the person signing in is a Books user or a customer_portal
+    Customer — so it can't bake the right destination into `redirect-to`
+    up front. This is called right after login succeeds, once
+    frappe.session.user is actually known, and is the single source of
+    truth both the password-login and OTP/reset-password auto-login paths
+    in login.html use to pick where to send the browser.
+
+    Customer-role users always go to /portal, regardless of whatever
+    redirect-to was on the URL when /login was first loaded, unless they
+    also hold System Manager (an internal user who happens to carry the
+    Customer role too stays on the Books side).
+    """
+    roles = frappe.get_roles(frappe.session.user)
+    if "Customer" in roles and "System Manager" not in roles:
+        return "/portal"
+    return _safe_redirect(redirect_to)
+
+
 def _send_otp_email(email, first_name, otp):
     html = f"""
 <div style="font-family:'DM Sans',sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;background:#fff">
