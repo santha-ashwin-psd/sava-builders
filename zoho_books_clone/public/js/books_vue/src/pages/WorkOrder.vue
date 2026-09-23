@@ -1702,6 +1702,13 @@ async function onProductionItemChange() {
     });
     if (r && r.bom) {
       wo.value.bom = r.bom;
+      // Same default-qty behavior as onBomChange: seed Qty to Manufacture
+      // from the auto-picked BOM's own base quantity before loading the
+      // breakdown, so it doesn't stay stuck at whatever qty was there before.
+      const selectedBom = bomList.value.find(b => b.name === r.bom);
+      if (selectedBom && flt(selectedBom.quantity) > 0) {
+        wo.value.qty = flt(selectedBom.quantity);
+      }
       await loadFromBom();
     }
   } catch (e) {

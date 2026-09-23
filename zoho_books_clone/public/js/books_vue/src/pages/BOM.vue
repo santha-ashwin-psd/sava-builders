@@ -48,17 +48,13 @@
             <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
             <input v-model="search" placeholder="Search BOM by name or number..." class="sales-search-input"/>
           </div>
+          <select class="bomx-status-select" :class="{active: filterStatus!==''}" v-model="filterStatus" title="Filter by status">
+            <option v-for="t in statusTabs" :key="t.key" :value="t.key">
+              {{ t.label }}{{ t.key ? ` (${tabCounts[t.key]})` : '' }}
+            </option>
+          </select>
           <div class="sales-pills">
-            <button v-for="t in statusTabs" :key="t.key"
-              class="sales-pill" :class="{active:filterStatus===t.key}"
-              @click="filterStatus=t.key">
-              {{ t.label }}
-              <span v-if="t.key" class="sales-pill-count">{{ tabCounts[t.key] }}</span>
-            </button>
-            <span class="bomx-pill-divider"></span>
-            <button v-for="t in bomTypeTabs" :key="t"
-              class="sales-pill" :class="{active:filterBomType===t}"
-              @click="filterBomType = filterBomType===t ? '' : t">
+            <button v-for="t in bomTypeTabs" :key="t" class="sales-pill" :class="{active: filterBomType===t}" @click="filterBomType = (filterBomType===t ? '' : t)">
               {{ t }}
               <span class="sales-pill-count">{{ typeCounts[t] }}</span>
             </button>
@@ -2222,7 +2218,6 @@ function icon(name, size) {
   box-shadow:0 10px 24px rgba(16,24,40,.04);
 }
 .bomx-table { width:100%; border-collapse:collapse; }
-.bomx-pill-divider { width:1px; align-self:stretch; background:#E5E7EB; margin:0 4px; }
 .bomx-table th.sortable { cursor:pointer; user-select:none; }
 .bomx-table th.sortable:hover { color:#1a6ef7; }
 .bomx-table thead th {
@@ -2339,6 +2334,24 @@ function icon(name, size) {
 .bomx-toggle-row { display:flex; gap:20px; padding:10px 22px 14px; flex-wrap:wrap; background:var(--bx-surf2); border-bottom:1px solid var(--bx-border); }
 .bomx-toggle { display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--bx-text); }
 
+.bomx-status-select {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 28px 5px 12px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1.5px solid #e8ecf0;
+  background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 10px center;
+  color: #6b7280;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: border-color .15s, color .15s, background-color .15s;
+}
+.bomx-status-select:hover  { border-color: #1a6ef7; color: #1a6ef7; }
+.bomx-status-select.active { background-color: #eaf1ff; border-color: #1a6ef7; color: #1a6ef7; }
 .bomx-tabs { display:flex; border-bottom:1px solid var(--bx-border); background:var(--bx-surf2); padding:0; overflow-x:auto;overflow-y:hidden; }
 .bomx-tab { padding:10px 16px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:none; color:var(--bx-muted); border-bottom:2px solid transparent; margin-bottom:-1px; white-space:nowrap; }
 .bomx-tab:first-child { margin-left: 22px; }

@@ -373,7 +373,21 @@
               <option value="">All voucher types</option>
               <option v-for="t in ledgerVoucherTypes" :key="t" :value="t">{{ t }}</option>
             </select>
-            <button class="cash-btn-ghost" @click="exportLedgerCSV" :disabled="!ledgerFilteredEntries.length"><span v-html="icon('download',13)"></span> Export</button>
+            <div class="ledger-export-wrap">
+              <button class="cash-btn-ghost" @click="ledgerExportOpen=!ledgerExportOpen" :disabled="!ledgerFilteredEntries.length">
+                <span v-html="icon('download',13)"></span> Export
+                <span class="ledger-export-caret" :class="{open:ledgerExportOpen}">▾</span>
+              </button>
+              <div v-if="ledgerExportOpen" class="ledger-export-backdrop" @click="ledgerExportOpen=false"></div>
+              <div v-if="ledgerExportOpen" class="ledger-export-menu">
+                <button class="ledger-export-opt" @click="exportLedgerCSV(); ledgerExportOpen=false">
+                  <span v-html="icon('download',13)"></span> Export as CSV
+                </button>
+                <button class="ledger-export-opt" :disabled="ledgerPdfLoading" @click="exportLedgerPDF()">
+                  <span v-html="icon('download',13)"></span> {{ ledgerPdfLoading ? 'Generating PDF…' : 'Export as PDF' }}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="cash-ledger-table-wrap cash-desktop-only">
@@ -391,12 +405,14 @@
                 <tr v-for="(e,i) in ledgerVisibleEntries" :key="i" class="cash-ledger-row">
                   <td class="cash-ledger-date">{{ fmtDate(e.posting_date) }}</td>
                   <td>
-                    <span class="cash-ledger-voucher-chip" :class="'vt-'+(e.voucher_type||'').toLowerCase().replace(/[^a-z]/g,'')">
-                      {{ e.voucher_type }}
-                    </span>
-                    <DocLink :doctype="e.voucher_type" :name="e.voucher_no" :mono-style="false" />
+                    <div class="cash-ledger-voucher-cell">
+                      <span class="cash-ledger-voucher-chip" :class="'vt-'+(e.voucher_type||'').toLowerCase().replace(/[^a-z]/g,'')">
+                        {{ e.voucher_type }}
+                      </span>
+                      <DocLink :doctype="e.voucher_type" :name="e.voucher_no" :mono-style="false" />
+                    </div>
                   </td>
-                  <td class="cash-ledger-party">{{ e.party || e.remarks || '—' }}</td>
+                  <td class="cash-ledger-party" :title="e.party || e.remarks || ''"><span>{{ e.party || e.remarks || '—' }}</span></td>
                   <td class="ta-r mono-sm cash-ledger-debit">{{ e.debit>0 ? fmtCur(e.debit) : '—' }}</td>
                   <td class="ta-r mono-sm cash-ledger-credit">{{ e.credit>0 ? fmtCur(e.credit) : '—' }}</td>
                   <td class="ta-r mono-sm cash-ledger-balance" :class="{neg: e.balance<0}">{{ fmtCur(e.balance) }}</td>
@@ -472,7 +488,7 @@ const tabs=[{key:"all",label:"All"},{key:"Receive",label:"Cash In"},{key:"Pay",l
 const list=ref([]),loading=ref(false),search=ref("");
 const drawerOpen=ref(false),drawerSaving=ref(false),actionBusy=ref(false),bulkBusy=ref(false);
 const viewOpen=ref(false),viewDoc=ref(null);
-const ledgerOpen=ref(false),ledgerLoading=ref(false),ledgerData=ref(null),ledgerAccount=ref("");
+const ledgerOpen=ref(false),ledgerLoading=ref(false),ledgerData=ref(null),ledgerAccount=ref(""),ledgerExportOpen=ref(false),ledgerPdfLoading=ref(false);
 const ledgerSearch=ref(""),ledgerTypeFilter=ref(""),ledgerPageSize=10,ledgerVisible=ref(10);
 const LEDGER_RANGES=[
   {key:"today",     label:"Today"},
@@ -575,6 +591,77 @@ function exportLedgerCSV(){
   a.href=url;a.download=`ledger_${ledgerAccount.value.replace(/[^a-z0-9]/gi,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();URL.revokeObjectURL(url);
   toast.success(`Exported ${rows.length} row(s)`);
+}
+// Renders the ledger to a print-styled HTML table and posts it to the same
+// server-side wkhtmltopdf endpoint used for invoice/quote PDFs, so the
+// output is a real PDF (consistent page margins, no browser print chrome)
+// instead of relying on window.print().
+async function exportLedgerPDF(){
+  const rows=ledgerFilteredEntries.value;
+  if(!rows.length||ledgerPdfLoading.value)return;
+  ledgerPdfLoading.value=true;
+  try{
+    const esc=v=>String(v==null?"":v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    const rangeLabel=`${ledgerEffectiveFrom.value?fmtDate(ledgerEffectiveFrom.value):'Start'} – ${ledgerEffectiveTo.value?fmtDate(ledgerEffectiveTo.value):'Now'}`;
+    const bodyRows=rows.map(e=>`
+      <tr>
+        <td>${esc(fmtDate(e.posting_date))}</td>
+        <td>${esc(e.voucher_type||"")}<br/><span class="muted">${esc(e.voucher_no||"")}</span></td>
+        <td>${esc(e.party||e.remarks||"—")}</td>
+        <td class="ta-r">${e.debit>0?esc(fmtCur(e.debit)):"—"}</td>
+        <td class="ta-r">${e.credit>0?esc(fmtCur(e.credit)):"—"}</td>
+        <td class="ta-r">${esc(fmtCur(e.balance))}</td>
+      </tr>`).join("");
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
+      @page{size:A4;margin:16mm 12mm;}
+      *{box-sizing:border-box;}
+      body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:0;}
+      h1{font-size:16px;margin:0 0 2px;}
+      .sub{font-size:11px;color:#64748b;margin:0 0 14px;}
+      .summary{display:flex;gap:24px;margin-bottom:16px;font-size:11px;}
+      .summary b{display:block;font-size:13px;margin-top:2px;}
+      table{width:100%;border-collapse:collapse;font-size:10.5px;}
+      th{background:#f1f5f9;text-align:left;padding:6px 8px;border-bottom:1px solid #cbd5e1;text-transform:uppercase;font-size:9.5px;letter-spacing:.02em;}
+      td{padding:6px 8px;border-bottom:1px solid #e5e7eb;vertical-align:top;}
+      .ta-r{text-align:right;}
+      .muted{color:#94a3b8;font-size:9.5px;}
+      tfoot td{font-weight:700;border-top:2px solid #cbd5e1;border-bottom:none;}
+    </style></head><body>
+      <h1>Account Ledger — ${esc(ledgerAccount.value)}</h1>
+      <div class="sub">${esc(rangeLabel)} · Generated ${esc(fmtDate(new Date()))}</div>
+      <div class="summary">
+        <div>Opening Balance<b>${esc(fmtCur(ledgerData.value?.opening_balance||0))}</b></div>
+        <div>Closing Balance<b>${esc(fmtCur(ledgerData.value?.closing_balance||0))}</b></div>
+        <div>Total Entries<b>${rows.length}</b></div>
+      </div>
+      <table>
+        <thead><tr><th>Date</th><th>Voucher</th><th>Party / Source</th><th class="ta-r">Debit</th><th class="ta-r">Credit</th><th class="ta-r">Balance</th></tr></thead>
+        <tbody>${bodyRows}</tbody>
+        <tfoot><tr><td colspan="3" class="ta-r">Total (${rows.length} ${rows.length===1?'entry':'entries'})</td><td class="ta-r">${esc(fmtCur(ledgerFilteredTotals.value.debit))}</td><td class="ta-r">${esc(fmtCur(ledgerFilteredTotals.value.credit))}</td><td></td></tr></tfoot>
+      </table>
+    </body></html>`;
+    const filename=`ledger_${ledgerAccount.value.replace(/[^a-z0-9]/gi,'_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+    const csrf=window.frappe?.csrf_token||"";
+    const res=await fetch('/api/method/zoho_books_clone.api.docs.render_pdf_from_html',{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded','X-Frappe-CSRF-Token':csrf},
+      credentials:'same-origin',
+      body:new URLSearchParams({pdf_html:html,filename}),
+    });
+    if(!res.ok)throw new Error('PDF generation failed');
+    const blob=await res.blob();
+    const objectUrl=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=objectUrl;a.download=filename;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(objectUrl),5000);
+    toast.success(`Exported ${rows.length} row(s)`);
+  }catch(e){
+    toast.error(e.message||"Failed to generate PDF");
+  }finally{
+    ledgerPdfLoading.value=false;
+    ledgerExportOpen.value=false;
+  }
 }
 const ledgerVisibleEntries=computed(()=>ledgerFilteredEntries.value.slice(0,ledgerVisible.value));
 const ledgerFilteredTotals=computed(()=>{
@@ -989,14 +1076,23 @@ textarea.cash-input{resize:vertical;}
 .cash-ledger-sum-val--main{font-size:19px;color:#2563eb;}
 .cash-ledger-sum-val.neg{color:#dc2626;}
 
-.cash-ledger-table-wrap{border:1px solid #e5e7eb;border-radius:10px;overflow-x:auto;}
-.cash-ledger-table{font-size:12.5px;}
-.cash-ledger-table thead th{position:sticky;top:0;z-index:1;background:#f8fafc;}
+.cash-ledger-table-wrap{border:1px solid #e5e7eb;border-radius:10px;}
+.cash-ledger-table{font-size:12.5px;min-width:520px;table-layout:fixed;}
+.cash-ledger-table thead th{position:sticky;top:0;z-index:1;background:#f8fafc;overflow:hidden;text-overflow:ellipsis;}
+.cash-ledger-table th:nth-child(1),.cash-ledger-table td:nth-child(1){width:88px;}
+.cash-ledger-table th:nth-child(2),.cash-ledger-table td:nth-child(2){width:118px;}
+.cash-ledger-table th:nth-child(3),.cash-ledger-table td:nth-child(3){width:auto;}
+.cash-ledger-table th:nth-child(4),.cash-ledger-table td:nth-child(4),
+.cash-ledger-table th:nth-child(5),.cash-ledger-table td:nth-child(5){width:88px;}
+.cash-ledger-table th:nth-child(6),.cash-ledger-table td:nth-child(6){width:92px;}
 .cash-ledger-table .cash-ledger-row td{padding:11px 12px;cursor:default;}
 .cash-ledger-table .cash-ledger-row:nth-child(even) td{background:#fafbfc;}
 .cash-ledger-table .cash-ledger-row:hover td{background:#f1f5f9;}
-.cash-ledger-date{color:#64748b;white-space:nowrap;font-size:12px;}
-.cash-ledger-party{color:#334155;}
+.cash-ledger-date{color:#64748b;white-space:nowrap;font-size:12px;overflow:hidden;text-overflow:ellipsis;}
+.cash-ledger-voucher-cell{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;}
+.cash-ledger-voucher-cell .doc-link,.cash-ledger-voucher-cell .doc-link-disabled{font-size:11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
+.cash-ledger-party{color:#334155;overflow:hidden;}
+.cash-ledger-party span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cash-ledger-debit{color:#16a34a;font-weight:600;}
 .cash-ledger-credit{color:#dc2626;font-weight:600;}
 .cash-ledger-balance{font-weight:700;color:#0f172a;}
@@ -1040,6 +1136,15 @@ textarea.cash-input{resize:vertical;}
 .ledger-pagination-wrap{display:flex;align-items:center;justify-content:space-between;padding-top:14px;flex-wrap:wrap;gap:8px;}
 .ledger-showing-lbl{font-size:12px;color:#94a3b8;}
 .ledger-tip{margin-top:14px;font-size:11.5px;color:#94a3b8;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;}
+.ledger-export-wrap{position:relative;}
+.ledger-export-caret{font-size:9px;margin-left:2px;}
+.ledger-export-caret.open{transform:rotate(180deg);display:inline-block;}
+.ledger-export-backdrop{position:fixed;inset:0;z-index:19;}
+.ledger-export-menu{position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.12);padding:6px;min-width:170px;z-index:20;display:flex;flex-direction:column;gap:2px;}
+.ledger-export-opt{display:flex;align-items:center;gap:8px;padding:8px 10px;border:none;background:transparent;border-radius:7px;font-size:12.5px;color:#334155;cursor:pointer;text-align:left;font:inherit;}
+.ledger-export-opt:hover{background:#f1f5f9;}
+.ledger-export-opt:disabled{color:#94a3b8;cursor:default;}
+.ledger-export-opt:disabled:hover{background:transparent;}
 @media (max-width: 640px){
   .ledger-summary-cards{grid-template-columns:1fr;}
   .ledger-range-badge{margin-left:0;margin-top:8px;}

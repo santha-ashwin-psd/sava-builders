@@ -98,6 +98,19 @@
             </div>
             <div class="ad-toggle-row" style="margin-top:12px">
               <div class="ad-toggle-left">
+                <div class="ad-toggle-title">Portal Item</div>
+                <div class="ad-toggle-sub">Show this item in the Customer Portal item list</div>
+              </div>
+              <label class="ad-switch">
+                <input type="checkbox" :checked="!!form.portal_item" @change="form.portal_item=($event.target.checked?1:0)"/>
+                <span class="ad-switch-track ad-switch-track--green"></span>
+              </label>
+            </div>
+            <div v-if="form.portal_item && form.disabled" style="margin-top:10px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px">
+              ⚠ This item is Disabled (Inventory tab), so it won't appear in the Customer Portal even with Portal Item on. Both need to be set for it to show up.
+            </div>
+            <div class="ad-toggle-row" style="margin-top:12px">
+              <div class="ad-toggle-left">
                 <div class="ad-toggle-title">Is Fixed Asset</div>
                 <div class="ad-toggle-sub">Auto-create a Draft Asset in the Assets module whenever this item is purchased via a submitted Purchase Invoice</div>
               </div>
@@ -533,7 +546,7 @@ const form = reactive({
   stock_uom: "Nos", hsn_code: "", barcode: "", description: "", disabled: 0, brand: "",
   standard_rate: 0, standard_buying_rate: 0, mrp: 0, gst_rate: 18, tax_code: "", default_purchase_tax_template: "",
   income_account: "", expense_account: "",
-  is_sales_item: 1, is_purchase_item: 1, is_fixed_asset: 0, asset_category: "",
+  is_sales_item: 1, is_purchase_item: 1, portal_item: 0, is_fixed_asset: 0, asset_category: "",
   is_stock_item: 1, has_batch_no: 0, shelf_life_in_days: 0, valuation_method: "FIFO", default_warehouse: "",
   reorder_level: 0, reorder_qty: 0, opening_stock: 0,
   default_bom: "", quality_inspection_required: 0, min_order_qty: 0, lead_time_days: 0,
@@ -808,6 +821,7 @@ function openAdd(presetType) {
     is_stock_item: d.is_stock !== undefined ? d.is_stock : 1,
     is_sales_item: d.is_sales !== undefined ? d.is_sales : 1,
     is_purchase_item: d.is_purchase !== undefined ? d.is_purchase : 1,
+    portal_item: 0,
     is_fixed_asset: 0,
     asset_category: "",
     has_batch_no: 0,
@@ -858,6 +872,7 @@ async function openEdit(row) {
       is_stock_item:        full.is_stock_item ? 1 : 0,
       is_sales_item:        full.is_sales_item === 0 ? 0 : 1,
       is_purchase_item:     full.is_purchase_item === 0 ? 0 : 1,
+      portal_item:          full.portal_item ? 1 : 0,
       is_fixed_asset:       full.is_fixed_asset ? 1 : 0,
       asset_category:       full.asset_category || "",
       has_batch_no:         full.has_batch_no ? 1 : 0,
@@ -952,6 +967,7 @@ async function saveItem({ close = true } = {}) {
       income_account: form.income_account, expense_account: form.expense_account,
       is_stock_item: form.is_stock_item ? 1 : 0, has_batch_no: form.is_stock_item ? (form.has_batch_no ? 1 : 0) : 0,
       is_sales_item: form.is_sales_item ? 1 : 0, is_purchase_item: form.is_purchase_item ? 1 : 0,
+      portal_item: form.portal_item ? 1 : 0,
       is_fixed_asset: form.is_fixed_asset ? 1 : 0, asset_category: form.is_fixed_asset ? (form.asset_category || "") : "",
       shelf_life_in_days: (form.is_stock_item && form.has_batch_no) ? flt(form.shelf_life_in_days) : 0,
       valuation_method: form.valuation_method,

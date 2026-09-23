@@ -246,6 +246,13 @@
    "description": "Available for selection on Purchase Invoices, Purchase Orders, and Purchase Receipts."
   },
   {
+   "fieldname": "portal_item",
+   "fieldtype": "Check",
+   "label": "Portal Item",
+   "default": "0",
+   "description": "Show this item in the Customer Portal item list. Only takes effect when the item is also Active (not Disabled)."
+  },
+  {
    "fieldname": "is_fixed_asset",
    "fieldtype": "Check",
    "label": "Is Fixed Asset",

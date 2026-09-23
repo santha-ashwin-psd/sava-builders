@@ -393,6 +393,10 @@
               <option value="">All Groups</option>
               <option v-for="g in stockItemGroups" :key="g" :value="g">{{ g }}</option>
             </select>
+            <select class="sales-select" v-model="stockTypeFilter" title="Filter by item type">
+              <option value="">All Types</option>
+              <option v-for="t in stockItemTypes" :key="t" :value="t">{{ t }}</option>
+            </select>
             <select class="sales-select" v-model="stockStatusFilter" title="Filter by status">
               <option value="">All Status</option>
               <option value="ok">✓ OK</option>
@@ -893,6 +897,7 @@ const expandedRows     = ref({});
 const search         = ref("");
 const itemSearch     = ref("");
 const stockGroupFilter  = ref("");
+const stockTypeFilter   = ref("");
 const stockStatusFilter = ref("");
 const stockRackFilter   = ref(""); // "" = all, "__none__" = unracked, else exact rack_no
 const filterType     = ref("All");
@@ -995,10 +1000,18 @@ const stockItemGroups = computed(() =>
   [...new Set(stockItems.value.map((r) => r.item_group).filter(Boolean))].sort()
 );
 
-// Stock items filtered by search box, item group, and reorder status
+// Distinct item types (Raw Material / Work in Progress / Finished Good /
+// Product) present in the currently loaded stock rows — feeds the
+// "Filter by item type" dropdown without a separate API call.
+const stockItemTypes = computed(() =>
+  [...new Set(stockItems.value.map((r) => r.item_type).filter(Boolean))].sort()
+);
+
+// Stock items filtered by search box, item group, item type, and reorder status
 const filteredStockItems = computed(() => {
   let r = stockItems.value;
   if (stockGroupFilter.value) r = r.filter((row) => row.item_group === stockGroupFilter.value);
+  if (stockTypeFilter.value) r = r.filter((row) => row.item_type === stockTypeFilter.value);
   if (stockStatusFilter.value === "ok")  r = r.filter((row) => !row.below_reorder);
   if (stockStatusFilter.value === "low") r = r.filter((row) =>  row.below_reorder);
   if (stockRackFilter.value === "__none__") r = r.filter((row) => !row.rack_no);
