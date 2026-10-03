@@ -438,6 +438,114 @@ def set_bin_rack():
     return {"item_code": item_code, "warehouse": warehouse, "rack_no": rack_no}
 
 
+def _item_uom_conversions_payload(item_code):
+    """Shared shape for get/set_item_uom_conversions.
+
+    Item UOM Conversion Detail stores conversion_factor = stock-UOM units in 1
+    of the row's UOM (stock Nos, row Kg, 1 Nos = 2 Kg  ->  factor 0.5).
+    The UI works in the natural direction, so each row also carries
+    per_stock = how many of the row's UOM make up 1 stock UOM (= 1 / factor).
+    """
+    item = frappe.db.get_value(
+        "Item", item_code, ["name", "item_name", "stock_uom", "purchase_uom"], as_dict=True
+    )
+    if not item:
+        frappe.throw(_("Item {0} not found").format(item_code))
+    rows = frappe.get_all(
+        "Item UOM Conversion Detail",
+        filters={"parent": item_code, "parenttype": "Item"},
+        fields=["uom", "conversion_factor"],
+        order_by="idx asc",
+    )
+    stock_uom = item.stock_uom or "Nos"
+    out = []
+    for r in rows:
+        f = flt(r.conversion_factor)
+        if not r.uom or f <= 0:
+            continue
+        out.append({
+            "uom": r.uom,
+            "conversion_factor": f,
+            "per_stock": round(1.0 / f, 6),
+        })
+    return {
+        "item_code": item.name,
+        "item_name": item.item_name or item.name,
+        "stock_uom": stock_uom,
+        "purchase_uom": item.purchase_uom or "",
+        "has_transactions": frappe.db.count(
+            "Stock Ledger Entry", {"item_code": item_code, "is_cancelled": 0}
+        ),
+        "rows": out,
+    }
+
+
+@frappe.whitelist(allow_guest=False)
+def get_item_uom_conversions(item_code):
+    """UOM conversions of an item, in the "1 <stock UOM> = N <other UOM>" form."""
+    from zoho_books_clone.utils.access import assert_can
+    assert_can("Item", "read")
+    item_code = (item_code or "").strip()
+    if not item_code:
+        frappe.throw(_("Item is required"))
+    return _item_uom_conversions_payload(item_code)
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def set_item_uom_conversions(item_code, rows=None):
+    """Replace the item's UOM conversions.
+
+    rows: [{"uom": "Kg", "per_stock": 2}, ...] meaning 1 <stock UOM> = 2 Kg.
+    Stored as conversion_factor = 1 / per_stock (stock-UOM units in 1 Kg).
+    Saved through the Item so its own validation (no duplicate UOM, none equal
+    to the stock UOM, factor > 0) still runs.
+    """
+    import json
+    from zoho_books_clone.utils.access import assert_can
+    assert_can("Item", "write")
+
+    item_code = (item_code or "").strip()
+    if not item_code:
+        frappe.throw(_("Item is required"))
+    if isinstance(rows, str):
+        rows = json.loads(rows or "[]")
+    rows = rows or []
+
+    item = frappe.get_doc("Item", item_code)
+    stock_uom = item.stock_uom or "Nos"
+
+    new_rows, seen = [], set()
+    for i, r in enumerate(rows, start=1):
+        uom = (r.get("uom") or "").strip()
+        per_stock = flt(r.get("per_stock"))
+        if not uom:
+            frappe.throw(_("Row {0}: choose a UOM").format(i))
+        if uom == stock_uom:
+            frappe.throw(_("Row {0}: {1} is already this item's stock UOM").format(i, uom))
+        if uom in seen:
+            frappe.throw(_("Row {0}: {1} is listed more than once").format(i, uom))
+        if per_stock <= 0:
+            frappe.throw(_("Row {0}: enter how many {1} make 1 {2} (more than 0)").format(i, uom, stock_uom))
+        seen.add(uom)
+        new_rows.append({"uom": uom, "conversion_factor": 1.0 / per_stock})
+
+    # Purchase flows read this same table; dropping the purchase UOM's row would
+    # silently make Purchase Orders/Bills/Receipts treat it as 1:1 with stock.
+    pu = item.purchase_uom
+    if pu and pu != stock_uom and pu not in seen:
+        frappe.throw(_(
+            "{0} is this item's Purchase UOM and needs a conversion row. "
+            "Keep it here, or clear the Purchase UOM on the item first."
+        ).format(pu))
+
+    item.set("uom_conversions", [])
+    for r in new_rows:
+        item.append("uom_conversions", r)
+    item.flags.ignore_permissions = True   # access already enforced by assert_can above
+    item.save()
+    return _item_uom_conversions_payload(item_code)
+
+
 @frappe.whitelist(allow_guest=False)
 def create_opening_stock():
     """
@@ -802,6 +910,195 @@ def create_batch_adjustment():
         "current_qty": current_qty,
         "rate": rate,
         "item_actual_qty": new_bin_qty,
+    }
+
+
+# ── Fix qty entered in the wrong UOM ──────────────────────────────────────────
+#
+# Typical slip: the item's stock UOM is Kg, the person types 100 meaning grams.
+# "Fix qty" re-reads the wrongly entered qty in the UOM it was really in
+# (100 Gram = 0.1 Kg) and posts the difference as a Stock Adjustment at the
+# current valuation rate, so stock value becomes corrected_qty x rate
+# (0.1 x rate), not 100 x rate. The rate itself is not changed.
+
+def _wrong_uom_factor(item_code, stock_uom, actual_uom, per_stock=None):
+    """Stock-UOM units in 1 `actual_uom`, for the Fix qty action.
+
+    Uses the item's saved conversion row when there is one, otherwise the
+    caller-supplied per_stock (1 stock UOM = per_stock actual_uom). Unlike
+    inventory.utils.get_conversion_factor() it never falls back to 1.0: a
+    missing factor here would turn the fix into a silent no-op.
+    """
+    if not actual_uom:
+        frappe.throw(_("Choose the UOM the qty was really in"))
+    if actual_uom == stock_uom:
+        frappe.throw(_("{0} is already this item's stock UOM - nothing to convert").format(actual_uom))
+    saved = flt(frappe.db.get_value(
+        "Item UOM Conversion Detail",
+        {"parent": item_code, "parenttype": "Item", "uom": actual_uom},
+        "conversion_factor",
+    ))
+    if saved > 0:
+        return saved
+    if flt(per_stock) > 0:
+        return 1.0 / flt(per_stock)
+    frappe.throw(_("No conversion between {0} and {1}. Enter how many {1} make 1 {0}.").format(stock_uom, actual_uom))
+
+
+@frappe.whitelist(allow_guest=False)
+def get_wrong_uom_fix_info(item_code, warehouse):
+    """Data for the Fix qty dialog: stock UOM, current qty/rate in the
+    warehouse, saved conversions (as "1 <stock UOM> = N <uom>") and, for
+    batch-tracked items, the batches in that warehouse."""
+    from zoho_books_clone.utils.access import assert_can
+    assert_can("Stock Entry", "read")
+    item_code = (item_code or "").strip()
+    warehouse = (warehouse or "").strip()
+    if not item_code or not warehouse:
+        frappe.throw(_("Item and warehouse are required"))
+    item = frappe.db.get_value(
+        "Item", item_code, ["name", "item_name", "stock_uom", "has_batch_no"], as_dict=True
+    )
+    if not item:
+        frappe.throw(_("Item {0} not found").format(item_code))
+    bin_row = frappe.db.get_value(
+        "Bin", {"item_code": item_code, "warehouse": warehouse},
+        ["actual_qty", "valuation_rate"], as_dict=True,
+    ) or {}
+    rows = []
+    for r in frappe.get_all(
+        "Item UOM Conversion Detail",
+        filters={"parent": item_code, "parenttype": "Item"},
+        fields=["uom", "conversion_factor"],
+        order_by="idx asc",
+    ):
+        f = flt(r.conversion_factor)
+        if r.uom and f > 0:
+            rows.append({"uom": r.uom, "per_stock": round(1.0 / f, 6)})
+    return {
+        "item_code": item.name,
+        "item_name": item.item_name or item.name,
+        "stock_uom": item.stock_uom or "Nos",
+        "has_batch_no": 1 if item.has_batch_no else 0,
+        "bin_qty": flt(bin_row.get("actual_qty")),
+        "valuation_rate": flt(bin_row.get("valuation_rate")),
+        "rows": rows,
+        "batches": get_batches_for_item(item_code, warehouse) if item.has_batch_no else [],
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def convert_wrong_uom_qty(item_code, warehouse, wrong_qty, actual_uom,
+                          per_stock=None, batch_no=None, notes=None):
+    """Re-read `wrong_qty` (currently sitting in stock as stock-UOM units) as
+    `actual_uom` and post the difference as a Stock Adjustment.
+
+    Example: stock UOM Kg, 100 Kg on hand, wrong_qty=100, actual_uom=Gram
+    (1 Kg = 1000 Gram) -> corrected qty 0.1 Kg, adjustment -99.9 Kg at the
+    current valuation rate.
+
+    per_stock is only used when the item has no saved conversion row for
+    actual_uom (1 stock UOM = per_stock actual_uom); it is not saved.
+    Batch-tracked items need batch_no; the adjustment carries that batch.
+    """
+    from zoho_books_clone.utils.access import assert_can
+    from frappe.utils import today as frappe_today
+    assert_can("Stock Entry", "create")
+
+    item_code = (item_code or "").strip()
+    warehouse = (warehouse or "").strip()
+    actual_uom = (actual_uom or "").strip()
+    batch_no = (batch_no or "").strip()
+    notes = (notes or "").strip()
+    wrong_qty = flt(wrong_qty)
+
+    if not item_code:
+        frappe.throw(_("Item is required"))
+    if not warehouse:
+        frappe.throw(_("Warehouse is required"))
+    if wrong_qty <= 0:
+        frappe.throw(_("Enter the wrongly entered qty (more than 0)"))
+
+    item = frappe.db.get_value(
+        "Item", item_code, ["item_name", "stock_uom", "has_batch_no"], as_dict=True
+    )
+    if not item:
+        frappe.throw(_("Item {0} not found").format(item_code))
+    stock_uom = item.stock_uom or "Nos"
+
+    if item.has_batch_no:
+        if not batch_no:
+            frappe.throw(_("{0} is batch-tracked - choose the batch to fix").format(item_code))
+        if not frappe.db.exists("Batch", batch_no):
+            frappe.throw(_("Batch {0} does not exist").format(batch_no))
+        available = flt(frappe.db.sql("""
+            SELECT SUM(actual_qty) FROM `tabStock Ledger Entry`
+            WHERE item_code=%s AND warehouse=%s AND batch_no=%s AND is_cancelled=0
+        """, (item_code, warehouse, batch_no))[0][0] or 0)
+    else:
+        batch_no = ""
+        available = flt(frappe.db.get_value(
+            "Bin", {"item_code": item_code, "warehouse": warehouse}, "actual_qty"
+        ))
+    if wrong_qty > available + 0.0000001:
+        frappe.throw(_("Only {0} {1} is on hand here - the wrong qty cannot be more than that").format(
+            available, stock_uom))
+
+    factor = _wrong_uom_factor(item_code, stock_uom, actual_uom, per_stock)
+    correct_qty = flt(wrong_qty * factor, 6)
+    delta = flt(correct_qty - wrong_qty, 6)
+    if delta == 0:
+        frappe.throw(_("The converted qty equals the entered qty - nothing to adjust."))
+
+    rate = flt(frappe.db.get_value(
+        "Bin", {"item_code": item_code, "warehouse": warehouse}, "valuation_rate"
+    ))
+    if not rate:
+        item_rates = frappe.db.get_value(
+            "Item", item_code, ["standard_buying_rate", "standard_rate"], as_dict=True
+        ) or {}
+        rate = flt(item_rates.get("standard_buying_rate")) or flt(item_rates.get("standard_rate")) or 0
+
+    remark = _("Qty entered in wrong UOM: {0} {1} re-read as {0} {2} = {3} {1}").format(
+        wrong_qty, stock_uom, actual_uom, correct_qty)
+    if notes:
+        remark += " - " + notes
+
+    row = {
+        "item_code":   item_code,
+        "item_name":   item.item_name or item_code,
+        "qty":         delta,
+        "basic_rate":  rate,
+        "t_warehouse": warehouse,
+    }
+    if batch_no:
+        row["batch_no"] = batch_no
+
+    company = _get_company(frappe.session.user)
+    se = frappe.get_doc({
+        "doctype":           "Stock Entry",
+        "stock_entry_type":  "Stock Adjustment",
+        "posting_date":      frappe_today(),
+        "company":           company,
+        "remarks":           remark,
+        "adjustment_reason": "Qty entered in wrong UOM",
+        "items":             [row],
+    })
+    se.name = "SEC-" + frappe.generate_hash(txt=f"{item_code}{warehouse}{frappe.utils.now()}", length=8).upper()
+    se.flags.ignore_permissions = True
+    se.flags.ignore_links = True
+    se.flags.ignore_mandatory = True
+    se.insert()
+    se.submit()
+    frappe.db.commit()
+    return {
+        "stock_entry":  se.name,
+        "wrong_qty":    wrong_qty,
+        "correct_qty":  correct_qty,
+        "delta":        delta,
+        "rate":         rate,
+        "value_change": flt(delta * rate, 2),
+        "stock_uom":    stock_uom,
     }
 
 

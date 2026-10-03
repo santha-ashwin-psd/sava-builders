@@ -553,7 +553,7 @@ const form = reactive({
   inspection_required_before_purchase: 0, inspection_required_before_delivery: 0,
   inspection_required_before_manufacture: 0,
   has_variants: 0,
-  purchase_uom: "", purchase_conversion_factor: 1,
+  purchase_uom: "", purchase_conversion_factor: 1, other_uom_conversions: [],
 });
 
 // ── Variants ──
@@ -832,7 +832,7 @@ function openAdd(presetType) {
     default_bom: "", quality_inspection_required: 0, min_order_qty: 0, lead_time_days: 0,
     inspection_required_before_purchase: 0, inspection_required_before_delivery: 0,
     inspection_required_before_manufacture: 0,
-    purchase_uom: "", purchase_conversion_factor: 1,
+    purchase_uom: "", purchase_conversion_factor: 1, other_uom_conversions: [],
   });
   // Auto-select warehouse matching type
   if (d.warehouse_type && warehouses.value.length) {
@@ -898,6 +898,11 @@ async function openEdit(row) {
         const match = rows.find(r => r.uom === full.purchase_uom);
         return match ? flt(match.conversion_factor) : 1;
       })(),
+      // Conversions set elsewhere (e.g. Warehouses > Set UOM) - kept as-is on save
+      // so editing the item here never wipes them.
+      other_uom_conversions: (full.uom_conversions || [])
+        .filter(r => r.uom && r.uom !== full.purchase_uom && r.uom !== full.stock_uom)
+        .map(r => ({ uom: r.uom, conversion_factor: flt(r.conversion_factor) })),
     });
     // Load BOM options for the picker now that we know the item's name/type.
     if (full.item_type === "Finished Good" || full.item_type === "Work In Progress") {
@@ -983,9 +988,13 @@ async function saveItem({ close = true } = {}) {
       min_order_qty: flt(form.min_order_qty),
       lead_time_days: form.lead_time_days ? parseInt(form.lead_time_days) : 0,
       purchase_uom: form.purchase_uom || "",
-      uom_conversions: (!!form.purchase_uom && form.purchase_uom !== form.stock_uom)
-        ? [{ uom: form.purchase_uom, conversion_factor: flt(form.purchase_conversion_factor) }]
-        : [],
+      uom_conversions: [
+        ...(form.other_uom_conversions || []).filter(r =>
+          r.uom !== form.purchase_uom && r.uom !== form.stock_uom && flt(r.conversion_factor) > 0),
+        ...((!!form.purchase_uom && form.purchase_uom !== form.stock_uom)
+          ? [{ uom: form.purchase_uom, conversion_factor: flt(form.purchase_conversion_factor) }]
+          : []),
+      ],
     };
     if (isEdit) doc.name = form.name;
     const saved = await apiSave(doc);
