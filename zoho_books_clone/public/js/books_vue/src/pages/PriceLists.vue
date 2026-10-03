@@ -240,6 +240,7 @@
               <th class="pl-col-uom">UOM</th>
               <th class="pl-col-minqty ta-r">Min Qty</th>
               <th class="ta-r">Rate</th>
+              <th>Customers</th>
               <th class="pl-col-dates">Valid From</th>
               <th class="pl-col-dates">Valid Upto</th>
               <th style="width:40px"></th>
@@ -248,13 +249,13 @@
           <tbody>
             <template v-if="loadingPrices">
               <tr v-for="n in 5" :key="n">
-                <td colspan="9" style="padding:12px">
+                <td colspan="10" style="padding:12px">
                   <div class="b-shimmer" style="height:12px;border-radius:6px"></div>
                 </td>
               </tr>
             </template>
             <tr v-else-if="!pagedPrices.length">
-              <td colspan="9" class="b-empty">
+              <td colspan="10" class="b-empty">
                 {{ itemSearch ? 'No items match your search' : 'No item prices yet — click "Add Item" to start' }}
               </td>
             </tr>
@@ -266,6 +267,12 @@
               <td class="pl-col-uom c-muted" style="font-size:12px">{{ p.uom || 'Nos' }}</td>
               <td class="pl-col-minqty ta-r c-muted" style="font-size:12px">{{ p.packing_unit || '—' }}</td>
               <td class="ta-r fw-600" style="color:#2F9E44;font-size:13px">{{ fmtRate(p.price_list_rate) }}</td>
+              <td style="font-size:12px">
+                <span v-if="!(p.customers && p.customers.length)" class="c-muted">All</span>
+                <span v-else :title="p.customers.map(customerLabel).join(', ')">
+                  {{ customerLabel(p.customers[0]) }}<span v-if="p.customers.length > 1" class="c-muted"> +{{ p.customers.length - 1 }}</span>
+                </span>
+              </td>
               <td class="pl-col-dates c-muted" style="font-size:12px">{{ p.valid_from ? fmtDate(p.valid_from) : '—' }}</td>
               <td class="pl-col-dates" style="font-size:12px">
                 <span v-if="p.valid_upto" :class="validityClass(p)" style="font-size:11px;padding:2px 7px">
@@ -311,6 +318,7 @@
             <div class="pl-item-card-meta">
               <span>{{ p.uom || 'Nos' }}</span>
               <span v-if="p.packing_unit"> · Min {{ p.packing_unit }}</span>
+              <span v-if="p.customers && p.customers.length"> · 👤 {{ p.customers.length }} customer{{ p.customers.length !== 1 ? 's' : '' }}</span>
               <span v-if="p.valid_from"> · From {{ fmtDate(p.valid_from) }}</span>
               <span v-if="p.valid_upto" :class="['pl-item-card-validity', validityClass(p)]">
                 {{ validityLabel(p) }}
@@ -400,6 +408,22 @@
           <div class="nim-field">
             <label class="nim-label">Min Order Qty <span class="c-muted" style="font-weight:400">(optional)</span></label>
             <input class="nim-input" type="number" v-model="form.packing_unit" min="0" placeholder="0"/>
+          </div>
+
+          <!-- Customers (multi) -->
+          <div class="nim-field">
+            <label class="nim-label">Customers <span class="c-muted" style="font-weight:400">(optional — empty = all customers)</span></label>
+            <SearchableSelect :modelValue="''" :options="availableCustomerOptions"
+              placeholder="Add a customer…" @update:modelValue="addCustomer"/>
+            <div v-if="form.customers.length" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+              <span v-for="c in form.customers" :key="c"
+                style="display:inline-flex;align-items:center;gap:6px;background:#EEF2FF;color:#3B5BDB;border-radius:12px;padding:3px 6px 3px 10px;font-size:12px;font-weight:600">
+                {{ customerLabel(c) }}
+                <button type="button" @click="removeCustomer(c)"
+                  style="background:none;border:none;cursor:pointer;color:#3B5BDB;font-size:14px;line-height:1;padding:0 2px">×</button>
+              </span>
+            </div>
+            <div v-else class="c-muted" style="margin-top:4px;font-size:11.5px">Applies to every customer.</div>
           </div>
 
           <!-- Dates -->
@@ -698,7 +722,7 @@ const drawerMode = ref("add");
 const saving     = ref(false);
 const form       = reactive({
   name: "", price_list: "", item_code: "", item_name: "",
-  price_list_rate: "", uom: "Nos", packing_unit: "", valid_from: "", valid_upto: "",
+  price_list_rate: "", uom: "Nos", packing_unit: "", valid_from: "", valid_upto: "", customers: [],
   owner: "", creation: "", modified_by: "", modified: "",
 });
 const formErrors  = reactive({ item_code: "", price_list_rate: "", valid_upto: "" });
@@ -769,6 +793,30 @@ const currencySymbol = computed(() =>
 const validRows  = computed(() => csvPreviewRows.value.filter(r => !r._hasError));
 const errorRows  = computed(() => csvPreviewRows.value.filter(r => r._hasError));
 
+// ── Customers for the Item Price drawer ──────────────────────────────────────
+const customerOptions = ref([]);
+async function loadCustomerOptions() {
+  try {
+    const r = await apiList("Customer", {
+      fields: ["name", "customer_name"], filters: [["disabled", "=", 0]],
+      limit: 100000, order: "customer_name asc",
+    }) || [];
+    customerOptions.value = r.map(x => ({ value: x.name, label: x.customer_name || x.name }));
+  } catch { customerOptions.value = []; }
+}
+function customerLabel(id) {
+  return customerOptions.value.find(c => c.value === id)?.label || id;
+}
+const availableCustomerOptions = computed(() =>
+  customerOptions.value.filter(c => !form.customers.includes(c.value))
+);
+function addCustomer(v) {
+  if (v && !form.customers.includes(v)) form.customers.push(v);
+}
+function removeCustomer(v) {
+  form.customers = form.customers.filter(c => c !== v);
+}
+
 // ── Sidebar / loading ────────────────────────────────────────────────────────
 async function loadPriceLists() {
   loadingLists.value = true;
@@ -818,6 +866,11 @@ async function loadItemPrices() {
       limit: 2000,
       order: "item_code asc",
     }) || [];
+    try {
+      const cm = await apiPOST("zoho_books_clone.api.books_data.get_item_price_customers",
+        { price_list: selectedList.value.name }) || {};
+      itemPrices.value.forEach(p => { p.customers = cm[p.name] || []; });
+    } catch { itemPrices.value.forEach(p => { p.customers = []; }); }
   } catch (e) { toast("Could not load item prices: " + e.message, "error"); }
   loadingPrices.value = false;
 }
@@ -980,7 +1033,7 @@ function openAddDrawer() {
   Object.assign(form, {
     name: "", price_list: selectedList.value.name,
     item_code: "", item_name: "", price_list_rate: "",
-    uom: "Nos", packing_unit: "", valid_from: "", valid_upto: "",
+    uom: "Nos", packing_unit: "", valid_from: "", valid_upto: "", customers: [],
     owner: "", creation: "", modified_by: "", modified: "",
   });
   Object.assign(formErrors, { item_code: "", price_list_rate: "", valid_upto: "" });
@@ -1002,6 +1055,7 @@ function openEditDrawer(p) {
     packing_unit: p.packing_unit || "",
     valid_from:  p.valid_from || "",
     valid_upto:  p.valid_upto || "",
+    customers:   [...(p.customers || [])],
     owner: p.owner || "", creation: p.creation || "",
     modified_by: p.modified_by || "", modified: p.modified || "",
   });
@@ -1110,6 +1164,7 @@ async function savePrice(addAnother) {
       packing_unit:    parseInt(form.packing_unit) || 0,
       valid_from:      form.valid_from || null,
       valid_upto:      form.valid_upto || null,
+      customers:       form.customers.map(c => ({ customer: c })),
     };
     if (drawerMode.value === "edit" && form.name) doc.name = form.name;
     await apiSave(doc);
@@ -1119,7 +1174,7 @@ async function savePrice(addAnother) {
     if (addAnother) {
       Object.assign(form, {
         name: "", item_code: "", item_name: "", price_list_rate: "",
-        uom: "Nos", packing_unit: "", valid_from: "", valid_upto: "",
+        uom: "Nos", packing_unit: "", valid_from: "", valid_upto: "", customers: [],
       });
       Object.assign(formErrors, { item_code: "", price_list_rate: "", valid_upto: "" });
       dupWarning.value = "";
@@ -1305,6 +1360,7 @@ watch(() => [form.item_code, form.uom], checkDuplicate);
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(() => {
   loadPriceLists();
+  loadCustomerOptions();
   document.addEventListener("pointerdown", onDocClick, true);
 });
 onUnmounted(() => {

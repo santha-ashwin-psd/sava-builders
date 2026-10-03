@@ -15,6 +15,14 @@ class ItemPrice(Document):
         if self.valid_from and self.valid_upto:
             if getdate(self.valid_upto) < getdate(self.valid_from):
                 frappe.throw(_("Valid Upto cannot be before Valid From"))
+        # Same customer listed twice on one price row is meaningless; keep first
+        seen, keep = set(), []
+        for row in (self.get("customers") or []):
+            if row.customer and row.customer not in seen:
+                seen.add(row.customer)
+                keep.append(row)
+        if len(keep) != len(self.get("customers") or []):
+            self.set("customers", keep)
         # Auto-fill item name
         if not self.item_name:
             self.item_name = frappe.db.get_value("Item", self.item_code, "item_name") or self.item_code

@@ -2677,6 +2677,76 @@ def get_customer_unused_credits():
 # ── Price List helpers ────────────────────────────────────────────────────────
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_item_price_customers(price_list):
+    """{item_price_name: [customer, ...]} for every Item Price row of a price list
+    that is restricted to specific customers (rows with no customers are omitted)."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("inventory")
+    rows = frappe.db.sql("""
+        SELECT c.parent AS price, c.customer AS customer
+        FROM `tabItem Price Customer` c
+        INNER JOIN `tabItem Price` ip ON ip.name = c.parent
+        WHERE c.parenttype = 'Item Price' AND ip.price_list = %s
+        ORDER BY c.idx
+    """, (price_list,), as_dict=True)
+    out = {}
+    for r in rows:
+        out.setdefault(r.price, []).append(r.customer)
+    return out
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_customer_price_list(customer):
+    """Name of the enabled Selling price list that has item prices assigned to this
+    customer (most recently modified wins), or None."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices")
+    if not customer:
+        return None
+    r = frappe.db.sql("""
+        SELECT ip.price_list
+        FROM `tabItem Price Customer` c
+        INNER JOIN `tabItem Price` ip ON ip.name = c.parent
+        INNER JOIN `tabPrice List` pl ON pl.name = ip.price_list
+        WHERE c.parenttype = 'Item Price' AND c.customer = %s
+          AND pl.enabled = 1 AND pl.selling = 1
+        ORDER BY ip.modified DESC
+        LIMIT 1
+    """, (customer,))
+    return r[0][0] if r else None
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_item_price_tiers(item_code, price_list, customer=None):
+    """Qty tiers for item_code in price_list that apply to `customer`:
+    rows with no customers (general) and rows that list this customer.
+    Each tier: {min_qty, rate, specific}. specific=1 means customer-specific."""
+    from zoho_books_clone.utils.access import require_module
+    require_module("invoices")
+    rows = frappe.db.sql("""
+        SELECT ip.name, ip.price_list_rate, ip.packing_unit,
+               (SELECT COUNT(*) FROM `tabItem Price Customer` c
+                 WHERE c.parent = ip.name AND c.parenttype = 'Item Price') AS n_cust,
+               (SELECT COUNT(*) FROM `tabItem Price Customer` c
+                 WHERE c.parent = ip.name AND c.parenttype = 'Item Price'
+                   AND c.customer = %s) AS has_cust
+        FROM `tabItem Price` ip
+        WHERE ip.item_code = %s AND ip.price_list = %s
+    """, (customer or "", item_code, price_list), as_dict=True)
+    tiers = []
+    for r in rows:
+        if r.n_cust and not r.has_cust:
+            continue  # restricted to other customers
+        tiers.append({
+            "min_qty": float(r.packing_unit or 0),
+            "rate": float(r.price_list_rate or 0),
+            "specific": 1 if r.n_cust else 0,
+        })
+    tiers.sort(key=lambda t: t["min_qty"])
+    return tiers
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_price_list_detail(price_list_name):
     """Returns item_count, avg_rate, and active_count for a given price list."""
     today = frappe.utils.nowdate()
@@ -2725,11 +2795,22 @@ def duplicate_price_list(source_name, new_name):
     prices = frappe.db.get_all(
         "Item Price",
         filters={"price_list": source_name},
-        fields=["item_code", "item_name", "price_list_rate", "uom", "packing_unit", "valid_from", "valid_upto"],
+        fields=["name", "item_code", "item_name", "price_list_rate", "uom", "packing_unit", "valid_from", "valid_upto"],
         limit=2000,
     )
+    cust_rows = frappe.db.get_all(
+        "Item Price Customer",
+        filters={"parenttype": "Item Price", "parent": ["in", [p.name for p in prices] or [""]]},
+        fields=["parent", "customer"],
+        limit=100000,
+    )
+    cust_by_price = {}
+    for c in cust_rows:
+        cust_by_price.setdefault(c.parent, []).append(c.customer)
     for p in prices:
         np = frappe.new_doc("Item Price")
+        for cu in cust_by_price.get(p.name, []):
+            np.append("customers", {"customer": cu})
         np.price_list      = new_pl.name
         np.item_code       = p.item_code
         np.item_name       = p.item_name

@@ -2361,17 +2361,16 @@ async function loadPriceLists() {
 // that is <= the line's qty, falling back to the lowest tier available.
 const _itemPriceTierCache = new Map();
 async function fetchItemPriceTiers(item_code, price_list) {
-  const key = `${item_code}||${price_list}`;
+  const key = `${item_code}||${price_list}||${form.customer || ""}`;
   if (_itemPriceTierCache.has(key)) return _itemPriceTierCache.get(key);
   let tiers = [];
   try {
-    const r = await apiList("Item Price", {
-      fields: ["price_list_rate", "packing_unit"],
-      filters: [["item_code","=",item_code],["price_list","=",price_list]],
-      limit: 50,
-    }) || [];
+    // Server returns only tiers that apply to this customer: general rows
+    // (no customers set) plus rows that list the selected customer.
+    const r = await apiPOST("zoho_books_clone.api.books_data.get_item_price_tiers",
+      { item_code, price_list, customer: form.customer || "" }) || [];
     tiers = r
-      .map(x => ({ min_qty: flt(x.packing_unit) || 0, rate: flt(x.price_list_rate) }))
+      .map(x => ({ min_qty: flt(x.min_qty) || 0, rate: flt(x.rate), specific: !!x.specific }))
       .sort((a, b) => a.min_qty - b.min_qty);
   } catch { tiers = []; }
   _itemPriceTierCache.set(key, tiers);
@@ -2386,10 +2385,16 @@ async function fetchItemPriceRate(item_code, price_list, qty) {
   // among those, the one with the highest min_qty wins. If qty doesn't meet
   // any tier's minimum (e.g. tier requires 5+ but qty is 1), there's no
   // price-list override — the item's standard rate applies instead.
-  let best = null;
-  for (const t of tiers) {
-    if (t.min_qty <= q && (best === null || t.min_qty > best.min_qty)) best = t;
-  }
+  // Customer-specific tiers win over general ones; within each group the
+  // highest min_qty that the qty meets wins.
+  const pick = (list) => {
+    let best = null;
+    for (const t of list) {
+      if (t.min_qty <= q && (best === null || t.min_qty > best.min_qty)) best = t;
+    }
+    return best;
+  };
+  const best = pick(tiers.filter(t => t.specific)) || pick(tiers.filter(t => !t.specific));
   return best ? best.rate : null;
 }
 // Re-resolve rates for every line already on the invoice when the Price
@@ -2701,6 +2706,16 @@ async function onCustomerChange() {
   form.billing_address=""; form.billing_address_name="";
   form.shipping_address=""; form.shipping_address_name="";
   customerAddresses.value=[];
+  // Auto-apply the price list that has prices assigned to this customer, then
+  // re-price existing lines (also covers customer-specific rows in the
+  // currently selected list, since the tier cache is keyed by customer).
+  if (form.customer && invEditMode.value !== "submitted") {
+    try {
+      const pl = await apiPOST("zoho_books_clone.api.books_data.get_customer_price_list", { customer: form.customer });
+      if (pl && priceLists.value.some(p => p.value === pl)) form.price_list = pl;
+    } catch {}
+    await onPriceListChange();
+  }
   if (!form.customer) return;
   addressLoading.value=true;
   try {
