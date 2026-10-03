@@ -2259,14 +2259,27 @@ function parseShortfallItems(msg) {
       items.push({ title: m[1], required: m[3], inStock: m[4] });
     }
   }
-  return items.map(it => ({
-    title: it.title,
-    badge: { label: "Shortage", tone: "danger" },
-    fields: [
-      { label: "Required", value: it.required },
-      { label: "In Stock", value: it.inStock, tone: "danger" },
-    ],
-  }));
+  // Show the UOM next to the quantities. Titles are "Item Name (CODE)" or
+  // just "CODE" (see _item_label() in work_order_engine.py); prefer the Work
+  // Order row's own UOM, falling back to the item's stock UOM.
+  const uomFor = (title) => {
+    const m = title.match(/\(([^()]+)\)$/);
+    const code = m ? m[1] : title;
+    const row = (wo.value.items || []).find(r => r.item_code === code);
+    return (row && row.uom) || itemUom(code) || "";
+  };
+  return items.map(it => {
+    const uom = uomFor(it.title);
+    const withUom = (v) => (uom ? `${v} ${uom}` : v);
+    return {
+      title: it.title,
+      badge: { label: "Shortage", tone: "danger" },
+      fields: [
+        { label: "Required", value: withUom(it.required) },
+        { label: "In Stock", value: withUom(it.inStock), tone: "danger" },
+      ],
+    };
+  });
 }
 
 // Shared shape for the stock-shortfall confirm dialogs (Could Not Issue
