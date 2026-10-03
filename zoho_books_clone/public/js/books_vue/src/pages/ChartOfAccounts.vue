@@ -1049,7 +1049,18 @@ async function fetchInlineLedger(row, opts = {}) {
       from_date: fromDate,
       to_date: toDate,
     }) || [];
+    // Continue from the balance brought forward: when a "from" date is applied,
+    // start the running balance from the account balance as of the day before it
+    // (opening balance + all earlier GL entries) instead of from zero.
     let bal = 0;
+    if (fromDate && fromDate > "2000-01-01") {
+      const dayBefore = new Date(fromDate + "T00:00:00Z");
+      dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+      bal = Number(await apiGET("zoho_books_clone.db.queries.get_account_balance", {
+        account: row.name,
+        as_of_date: dayBefore.toISOString().slice(0, 10),
+      })) || 0;
+    }
     rows.forEach((r) => { bal += Number(r.debit || 0) - Number(r.credit || 0); r.balance = bal; });
     rows.reverse(); // most recent first
     if (inlineLedger[row.name]) { inlineLedger[row.name].rows = rows; inlineLedger[row.name].loading = false; }
