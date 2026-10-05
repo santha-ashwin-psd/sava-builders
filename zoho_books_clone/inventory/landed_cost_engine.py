@@ -449,3 +449,59 @@ def get_landed_cost_breakdown(pairs):
             "has_landed_cost": bool(landed_value),
         }
     return result
+
+
+@frappe.whitelist(allow_guest=False)
+def get_item_valuation_rates(item_codes):
+    """Buy-side rate per item, for BOM raw-material / packing / bulk rows.
+
+    Used when an item has no default warehouse (so get_landed_cost_breakdown
+    has no item+warehouse pair to look up). Returns {item_code: rate} where
+    rate is, in order:
+      1. the qty-weighted average Bin.valuation_rate across warehouses that
+         currently hold stock (actual_qty > 0);
+      2. else the highest Bin.valuation_rate found (stock fully drained --
+         Bin rate freezes rather than zeroing);
+      3. else Item.standard_buying_rate;
+      4. else 0.
+    Never returns Item.standard_rate (that is the selling rate).
+
+    item_codes: JSON-encoded list of item codes.
+    """
+    if isinstance(item_codes, str):
+        item_codes = json.loads(item_codes or "[]")
+    item_codes = [c for c in dict.fromkeys(item_codes or []) if c]
+    if not item_codes:
+        return {}
+
+    bins = frappe.get_all(
+        "Bin",
+        filters={"item_code": ["in", item_codes]},
+        fields=["item_code", "valuation_rate", "actual_qty"],
+    )
+    by_item = {}
+    for b in bins:
+        by_item.setdefault(b.item_code, []).append(b)
+
+    buying = {
+        r.name: flt(r.standard_buying_rate)
+        for r in frappe.get_all(
+            "Item",
+            filters={"name": ["in", item_codes]},
+            fields=["name", "standard_buying_rate"],
+        )
+    }
+
+    result = {}
+    for code in item_codes:
+        rows = by_item.get(code, [])
+        in_stock = [r for r in rows if flt(r.actual_qty) > 0 and flt(r.valuation_rate) > 0]
+        if in_stock:
+            total_qty = sum(flt(r.actual_qty) for r in in_stock)
+            rate = sum(flt(r.actual_qty) * flt(r.valuation_rate) for r in in_stock) / total_qty
+        else:
+            rate = max([flt(r.valuation_rate) for r in rows] or [0.0])
+        if not rate:
+            rate = buying.get(code, 0.0)
+        result[code] = flt(rate, 4)
+    return result

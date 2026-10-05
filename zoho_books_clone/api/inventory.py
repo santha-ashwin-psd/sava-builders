@@ -945,6 +945,41 @@ def _wrong_uom_factor(item_code, stock_uom, actual_uom, per_stock=None):
     frappe.throw(_("No conversion between {0} and {1}. Enter how many {1} make 1 {0}.").format(stock_uom, actual_uom))
 
 
+WRONG_UOM_REASON = "Qty entered in wrong UOM"
+
+
+def _wrong_uom_already_fixed(item_code, warehouse):
+    """True if a submitted Fix qty adjustment already exists for this item in
+    this warehouse. Fix qty is allowed only once; cancelling that Stock Entry
+    frees it up again."""
+    return bool(frappe.db.sql("""
+        SELECT se.name FROM `tabStock Entry` se
+        JOIN `tabStock Entry Detail` sed ON sed.parent = se.name
+        WHERE se.stock_entry_type = 'Stock Adjustment'
+          AND se.adjustment_reason = %s AND se.docstatus = 1
+          AND sed.item_code = %s AND sed.t_warehouse = %s
+        LIMIT 1
+    """, (WRONG_UOM_REASON, item_code, warehouse)))
+
+
+@frappe.whitelist(allow_guest=False)
+def get_wrong_uom_fixed_items(warehouse=None):
+    """[{item_code, warehouse}] already fixed once (hides the Fix qty button)."""
+    from zoho_books_clone.utils.access import assert_can
+    assert_can("Stock Entry", "read")
+    cond, params = "", [WRONG_UOM_REASON]
+    if warehouse:
+        cond = " AND sed.t_warehouse = %s"
+        params.append(warehouse)
+    return frappe.db.sql(f"""
+        SELECT DISTINCT sed.item_code, sed.t_warehouse AS warehouse
+        FROM `tabStock Entry` se
+        JOIN `tabStock Entry Detail` sed ON sed.parent = se.name
+        WHERE se.stock_entry_type = 'Stock Adjustment'
+          AND se.adjustment_reason = %s AND se.docstatus = 1{cond}
+    """, params, as_dict=True)
+
+
 @frappe.whitelist(allow_guest=False)
 def get_wrong_uom_fix_info(item_code, warehouse):
     """Data for the Fix qty dialog: stock UOM, current qty/rate in the
@@ -983,6 +1018,7 @@ def get_wrong_uom_fix_info(item_code, warehouse):
         "bin_qty": flt(bin_row.get("actual_qty")),
         "valuation_rate": flt(bin_row.get("valuation_rate")),
         "rows": rows,
+        "already_fixed": 1 if _wrong_uom_already_fixed(item_code, warehouse) else 0,
         "batches": get_batches_for_item(item_code, warehouse) if item.has_batch_no else [],
     }
 
@@ -1018,6 +1054,9 @@ def convert_wrong_uom_qty(item_code, warehouse, wrong_qty, actual_uom,
         frappe.throw(_("Warehouse is required"))
     if wrong_qty <= 0:
         frappe.throw(_("Enter the wrongly entered qty (more than 0)"))
+    if _wrong_uom_already_fixed(item_code, warehouse):
+        frappe.throw(_("Qty for {0} in {1} has already been fixed once. Fix UOM can only be used one time.").format(
+            item_code, warehouse))
 
     item = frappe.db.get_value(
         "Item", item_code, ["item_name", "stock_uom", "has_batch_no"], as_dict=True
@@ -1081,7 +1120,7 @@ def convert_wrong_uom_qty(item_code, warehouse, wrong_qty, actual_uom,
         "posting_date":      frappe_today(),
         "company":           company,
         "remarks":           remark,
-        "adjustment_reason": "Qty entered in wrong UOM",
+        "adjustment_reason": WRONG_UOM_REASON,
         "items":             [row],
     })
     se.name = "SEC-" + frappe.generate_hash(txt=f"{item_code}{warehouse}{frappe.utils.now()}", length=8).upper()

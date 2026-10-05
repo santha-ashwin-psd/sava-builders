@@ -1524,7 +1524,7 @@ function wouldCreateCycle(candidateBom) {
 function onRmItemChange(rm) {
   if (!rm.item_code) return;
   const item = stockItems.value.find(i => i.name === rm.item_code);
-  if (item) { rm.rate = item.standard_rate || 0; rm.uom = item.stock_uom || "Nos"; rm.item_name = item.item_name; }
+  if (item) { rm.rate = 0; rm.uom = item.stock_uom || "Nos"; rm.item_name = item.item_name; }
   pendingRateAutoFill.add(rm);
   refreshRmLandedCosts();
 }
@@ -1554,26 +1554,49 @@ function refreshRmLandedCosts() {
       const warehouse = item?.default_warehouse;
       if (warehouse) pairs.push({ item_code: rm.item_code, warehouse });
     }
-    if (!pairs.length) return;
-    try {
-      const r = await apiCall(
-        "zoho_books_clone.inventory.landed_cost_engine.get_landed_cost_breakdown",
-        { pairs: JSON.stringify(pairs) }
-      );
-      const byItem = {};
-      for (const p of pairs) {
-        const info = (r || {})[`${p.item_code}::${p.warehouse}`];
-        if (info) byItem[p.item_code] = { ...info, warehouse: p.warehouse };
-      }
-      rmLanded.value = byItem;
-      // Default the buy rate for any row that just had its item picked.
-      for (const rm of (rows || [])) {
-        if (!pendingRateAutoFill.has(rm)) continue;
-        const info = byItem[rm.item_code];
-        if (info) rm.rate = info.valuation_rate;
+    const byItem = {};
+    if (pairs.length) {
+      try {
+        const r = await apiCall(
+          "zoho_books_clone.inventory.landed_cost_engine.get_landed_cost_breakdown",
+          { pairs: JSON.stringify(pairs) }
+        );
+        for (const p of pairs) {
+          const info = (r || {})[`${p.item_code}::${p.warehouse}`];
+          if (info) byItem[p.item_code] = { ...info, warehouse: p.warehouse };
+        }
+        rmLanded.value = byItem;
+      } catch (e) { /* non-fatal — BOM rate stays user-editable regardless */ }
+    }
+    // Default the buy rate for any row that just had its item picked: the
+    // default warehouse's valuation rate (incl. landed cost) when it has one;
+    // otherwise (no default warehouse / no stock there) the item's valuation
+    // across all warehouses. Never the selling rate (Item.standard_rate).
+    const needFallback = [];
+    for (const rm of (rows || [])) {
+      if (!pendingRateAutoFill.has(rm)) continue;
+      const info = byItem[rm.item_code];
+      if (info && info.valuation_rate > 0) {
+        rm.rate = info.valuation_rate;
         pendingRateAutoFill.delete(rm);
+      } else {
+        needFallback.push(rm);
       }
-    } catch (e) { /* non-fatal — BOM rate stays user-editable regardless */ }
+    }
+    if (needFallback.length) {
+      try {
+        const codes = [...new Set(needFallback.map(rm => rm.item_code))];
+        const rates = await apiCall(
+          "zoho_books_clone.inventory.landed_cost_engine.get_item_valuation_rates",
+          { item_codes: JSON.stringify(codes) }
+        );
+        for (const rm of needFallback) {
+          const v = (rates || {})[rm.item_code];
+          if (v != null) rm.rate = v;
+        }
+      } catch (e) { /* non-fatal — rate stays 0 and user-editable */ }
+      for (const rm of needFallback) pendingRateAutoFill.delete(rm);
+    }
   }, 300);
 }
 function rmLandedInfo(itemCode) {
@@ -1599,7 +1622,7 @@ function onSubAssemblyBomChange(rm) {
   // amount doesn't sit at ₹0.00 until save recomputes it server-side.
   rm.rate = Math.round((subCost / subQty) * 100) / 100;
 }
-function onBulkItemChange() {
+async function onBulkItemChange() {
   if (!bom.value.bulk_item) return;
   // Mirrors onSubAssemblyBomChange()'s pattern (which itself mirrors
   // _calc_costs() in bom.py): pull the bulk item's own per-unit cost from
@@ -1623,10 +1646,16 @@ function onBulkItemChange() {
     bom.value.bulk_rate = Math.round((bulkCost / bulkQty) * 100) / 100;
   } else {
     // No submitted Manufacturing BOM exists yet for this item — fall back
-    // to the Item master's standard_rate so the field isn't just left at 0
-    // with no explanation.
-    const item = stockItems.value.find(i => i.name === bom.value.bulk_item);
-    bom.value.bulk_rate = (item && item.standard_rate) || 0;
+    // to its stock valuation rate (never the selling rate, standard_rate).
+    const code = bom.value.bulk_item;
+    bom.value.bulk_rate = 0;
+    try {
+      const rates = await apiCall(
+        "zoho_books_clone.inventory.landed_cost_engine.get_item_valuation_rates",
+        { item_codes: JSON.stringify([code]) }
+      );
+      if (bom.value.bulk_item === code) bom.value.bulk_rate = (rates || {})[code] || 0;
+    } catch (e) { /* non-fatal — Bulk Item Rate stays user-editable */ }
   }
 }
 function onWorkstationChange(op) {
@@ -1777,7 +1806,7 @@ async function removeScrapMapping(row) {
 function onPackingItemChange(pi) {
   if (!pi.item_code) return;
   const item = stockItems.value.find(i => i.name === pi.item_code);
-  if (item) { pi.rate = item.standard_rate || 0; pi.uom = item.stock_uom || "Nos"; pi.item_name = item.item_name; }
+  if (item) { pi.rate = 0; pi.uom = item.stock_uom || "Nos"; pi.item_name = item.item_name; }
   pendingRateAutoFill.add(pi);
   refreshRmLandedCosts();
 }

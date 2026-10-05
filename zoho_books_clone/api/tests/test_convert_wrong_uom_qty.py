@@ -37,13 +37,14 @@ class _FakeDB:
 	"""Just enough of frappe.db for convert_wrong_uom_qty / get_wrong_uom_fix_info."""
 
 	def __init__(self, stock_uom="Kg", has_batch_no=0, factors=None, bin_qty=100.0,
-				valuation_rate=300.0, batch_qty=None, item_rates=None):
+				valuation_rate=300.0, batch_qty=None, item_rates=None, already_fixed=False):
 		self.item = _D(item_name="Sweet", stock_uom=stock_uom, has_batch_no=has_batch_no,
 					name="S123")
 		self.factors = factors if factors is not None else {"Gram": 0.001}
 		self.bin = _D(actual_qty=bin_qty, valuation_rate=valuation_rate)
 		self.batch_qty = batch_qty
 		self.item_rates = item_rates or {}
+		self.already_fixed = already_fixed
 		self.sql_calls = []
 
 	def get_value(self, doctype, filters=None, fieldname=None, as_dict=False):
@@ -64,6 +65,8 @@ class _FakeDB:
 
 	def sql(self, query, params=None):
 		self.sql_calls.append(params)
+		if "adjustment_reason" in query:  # the "already fixed once?" lookup
+			return [["SEC-OLD"]] if self.already_fixed else []
 		return [[self.batch_qty]]
 
 	def commit(self):
@@ -94,6 +97,14 @@ def _run(db, **kwargs):
 
 
 class TestConvertWrongUomQty(unittest.TestCase):
+
+	def test_second_fix_for_same_item_and_warehouse_is_blocked(self):
+		with self.assertRaises(_Boom):
+			_run(_FakeDB(already_fixed=True))
+
+	def test_first_fix_is_allowed(self):
+		res, _ = _run(_FakeDB(already_fixed=False))
+		self.assertAlmostEqual(res["correct_qty"], 0.1, places=6)
 
 	def test_100_typed_for_100_grams_becomes_0_1_kg(self):
 		res, posted = _run(_FakeDB())

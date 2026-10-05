@@ -376,7 +376,7 @@
                 <label>UOM</label>
                 <select v-model="line.uom" class="inv-fi">
                   <option
-                    v-for="u in uomList"
+                    v-for="u in uomOptionsFor(line)"
                     :key="u"
                     :value="u"
                   >
@@ -1360,7 +1360,7 @@ async function fetchItems(q = "") {
   try {
     const f = [["disabled", "=", 0]];
     if (q) f.push(["item_name", "like", "%" + q + "%"]);
-    const r = await apiList("Item", { fields: ["name", "item_name", "standard_rate", "standard_buying_rate", "stock_uom"], filters: [...f, ["has_variants", "=", 0], ["is_purchase_item", "=", 1]], limit: 30, order: "item_name asc" });
+    const r = await apiList("Item", { fields: ["name", "item_name", "standard_rate", "standard_buying_rate", "stock_uom", "purchase_uom"], filters: [...f, ["has_variants", "=", 0], ["is_purchase_item", "=", 1]], limit: 30, order: "item_name asc" });
     items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_buying_rate || x.standard_rate || 0 }));
   } catch { items.value = []; }
 }
@@ -1434,9 +1434,30 @@ async function onBillSelect(opt) {
   }
   if (!form.supplier && doc.supplier) form.supplier = doc.supplier;
 }
+// ── Purchase UOM options: only the item's Stock UOM + Purchase UOM ──────────
+const itemUomMap = ref({});
+function setItemUoms(code, stockUom, purchaseUom) {
+  if (!code) return;
+  itemUomMap.value = { ...itemUomMap.value, [code]: [...new Set([stockUom, purchaseUom].filter(Boolean))] };
+}
+function uomOptionsFor(line) {
+  const opts = [...(itemUomMap.value[line.item_code] || [])];
+  if (line.uom && !opts.includes(line.uom)) opts.push(line.uom);
+  return opts;
+}
+async function hydrateItemUoms(codes) {
+  const missing = [...new Set((codes || []).filter(c => c && !itemUomMap.value[c]))];
+  if (!missing.length) return;
+  try {
+    const rows = await apiList("Item", { fields: ["name", "stock_uom", "purchase_uom"], filters: [["name", "in", missing]], limit: missing.length });
+    rows.forEach(r => setItemUoms(r.name, r.stock_uom, r.purchase_uom));
+  } catch {}
+}
+watch(() => lines.value.map(l => l.item_code), c => hydrateItemUoms(c), { immediate: true });
+
 async function onItemChange(line) {
   const it = items.value.find(i => i.name === line.item_code || i.value === line.item_code);
-  if (it) { line.item_name = it.item_name || it.name || line.item_code; line.rate = flt(it.rate || it.standard_rate || 0); line.uom = it.stock_uom || "Nos"; calcLine(line); }
+  if (it) { line.item_name = it.item_name || it.name || line.item_code; line.rate = flt(it.rate || it.standard_rate || 0); setItemUoms(it.name, it.stock_uom, it.purchase_uom); line.uom = it.purchase_uom || it.stock_uom || "Nos"; calcLine(line); }
   if (line.item_code) {
     try {
       const doc = await apiGet("Item", line.item_code);
@@ -1444,7 +1465,7 @@ async function onItemChange(line) {
       if (doc?.description && !line.description) line.description = doc.description;
       if (doc?.hsn_code) line.hsn_code = doc.hsn_code;
       if (!flt(line.rate) && doc?.standard_rate) line.rate = flt(doc.standard_rate);
-      if (doc?.stock_uom) line.uom = doc.stock_uom;
+      if (doc?.stock_uom) { setItemUoms(line.item_code, doc.stock_uom, doc.purchase_uom); line.uom = doc.purchase_uom || doc.stock_uom; }
       if (doc?.default_purchase_tax_template) line.tax_code = doc.default_purchase_tax_template;
       calcLine(line);
     } catch {}

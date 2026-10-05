@@ -390,7 +390,7 @@
                     <td class="td-hsn"><input v-model="line.hsn_code" class="inv-fi" placeholder="HSN code"/></td>
                     <td class="td-uom">
                       <select v-model="line.uom" class="inv-fi" @change="calcLine(line)">
-                        <option v-for="u in uomList" :key="u" :value="u">{{ u }}</option>
+                        <option v-for="u in uomOptionsFor(line)" :key="u" :value="u">{{ u }}</option>
                       </select>
                       <div v-if="lineConversionHint(line)" class="uom-conv-hint">{{ lineConversionHint(line) }}</div>
                     </td>
@@ -1515,6 +1515,27 @@ async function fetchVendors(q = "") {
     vendors.value = r.map(x => ({ ...x, label: x.supplier_name || x.name, value: x.name }));
   } catch { vendors.value = []; }
 }
+// ── Purchase UOM options: only the item's Stock UOM + Purchase UOM ──────────
+const itemUomMap = ref({});
+function setItemUoms(code, stockUom, purchaseUom) {
+  if (!code) return;
+  itemUomMap.value = { ...itemUomMap.value, [code]: [...new Set([stockUom, purchaseUom].filter(Boolean))] };
+}
+function uomOptionsFor(line) {
+  const opts = [...(itemUomMap.value[line.item_code] || [])];
+  if (line.uom && !opts.includes(line.uom)) opts.push(line.uom);
+  return opts;
+}
+async function hydrateItemUoms(codes) {
+  const missing = [...new Set((codes || []).filter(c => c && !itemUomMap.value[c]))];
+  if (!missing.length) return;
+  try {
+    const rows = await apiList("Item", { fields: ["name", "stock_uom", "purchase_uom"], filters: [["name", "in", missing]], limit: missing.length });
+    rows.forEach(r => setItemUoms(r.name, r.stock_uom, r.purchase_uom));
+  } catch {}
+}
+watch(() => lines.value.map(l => l.item_code), c => hydrateItemUoms(c), { immediate: true });
+
 async function fetchItems(q = "") {
   try {
     const f = [["disabled", "=", 0]];
@@ -1561,6 +1582,7 @@ async function onItemSelect(line, opt) {
   if (opt?.description) { line.description = opt.description; }
   if (opt?.hsn_code !== undefined) { line.hsn_code = opt.hsn_code || ""; }
   line.uom = opt?.purchase_uom || opt?.stock_uom || "Nos";
+  setItemUoms(opt?.value, opt?.stock_uom, opt?.purchase_uom);
   line._stock_uom = opt?.stock_uom || "Nos";
   line._uom_conversions = [];
   line._standardRate = flt(opt?.mrp) || flt(opt?.rate) || 0;
@@ -1582,6 +1604,7 @@ async function onItemSelect(line, opt) {
       if (doc?.expense_account) line.expense_account = doc.expense_account;
       if (doc?.hsn_code) line.hsn_code = doc.hsn_code;
       if (doc?.stock_uom) line._stock_uom = doc.stock_uom;
+      setItemUoms(opt.value, doc?.stock_uom, doc?.purchase_uom);
       if (!line.uom) line.uom = doc?.purchase_uom || doc?.stock_uom || "Nos";
       line._uom_conversions = doc?.uom_conversions || [];
       line._standardRate = flt(doc?.mrp) || flt(doc?.standard_buying_rate) || flt(doc?.standard_rate) || line._standardRate || 0;

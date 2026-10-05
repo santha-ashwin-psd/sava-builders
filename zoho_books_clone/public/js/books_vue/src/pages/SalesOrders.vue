@@ -456,9 +456,9 @@
                         <div class="po-item-num-row">
                           <div class="po-item-field">
                             <label>UOM</label>
-                            <select v-model="line.uom" class="inv-fi">
-                              <option v-for="u in uomList" :key="u" :value="u">{{ u }}</option>
-                            </select>
+                            <input type="text" :value="line.uom || ''" class="inv-fi" readonly tabindex="-1"
+                                   title="UOM comes from the Item master"
+                                   style="background:#f3f4f6;color:#6b7280;cursor:not-allowed" />
                           </div>
                           <div class="po-item-field">
                             <label>Available Stock</label>

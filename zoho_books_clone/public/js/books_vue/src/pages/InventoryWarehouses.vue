@@ -480,7 +480,7 @@
             <div class="wh-smc-footer">
               <span v-if="r.item_group" class="wh-smc-tag">{{ r.item_group }}</span>
               <span v-if="r.uom" class="wh-smc-tag">{{ r.uom }}</span>
-              <button class="wh-uom-btn" :disabled="!$canEdit('inventory')" @click="openFixQty(r)">⇄ Fix qty</button>
+              <button v-if="!isFixed(r)" class="wh-uom-btn" :disabled="!$canEdit('inventory')" @click="openFixQty(r)">⇄ Fix UOM</button>
               <span v-if="r.rack_no" class="wh-smc-tag">🗄 {{ r.rack_no }}</span>
               <button v-if="r.has_batch_no" class="wh-smc-batch-toggle" @click="toggleBatches(r.item_code)">
                 {{ batchesFor(r.item_code).length }} batch{{ batchesFor(r.item_code).length===1?'':'es' }} {{ expandedRows[r.item_code] ? '▲' : '▼' }}
@@ -546,9 +546,9 @@
                 <td class="wh-td wh-td-muted wh-th-hide-sm">{{ r.item_group || '—' }}</td>
                 <td class="wh-td wh-td-muted wh-th-hide-sm" @click.stop>
                   {{ r.uom || 'Nos' }}
-                  <button class="wh-uom-btn" :disabled="!$canEdit('inventory')"
+                  <button v-if="!isFixed(r)" class="wh-uom-btn" :disabled="!$canEdit('inventory')"
                     :title="!$canEdit('inventory') ? 'Read-only access' : 'Qty entered in the wrong UOM? Convert it'"
-                    @click="openFixQty(r)">⇄ Fix qty</button>
+                    @click="openFixQty(r)">⇄ Fix UOM</button>
                 </td>
                 <td class="wh-td wh-td-r wh-td-qty">{{ flt(r.actual_qty).toFixed(4) }}</td>
                 <td class="wh-td wh-td-r wh-td-reserved wh-th-hide-md">{{ flt(r.reserved_qty).toFixed(4) }}</td>
@@ -701,7 +701,7 @@
       <div class="nim-dialog" style="width:520px">
         <div class="nim-dialog-header">
           <div>
-            <div style="font-size:15px;font-weight:700;color:#1A1D23">Fix qty</div>
+            <div style="font-size:15px;font-weight:700;color:#1A1D23">Fix UOM</div>
             <div style="font-size:12px;color:#868E96;margin-top:2px">{{ fixDlg.item_name }} · {{ fixDlg.item_code }} · {{ fixDlg.warehouse }}</div>
           </div>
           <button class="nim-close" @click="fixDlg.open=false">✕</button>
@@ -731,16 +731,16 @@
               <div style="flex:1">
                 <label class="nim-label">It was really in</label>
                 <select v-model="fixDlg.actual_uom" class="nim-input">
-                  <option value="">— UOM —</option>
+                  <option v-if="!fixUomChoices.length" value="">— No Purchase UOM —</option>
                   <option v-for="u in fixUomChoices" :key="u" :value="u">{{ u }}</option>
                 </select>
               </div>
             </div>
-            <div v-if="fixDlg.actual_uom && !fixSavedRow" style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:13px;color:#374151;white-space:nowrap">1 {{ fixDlg.stock_uom }} =</span>
-              <input v-model.number="fixDlg.per_stock" type="number" min="0" step="any" class="nim-input" style="width:120px" placeholder="e.g. 1000" />
-              <span style="font-size:13px;color:#374151">{{ fixDlg.actual_uom }}</span>
-              <span style="font-size:11.5px;color:#9ca3af">(not saved on the item)</span>
+            <div v-if="!fixUomChoices.length" style="font-size:12.5px;color:#b45309">
+              Set a Purchase UOM and its conversion on the item (Inventory tab → Purchase Unit Conversion) to use Fix UOM.
+            </div>
+            <div v-else-if="fixFactorText" style="font-size:12.5px;color:#6b7280">
+              Conversion from the item: <strong style="color:#374151">{{ fixFactorText }}</strong>
             </div>
             <div v-if="fixPreview" style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;font-size:13px;color:#0c4a6e;line-height:1.6">
               <div><strong>{{ fixPreview.wrong }} {{ fixDlg.stock_uom }}</strong> → <strong>{{ fixPreview.correct }} {{ fixDlg.stock_uom }}</strong>
@@ -760,7 +760,7 @@
           <button class="nim-btn nim-btn-ghost" @click="fixDlg.open=false">Cancel</button>
           <button class="nim-btn" style="background:#2563eb;color:#fff;border-color:#2563eb"
             :disabled="fixDlg.loading || fixDlg.saving || !fixPreview || !$canEdit('inventory')" @click="submitFixQty">
-            {{ fixDlg.saving ? 'Fixing…' : 'Fix qty' }}
+            {{ fixDlg.saving ? 'Fixing…' : 'Fix UOM' }}
           </button>
         </div>
       </div>
@@ -925,7 +925,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted } from "vue";
-import { apiList, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmt, flt, fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
@@ -1166,6 +1166,7 @@ async function loadStockForWarehouse(name) {
   stockStatusFilter.value = "";
   stockRackFilter.value = "";
   try {
+    loadFixedKeys();
     const [stock, batches] = await Promise.all([
       apiGET("zoho_books_clone.api.inventory.get_stock_summary", { warehouse: name }),
       apiGET("zoho_books_clone.api.inventory.get_warehouse_batches", { warehouse: name }).catch(() => ({})),
@@ -1222,9 +1223,28 @@ const fixDlg = reactive({
   bin_qty: 0, rate: 0,
   rows: [],          // saved conversions: { uom, per_stock }  =>  1 <stock_uom> = per_stock <uom>
   wrong_qty: "", actual_uom: "", per_stock: "", notes: "",
-  uomOptions: [],
+  uomOptions: [], purchase_uom: "",
 });
-const fixUomChoices = computed(() => fixDlg.uomOptions.filter((u) => u !== fixDlg.stock_uom));
+// Only the item's Purchase UOM is offered; its conversion comes from the
+// item's "Purchase Unit Conversion" (saved as a UOM conversion row).
+// Fix qty works only once per item + warehouse; fixed pairs hide the button.
+const fixedKeys = ref(new Set());
+const fixWh = (r) => r.warehouse || adjustTargetWH.value?.name || selectedChild.value?.name || "";
+const fixKey = (r) => `${r.item_code}||${fixWh(r)}`;
+const isFixed = (r) => fixedKeys.value.has(fixKey(r));
+async function loadFixedKeys(wh) {
+  try {
+    const rows = await apiGET("zoho_books_clone.api.inventory.get_wrong_uom_fixed_items", wh ? { warehouse: wh } : {});
+    fixedKeys.value = new Set((rows || []).map((x) => `${x.item_code}||${x.warehouse}`));
+  } catch { /* keep current set */ }
+}
+const fixUomChoices = computed(() =>
+  fixDlg.purchase_uom && fixDlg.purchase_uom !== fixDlg.stock_uom ? [fixDlg.purchase_uom] : []);
+const fixFactorText = computed(() => {
+  const row = fixSavedRow.value;
+  if (!row || !(flt(row.per_stock) > 0)) return "";
+  return `1 ${fixDlg.actual_uom} = ${Number((1 / flt(row.per_stock)).toPrecision(9))} ${fixDlg.stock_uom}`;
+});
 const fixSavedRow = computed(() => fixDlg.rows.find((x) => x.uom === fixDlg.actual_uom) || null);
 const fixPerStock = computed(() => (fixSavedRow.value ? flt(fixSavedRow.value.per_stock) : flt(fixDlg.per_stock)));
 const fixAvailable = computed(() => {
@@ -1255,17 +1275,21 @@ async function openFixQty(r) {
     open: true, loading: true, saving: false, error: "",
     item_code: r.item_code, item_name: r.item_name || r.item_code, warehouse: wh,
     stock_uom: r.uom || "Nos", has_batch: !!r.has_batch_no, batches: [], batch_no: "",
-    bin_qty: flt(r.actual_qty), rate: 0, rows: [],
+    bin_qty: flt(r.actual_qty), rate: 0, rows: [], purchase_uom: "",
     wrong_qty: r.has_batch_no ? "" : flt(r.actual_qty), actual_uom: "", per_stock: "", notes: "",
   });
   try {
-    const [d, uoms] = await Promise.all([
+    const [d, itemDoc] = await Promise.all([
       apiGET("zoho_books_clone.api.inventory.get_wrong_uom_fix_info", { item_code: r.item_code, warehouse: wh }),
-      fixDlg.uomOptions.length ? Promise.resolve(null)
-        : apiList("UOM", { fields: ["name"], limit: 1000 }).catch(() => null),
+      apiGet("Item", r.item_code).catch(() => null),
     ]);
-    if (uoms && uoms.length) fixDlg.uomOptions = uoms.map((u) => u.name);
-    else if (!fixDlg.uomOptions.length) fixDlg.uomOptions = FALLBACK_UOMS.slice();
+    fixDlg.purchase_uom = itemDoc?.purchase_uom || "";
+    if (d.already_fixed) {
+      fixedKeys.value = new Set([...fixedKeys.value, `${r.item_code}||${wh}`]);
+      fixDlg.open = false; fixDlg.loading = false;
+      toast("Qty for this item was already fixed once", "error");
+      return;
+    }
     fixDlg.stock_uom = d.stock_uom || fixDlg.stock_uom;
     fixDlg.has_batch = !!d.has_batch_no;
     fixDlg.batches = d.batches || [];
@@ -1273,6 +1297,7 @@ async function openFixQty(r) {
     fixDlg.rate = flt(d.valuation_rate);
     fixDlg.rows = d.rows || [];
     fixDlg.wrong_qty = fixDlg.has_batch ? "" : fixDlg.bin_qty;
+    if (fixUomChoices.value.length === 1) fixDlg.actual_uom = fixUomChoices.value[0];
   } catch (e) {
     fixDlg.open = false;
     toast(e.message || "Could not load item details", "error");
@@ -1300,10 +1325,11 @@ async function submitFixQty() {
     if (!fixSavedRow.value) payload.per_stock = fixDlg.per_stock;
     const res = await apiPOST("zoho_books_clone.api.inventory.convert_wrong_uom_qty", payload);
     toast(`Qty fixed — ${res.wrong_qty} → ${res.correct_qty} ${res.stock_uom}`, "success");
+    fixedKeys.value = new Set([...fixedKeys.value, `${fixDlg.item_code}||${fixDlg.warehouse}`]);
     fixDlg.open = false;
     if (selectedWH.value) await loadStockForWarehouse(selectedChild.value?.name || selectedWH.value.name);
   } catch (e) {
-    fixDlg.error = e.message || "Could not fix qty";
+    fixDlg.error = e.message || "Could not fix UOM";
   }
   fixDlg.saving = false;
 }

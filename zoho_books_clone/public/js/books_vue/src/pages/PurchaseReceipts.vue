@@ -439,7 +439,9 @@
                       </div>
                       <div class="po-item-field" style="margin-top:14px">
                         <label>UOM</label>
-                        <input class="inv-fi" v-model="it.uom" placeholder="Nos"/>
+                        <select class="inv-fi" v-model="it.uom">
+                          <option v-for="u in uomOptionsFor(it)" :key="u" :value="u">{{ u }}</option>
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -503,7 +505,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { apiList, apiGet, apiGET, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
@@ -906,17 +908,39 @@ async function onPOSelect(opt) {
     }
   } catch {}
 }
+// ── Purchase UOM options: only the item's Stock UOM + Purchase UOM ──────────
+const itemUomMap = ref({});
+function setItemUoms(code, stockUom, purchaseUom) {
+  if (!code) return;
+  itemUomMap.value = { ...itemUomMap.value, [code]: [...new Set([stockUom, purchaseUom].filter(Boolean))] };
+}
+function uomOptionsFor(line) {
+  const opts = [...(itemUomMap.value[line.item_code] || [])];
+  if (line.uom && !opts.includes(line.uom)) opts.push(line.uom);
+  return opts;
+}
+async function hydrateItemUoms(codes) {
+  const missing = [...new Set((codes || []).filter(c => c && !itemUomMap.value[c]))];
+  if (!missing.length) return;
+  try {
+    const rows = await apiList("Item", { fields: ["name", "stock_uom", "purchase_uom"], filters: [["name", "in", missing]], limit: missing.length });
+    rows.forEach(r => setItemUoms(r.name, r.stock_uom, r.purchase_uom));
+  } catch {}
+}
+watch(() => form.items.map(l => l.item_code), c => hydrateItemUoms(c), { immediate: true });
+
 async function fetchItems(q = "") {
   try {
     const filters = [["disabled", "=", 0], ["has_variants", "=", 0], ["is_purchase_item", "=", 1]];
     if (q) filters.push(["item_name", "like", `%${q}%`]);
-    const rows = await apiList("Item", { fields: ["name", "item_name", "description", "stock_uom", "standard_rate", "standard_buying_rate", "has_batch_no"], filters, limit: 30, order: "item_name asc" });
-    itemOptions.value = rows.map(r => ({ label: r.item_name || r.name, value: r.name, description: r.description || "", uom: r.stock_uom || "Nos", rate: r.standard_buying_rate || r.standard_rate || 0, has_batch_no: r.has_batch_no ? 1 : 0 }));
+    const rows = await apiList("Item", { fields: ["name", "item_name", "description", "stock_uom", "purchase_uom", "standard_rate", "standard_buying_rate", "has_batch_no"], filters, limit: 30, order: "item_name asc" });
+    itemOptions.value = rows.map(r => ({ label: r.item_name || r.name, value: r.name, description: r.description || "", stock_uom: r.stock_uom || "", purchase_uom: r.purchase_uom || "", uom: r.purchase_uom || r.stock_uom || "Nos", rate: r.standard_buying_rate || r.standard_rate || 0, has_batch_no: r.has_batch_no ? 1 : 0 }));
   } catch { itemOptions.value = []; }
 }
 function onItemSelect(line, opt) {
   line.item_code    = opt?.value ?? opt;
   line.item_name    = opt?.label  || opt?.value || "";
+  setItemUoms(opt?.value, opt?.stock_uom, opt?.purchase_uom);
   line.uom          = opt?.uom   || line.uom || "Nos";
   line.po_item      = null; // manually changing the item breaks the PO-line link
   line.has_batch_no = opt?.has_batch_no ? 1 : 0;

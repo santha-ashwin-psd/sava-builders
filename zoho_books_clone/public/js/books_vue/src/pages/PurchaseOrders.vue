@@ -343,12 +343,20 @@
                     </div>
                   </div>
                   <div class="po-item-col po-item-col--right">
-                    <div class="po-item-field">
-                      <label>Tax Template</label>
-                      <select v-model="line.tax_code" class="inv-fi">
-                        <option value="">— No Tax —</option>
-                        <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.template_name || t.name }}</option>
-                      </select>
+                    <div class="po-item-num-row">
+                      <div class="po-item-field">
+                        <label>Tax Template</label>
+                        <select v-model="line.tax_code" class="inv-fi">
+                          <option value="">— No Tax —</option>
+                          <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.template_name || t.name }}</option>
+                        </select>
+                      </div>
+                      <div class="po-item-field">
+                        <label>UOM</label>
+                        <select v-model="line.uom" class="inv-fi">
+                          <option v-for="u in uomOptionsFor(line)" :key="u" :value="u">{{ u }}</option>
+                        </select>
+                      </div>
                     </div>
                     <div class="po-item-num-row">
                       <div class="po-item-field">
@@ -1027,7 +1035,7 @@ const addrModal = reactive({
 });
 
 let _id = 1;
-const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, amount: 0, tax_code: "", collapsed: false });
+const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, uom: "", amount: 0, tax_code: "", collapsed: false });
 const form = reactive({
   supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
   billing_address: "", delivery_address: "",
@@ -1290,6 +1298,7 @@ async function openEdit(o) {
       lines.value = doc.items.map(i => ({
         id: _id++, item_code: i.item_code || "", description: i.description || "",
         qty: i.qty || 1, rate: i.rate || 0, amount: i.amount || 0,
+        uom: i.uom || "",
         tax_code: i.tax_code || "",
       }));
     }
@@ -1443,13 +1452,36 @@ async function fetchItems(q = "") {
   try {
     const f = [["disabled", "=", 0]];
     if (q) f.push(["item_name", "like", "%" + q + "%"]);
-    const r = await apiList("Item", { fields: ["name", "item_name", "description", "standard_rate", "standard_buying_rate", "stock_uom", "default_purchase_tax_template"], filters: [...f, ["has_variants", "=", 0], ["is_purchase_item", "=", 1]], limit: 30, order: "item_name asc" });
+    const r = await apiList("Item", { fields: ["name", "item_name", "description", "standard_rate", "standard_buying_rate", "stock_uom", "purchase_uom", "default_purchase_tax_template"], filters: [...f, ["has_variants", "=", 0], ["is_purchase_item", "=", 1]], limit: 30, order: "item_name asc" });
     items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_buying_rate || x.standard_rate || 0, description: x.description || "", tax_code: x.default_purchase_tax_template || "" }));
+    r.forEach(x => setItemUoms(x.name, x.stock_uom, x.purchase_uom));
   } catch { items.value = []; }
 }
+// ── Purchase UOM options: only the item's Stock UOM + Purchase UOM ──────────
+const itemUomMap = ref({});
+function setItemUoms(code, stockUom, purchaseUom) {
+  if (!code) return;
+  itemUomMap.value = { ...itemUomMap.value, [code]: [...new Set([stockUom, purchaseUom].filter(Boolean))] };
+}
+function uomOptionsFor(line) {
+  const opts = [...(itemUomMap.value[line.item_code] || [])];
+  if (line.uom && !opts.includes(line.uom)) opts.push(line.uom);
+  return opts;
+}
+async function hydrateItemUoms(codes) {
+  const missing = [...new Set((codes || []).filter(c => c && !itemUomMap.value[c]))];
+  if (!missing.length) return;
+  try {
+    const rows = await apiList("Item", { fields: ["name", "stock_uom", "purchase_uom"], filters: [["name", "in", missing]], limit: missing.length });
+    rows.forEach(r => setItemUoms(r.name, r.stock_uom, r.purchase_uom));
+  } catch {}
+}
+watch(() => lines.value.map(l => l.item_code), c => hydrateItemUoms(c), { immediate: true });
+
 async function onItemSelect(line, opt) {
   line.item_code = opt?.value ?? opt;
   if (opt?.rate !== undefined) { line.rate = Number(opt.rate) || 0; }
+  if (opt?.stock_uom) { setItemUoms(opt.value, opt.stock_uom, opt.purchase_uom); line.uom = opt.purchase_uom || opt.stock_uom; }
   if (opt?.item_name)   { line.item_name   = opt.item_name; }
   if (opt?.tax_code !== undefined) { line.tax_code = opt.tax_code || ""; }
   if (opt?.description) { line.description = opt.description; }
@@ -1459,6 +1491,7 @@ async function onItemSelect(line, opt) {
       const doc = await apiGet("Item", opt.value);
       if (doc?.description) line.description = doc.description;
       if (doc?.item_name)   line.item_name   = doc.item_name;
+      if (doc?.stock_uom)   { setItemUoms(opt.value, doc.stock_uom, doc.purchase_uom); line.uom = doc.purchase_uom || doc.stock_uom; }
       if (doc?.default_purchase_tax_template) line.tax_code = doc.default_purchase_tax_template;
     } catch {}
   }
@@ -1521,6 +1554,7 @@ async function savePO(newStatus) {
         doctype: "Purchase Order Item", item_code: l.item_code,
         description: l.description || l.item_code,
         qty: flt(l.qty) || 1, rate: flt(l.rate), amount: flt(l.amount),
+        uom: l.uom || "",
         tax_code: l.tax_code || "",
       })),
       taxes,
@@ -1757,6 +1791,7 @@ onMounted(async () => {
           description: r.description,
           qty: r.qty,
           rate: r.rate,
+          uom: r.uom || r.stock_uom || "",
           amount: r.amount,
           tax_code: "",
           collapsed: false

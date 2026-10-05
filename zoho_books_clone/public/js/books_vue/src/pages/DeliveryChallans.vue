@@ -544,7 +544,7 @@
                         </div>
                         <div class="po-item-field">
                           <label>UOM</label>
-                          <input class="inv-fi" v-model="it.uom" placeholder="Nos"/>
+                          <input type="text" :value="it.uom || ''" class="inv-fi" readonly tabindex="-1" title="UOM comes from the Item master" style="background:#f3f4f6;color:#6b7280;cursor:not-allowed" />
                         </div>
                       </div>
                     </div>
