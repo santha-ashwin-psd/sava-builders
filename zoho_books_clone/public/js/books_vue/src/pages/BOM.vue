@@ -347,15 +347,16 @@
                     </div>
                     <div class="bomx-rm-field">
                       <label>UOM</label>
-                      <select class="bomx-fi" v-model="rm.uom" :disabled="readOnly">
-                        <option v-for="u in uomList" :key="u" :value="u">{{ u }}</option>
+                      <select class="bomx-fi" :value="rm.uom" @change="onRmUomChange(rm, $event.target.value)" :disabled="readOnly">
+                        <option v-for="u in rmUomOptions(rm)" :key="u" :value="u">{{ u }}</option>
                       </select>
+                      <div v-if="rmUomWarning(rm)" class="bomx-landed-hint">⚠ {{ rmUomWarning(rm) }}</div>
                     </div>
                     <div class="bomx-rm-field">
                       <label>Rate (₹)</label>
-                      <input class="bomx-fi bomx-fi-mono" type="number" v-model="rm.rate" min="0" step="any" :disabled="readOnly"/>
+                      <input class="bomx-fi bomx-fi-mono" type="number" :value="rm.rate" readonly tabindex="-1" title="Rate comes from the item's stock valuation and follows the selected UOM"/>
                       <div v-if="rmLandedInfo(rm.item_code)?.has_landed_cost" class="bomx-landed-hint" :title="`Base ${INR(rmLandedInfo(rm.item_code).base_rate)} + landed ${INR(rmLandedInfo(rm.item_code).landed_rate)} = ${INR(rmLandedInfo(rm.item_code).valuation_rate)} at ${rmLandedInfo(rm.item_code).warehouse}`">
-                        🚚 Warehouse rate incl. landed cost: {{ INR(rmLandedInfo(rm.item_code).valuation_rate) }}
+                        🚚 Warehouse rate incl. landed cost: {{ INR(rmLandedInfo(rm.item_code).valuation_rate) }}/{{ rmStockUom(rm.item_code) }}
                         <a v-if="!readOnly" href="javascript:void(0)" @click="useLandedRate(rm)">Use</a>
                       </div>
                     </div>
@@ -1411,7 +1412,7 @@ onMounted(async () => {
     // gets its own .catch so a failure there doesn't take down the rest
     // (it's non-critical — we keep the "Manufacturing" fallback).
     const [stk, uoms, ops, wks, rtg, saRows, mfgDefaults] = await Promise.all([
-      apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom", "item_type", "default_warehouse"], filters: [["is_stock_item", "=", 1], ["disabled", "=", 0]], limit: 5000, order: "name asc" }),
+      apiList("Item", { fields: ["name", "item_name", "standard_rate", "stock_uom", "purchase_uom", "item_type", "default_warehouse"], filters: [["is_stock_item", "=", 1], ["disabled", "=", 0]], limit: 5000, order: "name asc" }),
       apiList("UOM", { fields: ["name"], order: "name asc", limit: 200 }),
       apiList("Operation", { fields: ["name"], limit: 1000, order: "name asc" }),
       apiList("Workstation", { fields: ["name", "hour_rate"], filters: [["is_active", "=", 1]], limit: 1000, order: "name asc" }),
@@ -1521,10 +1522,79 @@ function wouldCreateCycle(candidateBom) {
   return false;
 }
 
+// ── Raw-material UOM / rate conversion ──────────────────────────────────────
+// A BOM row's rate is "per row UOM" (backend: amount = qty * rate; the Work
+// Order divides rate by the item's conversion factor to get the stock rate).
+// The stock valuation we auto-fill is per STOCK UOM, so whenever the row UOM
+// is not the stock UOM the rate must be multiplied by that UOM's conversion
+// factor (stock-UOM units in 1 of the row UOM, from the item's UOM table).
+// Item UOM info is cached here, outside the row, so nothing extra is saved
+// with the BOM.
+const itemUomInfo = ref({}); // item_code -> { stock_uom, purchase_uom, conv: { uom: factor } }
+const itemUomLoading = new Set();
+async function ensureItemUomInfo(code) {
+  if (!code || itemUomInfo.value[code] || itemUomLoading.has(code)) return;
+  itemUomLoading.add(code);
+  try {
+    const doc = await apiGet("Item", code);
+    const conv = {};
+    (doc?.uom_conversions || []).forEach(r => { if (r.uom && parseFloat(r.conversion_factor) > 0) conv[r.uom] = parseFloat(r.conversion_factor); });
+    itemUomInfo.value = { ...itemUomInfo.value, [code]: { stock_uom: doc?.stock_uom || "", purchase_uom: doc?.purchase_uom || "", conv } };
+  } catch (e) { /* non-fatal — dropdown falls back to the row's current UOM */ }
+  itemUomLoading.delete(code);
+}
+function rmStockUom(code) {
+  return itemUomInfo.value[code]?.stock_uom || (stockItems.value.find(i => i.name === code) || {}).stock_uom || "Nos";
+}
+// Stock-UOM units in 1 `uom` of this item; 1 for the stock UOM itself; null
+// when the UOM has no conversion row (unknown — never guessed as 1).
+function rmUomFactor(code, uom) {
+  const stockUom = rmStockUom(code);
+  if (!uom || uom === stockUom) return 1;
+  const f = itemUomInfo.value[code]?.conv?.[uom];
+  return f > 0 ? f : null;
+}
+// Convert a rate per stock UOM into a rate per `uom` (null if no factor).
+function rmRatePerUom(code, uom, stockRate) {
+  const f = rmUomFactor(code, uom);
+  return f == null ? null : Math.round((parseFloat(stockRate) || 0) * f * 10000) / 10000;
+}
+// Only the item's stock UOM and its Purchase UOM — and the Purchase UOM only
+// when it has a conversion row (otherwise its rate could not be derived).
+function rmUomOptions(rm) {
+  const info = itemUomInfo.value[rm.item_code];
+  if (!rm.item_code || !info) return rm.uom ? [rm.uom] : [];
+  const opts = [info.stock_uom];
+  if (info.purchase_uom && info.purchase_uom !== info.stock_uom && info.conv[info.purchase_uom] > 0) opts.push(info.purchase_uom);
+  const out = opts.filter(Boolean);
+  // A saved BOM may carry some other UOM — keep showing it rather than
+  // silently blanking the select; rmUomWarning() flags it.
+  if (rm.uom && !out.includes(rm.uom)) out.push(rm.uom);
+  return out;
+}
+function rmUomWarning(rm) {
+  const info = itemUomInfo.value[rm.item_code];
+  if (!rm.item_code || !info) return "";
+  if (rm.uom && rmUomFactor(rm.item_code, rm.uom) == null) return `No conversion from ${rm.uom} to ${info.stock_uom} on the item - rate is not converted`;
+  if (info.purchase_uom && info.purchase_uom !== info.stock_uom && !(info.conv[info.purchase_uom] > 0)) return `Purchase UOM ${info.purchase_uom} has no conversion on the item, so it is not offered`;
+  return "";
+}
+function onRmUomChange(rm, newUom) {
+  const oldF = rmUomFactor(rm.item_code, rm.uom);
+  const newF = rmUomFactor(rm.item_code, newUom);
+  if (oldF == null || newF == null) { rm.uom = newUom; return; } // no basis to convert — leave the rate alone
+  rm.rate = Math.round((parseFloat(rm.rate) || 0) / oldF * newF * 10000) / 10000;
+  rm.uom = newUom;
+}
+watch(() => (bom.value.items || []).map(r => r.item_code).filter(Boolean).join(","), () => {
+  (bom.value.items || []).forEach(r => ensureItemUomInfo(r.item_code));
+}, { immediate: true });
+
 function onRmItemChange(rm) {
   if (!rm.item_code) return;
   const item = stockItems.value.find(i => i.name === rm.item_code);
   if (item) { rm.rate = 0; rm.uom = item.stock_uom || "Nos"; rm.item_name = item.item_name; }
+  ensureItemUomInfo(rm.item_code);
   pendingRateAutoFill.add(rm);
   refreshRmLandedCosts();
 }
@@ -1577,7 +1647,8 @@ function refreshRmLandedCosts() {
       if (!pendingRateAutoFill.has(rm)) continue;
       const info = byItem[rm.item_code];
       if (info && info.valuation_rate > 0) {
-        rm.rate = info.valuation_rate;
+        const conv = rmRatePerUom(rm.item_code, rm.uom, info.valuation_rate);
+        if (conv != null) rm.rate = conv;
         pendingRateAutoFill.delete(rm);
       } else {
         needFallback.push(rm);
@@ -1592,7 +1663,8 @@ function refreshRmLandedCosts() {
         );
         for (const rm of needFallback) {
           const v = (rates || {})[rm.item_code];
-          if (v != null) rm.rate = v;
+          const conv = v != null ? rmRatePerUom(rm.item_code, rm.uom, v) : null;
+          if (conv != null) rm.rate = conv;
         }
       } catch (e) { /* non-fatal — rate stays 0 and user-editable */ }
       for (const rm of needFallback) pendingRateAutoFill.delete(rm);
@@ -1609,7 +1681,10 @@ function useLandedRate(rm) {
   // get_landed_cost_breakdown(): this assigns straight into the editable
   // Rate input with no fmt()/INR() wrapper in between, so any raw float
   // that slipped past those would otherwise show here unrounded.
-  if (info) rm.rate = Math.round(info.valuation_rate * 10000) / 10000;
+  if (info) {
+    const conv = rmRatePerUom(rm.item_code, rm.uom, info.valuation_rate);
+    if (conv != null) rm.rate = conv;
+  }
 }
 function onSubAssemblyBomChange(rm) {
   if (!rm.sub_assembly_bom) return;
