@@ -143,10 +143,11 @@
             <div class="ad-grid-2">
               <div class="ad-field">
                 <label class="ad-label">Default UOM <span class="ad-required">*</span></label>
-                <select class="ad-input" v-model="form.stock_uom">
+                <select class="ad-input" v-model="form.stock_uom" :disabled="drawerMode === 'edit'" :title="drawerMode === 'edit' ? 'Default UOM cannot be changed after the item is created' : ''">
                   <option value="">— Select UOM —</option>
                   <option v-for="u in uomList" :key="u" :value="u">{{u}}</option>
                 </select>
+                <div v-if="drawerMode === 'edit'" class="ad-hint" style="margin-top:4px">Locked after creation — changing it would corrupt existing stock and rates.</div>
               </div>
               <div class="ad-field">
                 <label class="ad-label">Brand</label>
