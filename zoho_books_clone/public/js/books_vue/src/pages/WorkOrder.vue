@@ -663,7 +663,7 @@
               <div class="bomx-cost-card">
                 <div class="bomx-cost-card-hdr">
                   <span>Cost Breakdown</span>
-                  <span class="bomx-cost-total-pill">₹ {{ fmt(totalWorkOrderCost) }}</span>
+                  <span class="bomx-cost-total-pill">₹ {{ fmt(plannedCostShown) }}</span>
                 </div>
                 <div class="bomx-cost-card-body">
                   <div class="bomx-cost-item">
@@ -682,7 +682,7 @@
                   <div class="bomx-cost-eq">=</div>
                   <div class="bomx-cost-item bomx-cost-item--total">
                     <div class="bomx-cost-item-lbl">Total Cost (Planned)</div>
-                    <div class="bomx-cost-item-val bomx-cost-item-val--total">₹ {{ fmt(totalWorkOrderCost) }}</div>
+                    <div class="bomx-cost-item-val bomx-cost-item-val--total">₹ {{ fmt(plannedCostShown) }}</div>
                   </div>
                   <div class="bomx-cost-item bomx-cost-item--total" v-if="actualAbsorbedCost !== null" style="margin-top:6px">
                     <div class="bomx-cost-item-lbl" title="Everything actually spent on this Work Order's completions so far: raw material consumed + operating cost absorbed, before any split between what was capitalized into the finished good and what was written off as abnormal loss.">Total Cost (Actual)</div>
@@ -1432,6 +1432,15 @@ async function loadActualAbsorbedCost() {
     manufacturingVarianceLoss.value = null;
   }
 }
+
+// Total Cost (Planned) shown in the panel: once the Work Order has completions it shows the
+// same figure as Total Cost (Actual); before that (nothing produced yet) it stays the
+// BOM/Work-Order-row estimate (raw material + operating cost).
+const plannedCostShown = computed(() =>
+  actualAbsorbedCost.value !== null
+    ? flt(actualAbsorbedCost.value) + flt(manufacturingVarianceLoss.value)
+    : totalWorkOrderCost.value
+);
 
 const recalcLoading = ref(false);
 async function recalcOperatingCost(refreshHourRates) {
