@@ -412,6 +412,10 @@ def get_landed_cost_breakdown(pairs):
     )
     bin_map = {f"{b.item_code}::{b.warehouse}": b for b in bins}
 
+    # NOTE: no SQL aggregate in `fields` ("sum(x) as y" string syntax) --
+    # newer Frappe (v16) rejects it with a ValidationError (HTTP 417), which
+    # made this whole endpoint fail and the BOM rate silently fall back.
+    # Rows are summed in Python instead; works on every Frappe version.
     sle_rows = frappe.get_all(
         "Stock Ledger Entry",
         filters={
@@ -420,10 +424,13 @@ def get_landed_cost_breakdown(pairs):
             "item_code": ["in", item_codes],
             "warehouse": ["in", warehouses],
         },
-        fields=["item_code", "warehouse", "sum(stock_value_difference) as landed_value"],
-        group_by="item_code, warehouse",
+        fields=["item_code", "warehouse", "stock_value_difference"],
+        limit_page_length=0,
     )
-    landed_map = {f"{r.item_code}::{r.warehouse}": flt(r.landed_value) for r in sle_rows}
+    landed_map = {}
+    for r in sle_rows:
+        k = f"{r.item_code}::{r.warehouse}"
+        landed_map[k] = landed_map.get(k, 0.0) + flt(r.stock_value_difference)
 
     result = {}
     for p in pairs:
