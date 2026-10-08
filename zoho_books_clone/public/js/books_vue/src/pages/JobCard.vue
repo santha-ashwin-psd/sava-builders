@@ -116,35 +116,19 @@
             <div class="bomx-hdr-fields" style="border:1px solid var(--bx-border);border-radius:var(--bx-radius);margin-bottom:16px">
               <div>
                 <div class="bomx-hf-label">Work Order <span style="color:var(--bx-red)">*</span></div>
-                <select class="bomx-fi" v-model="doc.work_order" :disabled="!isNew" style="width:100%" :title="doc.work_order">
-                  <option value="">— Select Work Order —</option>
-                  <option v-for="w in workOrdersList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                </select>
+                <SearchableSelect v-model="doc.work_order" :options="ssOpts1" placeholder="— Select Work Order —" :disabled="!isNew" style="width:100%" />
                 <div class="bomx-field-hint" v-if="jobCardItemName">Manufactures: <strong>{{ jobCardItemName }}</strong></div>
                 <div class="bomx-field-hint" v-if="doc.sub_assembly_bom">🧩 Sub-assembly: <DocLink doctype="BOM" :name="doc.sub_assembly_bom" :mono-style="false"><strong>{{ subAssemblyBomLabel(doc.sub_assembly_bom) }}</strong></DocLink></div>
               </div>
               <div>
                 <div class="bomx-hf-label">Operation <span style="color:var(--bx-red)">*</span></div>
-                <select v-if="groupedJcOperationRows.length" class="bomx-fi" v-model="selectedWoOpRow" style="width:100%">
-                  <option value="">— Select Operation —</option>
-                  <optgroup v-for="grp in groupedJcOperationRows" :key="grp.key" :label="grp.label">
-                    <option v-for="row in grp.rows" :key="row.name" :value="row.name">
-                      {{ row.operation }}{{ jcExistsForWoOpRow(row.name) ? ' (already has a Job Card)' : '' }}
-                    </option>
-                  </optgroup>
-                </select>
-                <select v-else class="bomx-fi" v-model="doc.operation" style="width:100%" :title="doc.operation">
-                  <option value="">— Select Operation —</option>
-                  <option v-for="o in operationsList" :key="o.name" :value="o.name">{{ o.name }}</option>
-                </select>
+                <SearchableSelect v-if="groupedJcOperationRows.length" v-model="selectedWoOpRow" :options="jcOperationOptions" placeholder="— Select Operation —" style="width:100%" />
+                <SearchableSelect v-else v-model="doc.operation" :options="ssOpts2" placeholder="— Select Operation —" style="width:100%" />
                 <div class="bomx-field-hint" v-if="groupedJcOperationRows.length">Pick the specific sub-assembly (or Final Assembly) step this card is for.</div>
               </div>
               <div>
                 <div class="bomx-hf-label">Workstation</div>
-                <select class="bomx-fi" v-model="doc.workstation" style="width:100%" :title="doc.workstation">
-                  <option value="">— Select —</option>
-                  <option v-for="w in workstationsList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                </select>
+                <SearchableSelect v-model="doc.workstation" :options="ssOpts3" placeholder="— Select —" style="width:100%" />
               </div>
             </div>
             <div class="jc-drawer-toggle-row">
@@ -163,10 +147,7 @@
               </div>
               <div style="flex:1;min-width:150px">
                 <div class="bomx-hf-label">Employee</div>
-                <select class="bomx-fi" v-model="doc.employee" style="width:100%" :title="doc.employee">
-                  <option value="">— Unassigned —</option>
-                  <option v-for="e in employeesList" :key="e.name" :value="e.name">{{ e.label || e.name }}</option>
-                </select>
+                <SearchableSelect v-model="doc.employee" :options="ssOpts4" placeholder="— Unassigned —" style="width:100%" />
               </div>
             </div>
 
@@ -231,10 +212,7 @@
                   </div>
                   <div class="bomx-rm-field">
                     <label>Employee</label>
-                    <select class="bomx-fi" v-model="tl.employee" :title="tl.employee">
-                      <option value="">— Select —</option>
-                      <option v-for="e in employeesList" :key="e.name" :value="e.name">{{ e.label || e.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="tl.employee" :options="ssOpts5" placeholder="— Select —" compact />
                   </div>
                 </div>
                 <div v-if="tl._invalidRange" class="bomx-field-hint" style="color:var(--bx-red);font-weight:600;padding:0 14px 10px">
@@ -271,10 +249,7 @@
                 <div class="bomx-rm-card-body" style="grid-template-columns:2fr 1fr 1fr">
                   <div class="bomx-rm-field" v-if="!sc.is_process_loss">
                     <label>Item</label>
-                    <select class="bomx-fi" v-model="sc.item_code">
-                      <option value="">— Select Item —</option>
-                      <option v-for="i in scrapPickerItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="sc.item_code" :options="ssOpts6" placeholder="— Select Item —" compact />
                   </div>
                   <div class="bomx-rm-field" v-else>
                     <label>Item</label>
@@ -324,6 +299,7 @@
 </template>
 
 <script setup>
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "../composables/useToast.js";
@@ -809,6 +785,18 @@ const ICONS = {
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);
 }
+
+// ── Searchable dropdown options (typing filters the list) ──
+const ssOpts1 = computed(() => [{ value: '', label: '— Select Work Order —' }, ...(workOrdersList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— Select Operation —' }, ...(operationsList.value || []).map(o => ({ value: o.name, label: o.name }))]);
+const ssOpts3 = computed(() => [{ value: '', label: '— Select —' }, ...(workstationsList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts4 = computed(() => [{ value: '', label: '— Unassigned —' }, ...(employeesList.value || []).map(e => ({ value: e.name, label: e.label || e.name }))]);
+const ssOpts5 = computed(() => [{ value: '', label: '— Select —' }, ...(employeesList.value || []).map(e => ({ value: e.name, label: e.label || e.name }))]);
+const ssOpts6 = computed(() => [{ value: '', label: '— Select Item —' }, ...(scrapPickerItems.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+
+// Grouped (sub-assembly / final) Work Order operation rows as one flat, searchable list;
+// the group label is shown as a prefix so typing either the step or its group finds it.
+const jcOperationOptions = computed(() => [{ value: '', label: '— Select Operation —' }, ...(groupedJcOperationRows.value || []).flatMap(grp => (grp.rows || []).map(row => ({ value: row.name, label: `${grp.label} › ${row.operation}${jcExistsForWoOpRow(row.name) ? ' (already has a Job Card)' : ''}` })))]);
 </script>
 
 <style scoped>

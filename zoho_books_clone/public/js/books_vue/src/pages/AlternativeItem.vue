@@ -99,17 +99,11 @@
             <div class="aix-fg">
               <div>
                 <div class="aix-hf-label">Original Item <span class="aix-req">*</span></div>
-                <select class="aix-fi" v-model="rec.item_code" :disabled="!isNew" style="width:100%">
-                  <option value="">— Select —</option>
-                  <option v-for="i in itemsList" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                </select>
+                <SearchableSelect v-model="rec.item_code" :options="ssOpts1" placeholder="— Select —" :disabled="!isNew" style="width:100%" />
               </div>
               <div>
                 <div class="aix-hf-label">Alternative Item <span class="aix-req">*</span></div>
-                <select class="aix-fi" v-model="rec.alternative_item_code" style="width:100%">
-                  <option value="">— Select —</option>
-                  <option v-for="i in itemsList" :key="i.name" :value="i.name">{{ i.item_name || i.name }}{{ i.item_type === 'Scrap Item' ? ' (Scrap)' : '' }}</option>
-                </select>
+                <SearchableSelect v-model="rec.alternative_item_code" :options="ssOpts2" placeholder="— Select —" style="width:100%" />
               </div>
             </div>
 
@@ -122,10 +116,7 @@
               </div>
               <div>
                 <div class="aix-hf-label">UOM</div>
-                <select class="aix-fi" v-model="rec.uom" style="width:100%">
-                  <option value="">— Select —</option>
-                  <option v-for="u in uomList" :key="u" :value="u">{{ u }}</option>
-                </select>
+                <SearchableSelect v-model="rec.uom" :options="ssOpts3" placeholder="— Select —" style="width:100%" />
               </div>
             </div>
 
@@ -181,6 +172,7 @@
 </template>
 
 <script setup>
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiList, apiSave, apiCall } from "../api/client.js";
@@ -355,6 +347,11 @@ const ICONS = {
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);
 }
+
+// ── Searchable dropdown options (typing filters the list) ──
+const ssOpts1 = computed(() => [{ value: '', label: '— Select —' }, ...(itemsList.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— Select —' }, ...(itemsList.value || []).map(i => ({ value: i.name, label: `${i.item_name || i.name}${i.item_type === 'Scrap Item' ? ' (Scrap)' : ''}` }))]);
+const ssOpts3 = computed(() => [{ value: '', label: '— Select —' }, ...(uomList.value || []).map(u => ({ value: u, label: u }))]);
 </script>
 
 <style scoped>

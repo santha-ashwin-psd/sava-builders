@@ -39,10 +39,7 @@
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-        <select class="bomx-fi bomx-status-filter" v-model="filterWorkstation">
-          <option value="">All Work Centres</option>
-          <option v-for="w in workstationOptions" :key="w" :value="w">{{ w }}</option>
-        </select>
+        <SearchableSelect v-model="filterWorkstation" :options="ssOpts1" placeholder="All Work Centres" compact />
       </div>
       <input class="bomx-search" v-model="search" type="text" placeholder="Search Operation by name or workstation…"/>
       <div class="bomx-list">
@@ -114,10 +111,7 @@
             </div>
             <div>
               <div class="bomx-hf-label">Default Workstation</div>
-              <select class="bomx-fi" v-model="doc.default_workstation" style="width:100%" :title="doc.default_workstation">
-                <option value="">— Select Workstation —</option>
-                <option v-for="w in workstations" :key="w.name" :value="w.name">{{ w.name }}</option>
-              </select>
+              <SearchableSelect v-model="doc.default_workstation" :options="ssOpts2" placeholder="— Select Workstation —" style="width:100%" />
             </div>
           </div>
           <div class="bomx-toggle-row">
@@ -131,10 +125,7 @@
             <div class="bomx-hdr-fields" style="grid-template-columns:1fr;padding:0;border:none;background:none;margin-bottom:20px">
               <div>
                 <div class="bomx-hf-label">QC Inspection Template</div>
-                <select class="bomx-fi" v-model="doc.quality_inspection_template" style="width:100%;max-width:360px">
-                  <option value="">— Select Template —</option>
-                  <option v-for="t in templates" :key="t.name" :value="t.name">{{ t.name }}</option>
-                </select>
+                <SearchableSelect v-model="doc.quality_inspection_template" :options="ssOpts3" placeholder="— Select Template —" style="width:100%;max-width:360px" />
               </div>
             </div>
 
@@ -198,6 +189,7 @@
 </template>
 
 <script setup>
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "../composables/useToast.js";
@@ -432,6 +424,11 @@ const ICONS = {
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);
 }
+
+// ── Searchable dropdown options (typing filters the list) ──
+const ssOpts1 = computed(() => [{ value: '', label: 'All Work Centres' }, ...(workstationOptions.value || []).map(w => ({ value: w, label: w }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— Select Workstation —' }, ...(workstations.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts3 = computed(() => [{ value: '', label: '— Select Template —' }, ...(templates.value || []).map(t => ({ value: t.name, label: t.name }))]);
 </script>
 
 <style scoped>

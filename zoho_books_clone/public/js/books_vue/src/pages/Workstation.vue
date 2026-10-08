@@ -31,10 +31,7 @@
       <span class="bomx-search-icon" v-html="icon('search',15)"></span>
       <input class="bomx-search-input" v-model="search" type="text" placeholder="Search workstations…"/>
     </div>
-    <select class="bomx-fi" v-model="filterType" style="width:150px">
-      <option value="">All Types</option>
-      <option v-for="t in types" :key="t.name" :value="t.name">{{ t.name }}</option>
-    </select>
+    <SearchableSelect v-model="filterType" :options="ssOpts1" placeholder="All Types" style="width:150px" compact />
     <select class="bomx-fi" v-model="filterStatus" style="width:130px">
       <option value="">All Status</option>
       <option value="active">Active</option>
@@ -158,17 +155,11 @@
             <div class="bomx-drawer-grid-2">
               <div>
                 <div class="bomx-hf-label">Workstation Type <span style="color:var(--bx-red)">*</span></div>
-                <select class="bomx-fi" v-model="doc.workstation_type" style="width:100%">
-                  <option value="">— Select Workstation Type —</option>
-                  <option v-for="t in types" :key="t.name" :value="t.name">{{ t.name }}</option>
-                </select>
+                <SearchableSelect v-model="doc.workstation_type" :options="ssOpts2" placeholder="— Select Workstation Type —" style="width:100%" />
               </div>
               <div>
                 <div class="bomx-hf-label">Warehouse</div>
-                <select class="bomx-fi" v-model="doc.warehouse" style="width:100%">
-                  <option value="">— Select Warehouse —</option>
-                  <option v-for="w in warehouses" :key="w.name" :value="w.name">{{ w.warehouse_name || w.name }}</option>
-                </select>
+                <SearchableSelect v-model="doc.warehouse" :options="ssOpts3" placeholder="— Select Warehouse —" style="width:100%" />
               </div>
             </div>
 
@@ -234,6 +225,7 @@
 </template>
 
 <script setup>
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "../composables/useToast.js";
@@ -486,6 +478,11 @@ const ICONS = {
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);
 }
+
+// ── Searchable dropdown options (typing filters the list) ──
+const ssOpts1 = computed(() => [{ value: '', label: 'All Types' }, ...(types.value || []).map(t => ({ value: t.name, label: t.name }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— Select Workstation Type —' }, ...(types.value || []).map(t => ({ value: t.name, label: t.name }))]);
+const ssOpts3 = computed(() => [{ value: '', label: '— Select Warehouse —' }, ...(warehouses.value || []).map(w => ({ value: w.name, label: w.warehouse_name || w.name }))]);
 </script>
 
 <style scoped>

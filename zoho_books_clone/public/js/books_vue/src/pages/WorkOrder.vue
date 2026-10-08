@@ -65,10 +65,7 @@
       <span v-html="icon('search',14)"></span>
       <input v-model="search" type="text" placeholder="Search by WO number, item…"/>
     </div>
-    <select class="bomx-fi" v-model="filterBom" style="max-width:220px" title="Filter by BOM">
-      <option value="">All BOMs</option>
-      <option v-for="b in usedBomOptions" :key="b.name" :value="b.name">{{ b.name }} — {{ b.label }}</option>
-    </select>
+    <SearchableSelect v-model="filterBom" :options="ssOpts1" placeholder="All BOMs" style="max-width:220px" compact />
     <span class="bomx-toolbar-count">{{ sorted.length }} order{{ sorted.length===1?'':'s' }}</span>
     <div style="flex:1"></div>
     <button class="bomx-btn bomx-btn-mfg" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> New Work Order</button>
@@ -210,20 +207,14 @@
               <div class="bomx-hdr-fields bomx-hf-cols-2-1" style="padding:0;border:none;background:none;margin-bottom:8px">
                 <div>
                   <div class="bomx-hf-label">Production Item</div>
-                  <select class="bomx-fi" v-model="selectedProductionItem" @change="onProductionItemChange" :disabled="readOnly" style="width:100%">
-                    <option value="">— Select Item —</option>
-                    <option v-for="i in manufacturedItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                  </select>
+                  <SearchableSelect v-model="selectedProductionItem" :options="ssOpts2" placeholder="— Select Item —" :disabled="readOnly" @select="onProductionItemChange()" style="width:100%" />
                   <div class="bomx-field-hint">Picking an item auto-suggests its BOM below — still overridable.</div>
                 </div>
               </div>
               <div class="bomx-hdr-fields bomx-hf-cols-2-1" style="padding:0;border:none;background:none;margin-bottom:8px">
                 <div>
                   <div class="bomx-hf-label">BOM <span style="color:var(--bx-red)">*</span></div>
-                  <select class="bomx-fi" v-model="wo.bom" @change="onBomChange" :disabled="readOnly" style="width:100%">
-                    <option value="">— Select Submitted BOM —</option>
-                    <option v-for="b in filteredBomList" :key="b.name" :value="b.name">{{ b.name }} — {{ b.item_name || b.item }} ({{ b.bom_type || 'Manufacturing' }})</option>
-                  </select>
+                  <SearchableSelect v-model="wo.bom" :options="ssOpts3" placeholder="— Select Submitted BOM —" :disabled="readOnly" @select="onBomChange()" style="width:100%" />
                   <div class="bomx-field-hint" v-if="wo.item_name">Manufactures: <strong>{{ wo.item_name }}</strong> ({{ wo.stock_uom }})</div>
                   <div class="bomx-field-hint" style="color:var(--bx-amber);font-weight:600" v-if="warnBomNotDefault && wo.bom && selectedBomIsNotDefault">
                     ⚠ This isn't the default BOM for {{ wo.item_name || selectedProductionItem }}.
@@ -249,32 +240,20 @@
               <div class="bomx-hdr-fields bomx-hf-cols-1-1" style="padding:0;border:none;background:none;margin-bottom:20px">
                 <div>
                   <div class="bomx-hf-label">Default Source Warehouse (Raw Materials) <span style="color:var(--bx-red)">*</span></div>
-                  <select class="bomx-fi" v-model="wo.source_warehouse" :disabled="!warehousesEditable" style="width:100%" @change="refreshAllRacks">
-                    <option value="">— Select —</option>
-                    <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                  </select>
+                  <SearchableSelect v-model="wo.source_warehouse" :options="ssOpts4" placeholder="— Select —" :disabled="!warehousesEditable" @select="refreshAllRacks()" style="width:100%" />
                 </div>
                 <div>
                   <div class="bomx-hf-label">Work-in-Progress Warehouse</div>
-                  <select class="bomx-fi" v-model="wo.wip_warehouse" :disabled="!warehousesEditable" style="width:100%">
-                    <option value="">— None (consume from Source directly) —</option>
-                    <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                  </select>
+                  <SearchableSelect v-model="wo.wip_warehouse" :options="ssOpts5" placeholder="— None (consume from Source directly) —" :disabled="!warehousesEditable" style="width:100%" />
                   <div class="bomx-field-hint">Optional. If set, use Issue Materials to stage raw materials here first.</div>
                 </div>
                 <div>
                   <div class="bomx-hf-label">Finished Goods Warehouse <span style="color:var(--bx-red)">*</span></div>
-                  <select class="bomx-fi" v-model="wo.fg_warehouse" :disabled="readOnly" style="width:100%">
-                    <option value="">— Select —</option>
-                    <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                  </select>
+                  <SearchableSelect v-model="wo.fg_warehouse" :options="ssOpts4" placeholder="— Select —" :disabled="readOnly" style="width:100%" />
                 </div>
                 <div>
                   <div class="bomx-hf-label">Scrap / By-Product Warehouse</div>
-                  <select class="bomx-fi" v-model="wo.scrap_warehouse" :disabled="readOnly" style="width:100%">
-                    <option value="">— Defaults to Finished Goods Warehouse —</option>
-                    <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                  </select>
+                  <SearchableSelect v-model="wo.scrap_warehouse" :options="ssOpts6" placeholder="— Defaults to Finished Goods Warehouse —" :disabled="readOnly" style="width:100%" />
                 </div>
               </div>
 
@@ -343,10 +322,7 @@
                   <div class="bomx-rm-card-body bomx-rm-card-body-3col">
                     <div class="bomx-rm-field bomx-rm-field-wide">
                       <label>Item Code <span v-if="rm.item_code" style="font-weight:400;color:var(--bx-muted,#94a3b8)">({{ itemUom(rm.item_code) }})</span></label>
-                      <select class="bomx-fi" v-model="rm.item_code" :disabled="readOnly || (isShared && grp.key!=='__shared__')" @change="refreshRackForRow(rm)">
-                        <option value="">— Select —</option>
-                        <option v-for="i in rawMaterialItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                      </select>
+                      <SearchableSelect v-model="rm.item_code" :options="ssOpts7" placeholder="— Select —" :disabled="readOnly || (isShared && grp.key!=='__shared__')" @select="refreshRackForRow(rm)" compact />
                     </div>
                     <div class="bomx-rm-field">
                       <label>{{ isShared && grp.key!=='__shared__' ? 'Qty for this Sub-Assembly' : 'Required Qty (Total)' }}</label>
@@ -355,10 +331,7 @@
                     </div>
                     <div class="bomx-rm-field">
                       <label>Source Warehouse</label>
-                      <select class="bomx-fi" v-model="rm.source_warehouse" :disabled="!warehousesEditable || (isShared && grp.key!=='__shared__')" @change="refreshRackForRow(rm)">
-                        <option value="">— Use Default —</option>
-                        <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                      </select>
+                      <SearchableSelect v-model="rm.source_warehouse" :options="ssOpts8" placeholder="— Use Default —" :disabled="!warehousesEditable || (isShared && grp.key!=='__shared__')" @select="refreshRackForRow(rm)" compact />
                     </div>
                     <div class="bomx-rm-field">
                       <label>Rack</label>
@@ -414,17 +387,11 @@
                   <div class="bomx-rm-card-body" style="grid-template-columns:1fr 1fr">
                     <div class="bomx-rm-field">
                       <label>Operation</label>
-                      <select class="bomx-fi" v-model="op.operation" :disabled="readOnly">
-                        <option value="">— Select —</option>
-                        <option v-for="o in operationsList" :key="o.name" :value="o.name">{{ o.name }}</option>
-                      </select>
+                      <SearchableSelect v-model="op.operation" :options="ssOpts9" placeholder="— Select —" :disabled="readOnly" compact />
                     </div>
                     <div class="bomx-rm-field">
                       <label>Workstation</label>
-                      <select class="bomx-fi" v-model="op.workstation" :disabled="readOnly">
-                        <option value="">— Select —</option>
-                        <option v-for="w in workstationsList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                      </select>
+                      <SearchableSelect v-model="op.workstation" :options="ssOpts10" placeholder="— Select —" :disabled="readOnly" compact />
                     </div>
                     <div class="bomx-rm-field">
                       <label>Planned (Mins)</label>
@@ -735,10 +702,7 @@
               <div class="bomx-hdr-fields bomx-hf-cols-1" style="padding:0;border:none;background:none;margin-bottom:20px">
                 <div>
                   <div class="bomx-hf-label">Sales Order</div>
-                  <select class="bomx-fi" v-model="wo.sales_order" :disabled="readOnly" style="width:100%">
-                    <option value="">— Select —</option>
-                    <option v-for="s in salesOrdersList" :key="s.name" :value="s.name">{{ s.name }}</option>
-                  </select>
+                  <SearchableSelect v-model="wo.sales_order" :options="ssOpts11" placeholder="— Select —" :disabled="readOnly" style="width:100%" />
                 </div>
               </div>
               <div class="bomx-section-lbl">Remarks</div>
@@ -823,10 +787,7 @@
             <div class="bomx-rm-card-body bomx-rm-card-body-2-1-auto">
               <div class="bomx-rm-field" v-if="!s.is_process_loss">
                 <label>Item</label>
-                <select class="bomx-fi" v-model="s.item_code">
-                  <option value="">— Select Item —</option>
-                  <option v-for="i in scrapPickerItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                </select>
+                <SearchableSelect v-model="s.item_code" :options="ssOpts12" placeholder="— Select Item —" compact />
               </div>
               <div class="bomx-rm-field" v-else>
                 <label>Item</label>
@@ -876,12 +837,7 @@
           </div>
           <div style="margin-bottom:14px">
             <div class="bomx-hf-label">Alternative Item <span style="color:var(--bx-red)">*</span></div>
-            <select class="bomx-fi" v-model="substituteForm.alternative_item_code" style="width:100%">
-              <option value="">— Select —</option>
-              <option v-for="o in visibleSubstituteOptions" :key="o.alternative_item_code" :value="o.alternative_item_code">
-                {{ o.alternative_item_code }}{{ o.is_default ? ' (default)' : '' }}{{ o.source_type === 'Recycled Scrap' ? ' ♻️' : '' }} — factor {{ o.conversion_factor }}
-              </option>
-            </select>
+            <SearchableSelect v-model="substituteForm.alternative_item_code" :options="ssOpts13" placeholder="— Select —" style="width:100%" />
             <div v-if="selectedOption && selectedOption.requires_approval" class="bomx-field-hint" style="color:var(--bx-amber);font-weight:600">
               This item requires approval — the substitution won't apply until a Books Admin / System Manager reviews it.
             </div>
@@ -926,6 +882,7 @@
 </template>
 
 <script setup>
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiSave, apiList, apiSubmit, apiCancel, apiDelete, apiAmend, apiCall, resolveCompany } from "../api/client.js";
@@ -3048,6 +3005,21 @@ const ICONS = {
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);
 }
+
+// ── Searchable dropdown options (typing filters the list) ──
+const ssOpts1 = computed(() => [{ value: '', label: 'All BOMs' }, ...(usedBomOptions.value || []).map(b => ({ value: b.name, label: `${b.name} — ${b.label}` }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— Select Item —' }, ...(manufacturedItems.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts3 = computed(() => [{ value: '', label: '— Select Submitted BOM —' }, ...(filteredBomList.value || []).map(b => ({ value: b.name, label: `${b.name} — ${b.item_name || b.item} (${b.bom_type || 'Manufacturing'})` }))]);
+const ssOpts4 = computed(() => [{ value: '', label: '— Select —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts5 = computed(() => [{ value: '', label: '— None (consume from Source directly) —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts6 = computed(() => [{ value: '', label: '— Defaults to Finished Goods Warehouse —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts7 = computed(() => [{ value: '', label: '— Select —' }, ...(rawMaterialItems.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts8 = computed(() => [{ value: '', label: '— Use Default —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts9 = computed(() => [{ value: '', label: '— Select —' }, ...(operationsList.value || []).map(o => ({ value: o.name, label: o.name }))]);
+const ssOpts10 = computed(() => [{ value: '', label: '— Select —' }, ...(workstationsList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts11 = computed(() => [{ value: '', label: '— Select —' }, ...(salesOrdersList.value || []).map(s => ({ value: s.name, label: s.name }))]);
+const ssOpts12 = computed(() => [{ value: '', label: '— Select Item —' }, ...(scrapPickerItems.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts13 = computed(() => [{ value: '', label: '— Select —' }, ...(visibleSubstituteOptions.value || []).map(o => ({ value: o.alternative_item_code, label: `${o.alternative_item_code}${o.is_default ? ' (default)' : ''}${o.source_type === 'Recycled Scrap' ? ' ♻️' : ''} — factor ${o.conversion_factor}` }))]);
 </script>
 
 <style scoped>

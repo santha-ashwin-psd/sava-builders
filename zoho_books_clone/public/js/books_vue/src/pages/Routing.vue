@@ -173,17 +173,11 @@
                   <div class="bomx-rm-card-body" style="grid-template-columns:1fr 1fr">
                     <div class="bomx-rm-field">
                       <label>Operation <span style="color:var(--bx-red)">*</span></label>
-                      <select class="bomx-fi" v-model="op.operation" @change="onOpChange(op)">
-                        <option value="">— Select —</option>
-                        <option v-for="o in operationsList" :key="o.name" :value="o.name">{{ o.name }}</option>
-                      </select>
+                      <SearchableSelect v-model="op.operation" :options="ssOpts1" placeholder="— Select —" @select="onOpChange(op)" compact />
                     </div>
                     <div class="bomx-rm-field">
                       <label>Workstation</label>
-                      <select class="bomx-fi" v-model="op.workstation" @change="onWorkstationChange(op)">
-                        <option value="">— Select —</option>
-                        <option v-for="w in workstationsList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                      </select>
+                      <SearchableSelect v-model="op.workstation" :options="ssOpts2" placeholder="— Select —" @select="onWorkstationChange(op)" compact />
                     </div>
                     <div class="bomx-rm-field">
                       <label>Time (Min)</label>
@@ -264,6 +258,7 @@
 </template>
 
 <script setup>
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "../composables/useToast.js";
@@ -558,6 +553,10 @@ const ICONS = {
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);
 }
+
+// ── Searchable dropdown options (typing filters the list) ──
+const ssOpts1 = computed(() => [{ value: '', label: '— Select —' }, ...(operationsList.value || []).map(o => ({ value: o.name, label: o.name }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— Select —' }, ...(workstationsList.value || []).map(w => ({ value: w.name, label: w.name }))]);
 </script>
 
 <style scoped>

@@ -103,10 +103,7 @@
           <div class="psx-hdr-fields">
             <div>
               <div class="psx-hf-label">Work Order</div>
-              <select class="psx-fi" v-model="ps.work_order" @change="onWOChange" :disabled="!isNew" style="width:100%">
-                <option value="">— Select —</option>
-                <option v-for="w in workOrderList" :key="w.name" :value="w.name">{{ w.name }} — {{ w.production_item }}</option>
-              </select>
+              <SearchableSelect v-model="ps.work_order" :options="ssOpts1" placeholder="— Select —" :disabled="!isNew" @select="onWOChange()" style="width:100%" />
               <div v-if="!workOrderList.length" style="font-size:11px;color:#94a3b8;margin-top:4px">
                 No submitted Work Orders on a Packing BOM found. Create a Work Order against a Packing-type BOM first.
               </div>
@@ -121,10 +118,7 @@
             </div>
             <div>
               <div class="psx-hf-label">Sourced From (Bulk WO)</div>
-              <select class="psx-fi" v-model="ps.source_work_order" :disabled="readOnly" style="width:100%">
-                <option value="">— None —</option>
-                <option v-for="w in workOrderList" :key="w.name" :value="w.name">{{ w.name }} — {{ w.production_item }}</option>
-              </select>
+              <SearchableSelect v-model="ps.source_work_order" :options="ssOpts2" placeholder="— None —" :disabled="readOnly" style="width:100%" />
             </div>
             <div>
               <div class="psx-hf-label">Qty to Pack</div>
@@ -140,17 +134,11 @@
             </div>
             <div>
               <div class="psx-hf-label">Consume Materials From</div>
-              <select class="psx-fi" v-model="ps.source_warehouse" :disabled="postLocked" style="width:100%">
-                <option value="">— Select —</option>
-                <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-              </select>
+              <SearchableSelect v-model="ps.source_warehouse" :options="ssOpts3" placeholder="— Select —" :disabled="postLocked" style="width:100%" />
             </div>
             <div>
               <div class="psx-hf-label">Receive Packed Goods At</div>
-              <select class="psx-fi" v-model="ps.target_warehouse" :disabled="postLocked" style="width:100%">
-                <option value="">— Defaults to Work Order FG Warehouse —</option>
-                <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-              </select>
+              <SearchableSelect v-model="ps.target_warehouse" :options="ssOpts4" placeholder="— Defaults to Work Order FG Warehouse —" :disabled="postLocked" style="width:100%" />
             </div>
             <div v-if="ps.stock_entry">
               <div class="psx-hf-label">Stock Entry Posted</div>
@@ -177,10 +165,7 @@
               <div v-for="(row, idx) in ps.items" :key="idx" class="psx-item-card"
                 :class="{ 'psx-item-card-done': flt(row.packed_qty) >= flt(row.required_qty) - 0.001 && flt(row.required_qty) > 0 }">
                 <div class="psx-item-card-hdr">
-                  <select class="psx-fi psx-fi-inline psx-item-card-title" v-model="row.item_code" :disabled="readOnly">
-                    <option value="">— Select —</option>
-                    <option v-for="i in itemsList" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                  </select>
+                  <SearchableSelect v-model="row.item_code" :options="ssOpts5" placeholder="— Select —" :disabled="readOnly" style="flex:1;min-width:0" compact />
                   <button v-if="!readOnly" class="psx-btn-icon danger" @click="ps.items.splice(idx,1)">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                   </button>
@@ -197,27 +182,15 @@
                   </div>
                   <div class="psx-item-field">
                     <label>UOM</label>
-                    <select class="psx-fi" v-model="row.uom" :disabled="readOnly">
-                      <option value="">—</option>
-                      <option v-for="u in uomList" :key="u.name" :value="u.name">{{ u.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="row.uom" :options="ssOpts6" placeholder="—" :disabled="readOnly" compact />
                   </div>
                   <div class="psx-item-field">
                     <label>Source Warehouse</label>
-                    <select class="psx-fi" v-model="row.source_warehouse" :disabled="postLocked">
-                      <option value="">— Use "Consume Materials From" above —</option>
-                      <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="row.source_warehouse" :options="ssOpts7" placeholder="— Use &quot;Consume Materials From&quot; above —" :disabled="postLocked" compact />
                   </div>
                   <div class="psx-item-field" v-if="row.batch_no || !postLocked">
                     <label>Batch</label>
-                    <select v-if="batchOptionsFor(row).length || row.batch_no" class="psx-fi" v-model="row.batch_no" :disabled="postLocked">
-                      <option value="">— Select Batch —</option>
-                      <option v-for="b in batchOptionsFor(row)" :key="b.batch_no" :value="b.batch_no">
-                        {{ b.batch_no }} — {{ fmt(b.qty) }} on hand{{ b.is_expired ? ' · Expired' : (b.expires_soon ? ' · Expires soon' : '') }}
-                      </option>
-                      <option v-if="row.batch_no && !batchOptionsFor(row).some(b => b.batch_no === row.batch_no)" :value="row.batch_no">{{ row.batch_no }}</option>
-                    </select>
+                    <SearchableSelect v-if="batchOptionsFor(row).length || row.batch_no" v-model="row.batch_no" :options="batchSelectOptions(row)" placeholder="— Select Batch —" :disabled="postLocked" compact />
                     <input v-else class="psx-fi" v-model="row.batch_no" placeholder="No batches in warehouse" :disabled="postLocked" />
                   </div>
                 </div>
@@ -276,6 +249,7 @@
 </template>
 
 <script setup>
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiList, apiSave, apiCall, resolveCompany } from "../api/client.js";
@@ -716,6 +690,24 @@ const ICONS = {
 };
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);
+}
+
+// ── Searchable dropdown options (typing filters the list) ──
+const ssOpts1 = computed(() => [{ value: '', label: '— Select —' }, ...(workOrderList.value || []).map(w => ({ value: w.name, label: `${w.name} — ${w.production_item}` }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— None —' }, ...(workOrderList.value || []).map(w => ({ value: w.name, label: `${w.name} — ${w.production_item}` }))]);
+const ssOpts3 = computed(() => [{ value: '', label: '— Select —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts4 = computed(() => [{ value: '', label: '— Defaults to Work Order FG Warehouse —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts5 = computed(() => [{ value: '', label: '— Select —' }, ...(itemsList.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts6 = computed(() => [{ value: '', label: '—' }, ...(uomList.value || []).map(u => ({ value: u.name, label: u.name }))]);
+const ssOpts7 = computed(() => [{ value: '', label: '— Use "Consume Materials From" above —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+
+// Searchable batch options for a Packing Slip row (keeps an already-saved batch visible
+// even if it is no longer in the warehouse list, as the native select did).
+function batchSelectOptions(row) {
+  const list = batchOptionsFor(row) || [];
+  const opts = list.map(b => ({ value: b.batch_no, label: `${b.batch_no} — ${fmt(b.qty)} on hand${b.is_expired ? ' · Expired' : (b.expires_soon ? ' · Expires soon' : '')}` }));
+  if (row.batch_no && !list.some(b => b.batch_no === row.batch_no)) opts.push({ value: row.batch_no, label: row.batch_no });
+  return [{ value: '', label: '— Select Batch —' }, ...opts];
 }
 </script>
 

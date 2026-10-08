@@ -224,10 +224,7 @@
           <div class="bomx-hdr-fields">
             <div>
               <div class="bomx-hf-label">Production Item</div>
-              <select class="bomx-fi" v-model="bom.item" :disabled="readOnly" style="width:100%" :title="itemNameFor(bom.item) || bom.item">
-                <option value="">— Select —</option>
-                <option v-for="i in manufacturedItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-              </select>
+              <SearchableSelect v-model="bom.item" :options="ssOpts1" placeholder="— Select —" :disabled="readOnly" style="width:100%" />
             </div>
             <div>
               <div class="bomx-hf-label">Quantity</div>
@@ -235,10 +232,7 @@
             </div>
             <div>
               <div class="bomx-hf-label">Routing</div>
-              <select class="bomx-fi" v-model="bom.routing" :disabled="readOnly" @change="onRoutingChange" style="width:100%">
-                <option value="">— Select —</option>
-                <option v-for="r in routingsList" :key="r.name" :value="r.name">{{ r.name }}</option>
-              </select>
+              <SearchableSelect v-model="bom.routing" :options="ssOpts2" placeholder="— Select —" :disabled="readOnly" @select="onRoutingChange()" style="width:100%" />
             </div>
             <div>
               <div class="bomx-hf-label">BOM Type</div>
@@ -252,10 +246,7 @@
           <div v-if="bom.bom_type === 'Packing'" class="bomx-hdr-fields" style="border-top:1px dashed var(--bx-border)">
             <div>
               <div class="bomx-hf-label">Bulk Item</div>
-              <select class="bomx-fi" v-model="bom.bulk_item" @change="onBulkItemChange" :disabled="readOnly" style="width:100%" :title="itemNameFor(bom.bulk_item) || bom.bulk_item">
-                <option value="">— Select —</option>
-                <option v-for="i in bulkItemOptions" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-              </select>
+              <SearchableSelect v-model="bom.bulk_item" :options="ssOpts3" placeholder="— Select —" :disabled="readOnly" @select="onBulkItemChange()" style="width:100%" />
               <div class="bomx-field-hint">The loose/bulk output (from a Manufacturing BOM) that this Packing BOM packs into the Production Item.</div>
             </div>
             <div>
@@ -324,10 +315,7 @@
                   <div class="bomx-rm-card-hdr">
                     <span class="bomx-tree-icon">📦</span>
                     <span style="color:var(--bx-mfgB);font-weight:700;margin-right:2px">{{ idx + 1 }}.</span>
-                    <select class="bomx-fi bomx-fi-inline bomx-rm-card-title" v-model="rm.item_code" @change="onRmItemChange(rm)" :disabled="readOnly" :title="itemNameFor(rm.item_code) || rm.item_code">
-                      <option value="">— Select item —</option>
-                      <option v-for="i in rawMaterialItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="rm.item_code" :options="ssOpts4" placeholder="— Select item —" :disabled="readOnly" @select="onRmItemChange(rm)" style="flex:1;min-width:0" compact />
                     <div class="bomx-rm-card-amt">
                       <span class="bomx-rm-card-amt-lbl">Amount</span>
                       <span class="bomx-tree-cost" style="color:var(--bx-blue)">{{ INR((rm.qty||0)*(rm.rate||0)) }}</span>
@@ -347,9 +335,7 @@
                     </div>
                     <div class="bomx-rm-field">
                       <label>UOM</label>
-                      <select class="bomx-fi" :value="rm.uom" @change="onRmUomChange(rm, $event.target.value)" :disabled="readOnly">
-                        <option v-for="u in rmUomOptions(rm)" :key="u" :value="u">{{ u }}</option>
-                      </select>
+                      <SearchableSelect :model-value="rm.uom" :options="rmUomOptions(rm).map(u => ({ value: u, label: u }))" placeholder="— Select —" :disabled="readOnly" @select="onRmUomChange(rm, $event.value)" compact />
                       <div v-if="rmUomWarning(rm)" class="bomx-landed-hint">⚠ {{ rmUomWarning(rm) }}</div>
                     </div>
                     <div class="bomx-rm-field">
@@ -365,10 +351,7 @@
                         Sub-Assembly BOM
                         <button v-if="rm.item_code && !bomsList.some(b => b.item === rm.item_code)" type="button" class="bomx-info-btn" @click="toggleSubAssemblyHint(idx)" title="No submitted BOM exists yet for this item — it can't be used as a sub-assembly until one is created.">ⓘ</button>
                       </label>
-                      <select class="bomx-fi" v-model="rm.sub_assembly_bom" @change="onSubAssemblyBomChange(rm)" :disabled="readOnly">
-                        <option value="">— Select —</option>
-                        <option v-for="b in bomsList.filter(b => b.item === rm.item_code)" :key="b.name" :value="b.name">{{ b.name }}</option>
-                      </select>
+                      <SearchableSelect v-model="rm.sub_assembly_bom" :options="[{ value: '', label: '— Select —' }, ...(bomsList.filter(b => b.item === rm.item_code) || []).map(b => ({ value: b.name, label: b.name }))]" placeholder="— Select —" :disabled="readOnly" @select="onSubAssemblyBomChange(rm)" compact />
                       <div class="bomx-field-hint bomx-tooltip-pop" v-if="openSubAssemblyHintIdx === idx && rm.item_code && !bomsList.some(b => b.item === rm.item_code)">No submitted BOM exists yet for this item — it can't be used as a sub-assembly until one is created.</div>
                       <div class="bomx-field-hint bomx-field-hint-danger" v-else-if="rm.sub_assembly_bom && wouldCreateCycle(rm.sub_assembly_bom)">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -397,10 +380,7 @@
                   <div class="bomx-rm-card-hdr">
                     <span class="bomx-tree-icon">🏷️</span>
                     <span style="color:var(--bx-mfgB);font-weight:700;margin-right:2px">{{ idx + 1 }}.</span>
-                    <select class="bomx-fi bomx-fi-inline bomx-rm-card-title" v-model="pi.item_code" @change="onPackingItemChange(pi)" :disabled="readOnly" :title="itemNameFor(pi.item_code) || pi.item_code">
-                      <option value="">— Select item —</option>
-                      <option v-for="i in packingMaterialItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="pi.item_code" :options="ssOpts5" placeholder="— Select item —" :disabled="readOnly" @select="onPackingItemChange(pi)" style="flex:1;min-width:0" compact />
                     <div class="bomx-rm-card-amt">
                       <span class="bomx-rm-card-amt-lbl">Amount</span>
                       <span class="bomx-tree-cost" style="color:var(--bx-blue)">{{ INR((pi.qty||0)*(pi.rate||0)) }}</span>
@@ -416,9 +396,7 @@
                     </div>
                     <div class="bomx-rm-field">
                       <label>UOM</label>
-                      <select class="bomx-fi" v-model="pi.uom" :disabled="readOnly">
-                        <option v-for="u in uomList" :key="u" :value="u">{{ u }}</option>
-                      </select>
+                      <SearchableSelect v-model="pi.uom" :options="ssOpts6" placeholder="— Select —" :disabled="readOnly" compact />
                     </div>
                     <div class="bomx-rm-field">
                       <label>Rate (₹)</label>
@@ -448,14 +426,8 @@
                   <div class="bomx-tree-dot" style="background:var(--bx-violet)"></div>
                   <span class="bomx-tree-icon">⚙️</span>
                   <div class="bomx-tree-selects">
-                    <select class="bomx-fi bomx-fi-inline" style="flex:1" v-model="op.operation" :disabled="readOnly">
-                      <option value="">— Operation —</option>
-                      <option v-for="o in operationsList" :key="o.name" :value="o.name">{{ o.name }}</option>
-                    </select>
-                    <select class="bomx-fi bomx-fi-inline" style="flex:1" v-model="op.workstation" @change="onWorkstationChange(op)" :disabled="readOnly">
-                      <option value="">— Workstation —</option>
-                      <option v-for="w in workstationsList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="op.operation" :options="ssOpts7" placeholder="— Operation —" :disabled="readOnly" style="flex:1" compact />
+                    <SearchableSelect v-model="op.workstation" :options="ssOpts8" placeholder="— Workstation —" :disabled="readOnly" @select="onWorkstationChange(op)" style="flex:1" compact />
                   </div>
                   <input class="bomx-fi bomx-fi-mono bomx-tree-rate-inp" type="number" v-model="op.time_in_mins" min="0" step="any" :disabled="readOnly"/>
                   <input class="bomx-fi bomx-fi-mono bomx-tree-rate-inp" type="number" v-model="op.hour_rate" min="0" step="any" :disabled="readOnly"/>
@@ -533,10 +505,7 @@
                   <div class="bomx-rm-bar" :style="{ background: 'var(--bx-green)' }"></div>
                   <div class="bomx-rm-card-hdr">
                     <span class="bomx-tree-icon">🗑️</span>
-                    <select class="bomx-fi bomx-fi-inline bomx-rm-card-title" v-model="sc.item_code" :disabled="readOnly" :title="itemNameFor(sc.item_code) || sc.item_code">
-                      <option value="">— Select item —</option>
-                      <option v-for="i in scrapPickerItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="sc.item_code" :options="ssOpts9" placeholder="— Select item —" :disabled="readOnly" style="flex:1;min-width:0" compact />
                     <div class="bomx-rm-card-amt">
                       <span class="bomx-rm-card-amt-lbl">Amount</span>
                       <span class="bomx-tree-cost" style="color:var(--bx-red)">{{ INR((sc.qty||0)*(sc.rate||0)) }}</span>
@@ -628,10 +597,7 @@
             <!-- ── Compare tab ── -->
             <div v-if="activeTab==='compare'">
               <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
-                <select class="bomx-fi" style="min-width:220px" v-model="compareBom2">
-                  <option value="">— Select BOM to compare —</option>
-                  <option v-for="b in bomsList.filter(b => b.name !== bom.name)" :key="b.name" :value="b.name">{{ b.name }} ({{ b.item }})</option>
-                </select>
+                <SearchableSelect v-model="compareBom2" :options="[{ value: '', label: '— Select BOM to compare —' }, ...(bomsList.filter(b => b.name !== bom.name) || []).map(b => ({ value: b.name, label: `${b.name} (${b.item})` }))]" placeholder="— Select BOM to compare —" style="min-width:220px" compact />
                 <button class="bomx-btn bomx-btn-mfg" @click="runCompare" :disabled="compareLoading || !compareBom2 || isNew">
                   {{ compareLoading ? 'Comparing…' : 'Compare' }}
                 </button>
@@ -753,10 +719,7 @@
           <div class="bomx-hf-label">Add Scrap Alternative</div>
           <div style="display:flex;gap:8px;align-items:flex-end;margin-top:6px;flex-wrap:wrap">
             <div style="flex:1;min-width:180px">
-              <select class="bomx-fi" v-model="newScrapMapping.alternative_item_code" style="width:100%">
-                <option value="">— Select scrap item —</option>
-                <option v-for="i in availableScrapPickerItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-              </select>
+              <SearchableSelect v-model="newScrapMapping.alternative_item_code" :options="ssOpts10" placeholder="— Select scrap item —" style="width:100%" />
             </div>
             <div style="width:110px">
               <input class="bomx-fi bomx-fi-mono" type="number" v-model="newScrapMapping.conversion_factor" placeholder="Factor" min="0.0001" step="any" title="Conversion Factor"/>
@@ -782,6 +745,7 @@
 </template>
 
 <script setup>
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "../composables/useToast.js";
@@ -2220,6 +2184,18 @@ const ICONS = {
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);
 }
+
+// ── Searchable dropdown options (typing filters the list) ──
+const ssOpts1 = computed(() => [{ value: '', label: '— Select —' }, ...(manufacturedItems.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— Select —' }, ...(routingsList.value || []).map(r => ({ value: r.name, label: r.name }))]);
+const ssOpts3 = computed(() => [{ value: '', label: '— Select —' }, ...(bulkItemOptions.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts4 = computed(() => [{ value: '', label: '— Select item —' }, ...(rawMaterialItems.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts5 = computed(() => [{ value: '', label: '— Select item —' }, ...(packingMaterialItems.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts6 = computed(() => [{ value: '', label: '— Select —' }, ...(uomList.value || []).map(u => ({ value: u, label: u }))]);
+const ssOpts7 = computed(() => [{ value: '', label: '— Operation —' }, ...(operationsList.value || []).map(o => ({ value: o.name, label: o.name }))]);
+const ssOpts8 = computed(() => [{ value: '', label: '— Workstation —' }, ...(workstationsList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts9 = computed(() => [{ value: '', label: '— Select item —' }, ...(scrapPickerItems.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts10 = computed(() => [{ value: '', label: '— Select scrap item —' }, ...(availableScrapPickerItems.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
 </script>
 
 <style scoped>

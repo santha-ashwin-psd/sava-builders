@@ -42,10 +42,7 @@
     </div>
 
     <div class="bomx-list-filters">
-      <select class="bomx-fi bomx-status-filter" v-model="filterStatus">
-        <option value="">All Status</option>
-        <option v-for="s in statusOptions" :key="s" :value="s">{{ s }}</option>
-      </select>
+      <SearchableSelect v-model="filterStatus" :options="ssOpts1" placeholder="All Status" compact />
       <input class="bomx-fi bomx-search-full" v-model="search" type="text" placeholder="Search by Plan ID, company, status, or remarks…"/>
     </div>
 
@@ -159,31 +156,19 @@
                 <div class="bomx-fg bomx-fg-4">
                   <div>
                     <label class="bomx-fl">Source Warehouse (Raw Materials) <span style="color:var(--bx-red)">*</span></label>
-                    <div class="bomx-fi-w"><select class="bomx-fi" v-model="pp.default_source_warehouse" :disabled="readOnly">
-                      <option value="">— Select —</option>
-                      <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                    </select></div>
+                    <div class="bomx-fi-w"><SearchableSelect v-model="pp.default_source_warehouse" :options="ssOpts2" placeholder="— Select —" :disabled="readOnly" compact /></div>
                   </div>
                   <div>
                     <label class="bomx-fl">Work-in-Progress Warehouse</label>
-                    <div class="bomx-fi-w"><select class="bomx-fi" v-model="pp.default_wip_warehouse" :disabled="readOnly">
-                      <option value="">— Select —</option>
-                      <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                    </select></div>
+                    <div class="bomx-fi-w"><SearchableSelect v-model="pp.default_wip_warehouse" :options="ssOpts2" placeholder="— Select —" :disabled="readOnly" compact /></div>
                   </div>
                   <div>
                     <label class="bomx-fl">Finished Goods Warehouse <span style="color:var(--bx-red)">*</span></label>
-                    <div class="bomx-fi-w"><select class="bomx-fi" v-model="pp.default_fg_warehouse" :disabled="readOnly">
-                      <option value="">— Select —</option>
-                      <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                    </select></div>
+                    <div class="bomx-fi-w"><SearchableSelect v-model="pp.default_fg_warehouse" :options="ssOpts2" placeholder="— Select —" :disabled="readOnly" compact /></div>
                   </div>
                   <div>
                     <label class="bomx-fl">Scrap / By-Product Warehouse</label>
-                    <div class="bomx-fi-w"><select class="bomx-fi" v-model="pp.default_scrap_warehouse" :disabled="readOnly">
-                      <option value="">— Defaults to FG Warehouse —</option>
-                      <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                    </select></div>
+                    <div class="bomx-fi-w"><SearchableSelect v-model="pp.default_scrap_warehouse" :options="ssOpts3" placeholder="— Defaults to FG Warehouse —" :disabled="readOnly" compact /></div>
                   </div>
                 </div>
               </div>
@@ -266,26 +251,17 @@
                     <tbody>
                       <tr v-for="(row, idx) in pp.po_items" :key="idx">
                         <td style="min-width:150px">
-                          <select class="bomx-fi" v-model="row.item_code" @change="onPOItemChange(row)" :disabled="readOnly">
-                            <option value="">— Select —</option>
-                            <option v-for="i in stockItems" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                          </select>
+                          <SearchableSelect v-model="row.item_code" :options="ssOpts4" placeholder="— Select —" :disabled="readOnly" @select="onPOItemChange(row)" compact />
                         </td>
                         <td style="min-width:130px">
-                          <select class="bomx-fi" v-model="row.bom_no" :disabled="readOnly || !row.item_code">
-                            <option value="">{{ row.item_code ? '— Select Submitted BOM —' : '— Select an Item first —' }}</option>
-                            <option v-for="b in bomsFor(row.item_code)" :key="b.name" :value="b.name">{{ b.name }}</option>
-                          </select>
+                          <SearchableSelect v-model="row.bom_no" :options="[{ value: '', label: row.item_code ? '— Select Submitted BOM —' : '— Select an Item first —' }, ...(bomsFor(row.item_code) || []).map(b => ({ value: b.name, label: b.name }))]" :placeholder="row.item_code ? '— Select Submitted BOM —' : '— Select an Item first —'" :disabled="readOnly || !row.item_code" compact />
                         </td>
                         <td class="right" style="width:70px;min-width:70px;max-width:70px">
                           <input class="bomx-fi bomx-fi-mono" style="text-align:right" type="number" v-model="row.planned_qty" min="0.01" step="any" :disabled="readOnly"/>
                         </td>
                         <td class="mono" style="color:var(--bx-muted)">{{ row.stock_uom || '—' }}</td>
                         <td style="min-width:130px">
-                          <select class="bomx-fi" v-model="row.warehouse" :disabled="readOnly">
-                            <option value="">— Use Default —</option>
-                            <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                          </select>
+                          <SearchableSelect v-model="row.warehouse" :options="ssOpts5" placeholder="— Use Default —" :disabled="readOnly" compact />
                         </td>
                         <td class="right mono" style="color:var(--bx-muted)">{{ flt(row.work_order_created_qty) ? fmt(row.work_order_created_qty) : '—' }}</td>
                         <td v-if="!readOnly">
@@ -433,6 +409,7 @@
 </template>
 
 <script setup>
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { ref, onMounted, computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiSave, apiList, apiSubmit, apiCancel, apiAmend, apiCall, apiDelete, resolveCompany } from "../api/client.js";
@@ -991,6 +968,13 @@ const ICONS = {
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);
 }
+
+// ── Searchable dropdown options (typing filters the list) ──
+const ssOpts1 = computed(() => [{ value: '', label: 'All Status' }, ...(statusOptions || []).map(s => ({ value: s, label: s }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— Select —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts3 = computed(() => [{ value: '', label: '— Defaults to FG Warehouse —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
+const ssOpts4 = computed(() => [{ value: '', label: '— Select —' }, ...(stockItems.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts5 = computed(() => [{ value: '', label: '— Use Default —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
 </script>
 
 <style scoped>

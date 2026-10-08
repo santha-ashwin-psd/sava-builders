@@ -8,10 +8,7 @@
         <span class="bomx-panel-title">📦 All Material Requests <span class="bomx-count">({{ sorted.length }})</span></span>
         <button class="bomx-btn bomx-btn-mfg bomx-btn-sm" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',12)"></span> New</button>
       </div>
-      <select class="bomx-fi bomx-status-filter" v-model="filterStatus">
-        <option value="">All Status</option>
-        <option v-for="s in statusOptions" :key="s" :value="s">{{ s }}</option>
-      </select>
+      <SearchableSelect v-model="filterStatus" :options="ssOpts1" placeholder="All Status" compact />
       <input class="bomx-search" v-model="search" type="text" placeholder="Search Material Requests…"/>
       <div class="bomx-list">
         <template v-if="loading">
@@ -129,10 +126,7 @@
                 <div class="bomx-rm-card-body">
                   <div class="bomx-rm-field" style="grid-column:span 2">
                     <label>Item</label>
-                    <select class="bomx-fi" v-model="row.item_code" @change="onItemChange(row)" :disabled="readOnly">
-                      <option value="">— Select Item —</option>
-                      <option v-for="i in itemsList" :key="i.name" :value="i.name">{{ i.item_name || i.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="row.item_code" :options="ssOpts2" placeholder="— Select Item —" :disabled="readOnly" @select="onItemChange(row)" compact />
                   </div>
                   <div class="bomx-rm-field">
                     <label>Required Qty</label>
@@ -140,17 +134,11 @@
                   </div>
                   <div class="bomx-rm-field">
                     <label>UOM</label>
-                    <select class="bomx-fi" v-model="row.uom" :disabled="readOnly">
-                      <option value="">—</option>
-                      <option v-for="u in uomList" :key="u.name" :value="u.name">{{ u.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="row.uom" :options="ssOpts3" placeholder="—" :disabled="readOnly" compact />
                   </div>
                   <div class="bomx-rm-field" style="grid-column:span 2">
                     <label>Warehouse</label>
-                    <select class="bomx-fi" v-model="row.warehouse" :disabled="readOnly">
-                      <option value="">— Select —</option>
-                      <option v-for="w in warehouseList" :key="w.name" :value="w.name">{{ w.name }}</option>
-                    </select>
+                    <SearchableSelect v-model="row.warehouse" :options="ssOpts4" placeholder="— Select —" :disabled="readOnly" compact />
                   </div>
                 </div>
               </div>
@@ -173,6 +161,7 @@
 </template>
 
 <script setup>
+import SearchableSelect from "../components/SearchableSelect.vue";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiSave, apiList, apiSubmit, apiCancel, apiAmend, resolveCompany } from "../api/client.js";
@@ -404,6 +393,12 @@ const ICONS = {
 function icon(name, size) {
   return (ICONS[name] || "").replace("<svg ", `<svg width="${size}" height="${size}" `);
 }
+
+// ── Searchable dropdown options (typing filters the list) ──
+const ssOpts1 = computed(() => [{ value: '', label: 'All Status' }, ...(statusOptions || []).map(s => ({ value: s, label: s }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— Select Item —' }, ...(itemsList.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts3 = computed(() => [{ value: '', label: '—' }, ...(uomList.value || []).map(u => ({ value: u.name, label: u.name }))]);
+const ssOpts4 = computed(() => [{ value: '', label: '— Select —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
 </script>
 
 <style scoped>
