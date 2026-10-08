@@ -454,6 +454,7 @@ def get_landed_cost_breakdown(pairs):
             "landed_rate": landed_rate,
             "base_rate": flt(rate - landed_rate, 4),
             "has_landed_cost": bool(landed_value),
+            "actual_qty": qty,
         }
     return result
 

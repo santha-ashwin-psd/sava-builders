@@ -1633,7 +1633,10 @@ function refreshRmLandedCosts() {
         );
         for (const p of pairs) {
           const info = (r || {})[`${p.item_code}::${p.warehouse}`];
-          if (info) byItem[p.item_code] = { ...info, warehouse: p.warehouse };
+          // Only a warehouse that currently HOLDS stock has a live valuation;
+          // an empty bin's rate is frozen at its last value (stale), so skip it
+          // and let the in-stock fallback below decide the rate.
+          if (info && (parseFloat(info.actual_qty) || 0) > 0) byItem[p.item_code] = { ...info, warehouse: p.warehouse };
         }
         rmLanded.value = byItem;
       } catch (e) { /* non-fatal — BOM rate stays user-editable regardless */ }
