@@ -30,7 +30,7 @@
 
     <!-- Date range picker (hidden for aging reports which use as-of-date) -->
     <div class="books-card date-range-bar">
-      <template v-if="['ar','ap','stockval','payables_mis'].includes(activeReport)">
+      <template v-if="['ar','ap','stockval','price_mrp','payables_mis'].includes(activeReport)">
         <span class="dr-icon">📅</span>
         <label class="dr-label">As of Date</label>
         <input type="date" v-model="toDate" class="dr-input" />
@@ -1621,6 +1621,61 @@
         <div v-else class="empty-msg">No stock on hand in any warehouse.</div>
       </template>
       <div v-else class="empty-msg">{{stockValRan ? 'No stock on hand for this company.' : 'Run the report to see results.'}}</div>
+    </div>
+
+    <!-- Selling Price & MRP -->
+    <div v-if="activeReport === 'price_mrp'" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon sv-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">Selling Price &amp; MRP</div>
+          <div class="bs-page-head-sub">Item-wise selling price and MRP per warehouse, from the Item master. Where MRP is not set on an item, the selling price is shown as MRP.</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <button class="bs-export-btn" @click="exportPriceMrpCSV" :disabled="!priceMrpFiltered.length">
+            Export
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <input type="text" v-model="priceMrpSearch" class="dr-input" placeholder="Search item code or name" style="min-width:220px" />
+        <select v-model="priceMrpWarehouse" class="dr-input">
+          <option value="">All warehouses</option>
+          <option v-for="w in (priceMrp?.warehouses || [])" :key="w" :value="w">{{ w }}</option>
+        </select>
+      </div>
+
+      <template v-if="priceMrpLoading"><div class="loading-shimmer" style="height:160px;border-radius:8px"></div></template>
+      <template v-else-if="priceMrp && priceMrpFiltered.length">
+        <div class="iws-table-wrap">
+          <table class="iws-table">
+            <thead>
+              <tr>
+                <th class="iws-idx">#</th>
+                <th>Item</th>
+                <th>Warehouse</th>
+                <th class="ta-r">Stock Qty</th>
+                <th class="ta-r">Selling Price (₹)</th>
+                <th class="ta-r">MRP (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(row, i) in priceMrpFiltered" :key="row.item_code + '|' + row.warehouse">
+                <td class="iws-idx">{{ i + 1 }}</td>
+                <td class="iws-item-name">{{ row.item_name || row.item_code }}<div class="mono-sm" style="opacity:.65">{{ row.item_code }}</div></td>
+                <td>{{ row.warehouse || '—' }}</td>
+                <td class="ta-r mono-sm">{{ row.qty }} {{ row.uom }}</td>
+                <td class="ta-r mono-sm fw-700 green">{{ fmtAmt(row.selling_price) }}</td>
+                <td class="ta-r mono-sm fw-700">{{ fmtAmt(row.mrp) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+      <div v-else class="empty-msg">{{ priceMrpRan ? 'No items found.' : 'Run the report to see results.' }}</div>
     </div>
 
     <!-- Daily Business MIS -->
@@ -5216,6 +5271,18 @@ function exportSglItemsCSV() {
 const stockVal        = ref(null);
 const stockValLoading = ref(false);
 const stockValRan     = ref(false);
+const priceMrp          = ref(null);
+const priceMrpLoading   = ref(false);
+const priceMrpRan       = ref(false);
+const priceMrpSearch    = ref("");
+const priceMrpWarehouse = ref("");
+const priceMrpFiltered  = computed(() => {
+  const q = priceMrpSearch.value.trim().toLowerCase();
+  return (priceMrp.value?.rows || []).filter(r =>
+    (!priceMrpWarehouse.value || r.warehouse === priceMrpWarehouse.value) &&
+    (!q || (r.item_code || "").toLowerCase().includes(q) || (r.item_name || "").toLowerCase().includes(q))
+  );
+});
 
 const dailyMis   = ref(null);
 const misLoading = ref(false);
@@ -5732,7 +5799,7 @@ function exportInvoiceProfitRowCSV(row) {
 }
 
 async function runReport() {
-  const needsRange = !['ar','ap','stockval','payables_mis'].includes(activeReport.value);
+  const needsRange = !['ar','ap','stockval','price_mrp','payables_mis'].includes(activeReport.value);
   if (needsRange && fromDate.value && toDate.value && fromDate.value > toDate.value) {
     alert("From date cannot be after To date.");
     return;
@@ -5809,6 +5876,12 @@ async function runReport() {
     try { stockVal.value = await apiGET("zoho_books_clone.api.inventory.get_stock_valuation_report", { as_of_date: toDate.value }) || null; }
     catch { stockVal.value = null; }
     stockValLoading.value = false;
+  }
+  if (activeReport.value === "price_mrp") {
+    priceMrpLoading.value = true; priceMrpRan.value = true;
+    try { priceMrp.value = await apiGET("zoho_books_clone.api.inventory.get_selling_mrp_report", {}) || null; }
+    catch { priceMrp.value = null; }
+    priceMrpLoading.value = false;
   }
   if (activeReport.value === "mis") {
     misLoading.value = true; misRan.value = true;
@@ -6095,6 +6168,13 @@ function exportStockValCSV() {
   a.download = "stock_valuation_summary_" + toDate.value + ".csv";
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function exportPriceMrpCSV() {
+  const q = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+  downloadCSV(["Item Code","Item Name","Warehouse","Stock Qty","UOM","Selling Price","MRP"],
+    priceMrpFiltered.value.map(r => [q(r.item_code), q(r.item_name), q(r.warehouse), r.qty, q(r.uom), r.selling_price, r.mrp].join(",")),
+    "selling_price_mrp_" + toDate.value + ".csv");
 }
 
 function exportDailyMisCSV() {
@@ -6736,6 +6816,7 @@ const reports = [
   { key: "tb",  label: "Trial Balance",  icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>` },
   { key: "stockgl", label: "Stock vs GL", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>` },
   { key: "stockval", label: "Stock Valuation", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>` },
+  { key: "price_mrp", label: "Selling Price & MRP", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>` },
   { key: "mis", label: "Daily Business MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>` },
   { key: "sales_mis", label: "Sales MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>` },
   { key: "receivables", label: "Collection & Receivables MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>` },

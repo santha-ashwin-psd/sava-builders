@@ -7,7 +7,7 @@ Heavy queries are delegated to inventory.utils or db.queries.
 
 import frappe
 from frappe import _
-from frappe.utils import flt, today, getdate
+from frappe.utils import cint, flt, today, getdate
 from zoho_books_clone.api.session import _get_company
 
 from zoho_books_clone.inventory.utils import (
@@ -1402,6 +1402,71 @@ def get_stock_valuation_report(warehouse=None, as_of_date=None):
         "as_of_date":   as_of_date or today(),
         "by_warehouse": [{"warehouse": k, "stock_value": v} for k, v in sorted(by_warehouse.items())],
         "grand_total":  grand_total,
+    }
+
+
+@frappe.whitelist(allow_guest=False)
+def get_selling_mrp_report(warehouse=None, search=None, in_stock_only=0):
+    """
+    Item-wise Selling Price & MRP per warehouse.
+
+    One row per (item, warehouse Bin). Items with no Bin yet get one row with
+    an empty warehouse (hidden when a warehouse filter is applied).
+    Selling price = Item.standard_rate. MRP = Item.mrp, falling back to the
+    selling rate when MRP is not set (same rule invoices use).
+    """
+    in_stock_only = cint(in_stock_only)
+    search = (search or "").strip()
+
+    item_kwargs = {
+        "filters": {"disabled": 0, "is_stock_item": 1},
+        "fields": ["name", "item_name", "item_group", "stock_uom", "standard_rate", "mrp"],
+        "order_by": "item_name asc",
+        "limit_page_length": 0,
+    }
+    if search:
+        like = "%" + search + "%"
+        item_kwargs["or_filters"] = [["name", "like", like], ["item_name", "like", like]]
+    items = frappe.get_all("Item", **item_kwargs)
+
+    bin_filters = {}
+    if warehouse:
+        bin_filters["warehouse"] = warehouse
+    if in_stock_only:
+        bin_filters["actual_qty"] = [">", 0]
+    bins_by_item = {}
+    for b in frappe.get_all(
+        "Bin",
+        filters=bin_filters,
+        fields=["item_code", "warehouse", "actual_qty"],
+        order_by="warehouse asc",
+        limit_page_length=0,
+    ):
+        bins_by_item.setdefault(b.item_code, []).append(b)
+
+    rows = []
+    for it in items:
+        selling = flt(it.standard_rate)
+        mrp = flt(it.mrp) or selling
+        base = {
+            "item_code": it.name,
+            "item_name": it.item_name,
+            "item_group": it.item_group,
+            "uom": it.stock_uom,
+            "selling_price": selling,
+            "mrp": mrp,
+            "mrp_is_set": 1 if flt(it.mrp) else 0,
+        }
+        bins = bins_by_item.get(it.name)
+        if bins:
+            for b in bins:
+                rows.append({**base, "warehouse": b.warehouse, "qty": flt(b.actual_qty)})
+        elif not warehouse and not in_stock_only:
+            rows.append({**base, "warehouse": "", "qty": 0})
+
+    return {
+        "rows": rows,
+        "warehouses": sorted({r["warehouse"] for r in rows if r["warehouse"]}),
     }
 
 
