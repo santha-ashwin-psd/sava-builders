@@ -58,6 +58,7 @@ export const NAV = [
   { path: "/inventory/items",               label: "Items",            icon: "box",        module: "inventory"  },
   { path: "/inventory/item-groups",         label: "Item Groups",      icon: "folder",     module: "inventory"  },
   { path: "/inventory/warehouses",          label: "Warehouses",       icon: "warehouse",  module: "inventory"  },
+  { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },
   { path: "/inventory/opening-stock",       label: "Opening Stock",    icon: "opening",    module: "inventory"  },
   { path: "/inventory/stock-entries",       label: "Stock Entries",    icon: "stack",      module: "inventory"  },
   { path: "/inventory/adjustments",         label: "Stock Adjustments", icon: "repeat",    module: "inventory"  },
@@ -68,52 +69,51 @@ export const NAV = [
   { path: "/inventory/batches",             label: "Batch Tracking",   icon: "qr",         module: "inventory"  },
   { path: "/inventory/settings",            label: "Settings",         icon: "gear",       module: "inventory"  },
 
-  { section: "Assets" },
-  { path: "/assets",                        label: "Assets",           icon: "box",        module: "inventory"  },
-  { path: "/assets/asset-category",         label: "Asset Category",   icon: "folder",     module: "inventory"  },
-  { path: "/assets/disposals",               label: "Asset Disposals",  icon: "trash",      module: "inventory"  },
-  { path: "/assets/movements",              label: "Asset Movements",  icon: "truck",      module: "inventory"  },
-  { path: "/assets/repairs",                label: "Asset Repairs",    icon: "gear",       module: "inventory"  },
-  { path: "/assets/value-adjustments",      label: "Value Adjustments",icon: "balance",    module: "inventory"  },
-  { path: "/assets/quantity-adjustments",   label: "Quantity Write-offs", icon: "alert",   module: "inventory"  },
-  { path: "/assets/reports",                label: "Asset Reports",    icon: "chart",      module: "inventory"  },
-  { path: "/assets/department",             label: "Department",       icon: "users",      module: "inventory"  },
-  { path: "/assets/depreciation-schedule",  label: "Depreciation Schedule", icon: "calendar", module: "inventory"  },
-  { path: "/assets/maintenance-log",        label: "Maintenance Log",  icon: "gear",       module: "inventory"  },
+  // { section: "Assets" },  // hidden for Sava
+  // { path: "/assets",                        label: "Assets",           icon: "box",        module: "inventory"  },  // hidden for Sava
+  // { path: "/assets/asset-category",         label: "Asset Category",   icon: "folder",     module: "inventory"  },  // hidden for Sava
+  // { path: "/assets/disposals",               label: "Asset Disposals",  icon: "trash",      module: "inventory"  },  // hidden for Sava
+  // { path: "/assets/movements",              label: "Asset Movements",  icon: "truck",      module: "inventory"  },  // hidden for Sava
+  // { path: "/assets/repairs",                label: "Asset Repairs",    icon: "gear",       module: "inventory"  },  // hidden for Sava
+  // { path: "/assets/value-adjustments",      label: "Value Adjustments",icon: "balance",    module: "inventory"  },  // hidden for Sava
+  // { path: "/assets/quantity-adjustments",   label: "Quantity Write-offs", icon: "alert",   module: "inventory"  },  // hidden for Sava
+  // { path: "/assets/reports",                label: "Asset Reports",    icon: "chart",      module: "inventory"  },  // hidden for Sava
+  // { path: "/assets/department",             label: "Department",       icon: "users",      module: "inventory"  },  // hidden for Sava
+  // { path: "/assets/depreciation-schedule",  label: "Depreciation Schedule", icon: "calendar", module: "inventory"  },  // hidden for Sava
+  // { path: "/assets/maintenance-log",        label: "Maintenance Log",  icon: "gear",       module: "inventory"  },  // hidden for Sava
 
   { section: "Quality" },
   { path: "/quality/inspections",           label: "Inspections",      icon: "shield",     module: "inventory"  },
   { path: "/quality/templates",             label: "QC Templates",     icon: "file",       module: "inventory"  },
   { path: "/quality/approvals",             label: "QC Approvals",     icon: "check",      module: "inventory"  },
 
-  { section: "Manufacturing" },
+  // { section: "Manufacturing" },  // hidden for Sava
   // { path: "/manufacturing",                    label: "Dashboard",        icon: "grid",       module: "inventory" },
   // Setup — masters used to define how things are made
-  { path: "/manufacturing/workstation-type",  label: "Workstation Types",icon: "badge",      module: "inventory" },
-  { path: "/manufacturing/workstation",       label: "Workstations",     icon: "gear",       module: "inventory" },
-  { path: "/manufacturing/operation",         label: "Operations",       icon: "stack",      module: "inventory" },
-  { path: "/manufacturing/routing",           label: "Routing",          icon: "recurring",  module: "inventory" },
-  { path: "/manufacturing/bom",               label: "Bill of Materials", icon: "box",        module: "inventory" },
+  // { path: "/manufacturing/workstation-type",  label: "Workstation Types",icon: "badge",      module: "inventory" },  // hidden for Sava
+  // { path: "/manufacturing/workstation",       label: "Workstations",     icon: "gear",       module: "inventory" },  // hidden for Sava
+  // { path: "/manufacturing/operation",         label: "Operations",       icon: "stack",      module: "inventory" },  // hidden for Sava
+  // { path: "/manufacturing/routing",           label: "Routing",          icon: "recurring",  module: "inventory" },  // hidden for Sava
+  // { path: "/manufacturing/bom",               label: "Bill of Materials", icon: "box",        module: "inventory" },  // hidden for Sava
   // Plan — decide what and how much to make
-  { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },
-  { path: "/manufacturing/production-plan",   label: "Production Plan",  icon: "chart",      module: "inventory" },
+  // { path: "/manufacturing/production-plan",   label: "Production Plan",  icon: "chart",      module: "inventory" },  // hidden for Sava
   // Execute — run production day to day
-  { path: "/manufacturing/work-order",        label: "Work Orders",      icon: "order",      module: "inventory" },
-  { path: "/manufacturing/job-card",          label: "Job Cards",        icon: "stack",      module: "inventory" },
-  { path: "/manufacturing/packing-slip",      label: "Packing Slips",     icon: "box",        module: "inventory" },
+  // { path: "/manufacturing/work-order",        label: "Work Orders",      icon: "order",      module: "inventory" },  // hidden for Sava
+  // { path: "/manufacturing/job-card",          label: "Job Cards",        icon: "stack",      module: "inventory" },  // hidden for Sava
+  // { path: "/manufacturing/packing-slip",      label: "Packing Slips",     icon: "box",        module: "inventory" },  // hidden for Sava
   // Exceptions — substitutions when the plan doesn't hold
-  { path: "/manufacturing/alternative-item", label: "Alternative Items",   icon: "stack", module: "inventory" },
-  { path: "/manufacturing/material-substitutions", label: "Substitution Approvals", icon: "check", module: "inventory" },
+  // { path: "/manufacturing/alternative-item", label: "Alternative Items",   icon: "stack", module: "inventory" },  // hidden for Sava
+  // { path: "/manufacturing/material-substitutions", label: "Substitution Approvals", icon: "check", module: "inventory" },  // hidden for Sava
   // Insights & configuration
-  { path: "/manufacturing/reports",          label: "Mfg Reports",         icon: "chart",      module: "inventory" },
-  { path: "/manufacturing/settings",         label: "Mfg Settings",        icon: "gear",       module: "inventory" },
+  // { path: "/manufacturing/reports",          label: "Mfg Reports",         icon: "chart",      module: "inventory" },  // hidden for Sava
+  // { path: "/manufacturing/settings",         label: "Mfg Settings",        icon: "gear",       module: "inventory" },  // hidden for Sava
 
-  { section: "GST/Taxes" },
+  { section: "Taxes" },
   { path: "/gst/tax-templates",             label: "Tax Templates",    icon: "percent",    module: "taxes"      },
-  { path: "/gst/gstr1",                     label: "GSTR-1",           icon: "gstfile",    module: "accounts"   },
-  { path: "/gst/gstr3b",                    label: "GSTR-3B",          icon: "gstfile",    module: "accounts"   },
-  { path: "/gst/einvoice",                  label: "e-Invoice",        icon: "qr",         module: "accounts"   },
-  { path: "/gst/tds",                       label: "TDS",              icon: "percent",    module: "accounts"   },
+  // { path: "/gst/gstr1",                     label: "GSTR-1",           icon: "gstfile",    module: "accounts"   },  // hidden for Sava
+  // { path: "/gst/gstr3b",                    label: "GSTR-3B",          icon: "gstfile",    module: "accounts"   },  // hidden for Sava
+  // { path: "/gst/einvoice",                  label: "e-Invoice",        icon: "qr",         module: "accounts"   },  // hidden for Sava
+  // { path: "/gst/tds",                       label: "TDS",              icon: "percent",    module: "accounts"   },  // hidden for Sava
 
   { section: "Reports" },
   { path: "/reports",                       label: "All Reports",      icon: "chart",      module: "reports"    },
@@ -132,9 +132,9 @@ export const NAV = [
   { path: "/settings/roles",                label: "Roles",            icon: "shield",     module: "admin"      },
   // { path: "/settings/organization",         label: "Organization",     icon: "org",        module: "admin"      },
   // { path: "/settings/security",             label: "Security",         icon: "lock",       module: null         },
-  { path: "/settings/sso",                  label: "Single Sign-On",   icon: "shield",     module: "admin"      },
+  // { path: "/settings/sso",                  label: "Single Sign-On",   icon: "shield",     module: "admin"      },  // hidden for Sava
   // { path: "/settings/audit-log",            label: "Audit Log",        icon: "audit",      module: "admin"      },
-  { path: "/settings/integrations",         label: "Integrations",     icon: "webhook",    module: "admin"      },
+  // { path: "/settings/integrations",         label: "Integrations",     icon: "webhook",    module: "admin"      },  // hidden for Sava
 ];
 
 // Returns a label for the topbar given a route path. Falls back to "Books".
