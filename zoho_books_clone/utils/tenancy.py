@@ -322,6 +322,11 @@ hp_job_card         = _make_hp("Job Card")
 hp_material_request = _make_hp("Material Request")
 hp_packing_slip     = _make_hp("Packing Slip")
 
+
+# ── Project (uses the `company` field like Warehouse/Material Request) ─────
+qc_project = _make_qc("Project")
+hp_project = _make_hp("Project")
+
 # ── Assets (uses the `company` field like Manufacturing/transactional docs) ─
 
 qc_asset = _make_qc("Asset")

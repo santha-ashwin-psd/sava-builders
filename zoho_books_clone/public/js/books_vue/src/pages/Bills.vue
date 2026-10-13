@@ -266,6 +266,10 @@
                   <input v-model="form.bill_date" type="date" class="inv-fi" :disabled="billEditMode === 'submitted'" />
                 </div>
                 <div>
+                  <label class="inv-lbl">Project</label>
+                  <SearchableSelect v-model="form.project" :options="projects" :disabled="billEditMode === 'submitted'" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" />
+                </div>
+                <div>
                   <label class="inv-lbl">Cost Center</label>
                   <select v-model="form.cost_center" class="inv-fi" :disabled="billEditMode === 'submitted'">
                     <option value="">— Select —</option>
@@ -665,7 +669,7 @@
                     <span class="inv-dmeta-lbl">Bill Date</span>
                   </div>
                   <div class="inv-dmeta-date-val">{{ fmtDate(viewDoc.posting_date) }}</div>
-                  <div v-if="viewDoc.posting_time" class="inv-dmeta-date-sub">{{ viewDoc.posting_time }}</div>
+                  <div v-if="viewDoc.posting_time" class="inv-dmeta-date-sub">{{ String(viewDoc.posting_time).slice(0, 8) }}</div>
                 </div>
                 <div class="inv-details-meta-col">
                   <div class="inv-dmeta-icon-row">
@@ -781,6 +785,10 @@
                   </div>
                 </template>
                 <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">No item details available.</div>
+                <div v-if="viewDoc.project" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px">
+                  <span style="color:#6b7280;font-weight:600">Project:</span>
+                  <span style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:5px;padding:2px 10px;font-weight:600">{{ viewDoc.project }}</span>
+                </div>
                 <!-- Cost Center badge -->
                 <div v-if="viewDoc.cost_center" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px">
                   <span style="color:#6b7280;font-weight:600">Cost Center:</span>
@@ -1017,6 +1025,7 @@ import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import { useProjectOptions } from "../composables/useProjectOptions.js";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";
@@ -1129,8 +1138,9 @@ const copyingLast = ref(false);
 
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", item_name: "", description: "", hsn_code: "", qty: 1, rate: 0, uom: "Nos", _standardRate: 0, discount_percentage: 0, discount_amount: 0, amount: 0, tax_code: "", expense_account: "", collapsed: false, has_batch_no: 0, batch_no: "", batch_expiry_date: "", batchOptions: [], _batchQty: null });
-const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "33-Tamil Nadu", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
+const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", project: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "33-Tamil Nadu", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
 const vendorAddresses = ref([]);
+const { projects, fetchProjects } = useProjectOptions();
 const addrModal = reactive({
   open: false, saving: false,
   address_title: "", address_type: "Billing", address_line1: "", address_line2: "",
@@ -1363,24 +1373,25 @@ const timelineSteps = computed(() => {
 function openNew() {
   billEditMode.value = "normal";
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "33-Tamil Nadu", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", project: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "33-Tamil Nadu", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
   vendorAddresses.value = [];
   lines.value = [blankLine()];
   Object.assign(billCollapsed, { details: false, billing: true, lines: false, remarks: true });
-  fetchVendors(""); fetchItems(""); fetchWarehouses("");
+  fetchVendors(""); fetchItems(""); fetchWarehouses(""); fetchProjects("");
   drawerOpen.value = true;
 }
 async function openEdit(b, fromView = false) {
   reopenViewAfterSave.value = fromView;
   billEditMode.value = b.docstatus === 1 ? "submitted" : "normal";
   editingName.value = b.name;
-  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", remarks: b.remark || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "33-Tamil Nadu", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
+  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", remarks: b.remark || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", project: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "33-Tamil Nadu", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
   vendorAddresses.value = [];
   lines.value = [blankLine()];
-  fetchVendors(""); fetchItems(""); fetchWarehouses("");
+  fetchVendors(""); fetchItems(""); fetchWarehouses(""); fetchProjects("", b.project || "");
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Purchase Invoice", b.name);
+    if (doc?.project) { form.project = doc.project; fetchProjects("", doc.project); }
     if (doc?.items?.length) {
       lines.value = doc.items.map(i => ({
         id: _id++, item_code: i.item_code || "", item_name: i.item_name || "", description: i.description || "",
@@ -1493,7 +1504,7 @@ async function openView(b) {
       status: doc.status ?? viewDoc.value.status,
       due_date: doc.due_date || viewDoc.value.due_date,
       posting_time: doc.posting_time || "",
-      cost_center: doc.cost_center, place_of_supply: doc.place_of_supply, set_warehouse: doc.set_warehouse, billing_address: doc.billing_address,
+      cost_center: doc.cost_center, project: doc.project || "", place_of_supply: doc.place_of_supply, set_warehouse: doc.set_warehouse, billing_address: doc.billing_address,
       billing_address_name: doc.billing_address_name, remark: doc.remark || "",
       discount_type: doc.discount_type || "Percentage",
       additional_discount_percentage: doc.additional_discount_percentage,
@@ -1848,6 +1859,7 @@ async function saveBill(submit) {
       update_stock: form.update_stock ? 1 : 0, set_warehouse: form.set_warehouse || "",
       billing_address: form.billing_address || "",
       billing_address_name: form.billing_address_name || "",
+      project: form.project || null,
       cost_center: form.cost_center || "",
       place_of_supply: form.place_of_supply || "",
       currency: form.currency || "INR",

@@ -204,11 +204,15 @@
                 </div>
                 <div class="dc-info-item">
                   <div class="dc-info-lbl">Date</div>
-                  <div class="dc-info-val">{{ viewDoc.posting_date||'—' }}<template v-if="viewDoc.posting_time"> {{ viewDoc.posting_time }}</template></div>
+                  <div class="dc-info-val">{{ viewDoc.posting_date||'—' }}<span v-if="viewDoc.posting_time" style="margin-left:6px">{{ String(viewDoc.posting_time).slice(0, 8) }}</span></div>
                 </div>
                 <div class="dc-info-item">
                   <div class="dc-info-lbl">Dispatch Warehouse</div>
                   <div class="dc-info-val" :class="viewDoc.set_warehouse?'':'dc-info-empty'">{{ viewDoc.set_warehouse||'—' }}</div>
+                </div>
+                <div class="dc-info-item">
+                  <div class="dc-info-lbl">Project</div>
+                  <div class="dc-info-val" :class="viewDoc.project?'':'dc-info-empty'">{{ viewDoc.project||'-' }}</div>
                 </div>
                 <div class="dc-info-item">
                   <div class="dc-info-lbl">Total Qty</div>
@@ -425,6 +429,10 @@
             </div>
             <div class="add-card-body" :class="{collapsed:collapsed.transport}">
               <div class="inv-fg inv-fg2">
+                <div style="grid-column:1/-1">
+                  <label class="inv-lbl">Project</label>
+                  <SearchableSelect v-model="form.project" :options="projects" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" />
+                </div>
                 <div style="grid-column:1/-1">
                   <label class="inv-lbl">Dispatch Warehouse</label>
                   <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Ship stock from…" @search="fetchWarehouses" />
@@ -689,6 +697,7 @@ import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import { useProjectOptions } from "../composables/useProjectOptions.js";
 
 const { toast } = useToast();
 const route = useRoute();
@@ -735,6 +744,7 @@ const selectedShippingAddr = computed(() => customerAddresses.value.find(a => a.
 const customers  = ref([]);
 const items      = ref([]);
 const warehouses = ref([]);
+const { projects, fetchProjects } = useProjectOptions();
 const salesOrders = ref([]);
 
 let _lineId = 1;
@@ -746,6 +756,7 @@ const form = reactive({
   posting_date: new Date().toISOString().slice(0, 10),
   sales_order: "",
   set_warehouse: "",
+  project: "",
   lr_no: "",
   transporter_name: "",
   billing_address: "",
@@ -933,6 +944,7 @@ async function openView(r) {
         items:                doc?.items || [],
         remarks:              doc?.remarks || r.remarks || "",
         set_warehouse:        doc?.set_warehouse || "",
+        project:              doc?.project || "",
         shipping_address:     doc?.shipping_address || doc?.customer_address || "",
         shipping_address_name:doc?.shipping_address_name || "",
         billing_address:      doc?.billing_address || "",
@@ -1066,6 +1078,7 @@ function resetForm() {
     posting_date: new Date().toISOString().slice(0, 10),
     sales_order: "",
     set_warehouse: "",
+    project: "",
     lr_no: "",
     transporter_name: "",
     billing_address: "",
@@ -1085,6 +1098,7 @@ function openNew() {
   fetchItems("");
   fetchWarehouses("");
   fetchSalesOrders("");
+  fetchProjects("");
   formOpen.value = true;
 }
 
@@ -1095,6 +1109,7 @@ async function openEdit(r) {
   fetchItems("");
   fetchWarehouses("");
   fetchSalesOrders("");
+  fetchProjects("");
   formOpen.value = true;
 
   // Pre-fill from existing doc
@@ -1127,6 +1142,7 @@ async function openEdit(r) {
       }));
       if (doc?.remarks)               form.remarks = doc.remarks;
       if (doc?.set_warehouse)         form.set_warehouse = doc.set_warehouse;
+      if (doc?.project)               { form.project = doc.project; fetchProjects("", doc.project); }
       if (doc?.shipping_address)      form.shipping_address = doc.shipping_address;
       if (doc?.shipping_address_name) form.shipping_address_name = doc.shipping_address_name;
       if (doc?.billing_address)       form.billing_address = doc.billing_address;
@@ -1378,6 +1394,7 @@ async function saveChallan(submit) {
       posting_date:          form.posting_date,
       sales_order:           form.sales_order || undefined,
       set_warehouse:         form.set_warehouse || "",
+      project:               form.project || null,
       lr_no:                 form.lr_no || "",
       transporter_name:      form.transporter_name || "",
       billing_address:       form.billing_address || "",

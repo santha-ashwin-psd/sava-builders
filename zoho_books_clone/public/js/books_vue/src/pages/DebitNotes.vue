@@ -699,7 +699,7 @@
           </template>
           <template v-if="viewTab==='details'">
             <div class="dn-meta-grid">
-              <div><div class="dn-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}<template v-if="viewDoc.posting_time"> {{ viewDoc.posting_time }}</template></div></div>
+              <div><div class="dn-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.posting_date) }}<span v-if="viewDoc.posting_time" style="margin-left:6px">{{ String(viewDoc.posting_time).slice(0, 8) }}</span></div></div>
               <div><div class="dn-meta-lbl">Return Against</div>
                 <DocLink v-if="viewDoc.return_against" doctype="Purchase Invoice" :name="viewDoc.return_against" />
                 <span v-else class="mono-sm text-muted">—</span>

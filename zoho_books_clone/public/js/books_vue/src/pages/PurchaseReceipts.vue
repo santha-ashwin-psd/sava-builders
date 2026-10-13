@@ -215,11 +215,15 @@
                 </div>
                 <div class="pr-info-item">
                   <div class="pr-info-lbl">Date</div>
-                  <div class="pr-info-val">{{ viewDoc.posting_date||'—' }}<template v-if="viewDoc.posting_time"> {{ viewDoc.posting_time }}</template></div>
+                  <div class="pr-info-val">{{ viewDoc.posting_date||'—' }}<span v-if="viewDoc.posting_time" style="margin-left:6px">{{ String(viewDoc.posting_time).slice(0, 8) }}</span></div>
                 </div>
                 <div class="pr-info-item">
                   <div class="pr-info-lbl">Receiving Warehouse</div>
                   <div class="pr-info-val" :class="viewDoc.set_warehouse?'':'pr-info-empty'">{{ viewDoc.set_warehouse||'—' }}</div>
+                </div>
+                <div class="pr-info-item">
+                  <div class="pr-info-lbl">Project</div>
+                  <div class="pr-info-val" :class="viewDoc.project?'':'pr-info-empty'">{{ viewDoc.project||'-' }}</div>
                 </div>
                 <div class="pr-info-item">
                   <div class="pr-info-lbl">Total Qty</div>
@@ -354,6 +358,10 @@
             </div>
             <div class="add-card-body" :class="{collapsed:collapsed.receiving}">
               <div class="inv-fg inv-fg2">
+                <div style="grid-column:1/-1">
+                  <label class="inv-lbl">Project</label>
+                  <SearchableSelect v-model="form.project" :options="projects" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" @open="fetchProjects('', form.project)" />
+                </div>
                 <div style="grid-column:1/-1">
                   <label class="inv-lbl">Warehouse</label>
                   <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…"
@@ -510,6 +518,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { apiList, apiGet, apiGET, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import { useProjectOptions } from "../composables/useProjectOptions.js";
 import DocLink from "../components/DocLink.vue";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
@@ -549,11 +558,12 @@ const vendorOptions = ref([]);
 const itemOptions   = ref([]);
 const poOptions     = ref([]);
 const warehouses    = ref([]);
+const { projects, fetchProjects } = useProjectOptions();
 const collapsed = reactive({ details: false, receiving: false, items: false });
 
 const form = reactive({
   supplier: "", supplier_name: "", posting_date: new Date().toISOString().slice(0,10),
-  purchase_order: "", set_warehouse: "", remarks: "", items: [],
+  purchase_order: "", set_warehouse: "", project: "", remarks: "", items: [],
 });
 
 const counts = computed(() => ({
@@ -750,7 +760,7 @@ async function confirmAction() {
 function resetForm() {
   Object.assign(form, {
     supplier: "", supplier_name: "", posting_date: new Date().toISOString().slice(0,10),
-    purchase_order: "", set_warehouse: "", remarks: "", items: [],
+    purchase_order: "", set_warehouse: "", project: "", remarks: "", items: [],
   });
 }
 
@@ -761,6 +771,7 @@ function openNew() {
   fetchItems("");
   fetchPOs("");
   fetchWarehouses("");
+  fetchProjects("");
   addItem();
   formOpen.value = true;
 }
@@ -783,9 +794,11 @@ async function openEdit(r) {
       posting_date:   doc.posting_date || new Date().toISOString().slice(0,10),
       purchase_order: doc.purchase_order || "",
       set_warehouse:  doc.set_warehouse || "",
+      project:        doc.project || "",
       remarks:        doc.remarks || "",
       items: [],
     });
+    fetchProjects("", doc.project || "");
     if (doc.purchase_order) fetchPOs("");
     const items = doc.items || [];
     const codes = [...new Set(items.map(it => it.item_code).filter(Boolean))];
@@ -879,6 +892,13 @@ async function onPOSelect(opt) {
   const poName = opt?.value ?? opt;
   form.purchase_order = poName;
   if (!poName) return;
+  try {
+    if (!form.project) {
+      const pr = await apiList("Purchase Order", { fields: ["name", "project"], filters: [["name", "=", poName]], limit: 1 });
+      const p = pr?.[0]?.project;
+      if (p) { form.project = p; fetchProjects("", p); }
+    }
+  } catch {}
   try {
     const res = await apiGET("zoho_books_clone.api.docs.get_purchase_order_fulfillment", { purchase_order: poName });
     const lines = (res?.lines || []).filter(it => flt(it.remaining_to_receive) > 0);
@@ -1047,6 +1067,7 @@ async function saveGRN(submit) {
       company,
       purchase_order: form.purchase_order || null,
       set_warehouse: form.set_warehouse || null,
+      project: form.project || null,
       remarks: form.remarks || "",
       items: usable.map(it => {
         const rowQty = parseFloat(it.qty) || 1;

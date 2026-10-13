@@ -97,6 +97,10 @@
               <div class="bomx-hf-label">Required By <span style="color:var(--bx-red)">*</span></div>
               <input class="bomx-fi" type="date" v-model="mr.posting_date" :disabled="readOnly" style="width:100%"/>
             </div>
+            <div>
+              <div class="bomx-hf-label">Project</div>
+              <SearchableSelect v-model="mr.project" :options="projects" :disabled="readOnly" placeholder="Select project (optional)" @search="q => fetchProjects(q, mr.project)" />
+            </div>
           </div>
           <div class="bomx-toggle-row" v-if="mr.production_plan">
             <div class="bomx-field-hint" style="margin:0">
@@ -162,6 +166,7 @@
 
 <script setup>
 import SearchableSelect from "../components/SearchableSelect.vue";
+import { useProjectOptions } from "../composables/useProjectOptions.js";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiSave, apiList, apiSubmit, apiCancel, apiAmend, resolveCompany } from "../api/client.js";
@@ -234,11 +239,13 @@ function emptyMR() {
     posting_date: new Date().toISOString().slice(0, 10),
     company: "",
     production_plan: "",
+    project: "",
     items: [],
     remarks: "",
   };
 }
 const mr = ref(emptyMR());
+const { projects, fetchProjects } = useProjectOptions();
 
 const companiesList = ref([]);
 const itemsList = ref([]);
@@ -269,6 +276,7 @@ onMounted(async () => {
     warehouseList.value = whs || [];
 
     await loadList();
+    await fetchProjects("");
     if (route.params.name && !isNew.value) await loadMR();
     else if (isNew.value) mr.value.company = co || "";
   } catch (e) {
@@ -298,6 +306,7 @@ async function loadMR() {
   const data = await apiGet("Material Request", route.params.name);
   mr.value = data;
   if (!mr.value.items) mr.value.items = [];
+  if (mr.value.project) fetchProjects("", mr.value.project);
 }
 
 function addItem() {

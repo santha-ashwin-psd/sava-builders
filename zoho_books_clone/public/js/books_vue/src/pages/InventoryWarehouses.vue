@@ -48,6 +48,20 @@
       </div>
     </div>
 
+    <!-- Store Role / Project filters (Sava A2) -->
+    <select v-model="filterRole" class="sales-select" title="Filter by store role">
+      <option value="">All Store Roles</option>
+      <option v-for="r in STORE_ROLES" :key="r" :value="r">{{ r }}</option>
+      <option value="__none__">No role</option>
+    </select>
+    <select v-model="filterProject" class="sales-select" title="Filter by project">
+      <option value="">All Projects</option>
+      <option v-for="p in projectFilterOptions" :key="p" :value="p">{{ p }}</option>
+    </select>
+    <button v-if="filtersActive" class="wh-action-btn" @click="clearFilters">
+      <span v-html="icon('x', 12)"></span><span class="wh-btn-label"> Clear</span>
+    </button>
+
     <!-- View toggle pill -->
     <div class="wh-view-toggle">
       <button class="wh-vt-btn" :class="{ 'wh-vt-btn--active': viewMode === 'cards' }" @click="viewMode = 'cards'">
@@ -238,6 +252,7 @@
               <div class="wh-card-name">{{ child.warehouse_name || child.name }}</div>
               <div class="wh-card-meta">
                 <span v-if="child.city" class="wh-card-city">📍 {{ child.city }}{{ child.state ? ', ' + child.state : '' }}</span>
+                <span v-if="child.project" class="wh-card-city">📁 {{ child.project }}</span>
               </div>
             </div>
             <div class="wh-card-right">
@@ -245,6 +260,7 @@
                 :style="{ background: whMeta(child.warehouse_type).bg, color: whMeta(child.warehouse_type).color }">
                 {{ child.warehouse_type || 'Stores' }}
               </span>
+              <span v-if="child.store_role" class="wh-badge wh-badge-role">{{ child.store_role }}</span>
               <span v-if="child.is_group" class="wh-badge wh-badge-blue">Group</span>
               <span v-if="child.disabled" class="wh-badge wh-badge-red">Off</span>
             </div>
@@ -792,6 +808,20 @@
             <SearchableSelect v-model="form.parent_warehouse" :options="parentOptions"
               value-key="name" label-key="label" placeholder="— (top-level) —"/>
           </div>
+          <div v-if="!form.is_group" class="nim-grid-2 nim-mb">
+            <div>
+              <label class="nim-label">Store Role</label>
+              <select class="nim-input" v-model="form.store_role">
+                <option value="">— None —</option>
+                <option v-for="r in STORE_ROLES" :key="r" :value="r">{{ r }}</option>
+              </select>
+            </div>
+            <div v-if="needsProject(form.store_role)">
+              <label class="nim-label">Project <span class="nim-req">*</span></label>
+              <SearchableSelect v-model="form.project" :options="projects"
+                placeholder="Select project…" @search="q => fetchProjects(q, form.project)"/>
+            </div>
+          </div>
           <div class="nim-section-label">Address</div>
           <div class="nim-grid-2 nim-mb">
             <div><label class="nim-label">Address</label><input class="nim-input" v-model="form.address_line1" placeholder="Street address"/></div>
@@ -932,8 +962,17 @@ import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
+import { useProjectOptions } from "../composables/useProjectOptions.js";
 
 const { toast } = useToast();
+const { projects, fetchProjects } = useProjectOptions();
+
+/* ── Store roles (Sava A2) ──
+   Central / Rejected stores belong to the company; Main / Site stores belong
+   to one project. Same rules as inventory/doctype/warehouse/warehouse.py. */
+const STORE_ROLES = ["Central Store", "Rejected Store", "Project Main Store", "Site Store"];
+const PROJECT_STORE_ROLES = ["Project Main Store", "Site Store"];
+const needsProject = (role) => PROJECT_STORE_ROLES.includes(role);
 
 /* ── View mode ── */
 const viewMode = ref("cards"); // 'cards' | 'tree'
@@ -977,6 +1016,8 @@ const stockTypeFilter   = ref("");
 const stockStatusFilter = ref("");
 const stockRackFilter   = ref(""); // "" = all, "__none__" = unracked, else exact rack_no
 const filterType     = ref("All");
+const filterRole     = ref("");   // "" = all, "__none__" = no store role, else exact store_role
+const filterProject  = ref("");   // "" = all, else exact project
 const filterDDOpen   = ref(false);
 
 const adjDrawer = reactive({
@@ -996,9 +1037,15 @@ const allItems       = ref([]);
 
 const form = reactive({
   name: "", warehouse_name: "", warehouse_type: "Stores",
-  parent_warehouse: "", city: "", country: "India", state: "", address_line1: "", pincode: "",
+  parent_warehouse: "", city: "", country: "Kenya", state: "", address_line1: "", pincode: "",
   is_group: 0, disabled: 0,
+  store_role: "", project: "",
   racks: [], // [{ rack_no, notes }] — label-only, leaf warehouses only
+});
+
+// Central / Rejected stores can't carry a project, so drop it when the role changes.
+watch(() => form.store_role, (role) => {
+  if (!needsProject(role)) form.project = "";
 });
 
 function addRackRow() {
@@ -1053,8 +1100,22 @@ const childWarehouses = computed(() => {
   if (filterType.value !== "All") {
     result = result.filter((w) => (w.warehouse_type || "Stores") === filterType.value);
   }
+  if (filterRole.value === "__none__") result = result.filter((w) => !w.store_role);
+  else if (filterRole.value) result = result.filter((w) => w.store_role === filterRole.value);
+  if (filterProject.value) result = result.filter((w) => w.project === filterProject.value);
   return result;
 });
+
+// Projects that actually have a warehouse (feeds the Project filter; no extra API call).
+const projectFilterOptions = computed(() =>
+  [...new Set(list.value.map((w) => w.project).filter(Boolean))].sort()
+);
+const filtersActive = computed(() =>
+  filterType.value !== "All" || !!filterRole.value || !!filterProject.value
+);
+function clearFilters() {
+  filterType.value = "All"; filterRole.value = ""; filterProject.value = "";
+}
 
 // The specific leaf warehouse to adjust stock against. Adjustment always
 // needs one concrete warehouse (you can't post stock to a group, and "All"
@@ -1138,7 +1199,7 @@ async function load() {
     list.value = await apiList("Warehouse", {
       fields: ["name","warehouse_name","warehouse_type","parent_warehouse",
                "city","state","address_line1","pincode","is_group","disabled",
-               "owner","creation","modified_by","modified"],
+               "store_role","project","owner","creation","modified_by","modified"],
       limit: 100000,
     }) || [];
     // Auto-select: restore last-used group, else fall back to first group
@@ -1630,8 +1691,9 @@ function openAddGroup() {
   drawerMode.value = "add";
   Object.assign(form, {
     name: "", warehouse_name: "", warehouse_type: "Stores",
-    parent_warehouse: "", city: "", state: "", address_line1: "", pincode: "",
+    parent_warehouse: "", city: "", country: "Kenya", state: "", address_line1: "", pincode: "",
     is_group: 1, disabled: 0, racks: [],
+    store_role: "", project: "",
     owner: null, creation: null, modified_by: null, modified: null,
   });
   showDrawer.value = true;
@@ -1642,10 +1704,12 @@ function openAddChild() {
   Object.assign(form, {
     name: "", warehouse_name: "", warehouse_type: "Stores",
     parent_warehouse: selectedWH.value?.name || "",
-    city: "", state: "", address_line1: "", pincode: "",
+    city: "", country: "Kenya", state: "", address_line1: "", pincode: "",
     is_group: 0, disabled: 0, racks: [],
+    store_role: "", project: "",
     owner: null, creation: null, modified_by: null, modified: null,
   });
+  fetchProjects("");
   showDrawer.value = true;
 }
 
@@ -1656,14 +1720,16 @@ async function openEdit(wh) {
     warehouse_name: wh.warehouse_name || wh.name,
     warehouse_type: wh.warehouse_type || "Stores",
     parent_warehouse: wh.parent_warehouse || "",
-    city: wh.city || "", state: wh.state || "",
+    city: wh.city || "", country: "Kenya", state: wh.state || "",
     address_line1: wh.address_line1 || "", pincode: wh.pincode || "",
     is_group: wh.is_group ? 1 : 0,
     disabled: wh.disabled ? 1 : 0,
+    store_role: wh.store_role || "", project: wh.project || "",
     racks: [],
     owner: wh.owner || null, creation: wh.creation || null,
     modified_by: wh.modified_by || null, modified: wh.modified || null,
   });
+  fetchProjects("", wh.project || "");
   showDrawer.value = true;
   // Racks live only on leaf (non-group) warehouses; fetch the full doc for
   // its rack rows since the list view above doesn't carry child tables.
@@ -1677,6 +1743,12 @@ async function openEdit(wh) {
 
 async function saveWarehouse() {
   if (!form.warehouse_name.trim()) { toast("Warehouse name is required", "error"); return; }
+  // Store role only applies to leaf warehouses; groups never carry a role or project.
+  const storeRole = form.is_group ? "" : (form.store_role || "");
+  const storeProject = needsProject(storeRole) ? (form.project || "") : "";
+  if (needsProject(storeRole) && !storeProject) {
+    toast(`Select a Project for the ${storeRole}`, "error"); return;
+  }
   saving.value = true;
   try {
     const company = await resolveCompany();
@@ -1699,6 +1771,7 @@ async function saveWarehouse() {
       city: form.city.trim(), state: form.state.trim(),
       address_line1: form.address_line1.trim(), pincode: form.pincode.trim(),
       is_group: form.is_group ? 1 : 0, disabled: form.disabled ? 1 : 0, company,
+      store_role: storeRole, project: storeProject,
       // Racks are label-only and only meaningful on leaf (non-group) warehouses.
       racks: form.is_group ? [] : form.racks
         .filter(r => (r.rack_no || "").trim())
@@ -2227,6 +2300,7 @@ onMounted(() => { load(); loadItems(); });
 }
 .wh-badge-blue { background: #eff6ff; color: #2563eb; }
 .wh-badge-red  { background: #fee2e2; color: #dc2626; }
+.wh-badge-role { background: #fef3c7; color: #92400e; }
 
 /* ── Action buttons ── */
 .wh-action-btn {

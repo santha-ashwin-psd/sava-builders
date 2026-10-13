@@ -116,7 +116,7 @@
             <div class="sl-dh-ico"><span v-html="icon('ledger',20)"></span></div>
             <div>
               <div class="sl-dh-title">{{ viewDoc.item_code }}</div>
-              <div class="sl-dh-sub">{{ viewDoc.warehouse }} · {{ fmtDate(viewDoc.posting_date) }}<template v-if="viewDoc.posting_time"> {{ viewDoc.posting_time }}</template></div>
+              <div class="sl-dh-sub">{{ viewDoc.warehouse }} · {{ fmtDate(viewDoc.posting_date) }}<span v-if="viewDoc.posting_time" style="margin-left:6px">{{ String(viewDoc.posting_time).slice(0, 8) }}</span></div>
             </div>
             <span class="sl-badge" :class="flt(viewDoc.actual_qty)>=0?'badge-green':'badge-red'">{{ flt(viewDoc.actual_qty)>=0?'Inward':'Outward' }}</span>
           </div>
@@ -131,7 +131,7 @@
             <div><div class="sl-meta-lbl">Balance After</div><div >{{ fmtQty(viewDoc.qty_after_transaction) }}</div></div>
             <div><div class="sl-meta-lbl">Valuation Rate</div><div >{{ fmtCur(viewDoc.valuation_rate) }}</div></div>
             <div><div class="sl-meta-lbl">Value Change</div><div  :class="flt(viewDoc.stock_value_difference)>=0?'green':'red'">{{ fmtCur(viewDoc.stock_value_difference) }}</div></div>
-            <div><div class="sl-meta-lbl">Posting Date</div><div >{{ fmtDate(viewDoc.posting_date) }}<template v-if="viewDoc.posting_time"> {{ viewDoc.posting_time }}</template></div></div>
+            <div><div class="sl-meta-lbl">Posting Date</div><div >{{ fmtDate(viewDoc.posting_date) }}<span v-if="viewDoc.posting_time" style="margin-left:6px">{{ String(viewDoc.posting_time).slice(0, 8) }}</span></div></div>
           </div>
           <div class="sl-section-hdr"><span v-html="icon('file',13)"></span> Source Voucher</div>
           <div class="sl-meta-grid">

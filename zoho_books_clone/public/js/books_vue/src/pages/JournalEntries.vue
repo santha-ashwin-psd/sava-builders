@@ -485,7 +485,7 @@
             </div>
             <div class="jen-view-meta-card">
               <div class="jen-view-meta-lbl">Date</div>
-              <div class="jen-view-meta-val">{{fmtDateLocal(viewEntry.date)}}<template v-if="viewEntry.posting_time"> {{viewEntry.posting_time}}</template></div>
+              <div class="jen-view-meta-val">{{fmtDateLocal(viewEntry.date)}}<span v-if="viewEntry.posting_time" style="margin-left:6px">{{ String(viewEntry.posting_time).slice(0, 8) }}</span></div>
             </div>
             <div class="jen-view-meta-card">
               <div class="jen-view-meta-lbl">Type</div>

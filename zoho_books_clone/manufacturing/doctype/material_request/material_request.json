@@ -58,6 +58,14 @@
    "options": "Books Company"
   },
   {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
    "fieldname": "production_plan",
    "fieldtype": "Link",
    "label": "Production Plan",

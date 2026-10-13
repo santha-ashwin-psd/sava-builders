@@ -1843,6 +1843,7 @@ def create_po_from_mr(material_request):
         "transaction_date": today(),
         "company":          mr.company,
         "material_request": mr.name,
+        "project":          mr.get("project") or "",
         "items":            po_items,
     }
     return po

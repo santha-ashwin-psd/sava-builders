@@ -41,6 +41,12 @@
             <label class="nim-label">Company Name <span class="sc-required">*</span></label>
             <input class="nim-input" v-model="form.default_company" placeholder="Acme Technologies Pvt Ltd"/>
           </div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer">
+            <input type="checkbox" :checked="!!form.is_default" :disabled="alreadyDefault"
+                   @change="form.is_default = $event.target.checked ? 1 : 0"/>
+            <span>Is Default Company</span>
+            <span v-if="alreadyDefault" style="color:#6b7280;font-size:12px">(this is the default company)</span>
+          </label>
         </div>
 
         <div class="sc-fg" style="margin-bottom:14px">
@@ -498,7 +504,7 @@ const { toast } = useToast();
 const route = useRoute();
 
 const form = reactive({
-  default_company: "", default_currency: "INR", fiscal_year_start_month: "April",
+  default_company: "", is_default: 0, default_currency: "INR", fiscal_year_start_month: "April",
   invoice_prefix: "INV", gstin: "", gst_state: "", logo_url: "",
   company_address: "", company_city: "", company_country: "India",
   company_state: "", company_pincode: "",
@@ -510,6 +516,7 @@ const form = reactive({
 });
 const saving = ref(false);
 const loadedCompanyName = ref("");
+const alreadyDefault = ref(false);
 
 const TABS = [
   { k: "profile",   l: "Company Profile" },
@@ -557,6 +564,7 @@ async function load() {
     const d = await apiGET("zoho_books_clone.api.admin.get_company_settings");
     Object.assign(form, d);
     loadedCompanyName.value = d.default_company || "";
+    alreadyDefault.value = !!d.is_default;
   } catch (e) { toast("Could not load settings", "error"); }
 }
 
@@ -587,7 +595,16 @@ async function save() {
       return;
     }
 
-    await apiPOST("zoho_books_clone.api.admin.save_company_settings", { ...form });
+    const res = await apiPOST("zoho_books_clone.api.admin.save_company_settings", { ...form });
+    if (res && res.default_company) {
+      loadedCompanyName.value = res.default_company;
+      form.default_company = res.default_company;
+    }
+    if (res && res.is_default) {
+      alreadyDefault.value = true;
+      form.is_default = 1;
+      setBooksCompany(res.default_company);
+    }
     toast("Settings saved");
   } catch (e) { toast(e.message, "error"); }
   saving.value = false;

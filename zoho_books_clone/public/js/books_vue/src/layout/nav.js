@@ -12,6 +12,9 @@
 export const NAV = [
   { path: "/dashboard",                     label: "Dashboard",        icon: "grid",       module: null         },
 
+  { section: "Projects" },
+  { path: "/projects",                      label: "Projects",         icon: "folder",     module: "inventory"  },
+
   { section: "Sales" },
   { path: "/quotes",                        label: "Quotes",       icon: "quote",      module: "invoices"   },
   { path: "/sales-orders",                  label: "Sales Orders",     icon: "order",      module: "invoices"   },
@@ -26,6 +29,7 @@ export const NAV = [
   { section: "Purchases" },
   { path: "/expenses",                      label: "Expenses",         icon: "expense",    module: "bills"      },
   { path: "/expenses/categories",           label: "Expense Categories", icon: "folder",   module: "bills"      },
+  { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },
   { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills"      },
   { path: "/purchases",                     label: "Bills",            icon: "fileplus",   module: "bills"      },
   { path: "/recurring-bills",               label: "Recurring Bills",  icon: "recurring",  module: "bills"      },
@@ -58,7 +62,7 @@ export const NAV = [
   { path: "/inventory/items",               label: "Items",            icon: "box",        module: "inventory"  },
   { path: "/inventory/item-groups",         label: "Item Groups",      icon: "folder",     module: "inventory"  },
   { path: "/inventory/warehouses",          label: "Warehouses",       icon: "warehouse",  module: "inventory"  },
-  { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },
+  // { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },  // moved to Purchases for Sava
   { path: "/inventory/opening-stock",       label: "Opening Stock",    icon: "opening",    module: "inventory"  },
   { path: "/inventory/stock-entries",       label: "Stock Entries",    icon: "stack",      module: "inventory"  },
   { path: "/inventory/adjustments",         label: "Stock Adjustments", icon: "repeat",    module: "inventory"  },

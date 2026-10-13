@@ -18,6 +18,7 @@
   "due_date",
   "currency",
   "company",
+  "project",
   "cost_center",
   "status",
   "items",
@@ -105,6 +106,14 @@
    "fieldtype": "Data",
    "label": "Company",
    "reqd": 1
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "in_standard_filter": 1,
+   "search_index": 1
   },
   {
    "fieldname": "cost_center",
@@ -247,21 +256,20 @@
    "options": "Purchase Invoice"
   },
   {
- "fieldname": "debit_note_reason",
- "fieldtype": "Select",
- "label": "Debit Note Reason",
- "options": "Vendor Overcharge\nGoods Returned\nDamaged Goods\nShort Delivery\nDuplicate Invoice\nIncentive\nOther",
- "hidden": 1,
- "read_only": 1
-},
-{
-    "fieldname": "incentive_amount",
-    "fieldtype": "Currency",
-    "label": "Incentive Amount",
-    "hidden": 1,
-    "read_only": 1
-},
-
+   "fieldname": "debit_note_reason",
+   "fieldtype": "Select",
+   "label": "Debit Note Reason",
+   "options": "Vendor Overcharge\nGoods Returned\nDamaged Goods\nShort Delivery\nDuplicate Invoice\nIncentive\nOther",
+   "hidden": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "incentive_amount",
+   "fieldtype": "Currency",
+   "label": "Incentive Amount",
+   "hidden": 1,
+   "read_only": 1
+  },
   {
    "fieldname": "remark",
    "fieldtype": "Small Text",

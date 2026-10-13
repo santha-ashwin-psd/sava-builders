@@ -15,6 +15,7 @@
   "posting_time",
   "col1",
   "company",
+  "project",
   "sec_warehouses",
   "from_warehouse",
   "col2",
@@ -79,6 +80,14 @@
    "fieldname": "company",
    "fieldtype": "Data",
    "label": "Company"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "in_standard_filter": 1,
+   "search_index": 1
   },
   {
    "fieldname": "sec_warehouses",

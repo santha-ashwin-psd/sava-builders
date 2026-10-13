@@ -27,6 +27,7 @@ import AssetRepair          from "./pages/AssetRepair.vue";
 import AssetValueAdjustment from "./pages/AssetValueAdjustment.vue";
 import AssetQuantityAdjustment from "./pages/AssetQuantityAdjustment.vue";
 import Department           from "./pages/Department.vue";
+import Projects             from "./pages/Projects.vue";
 import DepreciationSchedule from "./pages/DepreciationSchedule.vue";
 import MaintenanceLog       from "./pages/MaintenanceLog.vue";
 import OpeningStockBatchEntry from "./pages/OpeningStockBatchEntry.vue";
@@ -262,6 +263,12 @@ const routes = [
     meta: { module: "inventory" },
   },
   {
+    path: "/projects",
+    name: "projects",
+    component: Projects,
+    meta: { module: "inventory" },
+  },
+  {
     path: "/settings/profile",
     name: "settings-profile",
     component: SettingsProfile,
@@ -400,9 +407,34 @@ const router = createRouter({
   routes,
 });
 
+// Hidden for Sava: pages already removed from the sidebar (see layout/nav.js).
+// Direct URLs to these send the user to the dashboard, like an unknown URL.
+// Matching is by path prefix, minus the exceptions below.
+const HIDDEN_PREFIXES = [
+  "/assets",
+  "/manufacturing",
+  "/gst/gstr1",
+  "/gst/gstr3b",
+  "/gst/einvoice",
+  "/gst/tds",
+  "/settings/sso",
+  "/settings/integrations",
+];
+// Still visible in the sidebar, so they must stay reachable.
+const HIDDEN_EXCEPTIONS = [
+  "/manufacturing/material-request",
+];
+const _pathUnder = (path, prefix) => path === prefix || path.startsWith(prefix + "/");
+export function isHiddenPath(path) {
+  if (HIDDEN_EXCEPTIONS.some((p) => _pathUnder(path, p))) return false;
+  return HIDDEN_PREFIXES.some((p) => _pathUnder(path, p));
+}
+
 router.beforeEach((to) => {
   // Auth: bootstrapSession() either populated session.ready or redirected.
   if (!session.ready) return false;
+
+  if (isHiddenPath(to.path)) return { path: "/dashboard" };
 
   const { can } = usePermissions();
   if (to.meta?.module && !can(to.meta.module)) {

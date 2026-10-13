@@ -549,6 +549,98 @@ def seed_warehouses():
             except Exception as e:
                 frappe.log_error(str(e), f"Warehouse seed: {wh_name} for {company}")
 
+    # Sava A2: every company also gets a Central Store and a Rejected Store.
+    for company in companies:
+        try:
+            ensure_company_stores(company)
+        except Exception as e:
+            frappe.log_error(str(e), f"Company stores seed for {company}")
+
+
+ALL_WAREHOUSES = "All Warehouses"
+COMPANY_STORE_ROLES = ("Central Store", "Rejected Store")
+
+
+def _warehouse_name_for(company, base):
+    """Warehouse is named by warehouse_name alone, so a second company that
+    wants the same name gets the company appended."""
+    if frappe.db.exists("Warehouse", base) and frappe.db.get_value("Warehouse", base, "company") != company:
+        return f"{base}-{company}"
+    return base
+
+
+def _find_company_group(company):
+    """The company's top-level warehouse group, or None."""
+    for cand in (ALL_WAREHOUSES, f"{ALL_WAREHOUSES}-{company}"):
+        if frappe.db.exists("Warehouse", cand) and frappe.db.get_value("Warehouse", cand, "company") == company:
+            return cand
+    groups = frappe.get_all(
+        "Warehouse", filters={"company": company, "is_group": 1},
+        fields=["name", "parent_warehouse"], order_by="creation asc")
+    for g in groups:
+        if not g.get("parent_warehouse"):
+            return g["name"]
+    return None
+
+
+def ensure_company_stores(company, adopt_orphans=False):
+    """Sava A2: make sure `company` has a top-level warehouse group, a Central
+    Store and a Rejected Store. Idempotent: anything already there (matched by
+    company + store_role, so a renamed store is still found) is left alone.
+
+    adopt_orphans=True also moves the company's existing leaf warehouses that
+    have no parent under the group, so they show up on the Warehouses screen.
+    Used by the one-off patch only, never on every migrate.
+
+    Returns {"created": [...], "adopted": [...]}."""
+    result = {"created": [], "adopted": []}
+    if not company or not frappe.db.exists("DocType", "Warehouse"):
+        return result
+    if not frappe.db.has_column("Warehouse", "store_role"):
+        return result  # schema sync hasn't added the column yet
+
+    group = _find_company_group(company)
+    if not group:
+        group_name = _warehouse_name_for(company, ALL_WAREHOUSES)
+        frappe.get_doc({
+            "doctype": "Warehouse",
+            "warehouse_name": group_name,
+            "warehouse_type": "Stores",
+            "parent_warehouse": "",
+            "company": company,
+            "is_group": 1,
+            "disabled": 0,
+        }).insert(ignore_permissions=True)
+        group = group_name
+        result["created"].append(group_name)
+
+    for role in COMPANY_STORE_ROLES:
+        if frappe.db.exists("Warehouse", {"company": company, "store_role": role}):
+            continue
+        store_name = _warehouse_name_for(company, role)
+        frappe.get_doc({
+            "doctype": "Warehouse",
+            "warehouse_name": store_name,
+            "warehouse_type": "Stores",
+            "parent_warehouse": group,
+            "company": company,
+            "store_role": role,
+            "is_group": 0,
+            "disabled": 0,
+        }).insert(ignore_permissions=True)
+        result["created"].append(store_name)
+
+    if adopt_orphans:
+        for w in frappe.get_all(
+            "Warehouse", filters={"company": company, "is_group": 0},
+            fields=["name", "parent_warehouse"],
+        ):
+            if not w.get("parent_warehouse"):
+                frappe.db.set_value("Warehouse", w["name"], "parent_warehouse", group)
+                result["adopted"].append(w["name"])
+
+    return result
+
 
 def seed_price_lists():
     """Create default Selling and Buying price lists."""

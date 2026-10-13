@@ -3,12 +3,84 @@ from frappe import _
 from frappe.model.document import Document
 
 
+PROJECT_STORE_ROLES = ("Project Main Store", "Site Store")
+COMPANY_STORE_ROLES = ("Central Store", "Rejected Store")
+
+
 class Warehouse(Document):
     def validate(self):
         if not self.warehouse_name:
             frappe.throw(_("Warehouse Name is required"))
         self.warehouse_name = self.warehouse_name.strip()
+        self._validate_store_role()
         self._validate_racks()
+
+    def _validate_store_role(self):
+        """Sava A2: a warehouse can be a company-level store (Central / Rejected)
+        or belong to one project (Project Main Store / Site Store). Plain
+        warehouses (no role, no project) are untouched."""
+        role = (self.get("store_role") or "").strip()
+        project = (self.get("project") or "").strip()
+
+        if not role:
+            if project:
+                frappe.throw(_("Select a Store Role for the project warehouse"))
+            return
+
+        if role in COMPANY_STORE_ROLES:
+            if project:
+                frappe.throw(_("{0} cannot be linked to a project").format(role))
+            self._validate_single_company_store(role)
+            return
+
+        if not project:
+            frappe.throw(_("{0} needs a Project").format(role))
+
+        proj = frappe.db.get_value("Project", project, ["status", "company"], as_dict=True)
+        if not proj:
+            frappe.throw(_("Project {0} does not exist").format(project))
+
+        # A Closed project can't gain a store, but an existing store keeps
+        # working (and stays editable) after its project is closed.
+        changed = True
+        if not self.is_new():
+            before = frappe.db.get_value(
+                "Warehouse", self.name, ["store_role", "project"], as_dict=True)
+            if before:
+                changed = (before.store_role or "") != role or (before.project or "") != project
+        if changed and proj.status == "Closed":
+            frappe.throw(_("Project {0} is Closed. It can't be used on new documents.").format(project))
+
+        if proj.company and self.company and proj.company != self.company:
+            frappe.throw(_("Project {0} belongs to company {1}, not {2}").format(
+                project, proj.company, self.company))
+
+        if role == "Project Main Store" and not self.disabled:
+            existing = frappe.db.get_value("Warehouse", {
+                "project": project,
+                "store_role": "Project Main Store",
+                "disabled": 0,
+                "name": ["!=", self.name or ""],
+            }, "name")
+            if existing:
+                frappe.throw(_("Project {0} already has a Main Store ({1})").format(project, existing))
+
+    def _validate_single_company_store(self, role):
+        """Sava A2: one active Central Store and one active Rejected Store per
+        company, so stock can't end up split across two of them. A disabled
+        store doesn't count, so a store can be replaced by disabling the old
+        one first."""
+        if self.disabled or not self.company:
+            return
+        existing = frappe.db.get_value("Warehouse", {
+            "company": self.company,
+            "store_role": role,
+            "disabled": 0,
+            "name": ["!=", self.name or ""],
+        }, "name")
+        if existing:
+            frappe.throw(_("Company {0} already has a {1} ({2})").format(
+                self.company, role, existing))
 
     def _validate_racks(self):
         """

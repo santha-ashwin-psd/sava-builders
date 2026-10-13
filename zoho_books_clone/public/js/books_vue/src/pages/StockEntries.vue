@@ -213,6 +213,10 @@
             <input v-model="form.posting_date" type="date" class="se-input" />
           </div>
           <div class="se-field">
+            <label class="se-label">Project</label>
+            <SearchableSelect v-model="form.project" :options="projects" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" />
+          </div>
+          <div class="se-field">
             <label class="se-label">Adjustment Reason</label>
             <input v-model="form.adjustment_reason" class="se-input" placeholder="e.g. Annual count, damage…"/>
           </div>
@@ -379,7 +383,7 @@
             <div class="se-dh-ico" style="background:rgba(255,255,255,.2)"><span v-html="icon('stack',20)" style="color:#fff"></span></div>
             <div>
               <div class="se-dh-title" style="color:#fff">{{ viewDoc.name }}</div>
-              <div class="se-dh-sub" style="color:rgba(255,255,255,.8)">{{ viewDoc.stock_entry_type }} · {{ fmtDate(viewDoc.posting_date) }}<template v-if="viewDoc.posting_time"> {{ viewDoc.posting_time }}</template></div>
+              <div class="se-dh-sub" style="color:rgba(255,255,255,.8)">{{ viewDoc.stock_entry_type }} · {{ fmtDate(viewDoc.posting_date) }}<span v-if="viewDoc.posting_time" style="margin-left:6px">{{ String(viewDoc.posting_time).slice(0, 8) }}</span></div>
             </div>
             <span class="se-badge" :class="statusClass(viewDoc)" style="margin-left:auto;flex-shrink:0">{{ statusLabel(viewDoc) }}</span>
           </div>
@@ -406,6 +410,9 @@
               <template v-else>
                 <span style="font-size:12.5px;color:#9ca3af">Created manually</span>
               </template>
+            </div>
+            <div v-if="viewDoc.project" style="margin-top:8px;font-size:12.5px;color:#374151">
+              Project: <strong>{{ viewDoc.project }}</strong>
             </div>
             <div v-if="viewDoc.sales_person" style="margin-top:8px;font-size:12.5px;color:#9a3412">
               Issued to (Sales Person): <strong>{{ salesPersonLabel(viewDoc.sales_person) }}</strong>
@@ -589,6 +596,7 @@ import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
+import { useProjectOptions } from "../composables/useProjectOptions.js";
 import JournalTab from "../components/JournalTab.vue";
 import DocLink from "../components/DocLink.vue";
 
@@ -615,6 +623,7 @@ const viewDoc     = ref(null);
 const viewLoading = ref(false);
 const warehouses  = ref([]);
 const salesPersons = ref([]);
+const { projects, fetchProjects } = useProjectOptions();
 const items       = ref([]);
 const lines       = ref([]);
 const sortCol     = ref("posting_date");
@@ -629,7 +638,7 @@ const form = reactive({
   stock_entry_type: "Material Receipt",
   posting_date: new Date().toISOString().slice(0, 10),
   from_warehouse: "", to_warehouse: "",
-  adjustment_reason: "", sales_person: "", remarks: "",
+  adjustment_reason: "", sales_person: "", remarks: "", project: "",
 });
 
 const TYPE_META = {
@@ -919,10 +928,10 @@ function openNew() {
   Object.assign(form, {
     stock_entry_type: "Material Receipt",
     posting_date: new Date().toISOString().slice(0, 10),
-    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "",
+    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "", project: "",
   });
   lines.value = [blankLine()];
-  fetchWarehouses(""); fetchSalesPersons(""); fetchItems("");
+  fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects("");
   drawerOpen.value = true;
 }
 
@@ -934,12 +943,14 @@ async function openEdit(e, { force = false } = {}) {
     posting_date: e.posting_date || new Date().toISOString().slice(0, 10),
     from_warehouse: e.from_warehouse || "", to_warehouse: e.to_warehouse || "",
     adjustment_reason: e.adjustment_reason || "", sales_person: e.sales_person || "", remarks: e.remarks || "",
+    project: e.project || "",
   });
   lines.value = [blankLine()];
-  fetchWarehouses(""); fetchSalesPersons(""); fetchItems("");
+  fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects("", e.project || "");
   drawerOpen.value = true;
   try {
     const doc = await apiGet("Stock Entry", e.name);
+    if (doc?.project && doc.project !== form.project) { form.project = doc.project; fetchProjects("", doc.project); }
     if (doc?.items?.length) {
       const built = await Promise.all(doc.items.map(async (it) => {
         const line = {
@@ -1146,6 +1157,7 @@ async function saveEntry(submit) {
       adjustment_reason: form.adjustment_reason || "",
       sales_person: form.stock_entry_type === "Material Issue" ? (form.sales_person || "") : "",
       remarks: form.remarks || "",
+      project: form.project || null,
       items: usable.map(l => ({
         doctype: "Stock Entry Detail",
         item_code: l.item_code,

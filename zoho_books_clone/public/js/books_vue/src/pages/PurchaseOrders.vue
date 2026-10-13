@@ -230,6 +230,10 @@
                 <label class="inv-lbl">Expected Delivery</label>
                 <input v-model="form.expected_delivery_date" type="date" class="inv-fi" />
               </div>
+              <div style="grid-column:1/-1">
+                <label class="inv-lbl">Project</label>
+                <SearchableSelect v-model="form.project" :options="projects" placeholder="Select project (optional)…" @search="q => fetchProjects(q, form.project)" />
+              </div>
               <!-- Warehouse: only shown and required for Goods -->
               <div v-if="form.purchase_type === 'Goods'" style="grid-column:1/-1">
                 <label class="inv-lbl">Receiving Warehouse <span class="inv-req">*</span></label>
@@ -572,6 +576,11 @@
                   <span class="inv-dmeta-lbl">Receiving Warehouse</span>
                 </div>
                 <div style="font-size:13px;font-weight:600;color:#111827;margin-top:2px">{{ viewDoc.set_warehouse }}</div>
+              </div>
+
+              <div v-if="viewDoc.project" class="inv-dmeta-row" style="padding:8px 0 4px">
+                <span class="inv-dmeta-lbl">Project</span>
+                <div style="font-size:13px;font-weight:600;color:#111827;margin-top:2px">{{ viewDoc.project }}</div>
               </div>
 
               <!-- Addresses -->
@@ -955,6 +964,7 @@ function fmtDateDay(d) {
   return dt.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
 }
 import SearchableSelect from "../components/SearchableSelect.vue";
+import { useProjectOptions } from "../composables/useProjectOptions.js";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";
@@ -1040,8 +1050,9 @@ const form = reactive({
   supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
   billing_address: "", delivery_address: "",
   billing_address_name: "", delivery_address_name: "",
-  set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "",
+  set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "",
 });
+const { projects, fetchProjects } = useProjectOptions();
 const warehouses = ref([]);
 async function fetchWarehouses(q = "") {
   try {
@@ -1272,8 +1283,8 @@ const threeWayMismatch = computed(() =>
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "" });
-  fetchWarehouses("");
+  Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "" });
+  fetchWarehouses(""); fetchProjects("");
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems("");
   drawerOpen.value = true;
@@ -1286,10 +1297,10 @@ async function openEdit(o) {
     billing_address: o.billing_address || "", delivery_address: o.delivery_address || "",
     billing_address_name: "", delivery_address_name: "",
     set_warehouse: "", purchase_type: o.purchase_type || "Goods", terms: o.terms || "",
-    material_request: o.material_request || "",
+    material_request: o.material_request || "", project: o.project || "",
   });
   lines.value = [blankLine()];
-  fetchVendors(""); fetchItems(""); fetchWarehouses("");
+  fetchVendors(""); fetchItems(""); fetchWarehouses(""); fetchProjects("", o.project || "");
   if (o.supplier) fetchVendorAddresses(o.supplier);
   drawerOpen.value = true;
   try {
@@ -1303,6 +1314,7 @@ async function openEdit(o) {
       }));
     }
     if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
+    if (doc?.project) { form.project = doc.project; fetchProjects("", doc.project); }
     if (doc?.terms) form.terms = doc.terms;
     // Restore address link fields — wait for vendorAddresses to load first
     if (doc?.billing_address_name || doc?.delivery_address_name) {
@@ -1547,6 +1559,7 @@ async function savePO(newStatus) {
       delivery_address_name: form.delivery_address_name || "",
       set_warehouse: form.set_warehouse || "",
       material_request: form.material_request || "",
+      project: form.project || null,
       status: newStatus || "Draft",
       docstatus: newStatus === "Draft" ? 0 : 1,
       terms: form.terms || "",
@@ -1785,6 +1798,8 @@ onMounted(async () => {
         form.supplier = "";
         form.transaction_date = draft.transaction_date;
         form.material_request = draft.material_request || "";
+        form.project = draft.project || "";
+        fetchProjects("", form.project);
         lines.value = (draft.items || []).map(r => ({
           id: _id++,
           item_code: r.item_code,

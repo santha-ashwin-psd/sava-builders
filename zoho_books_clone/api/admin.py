@@ -754,6 +754,7 @@ def get_company_settings():
 
     result = {
         "default_company": company_name,
+        "is_default": 0,
         "default_currency": "INR",
         "fiscal_year_start_month": "April",
         "invoice_prefix": "INV",
@@ -812,6 +813,13 @@ def get_company_settings():
         except Exception:
             pass
 
+    # Is this company the one stored as Books Settings > Default Company?
+    try:
+        result["is_default"] = int(bool(company_name) and
+            frappe.db.get_single_value("Books Settings", "default_company") == company_name)
+    except Exception:
+        pass
+
     # Non-company-specific settings still live in Books Settings
     try:
         settings = frappe.get_doc("Books Settings", "Books Settings")
@@ -845,6 +853,22 @@ def save_company_settings(**kwargs):
     non-company settings (invoice_prefix, auto_reconcile) go to Books Settings."""
     _require_admin()
     company_name = _resolve_company_for()
+    is_default = bool(int(kwargs.get("is_default") or 0))
+
+    # Fresh site: no company exists yet, so there is nothing to save into.
+    # Create it from the name typed on the screen and make it the default.
+    if not company_name:
+        new_name = (kwargs.get("default_company") or "").strip()
+        if not new_name:
+            frappe.throw("Company name is required")
+        doc = {"doctype": "Books Company", "company_name": new_name}
+        if kwargs.get("fiscal_year_start_month"):
+            doc["fiscal_year_start_month"] = kwargs["fiscal_year_start_month"]
+        if kwargs.get("default_currency"):
+            doc["currency"] = kwargs["default_currency"]
+        frappe.get_doc(doc).insert(ignore_permissions=True)
+        company_name = new_name
+        is_default = True
 
     # Save all company-specific fields to Books Company
     if company_name and frappe.db.exists("Books Company", company_name):
@@ -896,6 +920,15 @@ def save_company_settings(**kwargs):
         except Exception as e:
             frappe.log_error(str(e), "save_company_settings: Books Company")
 
+    # "Set as default company" — written before Books Settings is saved below so
+    # its validate() sees a default company and does not raise the warning.
+    if is_default and company_name:
+        frappe.db.set_single_value("Books Settings", "default_company", company_name)
+        try:
+            frappe.defaults.set_user_default("company", company_name, user=frappe.session.user)
+        except Exception:
+            pass
+
     # Non-company-specific settings still live in Books Settings
     try:
         settings = frappe.get_doc("Books Settings", "Books Settings")
@@ -907,7 +940,12 @@ def save_company_settings(**kwargs):
     settings.save(ignore_permissions=True)
 
     frappe.db.commit()
-    return {"success": True}
+    return {
+        "success": True,
+        "default_company": company_name,
+        "is_default": int(bool(company_name) and
+            frappe.db.get_single_value("Books Settings", "default_company") == company_name),
+    }
 
 
 # ─── Company rename ──────────────────────────────────────────────────────────

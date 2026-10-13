@@ -28,6 +28,8 @@ _TN = "zoho_books_clone.utils.tenancy"
 _QC = "zoho_books_clone.quality.qc_engine"
 # Quality Hold Manager — auto-quarantine on failed QC Inspection
 _QH = "zoho_books_clone.quality.qc_hold_manager"
+# Project guard (Sava A1) — a Closed project can't be used on new documents
+_PG = "zoho_books_clone.utils.project_guard.validate_project_open"
 doc_events = {
     "Sales Invoice": {
         "validate":  f"{_CV}.on_validate",
@@ -37,7 +39,7 @@ doc_events = {
         "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_sales_invoice_cancel"], "before_delete": f"{_CV}.before_delete",
     },
     "Purchase Invoice": {
-    "validate":  f"{_CV}.on_validate",
+    "validate":  [f"{_CV}.on_validate", _PG],
     "before_save": f"{_QC}.reconcile_row_identity",
     "before_submit": f"{_QC}.auto_create_qc_for_purchase_invoice",
     "on_submit": [
@@ -60,13 +62,13 @@ doc_events = {
     "Expense Claim":    {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
     # Goods documents own the physical stock movement (Delivery Note out / Purchase Receipt in)
     # Phase 2: validate hook added so central_validator period/lock checks run on these too.
-    "Delivery Note":    {"validate": f"{_CV}.on_validate", "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_delivery_note", "on_submit": [f"{_QC}.check_qc_before_stock_link", f"{_SL}.on_delivery_note_submit"],    "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_delivery_note_cancel"], "before_delete": f"{_CV}.before_delete"},
-    "Purchase Receipt": {"validate": f"{_CV}.on_validate", "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_purchase_receipt", "on_submit": [f"{_QC}.check_qc_before_stock_link", f"{_SL}.on_purchase_receipt_submit"], "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_purchase_receipt_cancel"], "before_delete": f"{_CV}.before_delete"},
+    "Delivery Note":    {"validate": [f"{_CV}.on_validate", _PG], "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_delivery_note", "on_submit": [f"{_QC}.check_qc_before_stock_link", f"{_SL}.on_delivery_note_submit"],    "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_delivery_note_cancel"], "before_delete": f"{_CV}.before_delete"},
+    "Purchase Receipt": {"validate": [f"{_CV}.on_validate", _PG], "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_purchase_receipt", "on_submit": [f"{_QC}.check_qc_before_stock_link", f"{_SL}.on_purchase_receipt_submit"], "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_purchase_receipt_cancel"], "before_delete": f"{_CV}.before_delete"},
     # Purchase Order — wired so fiscal/period lock checks run on save and submit.
-    "Purchase Order":   {"validate": f"{_CV}.on_validate", "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    "Purchase Order":   {"validate": [f"{_CV}.on_validate", _PG], "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
     # Phase 2: Stock Entry and Bank Transaction wired to central_validator for period/lock checks.
     # Stock Entry also gets QC gate for Manufacture type entries.
-    "Stock Entry":      {"validate": [f"{_CV}.on_validate", f"{_QH}.validate_quarantine_movement"], "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_stock_entry", "on_submit": f"{_QC}.check_qc_before_stock_link", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    "Stock Entry":      {"validate": [f"{_CV}.on_validate", f"{_QH}.validate_quarantine_movement", _PG], "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_stock_entry", "on_submit": f"{_QC}.check_qc_before_stock_link", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
     "Bank Transaction": {"validate": f"{_CV}.on_validate", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
     # QC Inspection — auto-handle hold/quarantine on submit
     "QC Inspection":    {"on_submit": f"{_QH}.handle_qc_result", "on_cancel": f"{_QH}.handle_qc_cancel"},
@@ -88,11 +90,13 @@ doc_events = {
     "BOM":              {"before_insert": f"{_TN}.auto_stamp_company"},
     "Work Order":       {"before_insert": f"{_TN}.auto_stamp_company"},
     "Production Plan":  {"before_insert": f"{_TN}.auto_stamp_company"},
-    "Material Request": {"before_insert": f"{_TN}.auto_stamp_company"},
+    "Material Request": {"before_insert": f"{_TN}.auto_stamp_company", "validate": _PG},
     "Packing Slip":     {"before_insert": f"{_TN}.auto_stamp_company"},
     "Job Card":         {"before_insert": f"{_TN}.auto_stamp_company"},
     # Assets — also scoped by the `company` field
     "Asset":            {"before_insert": f"{_TN}.auto_stamp_company"},
+    # Project — company-scoped master (Sava)
+    "Project":          {"before_insert": f"{_TN}.auto_stamp_company"},
 }
 
 scheduler_events = {
@@ -207,6 +211,7 @@ permission_query_conditions = {
     "Job Card":          f"{_TN}.qc_job_card",
     "Material Request":  f"{_TN}.qc_material_request",
     "Packing Slip":      f"{_TN}.qc_packing_slip",
+    "Project":           f"{_TN}.qc_project",
     # Assets — scoped by the `company` field
     "Asset":             f"{_TN}.qc_asset",
     "Asset Disposal":         f"{_TN}.qc_asset_disposal",
@@ -250,6 +255,7 @@ has_permission = {
     "Job Card":          f"{_TN}.hp_job_card",
     "Material Request":  f"{_TN}.hp_material_request",
     "Packing Slip":      f"{_TN}.hp_packing_slip",
+    "Project":           f"{_TN}.hp_project",
     # Assets — scoped by the `company` field
     "Asset":             f"{_TN}.hp_asset",
     "Asset Disposal":         f"{_TN}.hp_asset_disposal",

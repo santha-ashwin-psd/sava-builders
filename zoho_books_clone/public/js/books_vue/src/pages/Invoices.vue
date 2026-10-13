@@ -917,7 +917,7 @@
                   <span class="inv-dmeta-lbl">Invoice Date</span>
                 </div>
                 <div class="inv-dmeta-date-val">{{ fmtDateLong(viewInv.posting_date) }}</div>
-                <div class="inv-dmeta-date-sub">{{ fmtDateDay(viewInv.posting_date) }}<template v-if="viewInv.posting_time"> · {{ viewInv.posting_time }}</template></div>
+                <div class="inv-dmeta-date-sub">{{ fmtDateDay(viewInv.posting_date) }}<template v-if="viewInv.posting_time"> · {{ String(viewInv.posting_time).slice(0, 8) }}</template></div>
               </div>
 
               <!-- Due Date -->
