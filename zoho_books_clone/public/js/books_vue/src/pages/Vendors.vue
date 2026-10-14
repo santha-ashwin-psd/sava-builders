@@ -73,7 +73,7 @@
               <th class="vt-th">Vendor Name</th>
               <th class="vt-th">Type</th>
               <th class="vt-th">Group</th>
-              <th class="vt-th">GSTIN</th>
+              <th class="vt-th">KRA PIN</th>
               <th class="vt-th vt-th-num">Outstanding</th>
               <th class="vt-th">Last Bill</th>
               <th class="vt-th">Mobile</th>
@@ -125,7 +125,7 @@
               </td>
               <td class="vt-td vt-td-mono">
                 <span v-if="v.tax_id">{{v.tax_id}}</span>
-                <span v-else class="vt-badge vt-badge-amber">Unregistered</span>
+                <span v-else class="vt-badge vt-badge-amber">No KRA PIN</span>
               </td>
               <td class="vt-td vt-td-num">
                 <span :class="(balancesByVendor[v.name]||0)>0 ? 'vt-amount-due' : 'vt-amount-nil'">
@@ -180,7 +180,7 @@
                 <span :style="(balancesByVendor[v.name]||0)>0 ? 'color:#E67700;font-weight:600' : ''">
                   {{ (balancesByVendor[v.name]||0)>0 ? fmtCur(balancesByVendor[v.name])+' payable' : 'No balance' }}
                 </span>
-                <span>{{ v.tax_id || 'Unregistered' }}</span>
+                <span>{{ v.tax_id || 'No KRA PIN' }}</span>
               </div>
               <div class="ven-mc-footer">
                 <button class="ven-mc-btn" @click.stop="openEdit(v.name)">Edit</button>
@@ -460,7 +460,7 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 16px">{{ selectedVendor.default_currency || "INR" }}</td>
+                    <td style="font-size:13px;font-weight:600;color:#374151;padding:10px 16px">{{ selectedVendor.default_currency || "KES" }}</td>
                     <td style="font-size:13px;font-weight:600;color:#E67700;text-align:right;padding:10px 12px;">{{ fmtCur(vendorSummary.outstanding || 0) }}</td>
                     <td style="font-size:13px;font-weight:600;color:#059669;text-align:right;padding:10px 16px;">{{ fmtCur(vendorSummary.dn_credit || 0) }}</td>
                   </tr>
@@ -492,7 +492,7 @@
               <div v-show="!collapsed.otherDetails" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
                 <div style="display:flex;justify-content:space-between;font-size:12.5px">
                   <span style="color:#6B7280">Default Currency</span>
-                  <span style="font-weight:600;color:#111827">{{selectedVendor.default_currency||'INR'}}</span>
+                  <span style="font-weight:600;color:#111827">{{selectedVendor.default_currency||'KES'}}</span>
                 </div>
                 <div style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
                   <span style="color:#6B7280">Portal Status</span>
@@ -503,7 +503,7 @@
                   <span style="font-weight:600;color:#111827">{{selectedVendor.supplier_type||'Company'}}</span>
                 </div>
                 <div v-if="selectedVendor.tax_id" style="display:flex;justify-content:space-between;font-size:12.5px">
-                  <span style="color:#6B7280">GSTIN / Tax ID</span>
+                  <span style="color:#6B7280">KRA PIN</span>
                   <span style="font-weight:600;color:#111827;">{{selectedVendor.tax_id}}</span>
                 </div>
               </div>
@@ -823,27 +823,26 @@
               </div>
             </div>
             <div class="inv-field">
-              <label class="inv-lbl">GSTIN / Tax ID</label>
+              <label class="inv-lbl">KRA PIN <span v-if="drawerMode==='add'" style="color:#dc2626">*</span></label>
               <input v-model="form.tax_id" class="inv-fi"
-                :style="formErrors.tax_id?'border-color:#dc2626;background:#fff5f5':form.tax_id&&!formErrors.tax_id&&form.country==='India'&&GSTIN_REGEX.test(form.tax_id)?'border-color:#2f9e44':''"
-                placeholder="27AAPFU0939F1ZV"
-                @input="form.tax_id=form.tax_id.toUpperCase(); delete formErrors.tax_id"
+                :style="formErrors.tax_id?'border-color:#dc2626;background:#fff5f5':form.tax_id&&!formErrors.tax_id&&KRA_PIN_REGEX.test(form.tax_id)?'border-color:#2f9e44':''"
+                placeholder="A123456789Z" maxlength="11"
+                @input="form.tax_id=form.tax_id.toUpperCase().replace(/[^A-Z0-9]/g,''); delete formErrors.tax_id"
                 @blur="validateField('tax_id')"/>
               <div v-if="formErrors.tax_id" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
                 {{formErrors.tax_id}}
               </div>
-              <div v-else-if="form.tax_id&&form.country==='India'&&GSTIN_REGEX.test(form.tax_id)" style="margin-top:4px;font-size:12px;color:#2f9e44;display:flex;align-items:center;gap:4px">
+              <div v-else-if="form.tax_id&&KRA_PIN_REGEX.test(form.tax_id)" style="margin-top:4px;font-size:12px;color:#2f9e44;display:flex;align-items:center;gap:4px">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-                Valid GSTIN
+                Valid KRA PIN
               </div>
             </div>
             <div class="inv-field">
               <label class="inv-lbl">Payment Terms</label>
               <select v-model="form.payment_terms" class="inv-fi">
                 <option value="">Select</option>
-                <option>Net 30</option><option>Net 15</option><option>Net 7</option>
-                <option>Due on Receipt</option><option>End of Month</option>
+                <option v-for="t in paymentTermOptions" :key="t" :value="t">{{ t }}</option>
               </select>
             </div>
           </div>
@@ -945,6 +944,8 @@
 
           <!-- Other Details Tab -->
           <template v-else-if="drawerTab==='other'">
+          <!-- Sava: TDS / PAN (India) hidden, not removed. Set SHOW_TDS_PAN = true to show again. -->
+          <template v-if="SHOW_TDS_PAN">
           <div class="inv-sec-lbl" style="margin-top:0">TDS / Withholding Tax</div>
           <div class="inv-fg inv-fg2">
             <div class="inv-field" style="grid-column:span 2;display:flex;align-items:center;gap:10px">
@@ -983,8 +984,9 @@
               </div>
             </template>
           </div>
+          </template>
 
-          <div class="inv-sec-lbl">Account Settings</div>
+          <div class="inv-sec-lbl" :style="SHOW_TDS_PAN ? '' : 'margin-top:0'">Account Settings</div>
           <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
             <div>
               <label class="inv-lbl">Default Payable Account</label>
@@ -996,7 +998,7 @@
             <div>
               <label class="inv-lbl">Default Currency</label>
               <select v-model="form.default_currency" class="inv-fi" style="cursor:pointer">
-                <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SGD</option>
+                <option>KES</option><option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SGD</option>
               </select>
             </div>
           </div>
@@ -1101,7 +1103,7 @@
             <div class="cus-import-table-wrap">
               <table class="cus-import-table">
                 <thead>
-                  <tr><th>Vendor</th><th>Type</th><th>GSTIN</th><th style="text-align:right">Action</th></tr>
+                  <tr><th>Vendor</th><th>Type</th><th>KRA PIN</th><th style="text-align:right">Action</th></tr>
                 </thead>
                 <tbody>
                   <tr v-for="(row,i) in importPreviewRows" :key="i">
@@ -1110,7 +1112,10 @@
                       <div class="cus-import-sub">{{ row.email || row.mobile || '\u2014' }}</div>
                     </td>
                     <td>{{ row.vtype }}</td>
-                    <td class="cus-import-mono">{{ row.gstin || '\u2014' }}</td>
+                    <td class="cus-import-mono">
+                      <span v-if="pinProblem(row)" style="color:#dc2626;font-weight:600">{{ pinProblem(row) }}</span>
+                      <span v-else>{{ row.gstin || '\u2014' }}</span>
+                    </td>
                     <td style="text-align:right">
                       <span class="cus-import-badge" :class="row.action==='update' ? 'cus-import-badge-upd' : 'cus-import-badge-new'">
                         {{ row.action==='update' ? 'Update' : 'New' }}
@@ -1134,7 +1139,7 @@
             </div>
             <div class="cus-import-note" style="text-align:center">
               {{ importModal.result.failed
-                  ? 'Some rows could not be saved \u2014 check that names/GSTINs are valid.'
+                  ? 'Some rows could not be saved \u2014 rows with a missing or invalid KRA PIN are rejected.'
                   : 'All rows imported successfully.' }}
             </div>
           </template>
@@ -1175,7 +1180,7 @@ import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import {
-  EMAIL_REGEX, GSTIN_REGEX, URL_REGEX, PAN_REGEX,
+  EMAIL_REGEX, KRA_PIN_REGEX, URL_REGEX, PAN_REGEX,
   validateMobile, validatePhone, validatePincode, sanitizePincode, pincodePlaceholder, pincodeHint,
 } from "../composables/useValidation.js";
 
@@ -1198,6 +1203,9 @@ const showDelete    = ref(false);
 const deleteTarget  = ref(null);
 const deleting      = ref(false);
 const accounts      = ref([]);
+// Sava: TDS / PAN section is India-specific, so it is hidden (not removed).
+const SHOW_TDS_PAN = false;
+const paymentTermsList = ref(["Due on Receipt", "Net 7", "Net 15", "Net 30", "Net 60", "Net 90", "End of Month"]);
 const pendingAddresses = ref([]);
 
 const collapsed = reactive({ address: false, otherDetails: false, notes: false });
@@ -1232,12 +1240,12 @@ const form = reactive({
   name: "",
   supplier_name: "", supplier_type: "Company",
   supplier_group: "",
-  tax_id: "", default_currency: "INR", payment_terms: "",
+  tax_id: "", default_currency: "KES", payment_terms: "",
   email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
   address_line1: "", address_line2: "",
-  city: "", state: "", pincode: "", country: "India",
+  city: "", state: "", pincode: "", country: "Kenya",
   ship_address_line1: "", ship_address_line2: "",
-  ship_city: "", ship_state: "", ship_pincode: "", ship_country: "India",
+  ship_city: "", ship_state: "", ship_pincode: "", ship_country: "Kenya",
   default_payable_account: "", disabled: 0,
   tds_applicable: 0, tds_section: "", pan: "", opening_balance: 0, notes: "",
 });
@@ -1300,6 +1308,14 @@ async function load() {
   } finally { loading.value = false; }
 }
 
+async function loadPaymentTerms() {
+  try {
+    const r = await apiList("Payment Terms", { fields: ["name"], order: "credit_days asc, name asc", limit: 100 });
+    const names = (r || []).map(x => x.name).filter(Boolean);
+    if (names.length) paymentTermsList.value = names;
+  } catch { /* keep the seeded list */ }
+}
+
 async function loadAccounts() {
   try {
     const rows = await apiList("Account", {
@@ -1318,12 +1334,12 @@ function resetForm() {
     name: "", supplier_name: "", supplier_type: "Company",
     owner: "", creation: "", modified: "", modified_by: "",
     supplier_group: "",
-    tax_id: "", default_currency: "INR", payment_terms: "",
+    tax_id: "", default_currency: "KES", payment_terms: "",
     email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
     address_line1: "", address_line2: "",
-    city: "", state: "", pincode: "", country: "India",
+    city: "", state: "", pincode: "", country: "Kenya",
     ship_address_line1: "", ship_address_line2: "",
-    ship_city: "", ship_state: "", ship_pincode: "", ship_country: "India",
+    ship_city: "", ship_state: "", ship_pincode: "", ship_country: "Kenya",
     default_payable_account: "", disabled: 0,
     tds_applicable: 0, tds_section: "", pan: "", opening_balance: 0, notes: "",
   });
@@ -1344,7 +1360,7 @@ function onShipSameChange() {
     form.ship_city          = "";
     form.ship_state         = "";
     form.ship_pincode       = "";
-    form.ship_country       = "India";
+    form.ship_country       = "Kenya";
   }
 }
 
@@ -1374,7 +1390,7 @@ async function openEdit(name) {
       supplier_type: doc.supplier_type || "Company",
       supplier_group: doc.supplier_group || "",
       tax_id: doc.tax_id || "",
-      default_currency: doc.default_currency || "INR",
+      default_currency: doc.default_currency || "KES",
       payment_terms: doc.payment_terms || "",
       email_id: doc.email_id || "",
       mobile_code: mno.startsWith("+") && mno.includes(" ") ? mno.split(" ")[0] : "+91",
@@ -1386,13 +1402,13 @@ async function openEdit(name) {
       city: doc.city || "",
       state: doc.state || "",
       pincode: doc.pincode || "",
-      country: doc.country || "India",
+      country: doc.country || "Kenya",
       ship_address_line1: doc.ship_address_line1 || "",
       ship_address_line2: doc.ship_address_line2 || "",
       ship_city: doc.ship_city || "",
       ship_state: doc.ship_state || "",
       ship_pincode: doc.ship_pincode || "",
-      ship_country: doc.ship_country || "India",
+      ship_country: doc.ship_country || "Kenya",
       default_payable_account: doc.default_payable_account || "",
       disabled: doc.disabled || 0,
       tds_applicable: doc.tds_applicable || 0,
@@ -1429,8 +1445,10 @@ function validateField(field) {
   }
   if (field === "website" && s && !URL_REGEX.test(s))
     formErrors.website = "Website must start with http:// or https://";
-  if (field === "tax_id" && s && form.country === "India" && !GSTIN_REGEX.test(s))
-    formErrors.tax_id = "Invalid GSTIN format (e.g. 27AAPFU0939F1ZV)";
+  if (field === "tax_id") {
+    if (!s) { if (drawerMode.value === "add") formErrors.tax_id = "KRA PIN is required"; }
+    else if (!KRA_PIN_REGEX.test(s)) formErrors.tax_id = "Invalid KRA PIN (e.g. A123456789Z)";
+  }
   if (field === "pincode" && s) {
     const err = validatePincode(s, form.country);
     if (err) formErrors.pincode = err;
@@ -1450,8 +1468,8 @@ function validateVendorForm() {
   }
   if (form.phone) { const err = validatePhone(form.phone); if (err) formErrors.phone = err; }
   if (form.website && !URL_REGEX.test(form.website.trim())) formErrors.website = "Website must start with http:// or https://";
-  if (form.tax_id && form.country === "India" && !GSTIN_REGEX.test(form.tax_id.trim()))
-    formErrors.tax_id = "Invalid GSTIN format (e.g. 27AAPFU0939F1ZV)";
+  if (!form.tax_id.trim()) { if (drawerMode.value === "add") formErrors.tax_id = "KRA PIN is required"; }
+  else if (!KRA_PIN_REGEX.test(form.tax_id.trim())) formErrors.tax_id = "Invalid KRA PIN (e.g. A123456789Z)";
   if (form.pincode) { const err = validatePincode(form.pincode, form.country); if (err) formErrors.pincode = err; }
   if (form.opening_balance < 0) formErrors.opening_balance = "Opening balance cannot be negative";
   return Object.keys(formErrors).length === 0;
@@ -1486,13 +1504,13 @@ async function saveVendor() {
       city: form.city.trim(),
       state: form.state.trim(),
       pincode: form.pincode.trim(),
-      country: form.country.trim() || "India",
+      country: form.country.trim() || "Kenya",
       ship_address_line1: form.ship_address_line1.trim(),
       ship_address_line2: form.ship_address_line2.trim(),
       ship_city: form.ship_city.trim(),
       ship_state: form.ship_state.trim(),
       ship_pincode: form.ship_pincode.trim(),
-      ship_country: form.ship_country.trim() || "India",
+      ship_country: form.ship_country.trim() || "Kenya",
       default_payable_account: form.default_payable_account,
       disabled: form.disabled ? 1 : 0,
       tds_applicable: form.tds_applicable ? 1 : 0,
@@ -1520,7 +1538,7 @@ async function saveVendor() {
             address_line1: addr.address_line1,
             address_line2: addr.address_line2 || "",
             city: addr.city || "", state: addr.state || "",
-            pincode: addr.pincode || "", country: addr.country || "India",
+            pincode: addr.pincode || "", country: addr.country || "Kenya",
             phone: addr.phone || "",
             links: [{ link_doctype: "Supplier", link_name: savedName }],
           });
@@ -1535,7 +1553,7 @@ async function saveVendor() {
             address_line1: firstBilling.address_line1,
             address_line2: firstBilling.address_line2 || "",
             city: firstBilling.city || "", state: firstBilling.state || "",
-            pincode: firstBilling.pincode || "", country: firstBilling.country || "India",
+            pincode: firstBilling.pincode || "", country: firstBilling.country || "Kenya",
           });
         } catch {}
       }
@@ -1962,7 +1980,7 @@ function exportCSV() {
     ? filtered.value.filter(v => selectedRows.value.has(v.name))
     : filtered.value;
   if (!rows.length) return;
-  const head = ["Vendor","Type","GSTIN","Email","Mobile","City","State","Outstanding","Status"];
+  const head = ["Vendor","Type","KRA PIN","Email","Mobile","City","State","Outstanding","Status"];
   const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const out = [head.map(esc).join(",")];
   for (const v of rows) {
@@ -2079,7 +2097,7 @@ async function importCSV(e) {
     const col = {
       name:   idx("name", "vendor", "supplier", "vendor name", "supplier name", "display name"),
       type:   idx("type", "vendor type", "supplier type"),
-      gstin:  idx("gstin", "gstin / tax id", "tax id", "tax_id"),
+      gstin:  idx("kra pin", "kra_pin", "kra pin / tax id", "kra", "gstin", "gstin / tax id", "tax id", "tax_id"),
       email:  idx("email", "email address", "email_id"),
       mobile: idx("mobile", "mobile no", "phone"),
       city:   idx("city"),
@@ -2117,12 +2135,23 @@ async function importCSV(e) {
   }
 }
 
+// Payment Terms choices; keeps a vendor's current term visible even if it is not in the list.
+const paymentTermOptions = computed(() =>
+  form.payment_terms && !paymentTermsList.value.includes(form.payment_terms)
+    ? [...paymentTermsList.value, form.payment_terms] : paymentTermsList.value);
+
 const importCounts = computed(() => ({
   total:  importModal.rows.length,
   create: importModal.rows.filter(r => r.action === "new").length,
   update: importModal.rows.filter(r => r.action === "update").length,
 }));
 const importPreviewRows = computed(() => importModal.rows.slice(0, 200));
+
+// Import preview: a new row needs a valid KRA PIN; any row with a PIN must be valid.
+function pinProblem(row) {
+  if (!row.gstin) return row.action === "new" ? "Missing" : "";
+  return KRA_PIN_REGEX.test(row.gstin) ? "" : "Invalid";
+}
 
 function closeImport() {
   if (importModal.running) return;
@@ -2141,7 +2170,7 @@ function buildImportPayload(row, isUpdate) {
   setIf("city", row.city);
   setIf("state", row.state);
   if (!isUpdate) {
-    p.default_currency = "INR";
+    p.default_currency = "KES";
     p.gst_treatment = row.gstin ? "Registered Business" : "Unregistered Business";
   } else if (row.gstin) {
     p.gst_treatment = "Registered Business";
@@ -2181,6 +2210,7 @@ const route = useRoute();
 onMounted(async () => {
   await load();
   loadAccounts();
+  loadPaymentTerms();
   loadAllBalances();
   useOpenFromQuery({ route, openByName: (n) => selectVendor(list.value.find(v => v.name === n) || { name: n }) });
 });

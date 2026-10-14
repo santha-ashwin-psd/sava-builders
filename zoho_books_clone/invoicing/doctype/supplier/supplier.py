@@ -3,7 +3,9 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-_GSTIN_RE = re.compile(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$')
+# Sava A4: KRA PIN = one letter (A company, P individual) + 9 digits + one letter,
+# e.g. A123456789Z. Stored in the existing tax_id field.
+_KRA_PIN_RE = re.compile(r'^[AP][0-9]{9}[A-Z]$')
 
 class Supplier(Document):
     def validate(self):
@@ -11,13 +13,46 @@ class Supplier(Document):
             frappe.throw(_("Supplier Name is required"))
         if self.email_id and "@" not in self.email_id:
             frappe.throw(_("Please enter a valid email address"))
-        if self.tax_id:
-            self.tax_id = self.tax_id.strip().upper()
-            if not _GSTIN_RE.match(self.tax_id):
-                frappe.throw(_("Invalid GSTIN: {0}. Expected format: 22AAAAA0000A1Z5").format(self.tax_id))
+        self._validate_kra_pin()
         if not self.is_new() and self.has_value_changed("opening_balance"):
             from zoho_books_clone.accounts.opening_balance import guard_opening_balance_edit
             guard_opening_balance_edit("Supplier", self.name)
+
+    def _validate_kra_pin(self):
+        """Sava A4. KRA PIN is required on a NEW supplier (not for install, patches,
+        migrate or tests); an existing supplier without one can still be edited,
+        but a PIN that is set cannot be cleared. A PIN that is present must match
+        the format and be unique within the Books Company."""
+        pin = (self.tax_id or "").strip().upper()
+        self.tax_id = pin
+
+        if not pin:
+            if self._kra_pin_required():
+                frappe.throw(_("KRA PIN is required"))
+            return
+
+        if not _KRA_PIN_RE.match(pin):
+            frappe.throw(_("Invalid KRA PIN: {0}. Expected format: A123456789Z").format(pin))
+
+        dup = frappe.db.get_value(
+            "Supplier",
+            {
+                "tax_id": pin,
+                "books_company": self.get("books_company") or "",
+                "name": ["!=", self.name or ""],
+            },
+            "name",
+        )
+        if dup:
+            frappe.throw(_("KRA PIN {0} is already used by supplier {1}").format(pin, dup))
+
+    def _kra_pin_required(self):
+        f = frappe.flags
+        if self.is_new():
+            return not (self.flags.get("skip_kra_pin") or f.get("in_install") or f.get("in_patch")
+                        or f.get("in_migrate") or f.get("in_test"))
+        before = self.get_doc_before_save()
+        return bool(before and (before.get("tax_id") or "").strip())
 
     def on_update(self):
         # Mirror of Customer.on_update — keep the opening balance posted as a

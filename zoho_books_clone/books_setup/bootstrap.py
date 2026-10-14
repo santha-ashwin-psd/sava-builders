@@ -28,6 +28,7 @@ COA = [
     ("CGST Input",            "Tax",        "Input Tax Credits",   0),
     ("SGST Input",            "Tax",        "Input Tax Credits",   0),
     ("IGST Input",            "Tax",        "Input Tax Credits",   0),
+    ("VAT Input",             "Tax",        "Input Tax Credits",   0),
     # Fixed Assets — required so the Asset Category "Accounting" section has
     # accounts to offer (it filters strictly by account_type: "Fixed Asset",
     # "Accumulated Depreciation", "Depreciation"). Without these, every new
@@ -44,6 +45,7 @@ COA = [
     ("CGST Payable",          "Tax",        "Current Liabilities", 0),
     ("SGST Payable",          "Tax",        "Current Liabilities", 0),
     ("IGST Payable",          "Tax",        "Current Liabilities", 0),
+    ("VAT Payable",           "Tax",        "Current Liabilities", 0),
     ("Equity",                "Equity",     None,                  1),
     ("Retained Earnings",     "Equity",     "Equity",              0),
     ("Income",                "Income",     None,                  1),
@@ -96,6 +98,15 @@ TAX_TEMPLATES = [
     ("Input IGST 28% (Inter-State)", "Purchase", [("IGST", "IGST ITC @ 28%", 28, "IGST Input")]),
 ]
 
+# Kenya VAT 16% (Sava). Same tuple shape as TAX_TEMPLATES, but seeded with
+# tax_type "VAT": the tax engine applies a VAT row flat (no place-of-supply
+# split). Kept separate from TAX_TEMPLATES so the v1_2 migration, which
+# renames only legacy GST defaults, is unaffected.
+VAT_TAX_TEMPLATES = [
+    ("VAT 16%",       "Sales",    [("VAT", "VAT @ 16%", 16, "VAT Payable")]),
+    ("Input VAT 16%", "Purchase", [("VAT", "VAT @ 16%", 16, "VAT Input")]),
+]
+
 # Template names known to be app defaults — used by the back-fill patch to
 # distinguish seeded defaults from user-created templates (which are left alone).
 DEFAULT_TAX_TEMPLATE_NAMES = frozenset(name for name, _applies_to, _rows in TAX_TEMPLATES)
@@ -116,7 +127,7 @@ def bootstrap_company_data(company: str, fy_start: str = "04-01") -> None:
 
 
 def _seed_tax_templates(company: str) -> None:
-    """Create the default GST tax templates for `company` if absent.
+    """Create the default Kenya VAT 16% tax templates for `company` if absent (GST is no longer seeded).
 
     Idempotent: the document name is "{template_name} - {company}" (autoname
     format:{template_name} - {company}), so we skip any that already exist.
@@ -131,27 +142,30 @@ def _seed_tax_templates(company: str) -> None:
             "Account", {"account_name": name, "company": company, "is_group": 0}, "name"
         ) or _acc_name(name, company)
 
-    for template_name, applies_to, rows in TAX_TEMPLATES:
-        doc_name = f"{template_name} - {company}"
-        if frappe.db.exists("Tax Template", doc_name):
-            continue
-        try:
-            frappe.get_doc({
-                "doctype": "Tax Template",
-                "template_name": template_name,
-                "company": company,
-                "tax_type": "GST",
-                "applies_to": applies_to,
-                "taxes": [
-                    {"tax_type": t[0], "description": t[1], "rate": t[2], "account_head": _acct(t[3])}
-                    for t in rows
-                ],
-            }).insert(ignore_permissions=True)
-        except Exception as exc:
-            frappe.log_error(
-                title="Books Bootstrap",
-                message=f"Bootstrap Tax Template — {company}/{template_name}: {exc}",
-            )
+    # Sava: GST is not used in this project, so only the VAT templates are
+    # seeded. TAX_TEMPLATES stays defined for the v1_2 migration.
+    for tax_type, templates in (("VAT", VAT_TAX_TEMPLATES),):
+        for template_name, applies_to, rows in templates:
+            doc_name = f"{template_name} - {company}"
+            if frappe.db.exists("Tax Template", doc_name):
+                continue
+            try:
+                frappe.get_doc({
+                    "doctype": "Tax Template",
+                    "template_name": template_name,
+                    "company": company,
+                    "tax_type": tax_type,
+                    "applies_to": applies_to,
+                    "taxes": [
+                        {"tax_type": t[0], "description": t[1], "rate": t[2], "account_head": _acct(t[3])}
+                        for t in rows
+                    ],
+                }).insert(ignore_permissions=True)
+            except Exception as exc:
+                frappe.log_error(
+                    title="Books Bootstrap",
+                    message=f"Bootstrap Tax Template — {company}/{template_name}: {exc}",
+                )
 
 
 def _seed_coa(company: str) -> None:

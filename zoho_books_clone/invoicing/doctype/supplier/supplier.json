@@ -3,7 +3,7 @@
   "module": "Invoicing",
   "doctype": "DocType",
   "creation": "2026-03-17 11:02:53.037714",
-  "modified": "2026-03-17 11:02:53.037714",
+  "modified": "2026-10-14 18:00:00.000000",
   "modified_by": "Administrator",
   "owner": "Administrator",
   "docstatus": 0,
@@ -233,7 +233,7 @@
       "fieldtype": "Link",
       "label": "Default Currency",
       "options": "Currency",
-      "default": "INR"
+      "default": "KES"
     },
     {
       "creation": "2026-03-17 11:02:53.037714",
@@ -298,14 +298,14 @@
       "print_width": "",
       "fieldname": "tax_id",
       "fieldtype": "Data",
-      "label": "GSTIN / Tax ID"
+      "label": "KRA PIN"
     },
     {
       "fieldname": "section_tds",
       "fieldtype": "Section Break",
       "label": "TDS / Withholding Tax",
       "idx": 9,
-      "permlevel": 0, "reqd": 0, "read_only": 0, "hidden": 0, "bold": 0,
+      "permlevel": 0, "reqd": 0, "read_only": 0, "hidden": 1, "bold": 0,
       "in_list_view": 0, "in_global_search": 0, "in_standard_filter": 0,
       "no_copy": 0, "allow_bulk_edit": 0, "allow_in_quick_entry": 0, "allow_on_submit": 0,
       "search_index": 0, "unique": 0, "print_hide": 0, "report_hide": 0,
@@ -319,7 +319,7 @@
       "label": "TDS Applicable",
       "default": "0",
       "idx": 10,
-      "permlevel": 0, "reqd": 0, "read_only": 0, "hidden": 0, "bold": 0,
+      "permlevel": 0, "reqd": 0, "read_only": 0, "hidden": 1, "bold": 0,
       "in_list_view": 0, "in_global_search": 0, "in_standard_filter": 0,
       "no_copy": 0, "allow_bulk_edit": 0, "allow_in_quick_entry": 0, "allow_on_submit": 0,
       "search_index": 0, "unique": 0, "print_hide": 0, "report_hide": 0,
@@ -334,7 +334,7 @@
       "options": "194C\n194J\n194A\n194H\n194I\n192\n195\nOther",
       "depends_on": "eval:doc.tds_applicable",
       "idx": 11,
-      "permlevel": 0, "reqd": 0, "read_only": 0, "hidden": 0, "bold": 0,
+      "permlevel": 0, "reqd": 0, "read_only": 0, "hidden": 1, "bold": 0,
       "in_list_view": 0, "in_global_search": 0, "in_standard_filter": 0,
       "no_copy": 0, "allow_bulk_edit": 0, "allow_in_quick_entry": 0, "allow_on_submit": 0,
       "search_index": 0, "unique": 0, "print_hide": 0, "report_hide": 0,
@@ -347,7 +347,7 @@
       "fieldtype": "Data",
       "label": "PAN Number",
       "idx": 12,
-      "permlevel": 0, "reqd": 0, "read_only": 0, "hidden": 0, "bold": 0,
+      "permlevel": 0, "reqd": 0, "read_only": 0, "hidden": 1, "bold": 0,
       "in_list_view": 0, "in_global_search": 0, "in_standard_filter": 0,
       "no_copy": 0, "allow_bulk_edit": 0, "allow_in_quick_entry": 0, "allow_on_submit": 0,
       "search_index": 0, "unique": 0, "print_hide": 0, "report_hide": 0,
@@ -770,7 +770,7 @@
       "fieldname": "country",
       "fieldtype": "Data",
       "label": "Country",
-      "default": "India"
+      "default": "Kenya"
     },
     {
       "creation": "2026-03-17 11:02:53.037714",

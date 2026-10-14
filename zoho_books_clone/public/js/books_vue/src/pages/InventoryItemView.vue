@@ -60,11 +60,11 @@
       <div class="iv-stats-row">
         <div class="iv-stat-card">
           <div class="iv-stat-label">Selling Rate</div>
-          <div class="iv-stat-val iv-stat-green">{{ fmt(item.standard_rate) }}</div>
+          <div class="iv-stat-val iv-stat-green">{{ money(item.standard_rate) }}</div>
         </div>
         <div class="iv-stat-card">
           <div class="iv-stat-label">Buying Rate</div>
-          <div class="iv-stat-val">{{ fmt(item.standard_buying_rate) }}</div>
+          <div class="iv-stat-val">{{ money(item.standard_buying_rate) }}</div>
         </div>
         <div class="iv-stat-card">
           <div class="iv-stat-label">Total Stock</div>
@@ -75,7 +75,7 @@
         </div>
         <div class="iv-stat-card">
           <div class="iv-stat-label">Stock Value</div>
-          <div class="iv-stat-val">{{ fmt(stockDetail.total_value) }}</div>
+          <div class="iv-stat-val">{{ money(stockDetail.total_value) }}</div>
         </div>
       </div>
 
@@ -91,7 +91,6 @@
             <div class="iv-kv"><span class="iv-k">Group</span><span class="iv-v">{{ item.item_group || '—' }}</span></div>
             <div class="iv-kv"><span class="iv-k">Type</span><span class="iv-v">{{ item.item_type || 'Product' }}</span></div>
             <div class="iv-kv"><span class="iv-k">Unit of Measure</span><span class="iv-v">{{ item.stock_uom || 'Nos' }}</span></div>
-            <div class="iv-kv"><span class="iv-k">HSN / SAC Code</span><span class="iv-v iv-mono">{{ item.hsn_code || '—' }}</span></div>
             <div class="iv-kv"><span class="iv-k">Sales Tax Template</span><span class="iv-v">{{ item.tax_code || '—' }}</span></div>
             <div class="iv-kv"><span class="iv-k">Purchase Tax Template</span><span class="iv-v">{{ item.default_purchase_tax_template || '—' }}</span></div>
             <div class="iv-kv"><span class="iv-k">Income Account</span><span class="iv-v">{{ item.income_account || '—' }}</span></div>
@@ -137,7 +136,7 @@
                 </td>
                 <td class="ta-r clr-muted">{{ fmtQty(wh.reserved_qty) }}</td>
                 <td class="ta-r" style="color:#7c3aed">{{ fmtQty(wh.ordered_qty) }}</td>
-                <td class="ta-r">{{ fmt(wh.stock_value) }}</td>
+                <td class="ta-r">{{ money(wh.stock_value) }}</td>
               </tr>
             </tbody>
           </table>
@@ -187,7 +186,7 @@
           <thead>
             <tr>
               <th>Price List</th>
-              <th class="ta-r">Rate (₹)</th>
+              <th class="ta-r">Rate (KES)</th>
               <th>UOM</th>
               <th>Valid From</th>
               <th>Valid To</th>
@@ -196,7 +195,7 @@
           <tbody>
             <tr v-for="pl in priceLists" :key="pl.name">
               <td class="fw-600">{{ pl.price_list }}</td>
-              <td class="ta-r fw-600 clr-green">{{ fmt(pl.price_list_rate) }}</td>
+              <td class="ta-r fw-600 clr-green">{{ money(pl.price_list_rate) }}</td>
               <td class="clr-muted">{{ pl.uom || item.stock_uom }}</td>
               <td class="clr-muted">{{ pl.valid_from || '—' }}</td>
               <td class="clr-muted">{{ pl.valid_upto || '—' }}</td>
@@ -248,8 +247,8 @@
                   <td class="ta-r fw-600" :class="row.type === 'Purchase' ? 'clr-red' : 'clr-green'">
                     {{ fmtQty(row.qty) }} {{ row.uom }}
                   </td>
-                  <td class="ta-r clr-muted">{{ fmt(row.rate) }}</td>
-                  <td class="ta-r clr-muted">{{ fmt(row.amount) }}</td>
+                  <td class="ta-r clr-muted">{{ money(row.rate) }}</td>
+                  <td class="ta-r clr-muted">{{ money(row.amount) }}</td>
                   <td class="clr-muted" style="font-size:12px">{{ row.status }}</td>
                 </tr>
               </tbody>
@@ -322,7 +321,7 @@
                     {{ row.actual_qty > 0 ? '+' : '' }}{{ fmtQty(row.actual_qty) }}
                   </td>
                   <td class="ta-r clr-muted">{{ fmtQty(row.qty_after_transaction) }}</td>
-                  <td class="ta-r clr-muted">{{ fmt(row.incoming_rate || row.valuation_rate) }}</td>
+                  <td class="ta-r clr-muted">{{ money(row.incoming_rate || row.valuation_rate) }}</td>
                   <td v-if="showCancelled" class="ta-r">
                    <button v-if="isCancelled(row)" class="iv-btn-ghost iv-btn-danger" :disabled="!$canEdit('inventory') || deletingName === row.name"
                       :title="!$canEdit('inventory') ? 'Read-only access' : 'Delete this cancelled entry'"
@@ -392,9 +391,19 @@ import { useRoute } from "vue-router";
 import { apiGET, apiPOST, apiList } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
-import { fmt, flt, fmtDate } from "../utils/format.js";
+import { flt, fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
+
+// Sava A3: Kenya shilling amounts with Kenyan digit grouping (1,234,567.50).
+// The shared fmt() in utils/format.js is INR / en-IN, so the Item screens
+// format their own money.
+const money = (v) => {
+  if (v == null || v === "") return "—";
+  try {
+    return new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", currencyDisplay: "code", maximumFractionDigits: 2 }).format(v);
+  } catch { return "KES " + Number(v).toLocaleString("en-KE"); }
+};
 import ItemEditDrawer from "../components/ItemEditDrawer.vue";
 import DocLink from "../components/DocLink.vue";
 

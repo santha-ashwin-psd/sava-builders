@@ -28,12 +28,13 @@
         <th class="sortable" @click="sortBy('project_name')">Project Name <span v-html="sortArrow('project_name')"></span></th>
         <th class="sortable" @click="sortBy('start_date')">Start Date <span v-html="sortArrow('start_date')"></span></th>
         <th class="sortable" @click="sortBy('expected_end_date')">Expected End <span v-html="sortArrow('expected_end_date')"></span></th>
+        <th class="sortable" @click="sortBy('project_manager')">Project Manager <span v-html="sortArrow('project_manager')"></span></th>
         <th class="sortable" @click="sortBy('status')">Status <span v-html="sortArrow('status')"></span></th>
         <th style="width:80px;text-align:center">Actions</th>
       </tr></thead>
       <tbody>
-        <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="6"><div class="shimmer"></div></td></tr></template>
-        <tr v-else-if="!sorted.length"><td colspan="6" class="bk-empty-state"><div class="bk-empty-inner">
+        <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="7"><div class="shimmer"></div></td></tr></template>
+        <tr v-else-if="!sorted.length"><td colspan="7" class="bk-empty-state"><div class="bk-empty-inner">
           <template v-if="search || filterTab!=='all'">
             <p class="bk-empty-title">No projects match your filters</p>
           </template>
@@ -48,6 +49,7 @@
           <td @click="openEdit(row)" data-label="Project Name">{{ row.project_name }}</td>
           <td @click="openEdit(row)" data-label="Start Date">{{ row.start_date ? fmtDate(row.start_date) : '—' }}</td>
           <td @click="openEdit(row)" data-label="Expected End">{{ row.expected_end_date ? fmtDate(row.expected_end_date) : '—' }}</td>
+          <td @click="openEdit(row)" data-label="Project Manager">{{ row.project_manager ? (members[row.project_manager] || row.project_manager) : '—' }}</td>
           <td @click="openEdit(row)" data-label="Status"><span class="inv-status-badge" :class="row.status === 'Closed' ? 'status-draft' : 'status-active'">{{ row.status || 'Open' }}</span></td>
           <td style="text-align:center;white-space:nowrap" @click.stop>
             <button class="inv-act-btn" @click="openEdit(row)" :disabled="!$canEdit('inventory')" title="Edit"><span v-html="icon('edit',13)"></span></button>
@@ -86,6 +88,14 @@
             <label>Expected End Date</label>
             <input type="date" v-model="form.expected_end_date" :min="form.start_date || null" :disabled="isClosed" />
           </div>
+        </div>
+        <div class="pj-group">
+          <label>Project Manager</label>
+          <select v-model="form.project_manager" :disabled="isClosed">
+            <option value="">— None —</option>
+            <option v-for="m in memberOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+          </select>
+          <div class="pj-hint">Approves this project's material requests. Must be a company member and not a Books Viewer.</div>
         </div>
         <div v-if="isEdit" class="pj-group">
           <label>Status</label>
@@ -145,6 +155,10 @@ const saving = ref(false);
 const closing = ref(false);
 const blockers = ref([]);
 const form = ref(blankForm());
+const members = ref({});
+const memberOptions = computed(() => Object.entries(members.value)
+  .map(([value, label]) => ({ value, label: label || value }))
+  .sort((a, b) => a.label.localeCompare(b.label)));
 const isClosed = computed(() => isEdit.value && form.value.status === "Closed");
 
 const tabs = [
@@ -154,7 +168,7 @@ const tabs = [
 ];
 
 function blankForm() {
-  return { project_code: "", project_name: "", start_date: "", expected_end_date: "" };
+  return { project_code: "", project_name: "", start_date: "", expected_end_date: "", project_manager: "" };
 }
 
 const counts = computed(() => {
@@ -198,7 +212,7 @@ async function load() {
   try {
     const company = await resolveCompany();
     list.value = await apiList("Project", {
-      fields: ["name", "project_code", "project_name", "start_date", "expected_end_date", "status", "closed_by", "closed_on", "company"],
+      fields: ["name", "project_code", "project_name", "start_date", "expected_end_date", "project_manager", "status", "closed_by", "closed_on", "company"],
       filters: company ? [["company", "=", company]] : [],
       order: "project_code asc",
       limit: 500,
@@ -239,6 +253,7 @@ async function save() {
       project_name: (f.project_name || "").trim(),
       start_date: f.start_date,
       expected_end_date: f.expected_end_date || null,
+      project_manager: f.project_manager || null,
     };
     if (isEdit.value) {
       doc.name = f.name;
@@ -306,8 +321,8 @@ async function reopenProject() {
 }
 
 function exportCSV() {
-  const headers = ["Code", "Project Name", "Start Date", "Expected End Date", "Status"];
-  const rows = filtered.value.map(r => [r.project_code || r.name, r.project_name, r.start_date || "", r.expected_end_date || "", r.status || "Open"]);
+  const headers = ["Code", "Project Name", "Start Date", "Expected End Date", "Project Manager", "Status"];
+  const rows = filtered.value.map(r => [r.project_code || r.name, r.project_name, r.start_date || "", r.expected_end_date || "", r.project_manager ? (members.value[r.project_manager] || r.project_manager) : "", r.status || "Open"]);
   const csv = [headers, ...rows].map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
   const a = document.createElement("a");
@@ -315,7 +330,15 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
-onMounted(load);
+async function loadMembers() {
+  try {
+    members.value = (await apiGET("zoho_books_clone.api.admin.get_company_user_names")) || {};
+  } catch (e) {
+    members.value = {};
+  }
+}
+
+onMounted(() => { load(); loadMembers(); });
 </script>
 
 <style scoped>
@@ -331,6 +354,8 @@ onMounted(load);
 .pj-group { display: flex; flex-direction: column; gap: 5px; }
 .pj-group label { font-size: 12.5px; font-weight: 600; color: #374151; }
 .pj-group input { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; }
+.pj-group select { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; background: #fff; }
+.pj-group select:disabled { background: #f3f4f6; color: #6b7280; }
 .pj-group input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.08); }
 .pj-group input:disabled { background: #f3f4f6; color: #6b7280; }
 .pj-hint { font-size: 12px; color: #6b7280; margin-top: 2px; }

@@ -74,13 +74,39 @@
                   {{ actionLoading === 'po' ? 'Creating…' : 'Create Purchase Order' }}
                 </button>
                 <span v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status === 'Ordered'" class="bomx-badge badge-active" style="align-self:center">Purchase Order Created</span>
-                <button v-if="!isNew && mr.docstatus===0" class="bomx-btn bomx-btn-light" @click="submitMR" :disabled="submitting || saving || !$canEdit('inventory')">
+                <button v-if="!isNew && mr.docstatus===0 && mr.production_plan" class="bomx-btn bomx-btn-light" @click="submitMR" :disabled="submitting || saving || !$canEdit('inventory')">
                   {{ submitting ? 'Submitting…' : 'Submit' }}
+                </button>
+                <button v-if="!isNew && mr.docstatus===0 && !mr.production_plan && (mr.status==='Draft' || mr.status==='Sent Back')" class="bomx-btn bomx-btn-light" @click="sendForApproval" :disabled="submitting || saving || !$canEdit('inventory')">
+                  {{ submitting ? 'Sending…' : 'Send for Approval' }}
+                </button>
+                <button v-if="!isNew && mr.docstatus===0 && mr.status==='Pending Approval' && approval.can_approve" class="bomx-btn bomx-btn-light" @click="approveMR" :disabled="submitting">
+                  {{ submitting ? 'Approving…' : 'Approve' }}
+                </button>
+                <button v-if="!isNew && mr.docstatus===0 && mr.status==='Pending Approval' && approval.can_approve" class="bomx-btn bomx-btn-light" @click="showSendBack = !showSendBack" :disabled="submitting">
+                  Send Back
                 </button>
                 <button v-if="!readOnly" class="bomx-btn bomx-btn-light" @click="save" :disabled="saving || loading || !(isNew ? $canCreate('inventory') : $canEdit('inventory'))">
                   {{ saving ? 'Saving…' : (isNew ? 'Save Material Request' : 'Save Changes') }}
                 </button>
               </div>
+            </div>
+          </div>
+
+          <div class="bomx-toggle-row" v-if="!isNew && mr.status==='Pending Approval'">
+            <div class="bomx-field-hint" style="margin:0">
+              <template v-if="approval.can_approve">Waiting for your approval.</template>
+              <template v-else>Waiting for approval by {{ approval.project_manager ? ownerName(approval.project_manager) : 'the Project Manager' }}.</template>
+            </div>
+          </div>
+          <div class="bomx-toggle-row" v-if="!isNew && mr.status==='Pending Approval' && approval.can_approve && showSendBack" style="align-items:flex-start">
+            <textarea class="bomx-fi" v-model="sendBackReason" rows="2" placeholder="Reason for sending back (required)" style="flex:1;min-width:260px;resize:vertical"></textarea>
+            <button class="bomx-btn bomx-btn-light" @click="sendBackMR" :disabled="submitting || !sendBackReason.trim()">{{ submitting ? 'Sending…' : 'Confirm Send Back' }}</button>
+            <button class="bomx-btn bomx-btn-light" @click="showSendBack = false; sendBackReason = ''" :disabled="submitting">Cancel</button>
+          </div>
+          <div class="bomx-toggle-row" v-if="!isNew && mr.status==='Sent Back' && mr.docstatus===0">
+            <div class="bomx-field-hint" style="margin:0">
+              Sent back by {{ ownerName(mr.sent_back_by) }} on {{ fmtDate(mr.sent_back_on) }}: {{ mr.send_back_reason }}. Correct it and send it for approval again.
             </div>
           </div>
 
@@ -98,8 +124,12 @@
               <input class="bomx-fi" type="date" v-model="mr.posting_date" :disabled="readOnly" style="width:100%"/>
             </div>
             <div>
-              <div class="bomx-hf-label">Project</div>
-              <SearchableSelect v-model="mr.project" :options="projects" :disabled="readOnly" placeholder="Select project (optional)" @search="q => fetchProjects(q, mr.project)" />
+              <div class="bomx-hf-label">Project <span v-if="!mr.production_plan" style="color:var(--bx-red)">*</span></div>
+              <SearchableSelect v-model="mr.project" :options="projects" :disabled="readOnly" placeholder="Select project" @search="q => fetchProjects(q, mr.project)" />
+            </div>
+            <div>
+              <div class="bomx-hf-label">Delivery Warehouse <span v-if="!mr.production_plan" style="color:var(--bx-red)">*</span></div>
+              <SearchableSelect v-model="mr.delivery_warehouse" :options="ssOpts4" :disabled="readOnly" placeholder="Select warehouse" />
             </div>
           </div>
           <div class="bomx-toggle-row" v-if="mr.production_plan">
@@ -141,6 +171,10 @@
                     <SearchableSelect v-model="row.uom" :options="ssOpts3" placeholder="—" :disabled="readOnly" compact />
                   </div>
                   <div class="bomx-rm-field" style="grid-column:span 2">
+                    <label>Intended Use <span v-if="!mr.production_plan" style="color:var(--bx-red)">*</span></label>
+                    <input class="bomx-fi" type="text" v-model="row.intended_use" :disabled="readOnly" placeholder="What the material is for"/>
+                  </div>
+                  <div class="bomx-rm-field" style="grid-column:span 2" v-if="mr.production_plan">
                     <label>Warehouse</label>
                     <SearchableSelect v-model="row.warehouse" :options="ssOpts4" placeholder="— Select —" :disabled="readOnly" compact />
                   </div>
@@ -153,6 +187,7 @@
 
             <div class="inv-view-footer" v-if="!isNew && mr.owner">
               Created by {{ ownerName(mr.owner) }} on {{ fmtDate(mr.creation) }}
+              <template v-if="mr.approved_by"> · Approved by {{ ownerName(mr.approved_by) }} on {{ fmtDate(mr.approved_on) }}</template>
               <template v-if="mr.modified_by"> · Last modified by {{ ownerName(mr.modified_by) }} on {{ fmtDate(mr.modified) }}</template>
             </div>
           </div>
@@ -169,7 +204,7 @@ import SearchableSelect from "../components/SearchableSelect.vue";
 import { useProjectOptions } from "../composables/useProjectOptions.js";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { apiGet, apiSave, apiList, apiSubmit, apiCancel, apiAmend, resolveCompany } from "../api/client.js";
+import { apiGet, apiGET, apiPOST, apiSave, apiList, apiSubmit, apiCancel, apiAmend, resolveCompany } from "../api/client.js";
 import { ownerName } from "../utils/userNames.js";
 import DocLink from "../components/DocLink.vue";
 import { useToast } from "../composables/useToast.js";
@@ -186,7 +221,7 @@ const list = ref([]);
 const search = ref("");
 const filterStatus = ref("");
 
-const statusOptions = ["Draft", "Submitted", "Ordered", "Cancelled"];
+const statusOptions = ["Draft", "Pending Approval", "Sent Back", "Approved", "Submitted", "Ordered", "Cancelled"];
 
 const selectedName = computed(() => (route.params.name && route.params.name !== "new") ? route.params.name : (route.params.name === "new" ? "new" : null));
 
@@ -210,8 +245,8 @@ const sorted = computed(() => {
 
 function statusClass(row) {
   const s = row.status;
-  if (s === "Submitted" || s === "Ordered") return "badge-active";
-  if (s === "Cancelled") return "badge-cancelled";
+  if (s === "Approved" || s === "Submitted" || s === "Ordered") return "badge-active";
+  if (s === "Cancelled" || s === "Sent Back") return "badge-cancelled";
   return "badge-obsolete";
 }
 
@@ -240,6 +275,7 @@ function emptyMR() {
     company: "",
     production_plan: "",
     project: "",
+    delivery_warehouse: "",
     items: [],
     remarks: "",
   };
@@ -252,7 +288,10 @@ const itemsList = ref([]);
 const uomList = ref([]);
 const warehouseList = ref([]);
 
-const readOnly = computed(() => !isNew.value && (mr.value.docstatus === 1 || mr.value.docstatus === 2));
+const readOnly = computed(() => !isNew.value && (mr.value.docstatus === 1 || mr.value.docstatus === 2 || mr.value.status === "Pending Approval"));
+const approval = ref({ can_approve: false, project_manager: "", reason: "" });
+const showSendBack = ref(false);
+const sendBackReason = ref("");
 
 onMounted(async () => {
   loading.value = true;
@@ -307,10 +346,63 @@ async function loadMR() {
   mr.value = data;
   if (!mr.value.items) mr.value.items = [];
   if (mr.value.project) fetchProjects("", mr.value.project);
+  await loadApproval();
+}
+
+async function loadApproval() {
+  approval.value = { can_approve: false, project_manager: "", reason: "" };
+  if (!mr.value.name || mr.value.status !== "Pending Approval") return;
+  try {
+    approval.value = await apiGET("zoho_books_clone.api.mrn.get_approval_state", { name: mr.value.name });
+  } catch (e) { /* the buttons simply stay hidden */ }
+}
+
+async function sendForApproval() {
+  if (!mr.value.name) return;
+  submitting.value = true;
+  try {
+    await apiPOST("zoho_books_clone.api.mrn.send_for_approval", { name: mr.value.name });
+    toast("Sent for approval");
+    await loadMR();
+    loadList();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+  submitting.value = false;
+}
+
+async function sendBackMR() {
+  if (!mr.value.name || !sendBackReason.value.trim()) return;
+  submitting.value = true;
+  try {
+    await apiPOST("zoho_books_clone.api.mrn.send_back_mrn", { name: mr.value.name, reason: sendBackReason.value.trim() });
+    toast("Sent back to the requester");
+    showSendBack.value = false;
+    sendBackReason.value = "";
+    await loadMR();
+    loadList();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+  submitting.value = false;
+}
+
+async function approveMR() {
+  if (!mr.value.name) return;
+  submitting.value = true;
+  try {
+    await apiPOST("zoho_books_clone.api.mrn.approve_mrn", { name: mr.value.name });
+    toast("Material Request approved");
+    await loadMR();
+    loadList();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+  submitting.value = false;
 }
 
 function addItem() {
-  mr.value.items.push({ item_code: "", item_name: "", required_qty: 1, uom: "", warehouse: "" });
+  mr.value.items.push({ item_code: "", item_name: "", required_qty: 1, uom: "", warehouse: "", intended_use: "" });
 }
 
 function onItemChange(row) {
@@ -321,10 +413,15 @@ function onItemChange(row) {
 
 async function save() {
   if (!mr.value.posting_date) return toast("Required By date is required", "error");
+  if (!mr.value.production_plan) {
+    if (!mr.value.project) return toast("Select a project", "error");
+    if (!mr.value.delivery_warehouse) return toast("Select a delivery warehouse", "error");
+  }
   if (!mr.value.items.length) return toast("Add at least one item", "error");
   for (const r of mr.value.items) {
     if (!r.item_code) return toast("Select an item for every row", "error");
     if (!r.required_qty || r.required_qty <= 0) return toast(`Required Qty must be > 0 for ${r.item_code}`, "error");
+    if (!mr.value.production_plan && !(r.intended_use || "").trim()) return toast(`Enter the intended use for ${r.item_code}`, "error");
   }
   saving.value = true;
   try {

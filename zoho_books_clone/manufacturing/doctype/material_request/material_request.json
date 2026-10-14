@@ -3,7 +3,7 @@
  "module": "Manufacturing",
  "doctype": "DocType",
  "creation": "2026-07-10 00:00:00.000000",
- "modified": "2026-07-10 00:00:00.000000",
+ "modified": "2026-10-14 18:30:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,
@@ -16,7 +16,7 @@
  "istable": 0,
  "issingle": 0,
  "naming_rule": "Expression",
- "autoname": "MR-.YYYY.-.#####",
+ "autoname": "SB-MRN-.YY.-.####",
  "sort_field": "modified",
  "sort_order": "DESC",
  "fields": [
@@ -34,7 +34,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nSubmitted\nOrdered\nCancelled",
+   "options": "Draft\nPending Approval\nSent Back\nApproved\nSubmitted\nOrdered\nCancelled",
    "default": "Draft",
    "read_only": 1,
    "no_copy": 1,
@@ -63,7 +63,17 @@
    "label": "Project",
    "options": "Project",
    "in_standard_filter": 1,
-   "search_index": 1
+   "search_index": 1,
+   "description": "Required on every new MRN (not for Production Plan requests)."
+  },
+  {
+   "fieldname": "delivery_warehouse",
+   "fieldtype": "Link",
+   "label": "Delivery Warehouse",
+   "options": "Warehouse",
+   "in_standard_filter": 1,
+   "search_index": 1,
+   "description": "Where the material is to be delivered. Required on every new MRN (not for Production Plan requests)."
   },
   {
    "fieldname": "production_plan",
@@ -94,6 +104,43 @@
    "fieldname": "remarks",
    "fieldtype": "Small Text",
    "label": "Remarks"
+  },
+  {
+   "fieldname": "approved_by",
+   "fieldtype": "Link",
+   "label": "Approved By",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Approved On",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "send_back_reason",
+   "fieldtype": "Small Text",
+   "label": "Send Back Reason",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "sent_back_by",
+   "fieldtype": "Link",
+   "label": "Sent Back By",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "sent_back_on",
+   "fieldtype": "Datetime",
+   "label": "Sent Back On",
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "amended_from",

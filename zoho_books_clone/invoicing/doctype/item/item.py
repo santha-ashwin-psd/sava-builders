@@ -22,6 +22,25 @@ class Item(Document):
 
         self._validate_inventory_account()
         self._validate_uom_conversions()
+        self._validate_purchase_uom_conversion()
+
+    def _validate_purchase_uom_conversion(self):
+        """
+        Sava A3: a Purchase UOM different from the Stock UOM must have a row in
+        UOM Conversions. get_conversion_factor() silently falls back to 1.0 for
+        a missing row, which would receive e.g. 10 Bags as 10 Tonne of stock.
+        Only Item save is checked; existing stock transactions are not touched.
+        """
+        purchase_uom = self.get("purchase_uom")
+        if not purchase_uom or purchase_uom == self.stock_uom:
+            return
+        for row in self.get("uom_conversions") or []:
+            if row.uom == purchase_uom and flt(row.conversion_factor) > 0:
+                return
+        frappe.throw(_(
+            "Purchase UOM {0} differs from Stock UOM {1}. Add a UOM Conversions row "
+            "for {0} (how many {1} make 1 {0}) before saving."
+        ).format(frappe.bold(purchase_uom), frappe.bold(self.stock_uom)))
 
     def _validate_uom_conversions(self):
         """

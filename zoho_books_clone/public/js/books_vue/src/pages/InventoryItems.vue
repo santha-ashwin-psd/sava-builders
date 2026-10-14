@@ -140,7 +140,7 @@
         <th class="sortable col-hide-tablet" @click="sortBy('item_group')">Group <span v-html="sortArrow('item_group')"></span></th>
         <th class="sortable" @click="sortBy('item_type')">Type <span v-html="sortArrow('item_type')"></span></th>
         <th class="col-hide-tablet">UOM</th>
-        <th class="ta-r sortable" @click="sortBy('standard_rate')">Rate (₹) <span v-html="sortArrow('standard_rate')"></span></th>
+        <th class="ta-r sortable" @click="sortBy('standard_rate')">Rate (KES) <span v-html="sortArrow('standard_rate')"></span></th>
         <th>Status</th>
         <th style="width:90px;text-align:center">Actions</th>
       </tr></thead>
@@ -176,7 +176,7 @@
             </span>
           </td>
           <td @click="openView(row)" class="text-muted col-hide-tablet mono-sm" data-label="UOM">{{row.stock_uom||'Nos'}}</td>
-          <td @click="openView(row)" class="ta-r fw-600 mono-sm" data-label="Rate">{{fmt(row.standard_rate)}}</td>
+          <td @click="openView(row)" class="ta-r fw-600 mono-sm" data-label="Rate">{{money(row.standard_rate)}}</td>
           <td @click="openView(row)" data-label="Status"><span class="inv-status-badge" :class="row.disabled?'status-inactive':'status-active'">{{row.disabled?'Inactive':'Active'}}</span></td>
           <td style="text-align:center;white-space:nowrap" @click.stop>
             <button class="inv-act-btn" @click="openEdit(row)" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : 'Quick Edit'"><span v-html="icon('edit',13)"></span></button>
@@ -211,7 +211,7 @@
           </div>
         </div>
         <div class="ii-mob-card-right">
-          <div class="fw-700" style="font-size:14px;color:#2F9E44">₹{{fmt(row.standard_rate)}}</div>
+          <div class="fw-700" style="font-size:14px;color:#2F9E44">{{money(row.standard_rate)}}</div>
           <div class="text-muted" style="font-size:11px">{{row.stock_uom||'Nos'}}</div>
         </div>
         <div class="ii-mob-card-actions">
@@ -245,7 +245,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span v-if="row.item_group" class="it-group-badge" style="font-size:11px">{{row.item_group}}</span>
           <span v-else class="text-muted" style="font-size:12px">—</span>
-          <span class="fw-700" style="font-size:13px;color:#2F9E44">{{fmt(row.standard_rate)}}</span>
+          <span class="fw-700" style="font-size:13px;color:#2F9E44">{{money(row.standard_rate)}}</span>
         </div>
       </div>
     </div>
@@ -281,8 +281,18 @@ import { useRouter } from "vue-router";
 import { apiList, apiSave, apiDelete } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { usePagination } from "../composables/usePagination.js";
-import { fmt, flt } from "../utils/format.js";
+import { flt } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
+
+// Sava A3: Kenya shilling amounts with Kenyan digit grouping (1,234,567.50).
+// The shared fmt() in utils/format.js is INR / en-IN, so the Item screens
+// format their own money.
+const money = (v) => {
+  if (v == null || v === "") return "—";
+  try {
+    return new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", currencyDisplay: "code", maximumFractionDigits: 2 }).format(v);
+  } catch { return "KES " + Number(v).toLocaleString("en-KE"); }
+};
 import Pagination from "../components/Pagination.vue";
 import BulkActionBar from "../components/BulkActionBar.vue";
 import ItemEditDrawer from "../components/ItemEditDrawer.vue";

@@ -61,6 +61,9 @@ ITEM_FIELDS = [
     "item_code", "item_name", "item_group", "item_type",
     "stock_uom", "standard_rate", "standard_buying_rate", "tax_code", "gst_rate", "hsn_code",
     "description", "is_sales_item", "is_purchase_item",
+    # Sava A3
+    "purchase_uom", "purchase_conversion_factor", "reorder_level", "reorder_qty",
+    "inspection_required_before_purchase", "default_purchase_tax_template",
 ]
 
 VENDOR_FIELDS = [
@@ -199,7 +202,7 @@ def _build_doc(doctype, row, company):
             "tax_id": row.get("tax_id") or "",
             "city": row.get("city") or "",
             "state": row.get("state") or "",
-            "country": row.get("country") or "India",
+            "country": row.get("country") or "Kenya",
             "payment_terms": row.get("payment_terms") or "",
             "books_company": company,
         }
@@ -208,13 +211,34 @@ def _build_doc(doctype, row, company):
         iname = (row.get("item_name") or "").strip()
         if not iname:
             return None
+        stock_uom = (row.get("stock_uom") or "Nos").strip()
+        purchase_uom = (row.get("purchase_uom") or "").strip()
+        uom_conversions = []
+        if purchase_uom and purchase_uom != stock_uom:
+            # Same rule as Item save: a Purchase UOM other than the Stock UOM
+            # needs a conversion factor (how many stock UOM in 1 purchase UOM).
+            factor = flt(row.get("purchase_conversion_factor") or 0)
+            if factor <= 0:
+                frappe.throw(_(
+                    "purchase_conversion_factor is required (greater than 0) when "
+                    "purchase_uom {0} differs from stock_uom {1}"
+                ).format(purchase_uom, stock_uom))
+            uom_conversions = [{"uom": purchase_uom, "conversion_factor": factor}]
+        inspect_flag = cint(row.get("inspection_required_before_purchase") or 0)
         return {
             "doctype": "Item",
             "item_name": iname,
             "item_code": (row.get("item_code") or iname).strip(),
             "item_group": _resolve_or_create_item_group(row.get("item_group")),
             "item_type": row.get("item_type") or "Service",
-            "stock_uom": row.get("stock_uom") or "Nos",
+            "stock_uom": stock_uom,
+            "purchase_uom": purchase_uom,
+            "uom_conversions": uom_conversions,
+            "reorder_level": flt(row.get("reorder_level") or 0),
+            "reorder_qty": flt(row.get("reorder_qty") or 0),
+            "inspection_required_before_purchase": inspect_flag,
+            "quality_inspection_required": inspect_flag,
+            "default_purchase_tax_template": _resolve_tax_code(row.get("default_purchase_tax_template"), company),
             "standard_rate": flt(row.get("standard_rate") or 0),
             "standard_buying_rate": flt(row.get("standard_buying_rate") or 0),
             "tax_code": _resolve_tax_code(row.get("tax_code"), company),
@@ -387,7 +411,7 @@ def _build_doc(doctype, row, company):
         vendor_id = ""
         if vendor_input:
             try:
-                supplier_id, _ = _resolve_supplier(vendor_input, company)
+                supplier_id, _supplier_name = _resolve_supplier(vendor_input, company)
                 vendor_id = supplier_id
             except Exception:
                 vendor_id = ""
@@ -653,11 +677,11 @@ def get_sample_csv(doctype):
         },
         "Supplier": {
             "headers": ["supplier_name","supplier_type","email_id","mobile_no","phone","tax_id","city","state","country","payment_terms"],
-            "sample":  [["Global Supplies","Company","supplier@example.com","9876543210","","27AAACR5055K1Z5","Delhi","Delhi","India",""]],
+            "sample":  [["Global Supplies","Company","supplier@example.com","0712345678","","A123456789Z","Nairobi","Nairobi","Kenya","Net 30"]],
         },
         "Item": {
-            "headers": ["item_code","item_name","item_group","item_type","stock_uom","standard_rate","standard_buying_rate","tax_code","hsn_code","description","is_sales_item","is_purchase_item"],
-            "sample":  [["ITEM-001","Widget A","All Item Groups","Product","Nos","100","60","GST 18%","8471","Standard Widget","1","1"]],
+            "headers": ["item_code","item_name","item_group","item_type","stock_uom","standard_rate","standard_buying_rate","tax_code","hsn_code","description","is_sales_item","is_purchase_item","purchase_uom","purchase_conversion_factor","reorder_level","reorder_qty","inspection_required_before_purchase","default_purchase_tax_template"],
+            "sample":  [["ITEM-001","Widget A","All Item Groups","Product","Nos","100","60","GST 18%","8471","Standard Widget","1","1","Box","12","10","50","0","Input VAT 16%"]],
         },
         "Sales Invoice": {
             "headers": ["customer","posting_date","due_date","item_code","qty","rate","tax_type","tax_rate","currency","remarks"],

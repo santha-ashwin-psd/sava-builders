@@ -10,6 +10,7 @@
   "project_name",
   "start_date",
   "expected_end_date",
+  "project_manager",
   "status",
   "closed_by",
   "closed_on",
@@ -18,7 +19,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2026-10-13 00:00:00.000000",
+ "modified": "2026-10-14 17:30:00.000000",
  "modified_by": "Administrator",
  "module": "Inventory",
  "name": "Project",
@@ -58,6 +59,13 @@
    "fieldname": "expected_end_date",
    "fieldtype": "Date",
    "label": "Expected End Date"
+  },
+  {
+   "fieldname": "project_manager",
+   "fieldtype": "Link",
+   "label": "Project Manager",
+   "options": "User",
+   "in_standard_filter": 1
   },
   {
    "fieldname": "status",

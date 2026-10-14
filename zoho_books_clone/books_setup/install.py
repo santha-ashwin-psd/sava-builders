@@ -169,6 +169,12 @@ def seed_uoms():
         ("Tonne",   "Metric Tonne"),
         ("Sq Meter","Square Meter"),
         ("Sq Foot", "Square Foot"),
+        # Sava A3: UOMs used by the consumables list (ASSETS.xlsx)
+        ("Bag",     "Bag"),
+        ("Pc",      "Piece"),
+        ("Ft",      "Foot (length)"),
+        ("Trip",    "Trip (load / delivery)"),
+        ("Set",     "Set"),
     ]
     for name, desc in uoms:
         if not frappe.db.exists("UOM", name):

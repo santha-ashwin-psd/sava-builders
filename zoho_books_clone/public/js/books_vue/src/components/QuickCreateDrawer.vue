@@ -102,8 +102,8 @@
                 <input v-model="form.mobile_no" type="tel" class="qcd-input" placeholder="9876543210" />
               </div>
               <div class="qcd-field">
-                <label class="qcd-lbl">Tax ID / GSTIN</label>
-                <input v-model="form.tax_id" class="qcd-input" placeholder="27AAPFU0939F1ZV" @input="form.tax_id = form.tax_id.toUpperCase()" />
+                <label class="qcd-lbl">KRA PIN <span class="qcd-req">*</span></label>
+                <input v-model="form.tax_id" class="qcd-input" placeholder="A123456789Z" maxlength="11" @input="form.tax_id = form.tax_id.toUpperCase().replace(/[^A-Z0-9]/g, '')" />
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">Country</label>
@@ -122,7 +122,10 @@
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">Payment Terms</label>
-                <input v-model="form.payment_terms" class="qcd-input" placeholder="e.g. Net 30" />
+                <select v-model="form.payment_terms" class="qcd-input">
+                  <option value="">— Select Payment Terms —</option>
+                  <option v-for="t in paymentTermsList" :key="t" :value="t">{{ t }}</option>
+                </select>
               </div>
             </div>
           </template>
@@ -296,6 +299,7 @@ import { apiSave, apiList, resolveCompany } from "../api/client.js";
 import { useQuickCreate } from "../composables/useQuickCreate.js";
 import { useToast } from "../composables/useToast.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
+import { KRA_PIN_REGEX } from "../composables/useValidation.js";
 
 const { state, complete, cancel } = useQuickCreate();
 const { toast } = useToast();
@@ -306,9 +310,18 @@ const uomList = ref([]);
 const parentWarehouseList = ref([]);
 const parentAccountList   = ref([]);
 const PAYMENT_TERMS = ["Due on Receipt","Net 7","Net 15","Net 30","Net 45","Net 60","Net 90"];
+const paymentTermsList = ref(["Due on Receipt", "Net 7", "Net 15", "Net 30", "Net 60", "Net 90", "End of Month"]);
 const LABELS = { Customer: "Customer", Supplier: "Vendor / Supplier", Item: "Item", Warehouse: "Warehouse", Account: "Account" };
 
+async function loadPaymentTerms() {
+  try {
+    const r = await apiList("Payment Terms", { fields: ["name"], order: "credit_days asc, name asc", limit: 100 });
+    const names = (r || []).map(x => x.name).filter(Boolean);
+    if (names.length) paymentTermsList.value = names;
+  } catch { /* keep the seeded list */ }
+}
 onMounted(async () => {
+  loadPaymentTerms();
   try {
     const r = await apiList("UOM", { fields: ["name"], order: "name asc", limit: 200 });
     uomList.value = (r || []).map(x => x.name);
@@ -336,7 +349,7 @@ watch(() => state.open, (open) => {
   } else if (state.doctype === "Supplier") {
     Object.assign(form, {
       supplier_name: state.prefill, supplier_type: "Company",
-      email_id: "", mobile_no: "", tax_id: "", country: "India", state: "", payment_terms: "",
+      email_id: "", mobile_no: "", tax_id: "", country: "Kenya", state: "", payment_terms: "",
     });
   } else if (state.doctype === "Item") {
     Object.assign(form, {
@@ -369,6 +382,11 @@ async function onSave() {
   }
   if (state.doctype === "Supplier" && !form.supplier_name?.trim()) {
     toast("Supplier Name is required", "error"); return;
+  }
+  if (state.doctype === "Supplier") {
+    const pin = (form.tax_id || "").trim();
+    if (!pin) { toast("KRA PIN is required", "error"); return; }
+    if (!KRA_PIN_REGEX.test(pin)) { toast("Invalid KRA PIN (e.g. A123456789Z)", "error"); return; }
   }
   if (state.doctype === "Item" && !form.item_name?.trim()) {
     toast("Item Name is required", "error"); return;

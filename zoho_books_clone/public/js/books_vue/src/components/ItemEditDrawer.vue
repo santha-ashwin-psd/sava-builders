@@ -157,11 +157,7 @@
                 </select>
               </div>
             </div>
-            <div class="ad-grid-2">
-              <div class="ad-field">
-                <label class="ad-label">HSN / SAC Code</label>
-                <input class="ad-input" v-model="form.hsn_code" placeholder="e.g. 847130"/>
-              </div>
+            <div>
               <div class="ad-field">
                 <label class="ad-label">Barcode</label>
                 <div style="display:flex;gap:6px">
@@ -196,23 +192,23 @@
             <div class="ad-section-title">Rates</div>
             <div class="ad-grid-2">
               <div class="ad-field">
-                <label class="ad-label">Selling Rate (₹)</label>
+                <label class="ad-label">Selling Rate (KES)</label>
                 <div class="ad-input-prefix-wrap">
-                  <span class="ad-input-prefix">₹</span>
+                  <span class="ad-input-prefix">KES</span>
                   <input type="number" class="ad-input ad-input--prefixed" v-model="form.standard_rate" min="0" placeholder="0.00"/>
                 </div>
               </div>
               <div class="ad-field">
-                <label class="ad-label">Buying Rate (₹)</label>
+                <label class="ad-label">Buying Rate (KES)</label>
                 <div class="ad-input-prefix-wrap">
-                  <span class="ad-input-prefix">₹</span>
+                  <span class="ad-input-prefix">KES</span>
                   <input type="number" class="ad-input ad-input--prefixed" v-model="form.standard_buying_rate" min="0" placeholder="0.00"/>
                 </div>
               </div>
               <div class="ad-field">
-                <label class="ad-label">MRP (₹)</label>
+                <label class="ad-label">MRP (KES)</label>
                 <div class="ad-input-prefix-wrap">
-                  <span class="ad-input-prefix">₹</span>
+                  <span class="ad-input-prefix">KES</span>
                   <input type="number" class="ad-input ad-input--prefixed" v-model="form.mrp" min="0" placeholder="0.00"/>
                 </div>
                 <div class="ad-hint" style="margin-top:6px">If left blank, Selling Rate is used as the MRP on invoices.</div>
@@ -238,7 +234,7 @@
               </select>
               <div class="ad-hint" style="margin-top:6px">
                 Auto-filled on Bills, Debit Notes &amp; Purchase Orders instead of the Sales template above —
-                purchases need to post to an Input/ITC account, not the Payable account sales use. Left blank,
+                purchases need to post to an Input VAT account, not the VAT Payable account sales use. Left blank,
                 the field is left empty on Bills too, so it won't silently pick the wrong account.
               </div>
             </div>
@@ -545,7 +541,7 @@ const bomOptions       = ref([]);   // Active, submitted BOMs for the item being
 const form = reactive({
   name: "", item_code: "", item_name: "", item_group: "", item_type: "Product",
   stock_uom: "Nos", hsn_code: "", barcode: "", description: "", disabled: 0, brand: "",
-  standard_rate: 0, standard_buying_rate: 0, mrp: 0, gst_rate: 18, tax_code: "", default_purchase_tax_template: "",
+  standard_rate: 0, standard_buying_rate: 0, mrp: 0, gst_rate: 16, tax_code: "", default_purchase_tax_template: "",
   income_account: "", expense_account: "",
   is_sales_item: 1, is_purchase_item: 1, portal_item: 0, is_fixed_asset: 0, asset_category: "",
   is_stock_item: 1, has_batch_no: 0, shelf_life_in_days: 0, valuation_method: "FIFO", default_warehouse: "",
@@ -663,6 +659,8 @@ async function loadDrawerReferenceData() {
 
   if (ttRes.status === "fulfilled") {
     taxTemplates.value = (ttRes.value || []).map((r) => ({ name: r.name, label: r.template_name || r.name, applies_to: r.applies_to || "Both" }));
+    // The drawer may have been opened for a new item before this list arrived.
+    if (showDrawer.value && drawerMode.value === "add") applyDefaultVatTemplates();
   } else { taxTemplates.value = []; }
 
   if (uomRes.status === "fulfilled") {
@@ -816,7 +814,7 @@ function openAdd(presetType) {
   Object.assign(form, {
     name: "", item_code: "", item_name: "", item_group: "", item_type: defaultType,
     stock_uom: "Nos", hsn_code: "", barcode: "", description: "", disabled: 0, brand: "",
-    standard_rate: 0, standard_buying_rate: 0, mrp: 0, gst_rate: 18, tax_code: "", default_purchase_tax_template: "",
+    standard_rate: 0, standard_buying_rate: 0, mrp: 0, gst_rate: 16, tax_code: "", default_purchase_tax_template: "",
     income_account:  defaultAccounts.value.income,
     expense_account: defaultAccounts.value.expense,
     is_stock_item: d.is_stock !== undefined ? d.is_stock : 1,
@@ -842,7 +840,17 @@ function openAdd(presetType) {
   }
   bomOptions.value = [];
   variantAttrs.value = [];
+  applyDefaultVatTemplates();
   showDrawer.value = true;
+}
+
+// Sava A3: a new item defaults to the Kenya VAT 16% templates (sales and
+// purchase). Left blank if the templates aren't in the loaded list.
+function applyDefaultVatTemplates() {
+  const sales = taxTemplates.value.find((t) => t.label === "VAT 16%");
+  const purchase = taxTemplates.value.find((t) => t.label === "Input VAT 16%");
+  if (sales && !form.tax_code) form.tax_code = sales.name;
+  if (purchase && !form.default_purchase_tax_template) form.default_purchase_tax_template = purchase.name;
 }
 
 async function openEdit(row) {
@@ -1141,7 +1149,7 @@ defineExpose({ openAdd, openEdit, openVariants });
   position: absolute; left: 11px; font-size: 13px; font-weight: 600;
   color: #64748b; pointer-events: none; z-index: 1;
 }
-.ad-input--prefixed { padding-left: 26px; }
+.ad-input--prefixed { padding-left: 46px; }
 
 /* 2-col grid */
 .ad-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

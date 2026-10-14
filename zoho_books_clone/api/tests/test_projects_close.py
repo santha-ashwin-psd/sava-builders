@@ -81,7 +81,8 @@ class TestOpenDocuments(unittest.TestCase):
         with mock.patch.object(pj.frappe.db, "count", side_effect=fake_count):
             pj.get_open_documents("SB-001")
         self.assertEqual(seen["Purchase Receipt"], {"project": "SB-001", "docstatus": 0})
-        self.assertEqual(seen["Material Request"]["status"], ["in", ["Draft", "Submitted"]])
+        self.assertEqual(seen["Material Request"]["status"],
+                         ["in", ["Draft", "Pending Approval", "Sent Back", "Approved", "Submitted"]])
         self.assertIn("Partially Received", seen["Purchase Order"]["status"][1])
         self.assertNotIn("Received", seen["Purchase Order"]["status"][1])
         self.assertEqual(seen["Material Request"]["docstatus"], ["<", 2])
@@ -99,7 +100,8 @@ class TestCloseReopen(unittest.TestCase):
 
     def run_close(self, doc, open_docs):
         with mock.patch.object(pj.frappe, "get_doc", return_value=doc), \
-             mock.patch.object(pj, "get_open_documents", return_value=open_docs):
+             mock.patch.object(pj, "get_open_documents", return_value=open_docs), \
+             mock.patch.object(pj, "now_datetime", return_value="2026-10-14 10:00:00"):
             return pj.close_project("SB-001")
 
     def test_close_blocked_when_open_documents(self):
