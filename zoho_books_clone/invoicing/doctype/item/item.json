@@ -3,7 +3,7 @@
  "module": "Invoicing",
  "doctype": "DocType",
  "creation": "2026-03-17 11:02:53.037714",
- "modified": "2026-10-14 12:00:00.000000",
+ "modified": "2026-10-15 13:00:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,
@@ -247,6 +247,7 @@
   },
   {
    "fieldname": "portal_item",
+   "hidden": 1,
    "fieldtype": "Check",
    "label": "Portal Item",
    "default": "0",

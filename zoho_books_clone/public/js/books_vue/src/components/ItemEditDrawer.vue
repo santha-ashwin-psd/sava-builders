@@ -96,7 +96,7 @@
                 <span class="ad-switch-track ad-switch-track--green"></span>
               </label>
             </div>
-            <div class="ad-toggle-row" style="margin-top:12px">
+            <div v-if="SHOW_PORTAL" class="ad-toggle-row" style="margin-top:12px">
               <div class="ad-toggle-left">
                 <div class="ad-toggle-title">Portal Item</div>
                 <div class="ad-toggle-sub">Show this item in the Customer Portal item list</div>
@@ -106,7 +106,7 @@
                 <span class="ad-switch-track ad-switch-track--green"></span>
               </label>
             </div>
-            <div v-if="form.portal_item && form.disabled" style="margin-top:10px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px">
+            <div v-if="SHOW_PORTAL && form.portal_item && form.disabled" style="margin-top:10px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px">
               ⚠ This item is Disabled (Inventory tab), so it won't appear in the Customer Portal even with Portal Item on. Both need to be set for it to show up.
             </div>
             <div class="ad-toggle-row" style="margin-top:12px">
@@ -488,6 +488,8 @@
 </template>
 
 <script setup>
+// The customer portal is not used in this project; set to true to show the Portal Item toggle again.
+const SHOW_PORTAL = false;
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { apiList, apiGET, apiPOST, apiSave, resolveCompany } from "../api/client.js";

@@ -7,7 +7,7 @@
  "autoname": "DN-.YYYY.-.#####",
  "naming_series": null,
  "creation": "2026-05-23 00:00:00.000000",
- "modified": "2026-05-23 00:00:00.000000",
+ "modified": "2026-10-15 12:00:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,
@@ -49,7 +49,8 @@
    "show_seconds": 1,
    "translatable": 0,
    "unique": 0,
-   "reqd": 1,
+   "reqd": 0,
+   "mandatory_depends_on": "eval:!doc.material_request",
    "options": "Customer"
   },
   {
@@ -301,6 +302,52 @@
    "translatable": 0,
    "unique": 0,
    "reqd": 0
+  },
+  {
+   "fieldname": "sec_store_issue",
+   "fieldtype": "Section Break",
+   "label": "Store Issue (MRN)"
+  },
+  {
+   "fieldname": "material_request",
+   "fieldtype": "Link",
+   "label": "Material Request",
+   "options": "Material Request",
+   "in_standard_filter": 1,
+   "search_index": 1,
+   "no_copy": 1,
+   "description": "Set when this Delivery Note issues approved MRN items from a store to a site. Stock is transferred, not sold."
+  },
+  {
+   "fieldname": "from_warehouse",
+   "fieldtype": "Link",
+   "label": "Source Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "to_warehouse",
+   "fieldtype": "Link",
+   "label": "Destination Warehouse",
+   "options": "Warehouse"
+  },
+  {
+   "fieldname": "col_store_issue",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "driver_name",
+   "fieldtype": "Data",
+   "label": "Driver Name"
+  },
+  {
+   "fieldname": "driver_id",
+   "fieldtype": "Data",
+   "label": "Driver I.D."
+  },
+  {
+   "fieldname": "truck_no",
+   "fieldtype": "Data",
+   "label": "Truck No."
   },
   {
    "fieldname": "status",

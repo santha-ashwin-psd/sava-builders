@@ -327,6 +327,10 @@ hp_packing_slip     = _make_hp("Packing Slip")
 qc_project = _make_qc("Project")
 hp_project = _make_hp("Project")
 
+# ── Request for Quotation (Sava A7 — uses the `company` field) ─────────────
+qc_request_for_quotation = _make_qc("Request for Quotation")
+hp_request_for_quotation = _make_hp("Request for Quotation")
+
 # ── Assets (uses the `company` field like Manufacturing/transactional docs) ─
 
 qc_asset = _make_qc("Asset")

@@ -20,7 +20,7 @@ from zoho_books_clone.utils.access import _membership, assert_can, assert_compan
 OPEN_DOCUMENT_RULES = (
     ("Material Request", "MRN", {
         "docstatus": ["<", 2],
-        "status": ["in", ["Draft", "Pending Approval", "Sent Back", "Approved", "Submitted"]],
+        "status": ["in", ["Draft", "Pending Approval", "Sent Back", "Approved", "Partly Issued", "Submitted"]],
     }),
     ("Purchase Order", "LPO", {
         "docstatus": ["<", 2],

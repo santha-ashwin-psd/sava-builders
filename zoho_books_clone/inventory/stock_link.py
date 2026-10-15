@@ -238,18 +238,27 @@ def on_delivery_note_submit(doc, method=None):
     rows = _stock_rows(doc, direction="issue", zero_rate=True)
     if not rows:
         return
+    # Sava A6.1: a Delivery Note linked to an MRN moves stock to the site warehouse
+    # (Material Transfer) instead of issuing it out of the books.
+    is_transfer = bool(getattr(doc, "material_request", None))
+    if is_transfer:
+        for r in rows:
+            r["to_warehouse"] = doc.to_warehouse
     se = _build_stock_entry(
-        entry_type="Material Issue",
+        entry_type="Material Transfer" if is_transfer else "Material Issue",
         posting_date=doc.posting_date or today(),
         posting_time=getattr(doc, "posting_time", None),
         company=doc.company,
-        remarks=_("Auto stock issue — Delivery Note {0}").format(doc.name),
+        remarks=(_("Auto stock transfer — Delivery Note {0}") if is_transfer
+                 else _("Auto stock issue — Delivery Note {0}")).format(doc.name),
         rows=rows,
         ref_doctype=doc.doctype,
         ref_docname=doc.name,
+        project=getattr(doc, "project", None) if is_transfer else None,
     )
     frappe.msgprint(
-        _("Stock deducted automatically via {0}.").format(frappe.bold(se.name)),
+        (_("Stock transferred automatically via {0}.") if is_transfer
+         else _("Stock deducted automatically via {0}.")).format(frappe.bold(se.name)),
         indicator="green", alert=True,
     )
 
@@ -534,6 +543,7 @@ def _build_stock_entry(
     ref_doctype: str,
     ref_docname: str,
     posting_time: str | None = None,
+    project: str | None = None,
 ) -> "frappe.Document":
     """Create, insert, and submit a Stock Entry; returns the submitted document.
 
@@ -555,6 +565,7 @@ def _build_stock_entry(
             "qty":          r["qty"],
             "basic_rate":   r["basic_rate"],
             warehouse_key:  r["warehouse"],
+            **({"t_warehouse": r["to_warehouse"]} if r.get("to_warehouse") else {}),
             **({"batch_no": r["batch_no"]} if r.get("batch_no") else {}),
         }
         for r in rows
@@ -571,6 +582,7 @@ def _build_stock_entry(
         # Store the originating voucher for traceability
         "reference_doctype": ref_doctype,
         "reference_name":    ref_docname,
+        **({"project": project} if project else {}),
         "items":            items,
     })
     se.flags.ignore_permissions = True

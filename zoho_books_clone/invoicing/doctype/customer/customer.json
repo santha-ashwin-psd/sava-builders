@@ -191,12 +191,13 @@
   {
    "fieldname": "portal_users",
    "fieldtype": "Table",
+   "hidden": 1,
    "label": "Portal Users",
    "options": "Portal User"
   }
  ],
  "links": [],
- "modified": "2026-09-17 10:48:45.808239",
+ "modified": "2026-10-15 12:30:00.000000",
  "modified_by": "Administrator",
  "module": "Invoicing",
  "name": "Customer",

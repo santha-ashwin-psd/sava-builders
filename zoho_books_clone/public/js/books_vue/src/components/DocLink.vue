@@ -42,6 +42,7 @@ const DOCTYPE_ROUTE = {
   "Debit Note":        "list:/debit-notes",
   "Delivery Note":     "list:/delivery-challans",
   "Purchase Receipt":  "list:/purchase-receipts",
+  "Request for Quotation": "list:/rfqs",
   "Auto Repeat":       "list:/recurring",
   "E Way Bill":        "list:/eway-bills",
   "Customer":          "path:/customers",

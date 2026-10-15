@@ -1,0 +1,62 @@
+{
+ "module": "Invoicing",
+ "doctype": "DocType",
+ "creation": "2026-10-15 00:00:00.000000",
+ "modified": "2026-10-15 14:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "docstatus": 0,
+ "idx": 0,
+ "name": "Request for Quotation Supplier",
+ "istable": 1,
+ "issingle": 0,
+ "track_changes": 0,
+ "fields": [
+  {
+   "fieldname": "supplier",
+   "fieldtype": "Link",
+   "label": "Supplier",
+   "options": "Supplier",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "supplier_name",
+   "fieldtype": "Data",
+   "label": "Supplier Name",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "email_id",
+   "fieldtype": "Data",
+   "label": "Email",
+   "options": "Email",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "send_status",
+   "fieldtype": "Select",
+   "label": "Send Status",
+   "options": "Pending\nSent\nFailed",
+   "default": "Pending",
+   "read_only": 1,
+   "no_copy": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "sent_on",
+   "fieldtype": "Datetime",
+   "label": "Sent On",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "send_error",
+   "fieldtype": "Small Text",
+   "label": "Send Error",
+   "read_only": 1,
+   "no_copy": 1
+  }
+ ]
+}

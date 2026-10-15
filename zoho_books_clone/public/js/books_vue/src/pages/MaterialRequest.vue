@@ -74,6 +74,12 @@
                   {{ actionLoading === 'po' ? 'Creating…' : 'Create Purchase Order' }}
                 </button>
                 <span v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status === 'Ordered'" class="bomx-badge badge-active" style="align-self:center">Purchase Order Created</span>
+                <button v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createRfq" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'You need Purchases access to request quotations' : ''">
+                  Create RFQ
+                </button>
+                <button v-if="!isNew && mr.docstatus===1 && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="issueFromStore" :disabled="!$canCreate('invoices')" :title="!$canCreate('invoices') ? 'You need Invoices access to issue stock' : ''">
+                  Issue from Store
+                </button>
                 <button v-if="!isNew && mr.docstatus===0 && mr.production_plan" class="bomx-btn bomx-btn-light" @click="submitMR" :disabled="submitting || saving || !$canEdit('inventory')">
                   {{ submitting ? 'Submitting…' : 'Submit' }}
                 </button>
@@ -221,7 +227,7 @@ const list = ref([]);
 const search = ref("");
 const filterStatus = ref("");
 
-const statusOptions = ["Draft", "Pending Approval", "Sent Back", "Approved", "Submitted", "Ordered", "Cancelled"];
+const statusOptions = ["Draft", "Pending Approval", "Sent Back", "Approved", "Partly Issued", "Issued", "Submitted", "Ordered", "Cancelled"];
 
 const selectedName = computed(() => (route.params.name && route.params.name !== "new") ? route.params.name : (route.params.name === "new" ? "new" : null));
 
@@ -245,7 +251,7 @@ const sorted = computed(() => {
 
 function statusClass(row) {
   const s = row.status;
-  if (s === "Approved" || s === "Submitted" || s === "Ordered") return "badge-active";
+  if (s === "Approved" || s === "Partly Issued" || s === "Issued" || s === "Submitted" || s === "Ordered") return "badge-active";
   if (s === "Cancelled" || s === "Sent Back") return "badge-cancelled";
   return "badge-obsolete";
 }
@@ -482,6 +488,14 @@ async function amendMR() {
 
 async function createPurchaseOrder() {
   router.push(`/purchase-orders?new_from_mr=${mr.value.name}`);
+}
+
+function createRfq() {
+  router.push(`/rfqs?new_from_mrn=${encodeURIComponent(mr.value.name)}`);
+}
+
+function issueFromStore() {
+  router.push(`/delivery-challans?new_from_mrn=${encodeURIComponent(mr.value.name)}`);
 }
 
 function fmtDate(d) {

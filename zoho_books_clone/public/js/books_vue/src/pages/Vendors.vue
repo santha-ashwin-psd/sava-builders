@@ -403,7 +403,7 @@
                   <div style="font-size:14px;font-weight:700;color:#111827">{{selectedVendor.supplier_name}}</div>
                   <div v-if="selectedVendor.email_id" style="font-size:12px;color:#6B7280;margin-top:2px">{{selectedVendor.email_id}}</div>
                 </div>
-                <div style="margin-left:auto;display:none">
+                <div v-if="SHOW_PORTAL" style="margin-left:auto;display:none">
                   <a href="#" style="font-size:12px;color:#E67700;text-decoration:none">Invite to Portal</a>
                 </div>
               </div>
@@ -494,7 +494,7 @@
                   <span style="color:#6B7280">Default Currency</span>
                   <span style="font-weight:600;color:#111827">{{selectedVendor.default_currency||'KES'}}</span>
                 </div>
-                <div style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
+                <div v-if="SHOW_PORTAL" style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
                   <span style="color:#6B7280">Portal Status</span>
                   <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;background:#F3F4F6;color:#6B7280">● Disabled</span>
                 </div>
@@ -1166,6 +1166,8 @@
 </template>
 
 <script setup>
+// The customer portal is not used in this project; set to true to show the portal rows again.
+const SHOW_PORTAL = false;
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { apiList, apiGET, apiSave, apiSubmit, apiDelete, apiPOST, resolveCompany } from "../api/client.js";

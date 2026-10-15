@@ -196,7 +196,33 @@
             <div class="dc-view-card">
               <div class="dc-view-card-hdr">Customer & Delivery Details</div>
               <div class="dc-info-grid">
-                <div class="dc-info-item">
+                <template v-if="viewDoc.material_request">
+                  <div class="dc-info-item dc-info-full">
+                    <div class="dc-info-lbl">Material Request (MRN)</div>
+                    <div class="dc-info-val dc-info-link"><DocLink doctype="Material Request" :name="viewDoc.material_request" /></div>
+                  </div>
+                  <div class="dc-info-item">
+                    <div class="dc-info-lbl">Source Warehouse</div>
+                    <div class="dc-info-val">{{ viewDoc.from_warehouse||'—' }}</div>
+                  </div>
+                  <div class="dc-info-item">
+                    <div class="dc-info-lbl">Destination Warehouse</div>
+                    <div class="dc-info-val">{{ viewDoc.to_warehouse||'—' }}</div>
+                  </div>
+                  <div class="dc-info-item">
+                    <div class="dc-info-lbl">Driver Name</div>
+                    <div class="dc-info-val">{{ viewDoc.driver_name||'—' }}</div>
+                  </div>
+                  <div class="dc-info-item">
+                    <div class="dc-info-lbl">Driver I.D.</div>
+                    <div class="dc-info-val">{{ viewDoc.driver_id||'—' }}</div>
+                  </div>
+                  <div class="dc-info-item">
+                    <div class="dc-info-lbl">Truck No.</div>
+                    <div class="dc-info-val">{{ viewDoc.truck_no||'—' }}</div>
+                  </div>
+                </template>
+                <div v-if="!viewDoc.material_request" class="dc-info-item">
                   <div class="dc-info-lbl">Customer</div>
                   <div class="dc-info-val dc-info-link">
                     <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</DocLink>
@@ -254,7 +280,7 @@
                     </div>
                   </div>
                 </div>
-                <div v-else class="dc-info-item dc-info-full">
+                <div v-else-if="!viewDoc.material_request" class="dc-info-item dc-info-full">
                   <div class="dc-info-lbl">Delivery Address</div>
                   <div class="dc-info-val dc-info-empty">—</div>
                 </div>
@@ -360,7 +386,7 @@
         <!-- Header -->
         <div class="inv-dh">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div class="inv-dh-title">{{ editingName ? 'Edit Challan' : 'New Delivery Challan' }}</div>
+            <div class="inv-dh-title">{{ mrnMode ? (editingName ? 'Edit Store Issue' : 'Issue from Store') : (editingName ? 'Edit Challan' : 'New Delivery Challan') }}</div>
             <span v-if="!editingName" class="add-status-badge">Draft</span>
             <span v-if="editingName" class="inv-dh-sub" style="margin-left:4px">{{ editingName }}</span>
           </div>
@@ -378,7 +404,7 @@
             <div class="add-card-header" @click="collapsed.details=!collapsed.details">
               <div class="add-card-title">
                 <span class="add-card-title-icon"><span v-html="icon('user',16)"></span></span>
-                Customer & Date
+                {{ mrnMode ? 'Store Issue Details' : 'Customer & Date' }}
               </div>
               <span class="add-card-chevron" :class="{collapsed:collapsed.details}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -386,7 +412,11 @@
             </div>
             <div class="add-card-body" :class="{collapsed:collapsed.details}">
               <div class="inv-fg inv-fg2">
-                <div style="grid-column:1/-1">
+                <div v-if="mrnMode" style="grid-column:1/-1">
+                  <label class="inv-lbl">Material Request (MRN)</label>
+                  <input class="inv-fi" :value="form.material_request" readonly tabindex="-1" style="background:#f3f4f6;color:#6b7280"/>
+                </div>
+                <div v-if="!mrnMode" style="grid-column:1/-1">
                   <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
                   <SearchableSelect
                     v-model="form.customer"
@@ -402,7 +432,7 @@
                   <label class="inv-lbl">Date <span class="inv-req">*</span></label>
                   <input class="inv-fi" type="date" v-model="form.posting_date"/>
                 </div>
-                <div>
+                <div v-if="!mrnMode">
                   <label class="inv-lbl">Sales Order (optional)</label>
                   <SearchableSelect
                     v-model="form.sales_order"
@@ -431,22 +461,44 @@
               <div class="inv-fg inv-fg2">
                 <div style="grid-column:1/-1">
                   <label class="inv-lbl">Project</label>
-                  <SearchableSelect v-model="form.project" :options="projects" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" />
+                  <SearchableSelect v-model="form.project" :options="projects" :disabled="mrnMode" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" />
                 </div>
-                <div style="grid-column:1/-1">
+                <div v-if="!mrnMode" style="grid-column:1/-1">
                   <label class="inv-lbl">Dispatch Warehouse</label>
                   <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Ship stock from…" @search="fetchWarehouses" />
                 </div>
-                <div>
+                <template v-if="mrnMode">
+                  <div>
+                    <label class="inv-lbl">Source Warehouse <span class="inv-req">*</span></label>
+                    <SearchableSelect v-model="form.from_warehouse" :options="warehouses" placeholder="Issue stock from…" @search="fetchWarehouses" />
+                  </div>
+                  <div>
+                    <label class="inv-lbl">Destination Warehouse <span class="inv-req">*</span></label>
+                    <SearchableSelect v-model="form.to_warehouse" :options="warehouses" placeholder="Site warehouse…" @search="fetchWarehouses" />
+                  </div>
+                  <div>
+                    <label class="inv-lbl">Driver Name <span class="inv-req">*</span></label>
+                    <input class="inv-fi" v-model="form.driver_name" maxlength="140" placeholder="Driver name"/>
+                  </div>
+                  <div>
+                    <label class="inv-lbl">Driver I.D. <span class="inv-req">*</span></label>
+                    <input class="inv-fi" v-model="form.driver_id" maxlength="140" placeholder="Driver I.D. number"/>
+                  </div>
+                  <div>
+                    <label class="inv-lbl">Truck No. <span class="inv-req">*</span></label>
+                    <input class="inv-fi" v-model="form.truck_no" maxlength="140" placeholder="e.g. TN 45 AB 1234"/>
+                  </div>
+                </template>
+                <div v-if="!mrnMode">
                   <label class="inv-lbl">LR / Tracking #</label>
                   <input class="inv-fi" v-model="form.lr_no" placeholder="e.g. LR12345"/>
                 </div>
-                <div>
+                <div v-if="!mrnMode">
                   <label class="inv-lbl">Transporter</label>
                   <input class="inv-fi" v-model="form.transporter_name" placeholder="e.g. BlueDart, VRL"/>
                 </div>
                 <!-- Billing Address -->
-                <div>
+                <div v-if="!mrnMode">
                   <label class="inv-lbl">Billing Address</label>
                   <SearchableSelect
                     v-model="form.billing_address_name"
@@ -463,7 +515,7 @@
                   </div>
                 </div>
                 <!-- Shipping / Delivery Address -->
-                <div>
+                <div v-if="!mrnMode">
                   <label class="inv-lbl">Delivery / Shipping Address</label>
                   <SearchableSelect
                     v-model="form.shipping_address_name"
@@ -499,7 +551,7 @@
                 </span>
               </div>
               <div style="display:flex;align-items:center;gap:8px" @click.stop>
-                <button class="add-lines-add-btn" :disabled="!(editingName ? $canEdit('invoices') : $canCreate('invoices'))" @click="addItem">
+                <button v-if="!mrnMode" class="add-lines-add-btn" :disabled="!(editingName ? $canEdit('invoices') : $canCreate('invoices'))" @click="addItem">
                   <span v-html="icon('plus',13)"></span> Add Item
                 </button>
                 <span class="add-card-chevron" :class="{collapsed:collapsed.items}" @click="collapsed.items=!collapsed.items">
@@ -521,7 +573,7 @@
                     <span class="po-item-card-chevron" :class="{collapsed:it.collapsed}">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
                     </span>
-                    <button @click.stop="removeItem(i)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
+                    <button v-if="!mrnMode" @click.stop="removeItem(i)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
                   </div>
                   <!-- Card body: fields -->
                   <div class="po-item-card-body dc-item-card-body" v-show="!it.collapsed">
@@ -531,12 +583,17 @@
                         <SearchableSelect
                           v-model="it.item_code"
                           :options="items"
+                          :disabled="mrnMode"
                           placeholder="Search item…"
-                          :createable="true"
+                          :createable="!mrnMode"
                           createDoctype="Item"
                           @search="fetchItems"
                           @select="opt => onItemSelect(it, opt)"
                         />
+                        <div v-if="mrnMode" class="exp-field-hint">
+                          <template v-if="it.pending_qty != null">Pending {{ it.pending_qty }} {{ it.uom }}</template>
+                          <template v-if="it.intended_use"> · Use: {{ it.intended_use }}</template>
+                        </div>
                       </div>
                       <div class="po-item-field" style="margin-top:14px">
                         <label>Description</label>
@@ -548,7 +605,7 @@
                       <div class="po-item-num-row">
                         <div class="po-item-field">
                           <label>Qty <span class="inv-req">*</span></label>
-                          <input class="inv-fi" type="number" v-model.number="it.qty" placeholder="1" min="0.01" step="0.01"/>
+                          <input class="inv-fi" type="number" v-model.number="it.qty" placeholder="1" min="0.01" :max="mrnMode && it.pending_qty != null ? it.pending_qty : undefined" step="0.01"/>
                         </div>
                         <div class="po-item-field">
                           <label>UOM</label>
@@ -562,7 +619,7 @@
 
               <div v-if="!form.items.length" class="dc-items-empty" style="padding:20px 0 8px">No items yet — click Add Item</div>
 
-              <button class="inv-add-line-btn" style="margin-top:12px" :disabled="!(editingName ? $canEdit('invoices') : $canCreate('invoices'))" @click="addItem">
+              <button v-if="!mrnMode" class="inv-add-line-btn" style="margin-top:12px" :disabled="!(editingName ? $canEdit('invoices') : $canCreate('invoices'))" @click="addItem">
                 <span v-html="icon('plus',12)"></span> Add Item
               </button>
             </div>
@@ -686,7 +743,7 @@
 import { ref, reactive, computed, onMounted } from "vue";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
 import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useToast } from "../composables/useToast.js";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { usePagination } from "../composables/usePagination.js";
@@ -701,6 +758,7 @@ import { useProjectOptions } from "../composables/useProjectOptions.js";
 
 const { toast } = useToast();
 const route = useRoute();
+const router = useRouter();
 
 const TABS = [
   { k: "all",       l: "All" },
@@ -746,6 +804,7 @@ const items      = ref([]);
 const warehouses = ref([]);
 const { projects, fetchProjects } = useProjectOptions();
 const salesOrders = ref([]);
+const mrnMode     = ref(false);  // Sava A6.2: issue from store against an approved MRN
 
 let _lineId = 1;
 const blankItem = () => ({ _id: _lineId++, item_code: "", item_name: "", description: "", qty: 1, uom: "Nos", collapsed: false });
@@ -764,6 +823,12 @@ const form = reactive({
   shipping_address: "",
   shipping_address_name: "",
   remarks: "",
+  material_request: "",
+  from_warehouse: "",
+  to_warehouse: "",
+  driver_name: "",
+  driver_id: "",
+  truck_no: "",
   items: [],
 });
 
@@ -950,6 +1015,12 @@ async function openView(r) {
         billing_address:      doc?.billing_address || "",
         billing_address_name: doc?.billing_address_name || "",
         contact_display:      doc?.contact_display || "",
+        material_request:     doc?.material_request || "",
+        from_warehouse:       doc?.from_warehouse || "",
+        to_warehouse:         doc?.to_warehouse || "",
+        driver_name:          doc?.driver_name || "",
+        driver_id:            doc?.driver_id || "",
+        truck_no:             doc?.truck_no || "",
         vehicle_no:           doc?.vehicle_no || "",
         lr_date:              doc?.lr_date || "",
         posting_time:         doc?.posting_time || "",
@@ -1086,8 +1157,15 @@ function resetForm() {
     shipping_address: "",
     shipping_address_name: "",
     remarks: "",
+    material_request: "",
+    from_warehouse: "",
+    to_warehouse: "",
+    driver_name: "",
+    driver_id: "",
+    truck_no: "",
     items: [blankItem()],
   });
+  mrnMode.value = false;
   customerAddresses.value = [];
 }
 
@@ -1100,6 +1178,45 @@ function openNew() {
   fetchSalesOrders("");
   fetchProjects("");
   formOpen.value = true;
+}
+
+function ensureWarehouseOption(name) {
+  if (name && !warehouses.value.some(w => w.value === name)) warehouses.value.push({ label: name, value: name });
+}
+
+// Sava A6.2: start a store-issue challan from an Approved MRN (Issue from Store button)
+async function openNewFromMrn(name) {
+  try {
+    const d = await apiGET("zoho_books_clone.api.mrn.get_issue_prefill", { name });
+    editingName.value = "";
+    resetForm();
+    mrnMode.value = true;
+    Object.assign(form, {
+      material_request: d.material_request,
+      project:          d.project || "",
+      to_warehouse:     d.to_warehouse || "",
+    });
+    form.items = (d.items || []).map(it => ({
+      _id:         _lineId++,
+      item_code:   it.item_code || "",
+      item_name:   it.item_name || "",
+      description: "",
+      qty:         flt(it.pending_qty),
+      uom:         it.uom || "Nos",
+      mrn_item:    it.mrn_item,
+      intended_use: it.intended_use || "",
+      pending_qty: flt(it.pending_qty),
+      collapsed:   false,
+    }));
+    await fetchWarehouses("");
+    ensureWarehouseOption(form.to_warehouse);
+    fetchProjects("", form.project);
+    formOpen.value = true;
+  } catch (e) {
+    toast.error(e.message || "Could not start the store issue");
+  } finally {
+    router.replace({ path: route.path, query: {} });
+  }
 }
 
 async function openEdit(r) {
@@ -1138,8 +1255,28 @@ async function openEdit(r) {
         description: it.description || "",
         qty:         flt(it.qty) || 1,
         uom:         it.uom || "Nos",
+        mrn_item:    it.mrn_item || "",
+        intended_use: it.intended_use || "",
         collapsed:   false,
       }));
+      if (doc?.material_request) {
+        mrnMode.value = true;
+        Object.assign(form, {
+          material_request: doc.material_request,
+          from_warehouse:   doc.from_warehouse || "",
+          to_warehouse:     doc.to_warehouse || "",
+          driver_name:      doc.driver_name || "",
+          driver_id:        doc.driver_id || "",
+          truck_no:         doc.truck_no || "",
+        });
+        ensureWarehouseOption(form.from_warehouse);
+        ensureWarehouseOption(form.to_warehouse);
+        try {
+          const d = await apiGET("zoho_books_clone.api.mrn.get_issue_prefill", { name: doc.material_request });
+          const pend = Object.fromEntries((d.items || []).map(x => [x.mrn_item, flt(x.pending_qty)]));
+          form.items.forEach(it => { if (it.mrn_item in pend) it.pending_qty = pend[it.mrn_item]; });
+        } catch {}  // MRN no longer issuable: the server still checks on save
+      }
       if (doc?.remarks)               form.remarks = doc.remarks;
       if (doc?.set_warehouse)         form.set_warehouse = doc.set_warehouse;
       if (doc?.project)               { form.project = doc.project; fetchProjects("", doc.project); }
@@ -1377,11 +1514,21 @@ function removeItem(i) { if (form.items.length > 1) form.items.splice(i, 1); }
 
 // ── Save ──────────────────────────────────────────────────────────────────────
 async function saveChallan(submit) {
-  if (!form.customer) { toast.error("Customer is required"); return; }
+  const isMrn = mrnMode.value;
+  if (!isMrn && !form.customer) { toast.error("Customer is required"); return; }
   const validItems = form.items.filter(it => it.item_code && flt(it.qty) > 0);
   if (!validItems.length) { toast.error("At least one item with qty > 0 is required"); return; }
   if (form.items.some(it => (it.description||'').length > 500)) { toast.error("Item description cannot exceed 500 characters"); return; }
   if ((form.remarks||'').length > 500) { toast.error("Remarks cannot exceed 500 characters"); return; }
+  if (isMrn) {
+    const missing = [["from_warehouse", "Source Warehouse"], ["to_warehouse", "Destination Warehouse"],
+      ["driver_name", "Driver Name"], ["driver_id", "Driver I.D."], ["truck_no", "Truck No."]]
+      .filter(([k]) => !String(form[k] || "").trim()).map(([, l]) => l);
+    if (missing.length) { toast.error("Please fill in: " + missing.join(", ")); return; }
+    if (form.from_warehouse === form.to_warehouse) { toast.error("Source and destination warehouse must be different"); return; }
+    const over = validItems.find(it => it.pending_qty != null && flt(it.qty) > flt(it.pending_qty) + 0.0001);
+    if (over) { toast.error(`${over.item_code}: only ${over.pending_qty} pending on the MRN`); return; }
+  }
 
   saving.value = true;
   try {
@@ -1389,18 +1536,18 @@ async function saveChallan(submit) {
     const doc = {
       doctype:               "Delivery Note",
       company,
-      customer:              form.customer,
-      customer_name:         form.customer_name || form.customer,
+      customer:              isMrn ? undefined : form.customer,
+      customer_name:         isMrn ? undefined : (form.customer_name || form.customer),
       posting_date:          form.posting_date,
-      sales_order:           form.sales_order || undefined,
-      set_warehouse:         form.set_warehouse || "",
+      sales_order:           isMrn ? undefined : (form.sales_order || undefined),
+      set_warehouse:         isMrn ? "" : (form.set_warehouse || ""),
       project:               form.project || null,
-      lr_no:                 form.lr_no || "",
-      transporter_name:      form.transporter_name || "",
-      billing_address:       form.billing_address || "",
-      billing_address_name:  form.billing_address_name || "",
-      shipping_address:      form.shipping_address || "",
-      shipping_address_name: form.shipping_address_name || "",
+      lr_no:                 isMrn ? "" : (form.lr_no || ""),
+      transporter_name:      isMrn ? "" : (form.transporter_name || ""),
+      billing_address:       isMrn ? "" : (form.billing_address || ""),
+      billing_address_name:  isMrn ? "" : (form.billing_address_name || ""),
+      shipping_address:      isMrn ? "" : (form.shipping_address || ""),
+      shipping_address_name: isMrn ? "" : (form.shipping_address_name || ""),
       remarks:               form.remarks || "",
       items: validItems.map(it => ({
         doctype:    "Delivery Note Item",
@@ -1411,9 +1558,20 @@ async function saveChallan(submit) {
         uom:        it.uom || "Nos",
         stock_uom:  it.uom || "Nos",
         conversion_factor: 1,
-        warehouse:  it.warehouse || form.set_warehouse || "",
+        warehouse:  isMrn ? form.from_warehouse : (it.warehouse || form.set_warehouse || ""),
+        ...(isMrn ? { mrn_item: it.mrn_item, intended_use: it.intended_use || "" } : {}),
       })),
     };
+    if (isMrn) {
+      Object.assign(doc, {
+        material_request: form.material_request,
+        from_warehouse:   form.from_warehouse,
+        to_warehouse:     form.to_warehouse,
+        driver_name:      String(form.driver_name).trim(),
+        driver_id:        String(form.driver_id).trim(),
+        truck_no:         String(form.truck_no).trim(),
+      });
+    }
     if (editingName.value) doc.name = editingName.value;
 
     const saved = await apiSave(doc);
@@ -1455,6 +1613,7 @@ onMounted(async () => {
     route,
     openByName: (n) => openView(list.value.find(x => x.name === n) || { name: n }),
   });
+  if (route.query.new_from_mrn) await openNewFromMrn(String(route.query.new_from_mrn));
 });
 </script>
 

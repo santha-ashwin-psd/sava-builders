@@ -97,6 +97,8 @@ doc_events = {
     "Asset":            {"before_insert": f"{_TN}.auto_stamp_company"},
     # Project — company-scoped master (Sava)
     "Project":          {"before_insert": f"{_TN}.auto_stamp_company"},
+    # Request for Quotation (Sava A7) — company-scoped, blocked on a Closed project
+    "Request for Quotation": {"before_insert": f"{_TN}.auto_stamp_company", "validate": _PG},
 }
 
 scheduler_events = {
@@ -212,6 +214,7 @@ permission_query_conditions = {
     "Material Request":  f"{_TN}.qc_material_request",
     "Packing Slip":      f"{_TN}.qc_packing_slip",
     "Project":           f"{_TN}.qc_project",
+    "Request for Quotation": f"{_TN}.qc_request_for_quotation",
     # Assets — scoped by the `company` field
     "Asset":             f"{_TN}.qc_asset",
     "Asset Disposal":         f"{_TN}.qc_asset_disposal",
@@ -256,6 +259,7 @@ has_permission = {
     "Material Request":  f"{_TN}.hp_material_request",
     "Packing Slip":      f"{_TN}.hp_packing_slip",
     "Project":           f"{_TN}.hp_project",
+    "Request for Quotation": f"{_TN}.hp_request_for_quotation",
     # Assets — scoped by the `company` field
     "Asset":             f"{_TN}.hp_asset",
     "Asset Disposal":         f"{_TN}.hp_asset_disposal",

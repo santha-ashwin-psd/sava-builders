@@ -7,7 +7,7 @@
  "autoname": "autoincrement",
  "naming_series": null,
  "creation": "2026-05-23 00:00:00.000000",
- "modified": "2026-05-23 00:00:00.000000",
+ "modified": "2026-10-15 12:00:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,
@@ -413,6 +413,19 @@
    "no_copy": 1,
    "in_list_view": 0,
    "description": "Auto-stamped: the QC Inspection covering this specific row (item + batch), if any. Row-level so the same item across multiple rows/batches on one document is tracked independently."
+  },
+  {
+   "fieldname": "mrn_item",
+   "fieldtype": "Data",
+   "label": "MRN Line",
+   "read_only": 1,
+   "no_copy": 1,
+   "description": "Row of the Material Request this item is issued against."
+  },
+  {
+   "fieldname": "intended_use",
+   "fieldtype": "Small Text",
+   "label": "Intended Use"
   }
  ],
  "istable": 1

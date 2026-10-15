@@ -31,6 +31,16 @@ from zoho_books_clone.api.docs import _assert_doc_tenancy
 
 PORTAL_ROLE = "Customer"
 
+# The customer portal is not used in this project. While this is False the
+# endpoints below create nothing and change nothing. Set it to True to turn
+# the portal login back on.
+PORTAL_ENABLED = False
+
+
+def _portal_off():
+    if not PORTAL_ENABLED:
+        frappe.throw(_("The customer portal is not used in this project."))
+
 
 def _get_customer(customer: str):
     doc = frappe.get_doc("Customer", customer)
@@ -78,6 +88,8 @@ def _assert_email_not_taken(email: str, customer: str):
 def get_portal_login_status(customer):
     """Current portal-login state for a Customer: whether a linked User
     exists, its login email, and whether that User is enabled."""
+    if not PORTAL_ENABLED:
+        return {"has_login": False, "email": None, "enabled": False}
     doc = _get_customer(customer)
     assert_can("Customer", "read")
 
@@ -109,6 +121,7 @@ def set_portal_login(customer, email, password=None, enabled=1):
     customer's Portal User row so one customer's portal login can never be
     silently taken over by another customer.
     """
+    _portal_off()
     _ensure_portal_role_exists()
     doc = _get_customer(customer)
     assert_can("Customer", "write")
@@ -194,6 +207,7 @@ def set_portal_login(customer, email, password=None, enabled=1):
 def toggle_portal_login(customer, enabled):
     """Enable or disable the Customer's existing portal login without
     touching its email or password."""
+    _portal_off()
     doc = _get_customer(customer)
     assert_can("Customer", "write")
 
@@ -210,6 +224,7 @@ def toggle_portal_login(customer, enabled):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def reset_portal_password(customer, new_password):
     """Reset the password on the Customer's existing portal login."""
+    _portal_off()
     doc = _get_customer(customer)
     assert_can("Customer", "write")
 

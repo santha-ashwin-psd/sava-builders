@@ -391,7 +391,7 @@
                   <div style="font-size:14px;font-weight:700;color:#111827">{{ selectedCustomer.salutation ? selectedCustomer.salutation + ' ' : '' }}{{selectedCustomer.customer_name}}</div>
                   <div v-if="selectedCustomer.email_id" style="font-size:12px;color:#6B7280;margin-top:2px">{{selectedCustomer.email_id}}</div>
                 </div>
-                <div style="margin-left:auto;display:none;">
+                <div v-if="SHOW_PORTAL" style="margin-left:auto;display:none;">
                   <a href="#" style="font-size:12px;color:#16a34a;text-decoration:none">Invite to Portal</a>
                 </div>
               </div>
@@ -481,7 +481,7 @@
                   <span style="color:#6B7280">Default Currency</span>
                   <span style="font-weight:600;color:#111827">{{selectedCustomer.default_currency||'INR'}}</span>
                 </div>
-                <div style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
+                <div v-if="SHOW_PORTAL" style="display:flex;justify-content:space-between;font-size:12.5px;align-items:center">
                   <span style="color:#6B7280">Portal Status</span>
                   <span style="display:flex;align-items:center;gap:8px">
                     <span
@@ -495,7 +495,7 @@
                     <a href="#" style="font-size:11.5px;color:#2563EB;text-decoration:none" @click.prevent="openPortalModal">{{ portalStatus.has_login ? 'Manage' : 'Set Up' }}</a>
                   </span>
                 </div>
-                <div v-if="portalStatus.has_login" style="display:flex;justify-content:space-between;font-size:12.5px">
+                <div v-if="SHOW_PORTAL && portalStatus.has_login" style="display:flex;justify-content:space-between;font-size:12.5px">
                   <span style="color:#6B7280">Portal Login Email</span>
                   <span style="font-weight:600;color:#111827">{{ portalStatus.email }}</span>
                 </div>
@@ -813,7 +813,7 @@
       </div>
     </div>
 
-    <div v-if="showPortalModal" class="cus-pay-modal-overlay" @click.self="closePortalModal">
+    <div v-if="SHOW_PORTAL && showPortalModal" class="cus-pay-modal-overlay" @click.self="closePortalModal">
       <div class="cus-pay-modal">
         <div style="font-size:16px;font-weight:700;color:#111827;margin-bottom:2px">Customer Portal Login</div>
         <div style="font-size:12px;color:#6B7280;margin-bottom:14px">Lets this customer log in and view their orders, invoices and balances on the customer portal.</div>
@@ -1051,7 +1051,7 @@
 
             <div style="height:1px;background:#e8ecf0;margin-bottom:20px"></div>
 
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
+            <div v-if="SHOW_PORTAL" style="display:flex;align-items:center;gap:8px;margin-bottom:16px">
               <input type="checkbox" id="cus-portal-user" v-model="form.is_portal_user" style="width:16px;height:16px;cursor:pointer"
                 @change="if(!form.is_portal_user){ delete formErrors.email_id; delete formErrors.portal_password; }"/>
               <label for="cus-portal-user" style="font-size:13px;font-weight:600;color:#374151;cursor:pointer;user-select:none">Portal User</label>
@@ -1074,7 +1074,7 @@
                   Valid email
                 </div>
               </div>
-              <div>
+              <div v-if="SHOW_PORTAL">
                 <label class="inv-lbl">Portal Login Password <span v-if="form.is_portal_user&&!existingPortalLogin" style="color:#dc2626">*</span><span v-else style="font-size:11px;font-weight:400;color:#9ca3af">(optional)</span></label>
                 <input v-model="form.portal_password" type="password" class="inv-fi" :placeholder="existingPortalLogin?'Leave blank to keep current password':'Leave blank to skip portal login'"
                   autocomplete="new-password"
@@ -1553,6 +1553,9 @@ const drawerLoading = ref(false);
 // saveCustomer() tell "user unchecked Portal User for someone who never had
 // one" (no-op) apart from "user unchecked it for someone who did" (disable
 // the existing login instead of silently leaving it untouched).
+// The customer portal is not used in this project: its screens and API calls are off.
+// Set to true to bring the portal login UI back.
+const SHOW_PORTAL = false;
 const existingPortalLogin = ref(false);
 const saving = ref(false);
 const showDelete = ref(false);
@@ -1980,7 +1983,7 @@ async function openEdit(name) {
     // login (which may use a different email than the doc's own email_id).
     // Best-effort: if this fails, the section just falls back to "no login"
     // — it shouldn't block opening the customer for edit.
-    try {
+    if (SHOW_PORTAL) try {
       const status = await apiGET("zoho_books_clone.api.customer_portal_access.get_portal_login_status", {
         customer: doc.name,
       });
@@ -2075,7 +2078,7 @@ async function saveCustomer() {
     // checkbox. Best-effort either way: the customer record is already
     // saved at this point, so a failure here isn't reported as a failure
     // to save the customer.
-    if (drawerMode.value === "add" && savedName && form.portal_password.trim()) {
+    if (SHOW_PORTAL && drawerMode.value === "add" && savedName && form.portal_password.trim()) {
       try {
         await apiPOST("zoho_books_clone.api.customer_portal_access.set_portal_login", {
           customer: savedName,
@@ -2086,7 +2089,7 @@ async function saveCustomer() {
       } catch (e) {
         toast("Customer created, but portal login could not be set up: " + (e.message || e), "error");
       }
-    } else if (drawerMode.value === "edit" && savedName) {
+    } else if (SHOW_PORTAL && drawerMode.value === "edit" && savedName) {
       try {
         if (form.is_portal_user) {
           await apiPOST("zoho_books_clone.api.customer_portal_access.set_portal_login", {
@@ -2350,7 +2353,7 @@ async function selectCustomer(c) {
   obInfo.value = { has_opening_je: false };
   Object.assign(portalStatus, { has_login: false, email: null, enabled: false });
   loadOpeningBalance();
-  loadPortalStatus();
+  if (SHOW_PORTAL) loadPortalStatus();
   // Only load the full customer doc (lightweight) — tabs load on demand
   custTxnsLoading.value = true;
   try {

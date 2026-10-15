@@ -118,7 +118,7 @@ const integrations = computed(() => [
     ico: "webhook", bg: "#ecfeff", fg: "#0891b2", status: "coming_soon" },
   { group: "On the Roadmap", key: "portal", name: "Customer Portal", desc: "Customers log in to view invoices and pay online.",
     ico: "users", bg: "#fef2f2", fg: "#dc2626", status: "coming_soon" },
-]);
+].filter(i => i.key !== "portal")); // customer portal is not used in this project
 
 const groups = computed(() => {
   const order = ["Email & Notifications", "Single Sign-On", "Banking", "GST & E-Invoicing", "Inventory & Stock", "Accounting", "On the Roadmap"];

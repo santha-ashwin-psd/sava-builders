@@ -9,11 +9,14 @@ Endpoints
 - send_for_approval(name): Draft -> Pending Approval (runs every MRN check)
 - approve_mrn(name): Pending Approval -> Approved (submits the MRN)
 - send_back_mrn(name, reason): Pending Approval -> Sent Back (reason required)
+- get_issue_prefill(name): read-only data the Delivery Challans screen uses to start
+  an "Issue from Store" challan from an Approved MRN (Sava A6.2)
 """
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import flt, now_datetime
 
+from zoho_books_clone.inventory.store_issue import ISSUABLE_STATUSES
 from zoho_books_clone.utils.access import _membership, assert_can, assert_company
 
 SENDABLE = ("Draft", "Sent Back")
@@ -128,3 +131,49 @@ def send_back_mrn(name, reason=None):
 	doc.flags.ignore_permissions = True
 	doc.save()  # status stays Sent Back; the requester can edit and send it again
 	return {"name": doc.name, "status": doc.status, "send_back_reason": doc.send_back_reason}
+
+
+def build_issue_prefill(mrn, lines):
+	"""Pure part of get_issue_prefill: `mrn` and `lines` are plain dicts, no database."""
+	if mrn.get("docstatus") != 1 or mrn.get("status") not in ISSUABLE_STATUSES:
+		frappe.throw(_("Material Request {0} is not open for issue (status: {1}). Only Approved or Partly Issued "
+			"requests can be issued against.").format(mrn.get("name"), mrn.get("status")))
+	items = []
+	for line in lines:
+		pending = flt(line.get("required_qty")) - flt(line.get("issued_qty"))
+		if pending <= 0.0001:
+			continue
+		items.append({
+			"mrn_item": line.get("name"),
+			"item_code": line.get("item_code"),
+			"item_name": line.get("item_name") or line.get("item_code"),
+			"uom": line.get("uom") or "",
+			"required_qty": flt(line.get("required_qty")),
+			"issued_qty": flt(line.get("issued_qty")),
+			"pending_qty": pending,
+			"intended_use": line.get("intended_use") or "",
+		})
+	if not items:
+		frappe.throw(_("Material Request {0} is already fully issued.").format(mrn.get("name")))
+	return {
+		"material_request": mrn.get("name"),
+		"company": mrn.get("company"),
+		"project": mrn.get("project") or "",
+		"to_warehouse": mrn.get("delivery_warehouse") or "",
+		"items": items,
+	}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def get_issue_prefill(name):
+	"""Read-only: what a store-issue Delivery Note for this MRN should start with."""
+	assert_can("Material Request", "read")
+	doc = _load(name)
+	lines = frappe.get_all(
+		"Material Request Item", filters={"parent": doc.name, "parenttype": "Material Request"},
+		fields=["name", "item_code", "item_name", "required_qty", "issued_qty", "uom", "intended_use"],
+		order_by="idx asc")
+	return build_issue_prefill(
+		{"name": doc.name, "docstatus": doc.docstatus, "status": doc.status, "company": doc.company,
+			"project": doc.get("project"), "delivery_warehouse": doc.get("delivery_warehouse")},
+		lines)
