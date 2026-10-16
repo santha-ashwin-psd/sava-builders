@@ -1,0 +1,210 @@
+{
+ "module": "Invoicing",
+ "doctype": "DocType",
+ "creation": "2026-10-16 00:00:00.000000",
+ "modified": "2026-10-16 16:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "docstatus": 0,
+ "idx": 0,
+ "name": "Quotation Comparison",
+ "is_submittable": 0,
+ "istable": 0,
+ "issingle": 0,
+ "track_changes": 1,
+ "naming_rule": "Expression",
+ "autoname": "SB-CMP-.YY.-.####",
+ "search_fields": "request_for_quotation,project,status,company",
+ "title_field": "name",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "fields": [
+  {
+   "fieldname": "request_for_quotation",
+   "fieldtype": "Link",
+   "label": "Request for Quotation",
+   "options": "Request for Quotation",
+   "reqd": 1,
+   "in_list_view": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Draft\nPending Approval\nApproved\nRejected\nLPOs Created\nCancelled",
+   "default": "Draft",
+   "read_only": 1,
+   "no_copy": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "col_qc1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "comparison_date",
+   "fieldtype": "Date",
+   "label": "Comparison Date",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Books Company"
+  },
+  {
+   "fieldname": "col_qc2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "read_only": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "sec_qc_items",
+   "fieldtype": "Section Break",
+   "label": "Items"
+  },
+  {
+   "fieldname": "items",
+   "fieldtype": "Table",
+   "label": "Items",
+   "options": "Quotation Comparison Item"
+  },
+  {
+   "fieldname": "sec_qc_totals",
+   "fieldtype": "Section Break",
+   "label": "Value of the selected quotations"
+  },
+  {
+   "fieldname": "net_total",
+   "fieldtype": "Currency",
+   "label": "Total before VAT",
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_qc3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "total_tax",
+   "fieldtype": "Currency",
+   "label": "VAT",
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_qc4",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "grand_total",
+   "fieldtype": "Currency",
+   "label": "Total incl. VAT",
+   "read_only": 1,
+   "in_list_view": 1,
+   "description": "This is the value the approval levels are decided on"
+  },
+  {
+   "fieldname": "sec_qc_remarks",
+   "fieldtype": "Section Break",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "sec_qc_approval",
+   "fieldtype": "Section Break",
+   "label": "Approval"
+  },
+  {
+   "fieldname": "raised_by",
+   "fieldtype": "Link",
+   "label": "Raised by",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "col_qc5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "rejection_reason",
+   "fieldtype": "Small Text",
+   "label": "Rejection reason",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "approval_steps",
+   "fieldtype": "Table",
+   "label": "Approval levels",
+   "options": "Quotation Comparison Approval",
+   "read_only": 1,
+   "no_copy": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Books Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Books Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Accountant",
+   "read": 1,
+   "write": 0,
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 0
+  },
+  {
+   "role": "Books Viewer",
+   "read": 1,
+   "write": 0,
+   "create": 0,
+   "delete": 0,
+   "email": 0,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 0
+  }
+ ]
+}

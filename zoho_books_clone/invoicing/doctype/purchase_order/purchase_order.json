@@ -13,6 +13,7 @@
   "expected_delivery_date",
   "status",
   "ref_rfq",
+  "quotation_comparison",
   "company",
   "project",
   "billing_address",
@@ -72,6 +73,14 @@
    "fieldname": "ref_rfq",
    "fieldtype": "Data",
    "label": "Reference RFQ"
+  },
+  {
+   "fieldname": "quotation_comparison",
+   "fieldtype": "Link",
+   "label": "Quotation Comparison",
+   "options": "Quotation Comparison",
+   "read_only": 1,
+   "no_copy": 1
   },
   {
    "fieldname": "company",

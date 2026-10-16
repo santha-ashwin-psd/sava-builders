@@ -330,6 +330,10 @@ hp_project = _make_hp("Project")
 # ── Request for Quotation (Sava A7 — uses the `company` field) ─────────────
 qc_request_for_quotation = _make_qc("Request for Quotation")
 hp_request_for_quotation = _make_hp("Request for Quotation")
+qc_supplier_quotation = _make_qc("Supplier Quotation")
+hp_supplier_quotation = _make_hp("Supplier Quotation")
+qc_quotation_comparison = _make_qc("Quotation Comparison")
+hp_quotation_comparison = _make_hp("Quotation Comparison")
 
 # ── Assets (uses the `company` field like Manufacturing/transactional docs) ─
 

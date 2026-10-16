@@ -99,6 +99,10 @@ doc_events = {
     "Project":          {"before_insert": f"{_TN}.auto_stamp_company"},
     # Request for Quotation (Sava A7) — company-scoped, blocked on a Closed project
     "Request for Quotation": {"before_insert": f"{_TN}.auto_stamp_company", "validate": _PG},
+    # Supplier Quotation (Sava A8) — company-scoped, blocked on a Closed project
+    "Supplier Quotation": {"before_insert": f"{_TN}.auto_stamp_company", "validate": _PG},
+    # Quotation Comparison (Sava A9) — company-scoped, blocked on a Closed project
+    "Quotation Comparison": {"before_insert": f"{_TN}.auto_stamp_company", "validate": _PG},
 }
 
 scheduler_events = {
@@ -215,6 +219,8 @@ permission_query_conditions = {
     "Packing Slip":      f"{_TN}.qc_packing_slip",
     "Project":           f"{_TN}.qc_project",
     "Request for Quotation": f"{_TN}.qc_request_for_quotation",
+    "Supplier Quotation": f"{_TN}.qc_supplier_quotation",
+    "Quotation Comparison": f"{_TN}.qc_quotation_comparison",
     # Assets — scoped by the `company` field
     "Asset":             f"{_TN}.qc_asset",
     "Asset Disposal":         f"{_TN}.qc_asset_disposal",
@@ -260,6 +266,8 @@ has_permission = {
     "Packing Slip":      f"{_TN}.hp_packing_slip",
     "Project":           f"{_TN}.hp_project",
     "Request for Quotation": f"{_TN}.hp_request_for_quotation",
+    "Supplier Quotation": f"{_TN}.hp_supplier_quotation",
+    "Quotation Comparison": f"{_TN}.hp_quotation_comparison",
     # Assets — scoped by the `company` field
     "Asset":             f"{_TN}.hp_asset",
     "Asset Disposal":         f"{_TN}.hp_asset_disposal",

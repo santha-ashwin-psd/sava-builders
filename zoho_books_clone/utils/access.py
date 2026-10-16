@@ -76,6 +76,8 @@ DOCTYPE_MODULE = {
     "Purchase Invoice": "bills", "Purchase Order": "bills", "Expense": "bills",
     "Expense Claim": "bills", "Debit Note": "bills", "Purchase Receipt": "bills",
     "Request for Quotation": "bills",
+    "Supplier Quotation": "bills",
+    "Quotation Comparison": "bills",
     # Payments
     "Payment Entry": "payments",
     # Banking

@@ -86,6 +86,9 @@
             <button v-if="canSend(viewDoc)" class="inv-ab-btn inv-ab-primary" :disabled="sending || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="sendRfq">
               <span v-html="icon('send',13)"></span> {{ sending ? 'Sending…' : sendLabel(viewDoc) }}
             </button>
+            <button v-if="canCompare(viewDoc)" class="inv-ab-btn" :disabled="!hasQuotes(viewDoc)" :title="!hasQuotes(viewDoc) ? 'Enter at least one quotation first' : ''" @click="cmp.open=true">
+              <span v-html="icon('grid',13)"></span> Compare Quotations
+            </button>
             <button v-if="viewDoc.status!=='Cancelled' && $canEdit('bills')" class="inv-ab-btn" @click="openEdit(viewDoc); viewOpen=false">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
@@ -113,7 +116,7 @@
                 <span class="pr-item-count">{{ sentCount(viewDoc) }} of {{ (viewDoc.suppliers||[]).length }} sent</span>
               </div>
               <table class="inv-table pr-items-tbl">
-                <thead><tr><th style="width:32px">#</th><th>Supplier</th><th>Email</th><th style="width:90px">Status</th><th style="width:150px">Sent On</th></tr></thead>
+                <thead><tr><th style="width:32px">#</th><th>Supplier</th><th>Email</th><th style="width:90px">Status</th><th style="width:150px">Sent On</th><th style="width:190px">Quotation</th><th v-if="canQuote(viewDoc) && $canEdit('bills')" style="width:150px">Actions</th></tr></thead>
                 <tbody>
                   <tr v-for="(s,i) in viewDoc.suppliers||[]" :key="s.name||i" class="inv-row">
                     <td class="pr-row-num">{{ i+1 }}</td>
@@ -124,8 +127,24 @@
                       <div v-if="s.send_status==='Failed' && s.send_error" style="font-size:11px;color:#C92A2A;margin-top:3px">{{ s.send_error }}</div>
                     </td>
                     <td class="c-muted mono-sm">{{ s.sent_on ? String(s.sent_on).slice(0,16) : '—' }}</td>
+                    <td>
+                      <template v-if="s.quotation">
+                        <div class="mono-sm" style="color:#111827">{{ s.quotation }}</div>
+                        <div class="c-muted mono-sm">{{ s.quoted_on || '' }}</div>
+                      </template>
+                      <span v-else class="c-muted">Not quoted</span>
+                    </td>
+                    <td v-if="canQuote(viewDoc) && $canEdit('bills')" @click.stop>
+                      <div class="pr-actions-row">
+                        <button v-if="!s.quotation" class="inv-ab-btn inv-ab-primary" @click="openQuote(s)">Enter Quotation</button>
+                        <template v-else>
+                          <button class="inv-ab-btn" @click="openQuote(s)">Revise</button>
+                          <button class="inv-ab-btn pr-act-cancel" @click="cancelQuote(s)">Cancel</button>
+                        </template>
+                      </div>
+                    </td>
                   </tr>
-                  <tr v-if="!(viewDoc.suppliers||[]).length"><td colspan="5" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">No suppliers added</td></tr>
+                  <tr v-if="!(viewDoc.suppliers||[]).length"><td :colspan="canQuote(viewDoc) && $canEdit('bills') ? 7 : 6" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">No suppliers added</td></tr>
                 </tbody>
               </table>
               <div v-if="(viewDoc.suppliers||[]).length < 3 && viewDoc.status!=='Cancelled'" class="pr-info-val" style="padding:10px 14px;color:#b45309;font-size:12.5px">
@@ -157,6 +176,13 @@
         </template>
       </div>
     </div>
+
+    <!-- QUOTATION DRAWER (Sava A8.4) -->
+    <QuotationDialog :open="qd.open" :rfq="qd.rfq" :supplier="qd.supplier" :supplier-name="qd.supplier_name"
+      @close="qd.open=false" @saved="onQuoteSaved" />
+
+    <!-- QUOTATION COMPARISON (Sava A9.6) -->
+    <QuotationComparison :open="cmp.open" :rfq="viewDoc ? viewDoc.name : ''" :can-edit="$canEdit('bills')" @close="cmp.open=false" />
 
     <!-- FORM DRAWER -->
     <div v-if="formOpen" class="inv-drawer-bg" @click.self="editingName ? formOpen=false : null">
@@ -323,6 +349,8 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, resolveCompany } from "../api/client.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import DocLink from "../components/DocLink.vue";
+import QuotationDialog from "../components/QuotationDialog.vue";
+import QuotationComparison from "../components/QuotationComparison.vue";
 import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";
 import { useToast } from "../composables/useToast.js";
@@ -582,6 +610,42 @@ async function save(andSend) {
     toast.error(e.message || "Failed to save");
   }
   saving.value = false;
+}
+
+// --- supplier quotations (Sava A8.4) -------------------------------------------
+const SQ_API = "zoho_books_clone.api.supplier_quotation.";
+const qd = reactive({ open: false, rfq: "", supplier: "", supplier_name: "" });
+
+function canQuote(d) { return !!d && d.status === "Sent"; }  // template adds $canEdit('bills')
+
+// --- quotation comparison (Sava A9.6) -------------------------------------------
+const cmp = reactive({ open: false });
+function canCompare(d) { return !!d && d.status === "Sent"; }
+function hasQuotes(d) { return (d.suppliers || []).some(s => s.quotation); }
+
+function openQuote(s) {
+  if (!viewDoc.value) return;
+  Object.assign(qd, { open: true, rfq: viewDoc.value.name, supplier: s.supplier, supplier_name: s.supplier_name || s.supplier });
+}
+
+async function onQuoteSaved() {
+  qd.open = false;
+  try { await refreshView(); } catch {}
+}
+
+async function cancelQuote(s) {
+  if (!s.quotation) return;
+  const ok = await confirm({
+    title: "Cancel quotation?",
+    body: `${s.quotation} from ${s.supplier_name || s.supplier} will be cancelled. You can enter a new quotation for this supplier afterwards.`,
+    okLabel: "Cancel Quotation", cancelLabel: "Keep", okStyle: "danger",
+  });
+  if (!ok) return;
+  try {
+    await apiPOST(SQ_API + "cancel_quotation", { name: s.quotation }, HINT);
+    toast.success(`Quotation ${s.quotation} cancelled`);
+    await refreshView();
+  } catch (e) { toast.error(e.message || "Cancel failed"); }
 }
 
 // --- send / cancel -------------------------------------------------------------

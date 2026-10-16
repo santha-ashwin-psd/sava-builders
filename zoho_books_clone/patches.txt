@@ -124,3 +124,6 @@ zoho_books_clone.patches.v1_18.seed_vat_16_templates
 # untouched). Clears Item / Books Settings links to them first; a template
 # still used on a transaction row is kept and reported. Safe to re-run.
 zoho_books_clone.patches.v1_20.delete_gst_tax_templates
+
+# Sava A9.4: create the approval roles Purchase Manager, Finance, Director. Safe to re-run.
+zoho_books_clone.patches.v1_21.create_approval_roles
