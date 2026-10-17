@@ -1,0 +1,22 @@
+[project]
+name = "psd_books"
+authors = [
+    { name = "PS Digitise", email = "devteam@psdigitise.com" }
+]
+description = "A full-featured accounting application built on Frappe"
+requires-python = ">=3.10"
+readme = "README.md"
+dynamic = ["version"]
+license = { text = "MIT" }
+dependencies = [
+    # "frappe~=15.0.0"  # installed by bench automatically
+]
+
+[build-system]
+requires = ["flit_core >=3.4,<4"]
+build-backend = "flit_core.buildapi"
+
+# Used by Frappe Cloud / bench to check compatibility with the Frappe version.
+# Adjust to the Frappe version of your bench group (v15 -> ">=15.0.0,<16.0.0").
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<17.0.0"
