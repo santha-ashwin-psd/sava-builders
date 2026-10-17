@@ -106,10 +106,13 @@ def scenario():
     c = d["comparison"]
     check("LPOs Created: the PO is listed with supplier and total", len(c["lpos"]) == 1 and c["lpos"][0]["supplier_name"] and c["lpos"][0]["grand_total"] > 0, c["lpos"])
     check("LPOs Created: read-only, nobody can act", not c["editable"] and not c["action"]["can_act"], c)
-    # Known gap, reported not asserted. Read the RFQ the way the drawer does on a fresh open (no name).
+    # A second comparison must not be offered once LPOs exist. Read the RFQ the way the drawer does on a fresh open (no name).
     fresh = view(rfq_name, T.PM)
-    print("INFO    fresh open of the RFQ after LPOs Created: open_comparison=%s, can_create=%s (True = a second comparison is offered)"
-        % (fresh["open_comparison"], fresh["can_create"]))
+    check("fresh open after LPOs Created: the existing comparison is shown, not a new one",
+        fresh["open_comparison"] == name and fresh["comparison"] and fresh["comparison"]["status"] == "LPOs Created", fresh)
+    check("fresh open after LPOs Created: no second comparison offered", not fresh["can_create"], fresh)
+    expect_block("creating a second comparison after LPOs Created",
+        lambda: as_user(T.RAISER, lambda: qc.create_comparison(rfq_name)), "LPOs created")
 
     rfq_status = frappe.db.get_value("Request for Quotation", rfq_name, "status")
     print("INFO    RFQ status after LPOs Created: %s" % rfq_status)

@@ -1,7 +1,8 @@
 """Quotation Comparison rules (Sava A9.3).
 
 - a comparison is made against a Sent RFQ, in the RFQ's company
-- one open comparison per RFQ (Draft, Pending Approval, Approved)
+- one live comparison per RFQ (Draft, Pending Approval, Approved, LPOs Created); only a Rejected
+  (or Cancelled) one allows a new comparison
 - the chosen supplier must have an Active quotation that quoted the line
 - a reason is required only when the chosen net rate is above L1
 - the server fills rank, lowest, rate, VAT, amounts and totals; the client sends only
@@ -21,6 +22,8 @@ from psd_books.invoicing import quotation_comparison_calc as calc
 
 RFQ_OPEN_STATUS = "Sent"
 OPEN_STATUSES = ("Draft", "Pending Approval", "Approved")
+AWARDED_STATUS = "LPOs Created"
+LIVE_STATUSES = OPEN_STATUSES + (AWARDED_STATUS,)
 EDITABLE_STATUS = "Draft"
 ITEM_FIELDS = ["mrn_item", "selected_quotation", "selected_supplier", "supplier_name", "selected_rank",
 	"lowest_quotation", "lowest_rate", "net_rate", "vat_percent", "amount", "tax_amount", "reason"]
@@ -91,7 +94,8 @@ def build(rfq_name):
 
 
 def open_comparison(rfq_name, exclude=None):
-	filters = {"request_for_quotation": rfq_name, "status": ["in", list(OPEN_STATUSES)]}
+	"""The live comparison of this RFQ: Draft, Pending Approval, Approved or LPOs Created (else None)."""
+	filters = {"request_for_quotation": rfq_name, "status": ["in", list(LIVE_STATUSES)]}
 	if exclude:
 		filters["name"] = ["!=", exclude]
 	return frappe.db.get_value("Quotation Comparison", filters, "name")
@@ -99,9 +103,13 @@ def open_comparison(rfq_name, exclude=None):
 
 def check_no_open(rfq_name, exclude=None):
 	other = open_comparison(rfq_name, exclude)
-	if other:
-		frappe.throw(_("Request for Quotation {0} already has an open comparison ({1}). Open that one instead.")
-			.format(rfq_name, other))
+	if not other:
+		return
+	if frappe.db.get_value("Quotation Comparison", other, "status") == AWARDED_STATUS:
+		frappe.throw(_("Request for Quotation {0} already has LPOs created from comparison {1}. "
+			"A new comparison can't be made.").format(rfq_name, other))
+	frappe.throw(_("Request for Quotation {0} already has an open comparison ({1}). Open that one instead.")
+		.format(rfq_name, other))
 
 
 # --- selections ------------------------------------------------------------

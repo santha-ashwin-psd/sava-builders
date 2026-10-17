@@ -95,5 +95,65 @@ class SupplierSummary(unittest.TestCase):
 		self.assertEqual(rules.supplier_summary([]), [])
 
 
+class LiveComparison(unittest.TestCase):
+	"""open_comparison / check_no_open with a fake database (A9 gap: no second comparison after LPOs Created)."""
+
+	def setUp(self):
+		self.calls = []
+		self.status = {}
+		self.live_name = None
+		test = self
+
+		class Db:
+			@staticmethod
+			def get_value(doctype, filters, fieldname=None):
+				test.calls.append((filters, fieldname))
+				if isinstance(filters, dict):
+					return test.live_name if test.status.get(test.live_name) in filters["status"][1] else None
+				return test.status.get(filters)
+
+		self.old_db = rules.frappe.db
+		rules.frappe.db = Db
+
+	def tearDown(self):
+		rules.frappe.db = self.old_db
+
+	def test_lpos_created_counts_as_live(self):
+		self.assertIn("LPOs Created", rules.LIVE_STATUSES)
+		for st in ("Draft", "Pending Approval", "Approved"):
+			self.assertIn(st, rules.LIVE_STATUSES)
+
+	def test_rejected_and_cancelled_are_not_live(self):
+		self.assertNotIn("Rejected", rules.LIVE_STATUSES)
+		self.assertNotIn("Cancelled", rules.LIVE_STATUSES)
+
+	def test_open_comparison_finds_lpos_created(self):
+		self.live_name, self.status = "CMP-1", {"CMP-1": "LPOs Created"}
+		self.assertEqual(rules.open_comparison("RFQ-1"), "CMP-1")
+
+	def test_open_comparison_ignores_rejected(self):
+		self.live_name, self.status = "CMP-1", {"CMP-1": "Rejected"}
+		self.assertIsNone(rules.open_comparison("RFQ-1"))
+		rules.check_no_open("RFQ-1")
+
+	def test_new_comparison_blocked_after_lpos_created(self):
+		self.live_name, self.status = "CMP-1", {"CMP-1": "LPOs Created"}
+		with self.assertRaises(base.ThrowError) as cm:
+			rules.check_no_open("RFQ-1")
+		self.assertIn("LPOs created", str(cm.exception))
+		self.assertIn("CMP-1", str(cm.exception))
+
+	def test_new_comparison_blocked_while_open_keeps_old_message(self):
+		self.live_name, self.status = "CMP-1", {"CMP-1": "Draft"}
+		with self.assertRaises(base.ThrowError) as cm:
+			rules.check_no_open("RFQ-1")
+		self.assertIn("already has an open comparison", str(cm.exception))
+
+	def test_saving_the_same_comparison_is_not_blocked(self):
+		self.live_name, self.status = "CMP-1", {"CMP-1": "LPOs Created"}
+		self.live_name = None  # the query excludes the saved comparison itself, so nothing else is live
+		rules.check_no_open("RFQ-1", exclude="CMP-1")
+
+
 if __name__ == "__main__":
 	unittest.main(verbosity=2)
