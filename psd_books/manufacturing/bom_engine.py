@@ -1,0 +1,367 @@
+"""
+BOM Engine — advanced read-only APIs for Bill of Materials analysis.
+
+get_bom_tree       -- multi-level indented explosion of a BOM into a flat list
+                      of nodes with a ``level`` field for indenting in the UI.
+compare_boms       -- side-by-side diff of raw materials and operations between
+                      two BOMs — highlights added, removed, and changed rows.
+get_alternative_items
+                   -- list Alternative Item substitutions defined for an item.
+get_scrap_alternatives, upsert_scrap_alternative, delete_scrap_alternative
+                   -- Scrap Reuse Phase 4: manage a raw material's Recycled
+                      Scrap Alternative Item mappings from the BOM screen.
+"""
+
+import frappe
+from frappe import _
+from frappe.utils import flt
+
+from psd_books.utils.access import assert_can
+
+
+# ─── BOM Tree ────────────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_bom_tree(bom, qty=1):
+    """Return a flat list of BOM nodes with ``level`` numbers for rendering an
+    indented multi-level explosion tree.
+
+    Each node:
+        level            -- 0 = direct child of top BOM, 1 = child of sub-assembly, …
+        item_code
+        item_name
+        qty              -- actual quantity needed at this path (scaled)
+        uom
+        rate             -- unit price from BOM row
+        amount           -- qty × rate
+        sub_assembly_bom -- linked sub-assembly BOM name, if any
+        is_phantom       -- True if the sub-assembly BOM is marked phantom
+        has_sub_assembly -- True if this row has a sub-assembly BOM
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+    assert_can("BOM", "read")
+
+    result = []
+    _build_tree(bom, flt(qty) or 1.0, level=0, result=result, seen=frozenset())
+    return result
+
+
+def _build_tree(bom_name, qty, level, result, seen, max_depth=6):
+    if level > max_depth or bom_name in seen:
+        return
+    seen = seen | {bom_name}
+
+    try:
+        bom_doc = frappe.get_doc("BOM", bom_name)
+    except frappe.DoesNotExistError:
+        return
+    if bom_doc.docstatus != 1:
+        return
+
+    ratio = qty / flt(bom_doc.quantity or 1)
+    source_rows = bom_doc.packing_items if bom_doc.bom_type == "Packing" else (bom_doc.items or [])
+
+    for r in source_rows:
+        sub_bom = r.sub_assembly_bom or ""
+        is_phantom = False
+
+        # Auto-detect phantom sub-assembly even without explicit linkage
+        if not sub_bom:
+            sub_bom = frappe.db.get_value(
+                "BOM",
+                {"item": r.item_code, "is_phantom_bom": 1, "docstatus": 1, "is_active": 1},
+                "name",
+            ) or ""
+            if sub_bom:
+                is_phantom = True
+
+        row_rate = flt(r.rate)
+        # Mirror BOM._calc_costs: when parent flags "Set Rate of Sub-Assembly
+        # from BOM", stored r.rate on row go stale once sub BOM's cost change
+        # after parent last saved. Re-derive here so tree/valuation match what
+        # fresh save of parent would produce, not old typed-in rate.
+        if bom_doc.set_rate_of_sub_assembly_from_bom and sub_bom:
+            sub_cost, sub_qty = frappe.db.get_value(
+                "BOM", sub_bom, ["total_cost", "quantity"]
+            ) or (None, None)
+            if sub_cost is not None and flt(sub_qty):
+                row_rate = flt(flt(sub_cost) / flt(sub_qty), 4)
+
+        node_qty = flt(flt(r.qty) * ratio, 4)
+        node = {
+            "level": level,
+            "item_code": r.item_code,
+            "item_name": r.item_name or frappe.db.get_value("Item", r.item_code, "item_name") or r.item_code,
+            "qty": node_qty,
+            "uom": r.uom or "",
+            "rate": row_rate,
+            "amount": flt(row_rate * node_qty, 2),
+            "sub_assembly_bom": sub_bom,
+            "is_phantom": is_phantom,
+            "has_sub_assembly": bool(sub_bom),
+        }
+        result.append(node)
+
+        if sub_bom and sub_bom not in seen:
+            _build_tree(sub_bom, node_qty, level + 1, result, seen, max_depth)
+
+
+# ─── BOM Comparison ──────────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def compare_boms(bom1, bom2):
+    """Return a structured side-by-side diff between two BOMs.
+
+    Returns:
+        {
+          bom1: { name, item, qty, total_cost, bom_type },
+          bom2: { … },
+          materials: [ { item_code, item_name, bom1_qty, bom1_uom, bom1_rate,
+                         bom2_qty, bom2_uom, bom2_rate, status } ],
+          operations: [ { operation, bom1_time, bom1_rate,
+                          bom2_time, bom2_rate, status } ],
+        }
+
+    ``status`` for each row is one of: "unchanged" | "changed" | "added" | "removed"
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+    assert_can("BOM", "read")
+
+    if bom1 == bom2:
+        frappe.throw(_("Select two different BOMs to compare."))
+
+    b1 = frappe.get_doc("BOM", bom1)
+    b2 = frappe.get_doc("BOM", bom2)
+
+    def _items_map(bom_doc):
+        rows = bom_doc.packing_items if bom_doc.bom_type == "Packing" else (bom_doc.items or [])
+        out = {}
+        for r in rows:
+            rate = flt(r.rate)
+            sub_bom = getattr(r, "sub_assembly_bom", None)
+            if bom_doc.set_rate_of_sub_assembly_from_bom and sub_bom:
+                sub_cost, sub_qty = frappe.db.get_value(
+                    "BOM", sub_bom, ["total_cost", "quantity"]
+                ) or (None, None)
+                if sub_cost is not None and flt(sub_qty):
+                    rate = flt(flt(sub_cost) / flt(sub_qty), 4)
+            out[r.item_code] = {
+                "item_code": r.item_code,
+                "item_name": r.item_name or r.item_code,
+                "qty": flt(r.qty),
+                "uom": r.uom or "",
+                "rate": rate,
+            }
+        return out
+
+    m1, m2 = _items_map(b1), _items_map(b2)
+    all_items = sorted(set(m1) | set(m2))
+    materials = []
+    for ic in all_items:
+        r1, r2 = m1.get(ic), m2.get(ic)
+        if r1 and r2:
+            status = "unchanged" if (r1["qty"] == r2["qty"] and r1["rate"] == r2["rate"]) else "changed"
+        elif r1:
+            status = "removed"
+        else:
+            status = "added"
+        materials.append({
+            "item_code": ic,
+            "item_name": (r1 or r2)["item_name"],
+            "bom1_qty": r1["qty"] if r1 else None,
+            "bom1_uom": r1["uom"] if r1 else "",
+            "bom1_rate": r1["rate"] if r1 else None,
+            "bom2_qty": r2["qty"] if r2 else None,
+            "bom2_uom": r2["uom"] if r2 else "",
+            "bom2_rate": r2["rate"] if r2 else None,
+            "status": status,
+        })
+
+    ops1 = {r.operation: {"time": flt(r.time_in_mins), "rate": flt(r.hour_rate)} for r in b1.operations}
+    ops2 = {r.operation: {"time": flt(r.time_in_mins), "rate": flt(r.hour_rate)} for r in b2.operations}
+    all_ops = sorted(set(ops1) | set(ops2))
+    operations = []
+    for op in all_ops:
+        o1, o2 = ops1.get(op), ops2.get(op)
+        if o1 and o2:
+            status = "unchanged" if (o1["time"] == o2["time"] and o1["rate"] == o2["rate"]) else "changed"
+        elif o1:
+            status = "removed"
+        else:
+            status = "added"
+        operations.append({
+            "operation": op,
+            "bom1_time": o1["time"] if o1 else None,
+            "bom1_rate": o1["rate"] if o1 else None,
+            "bom2_time": o2["time"] if o2 else None,
+            "bom2_rate": o2["rate"] if o2 else None,
+            "status": status,
+        })
+
+    return {
+        "bom1": {
+            "name": b1.name, "item": b1.item, "qty": b1.quantity,
+            "total_cost": flt(b1.total_cost), "bom_type": b1.bom_type,
+        },
+        "bom2": {
+            "name": b2.name, "item": b2.item, "qty": b2.quantity,
+            "total_cost": flt(b2.total_cost), "bom_type": b2.bom_type,
+        },
+        "materials": materials,
+        "operations": operations,
+    }
+
+
+# ─── Alternative Items ───────────────────────────────────────────────────────
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_alternative_items(item_code):
+    """Return all Alternative Item substitutions defined for the given item."""
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+    if not frappe.db.exists("DocType", "Alternative Item"):
+        return []
+
+    rows = frappe.get_all(
+        "Alternative Item",
+        filters={"item_code": item_code},
+        fields=[
+            "alternative_item_code", "conversion_factor", "uom", "is_default", "description",
+            "source_type", "max_substitution_pct",
+        ],
+        order_by="is_default desc, alternative_item_code asc",
+    )
+    requires_approval = bool(frappe.db.get_value("Item", item_code, "requires_substitution_approval"))
+    for row in rows:
+        row["requires_approval"] = requires_approval
+    return rows
+
+
+# ─── Scrap Reuse — BOM-level eligibility (Phase 4) ────────────────────────────
+#
+# Scrap Reuse Phases 1-3 built the data model (Alternative Item.source_type /
+# max_substitution_pct) and the partial-reuse engine on the Work Order. What's
+# been missing is a way to actually *define* "this raw material may be partly
+# filled from that scrap item" without leaving the BOM screen and hand-editing
+# Alternative Item records from a generic list view. These three endpoints let
+# BOM.vue manage a raw material row's scrap eligibility inline — they're a thin
+# CRUD wrapper around Alternative Item, scoped to source_type="Recycled Scrap",
+# so every mapping created here is automatically picked up wherever
+# get_substitution_options()/get_alternative_items() already look (Work Order
+# substitution, reporting) with no separate lookup path to keep in sync.
+
+def _assert_scrap_item(alternative_item_code):
+    """Alternative Item derives source_type from the alternative's Item Type
+    at save time (see AlternativeItem._set_source_type), so a mapping only
+    counts as scrap-reuse eligibility if the item picked really is typed
+    "Scrap Item". Checked here too so the BOM-side picker can't silently
+    create what looks like a scrap mapping but resolves to Fresh Stock.
+    """
+    item_type = frappe.db.get_value("Item", alternative_item_code, "item_type")
+    if item_type is None:
+        frappe.throw(_("Item {0} does not exist.").format(alternative_item_code))
+    if item_type != "Scrap Item":
+        frappe.throw(_(
+            "{0} is not typed as a Scrap Item, so it can't be added as a scrap-reuse "
+            "alternative. Set its Item Type to \"Scrap Item\" first, or use Manufacturing "
+            "→ Alternative Items to add it as a Fresh Stock alternative instead."
+        ).format(alternative_item_code))
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_scrap_alternatives(item_code, company=None):
+    """List the Recycled Scrap Alternative Item mappings defined for a raw
+    material, for the "Scrap Reuse Eligibility" panel on a BOM row. Includes
+    live stock (when `company` is given) purely as a helpful preview -- the
+    Work Order substitution flow (get_substitution_options) still does its
+    own authoritative lookup at substitution time.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+    assert_can("Alternative Item", "read")
+
+    rows = frappe.get_all(
+        "Alternative Item",
+        filters={"item_code": item_code, "source_type": "Recycled Scrap"},
+        fields=[
+            "name", "alternative_item_code", "conversion_factor", "uom",
+            "max_substitution_pct", "description", "is_default",
+        ],
+        order_by="alternative_item_code asc",
+    )
+    for row in rows:
+        row["item_name"] = frappe.db.get_value("Item", row["alternative_item_code"], "item_name")
+
+    if company:
+        from psd_books.inventory.utils import get_stock_by_warehouse
+        for row in rows:
+            warehouses = get_stock_by_warehouse(row["alternative_item_code"], company)
+            row["available_qty"] = sum(w["qty"] for w in warehouses)
+
+    return rows
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def upsert_scrap_alternative(item_code, alternative_item_code, conversion_factor=1,
+                              max_substitution_pct=100, description="", name=None):
+    """Create or update a scrap-reuse Alternative Item mapping from the BOM
+    screen. `name` present -> edit that row; absent -> create a new one.
+    Deliberately does not expose `uom`/`is_default` here -- those matter for
+    the Fresh Stock substitution path, not scrap reuse, and stay editable
+    from the full Alternative Item list if ever needed.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+
+    _assert_scrap_item(alternative_item_code)
+
+    if name:
+        assert_can("Alternative Item", "write")
+        doc = frappe.get_doc("Alternative Item", name)
+        if doc.item_code != item_code:
+            frappe.throw(_("Mapping {0} does not belong to {1}.").format(name, item_code))
+    else:
+        assert_can("Alternative Item", "create")
+        existing = frappe.db.exists("Alternative Item", {
+            "item_code": item_code, "alternative_item_code": alternative_item_code,
+        })
+        if existing:
+            frappe.throw(_(
+                "{0} is already mapped as an alternative for {1} ({2}). Edit that entry instead."
+            ).format(alternative_item_code, item_code, existing))
+        doc = frappe.new_doc("Alternative Item")
+        doc.item_code = item_code
+        doc.alternative_item_code = alternative_item_code
+
+    doc.conversion_factor = flt(conversion_factor) or 1
+    doc.max_substitution_pct = flt(max_substitution_pct) or 100
+    doc.description = description or ""
+    doc.save()
+
+    return {
+        "name": doc.name,
+        "alternative_item_code": doc.alternative_item_code,
+        "conversion_factor": doc.conversion_factor,
+        "max_substitution_pct": doc.max_substitution_pct,
+        "description": doc.description,
+        "source_type": doc.source_type,
+    }
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def delete_scrap_alternative(name):
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Not permitted"), frappe.PermissionError)
+    assert_can("Alternative Item", "delete")
+
+    doc = frappe.get_doc("Alternative Item", name)
+    if doc.source_type != "Recycled Scrap":
+        frappe.throw(_(
+            "{0} is a Fresh Stock alternative, not a scrap-reuse mapping -- remove it from "
+            "Manufacturing → Alternative Items instead."
+        ).format(name))
+    doc.delete()
+    return {"deleted": name}

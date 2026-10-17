@@ -1,0 +1,106 @@
+# Copyright (c) 2026
+import frappe
+from frappe import _
+from frappe.utils import flt
+from frappe.model.document import Document
+from psd_books.accounts.accounting_engine import post_journal_entry, reverse_voucher
+from psd_books.db.validators import validate_fiscal_year, set_posting_time
+
+
+class JournalEntry(Document):
+
+    def validate(self):
+        set_posting_time(self)
+        # Ensure posting_date falls inside an open, unlocked fiscal year before
+        # any further checks — this guards against both "no FY found" and the
+        # period lock_date, which central_validator._check_period_not_closed
+        # does not cover (it only catches closed years, not missing ones).
+        # Opening Entries are exempt (same as in central_validator): they set up
+        # historical balances and may be dated before any fiscal year exists.
+        if self.posting_date and self.company:
+            if self.voucher_type == "Opening Entry":
+                try:
+                    self.fiscal_year = validate_fiscal_year(self.posting_date, self.company)
+                except Exception:
+                    self.fiscal_year = ""
+            else:
+                self.fiscal_year = validate_fiscal_year(self.posting_date, self.company)
+
+        if not self.accounts:
+            frappe.throw(_("Journal Entry must have at least one account row."))
+        total_debit  = sum(flt(r.debit)  for r in self.accounts)
+        total_credit = sum(flt(r.credit) for r in self.accounts)
+        if abs(total_debit - total_credit) > 0.01:
+            frappe.throw(_(
+                "Journal Entry is not balanced — "
+                "Total Debit {0} ≠ Total Credit {1}."
+            ).format(
+                frappe.bold(f"₹{total_debit:,.2f}"),
+                frappe.bold(f"₹{total_credit:,.2f}"),
+            ))
+        self.total_debit  = round(total_debit,  2)
+        self.total_credit = round(total_credit, 2)
+
+    def on_submit(self):
+        post_journal_entry(self)
+        self.db_set("status", "Submitted", update_modified=False)
+
+    def on_cancel(self):
+        reverse_voucher(self.doctype, self.name)
+        self.db_set("status", "Cancelled", update_modified=False)
+
+    def before_cancel(self):
+        self._cleanup_mirror_bank_transactions()
+
+    def on_trash(self):
+        self._cleanup_mirror_bank_transactions()
+        self._cleanup_cancelled_gl_entries()
+
+    def _cleanup_mirror_bank_transactions(self):
+        """Cancel + delete any Bank Transaction rows that only mirror this
+        Journal Entry for the Banking/reconciliation page (see
+        banking/utils.py::create_bank_transaction_row — e.g. the "Deposit
+        Cash" flow). Those rows post no GL of their own (BankTransaction.
+        _post_gl skips entirely when journal_entry is set — the real Dr/Cr
+        was already posted by this Journal Entry), so removing them here is
+        safe. Without this, Frappe's link check blocks cancelling/deleting
+        this Journal Entry with "... is linked with Bank Transaction ...".
+        """
+        names = frappe.get_all(
+            "Bank Transaction", filters={"journal_entry": self.name}, pluck="name"
+        )
+        for nm in names:
+            try:
+                doc = frappe.get_doc("Bank Transaction", nm)
+                if doc.docstatus == 1:
+                    doc.flags.ignore_permissions = True
+                    doc.cancel()
+                frappe.delete_doc("Bank Transaction", nm, ignore_permissions=True, force=True)
+            except Exception:
+                frappe.log_error(
+                    title="Journal Entry: mirror Bank Transaction cleanup failed",
+                    message=frappe.get_traceback(),
+                )
+
+    def _cleanup_cancelled_gl_entries(self):
+        """Remove cancelled GL entries when deleting a cancelled Journal Entry."""
+        if self.docstatus != 2:
+            return
+
+        gl_entries = frappe.get_all(
+            "General Ledger Entry",
+            filters={
+                "voucher_type": self.doctype,
+                "voucher_no": self.name,
+                "is_cancelled": 1,
+            },
+            pluck="name",
+        )
+
+        for gl_name in gl_entries:
+            frappe.delete_doc(
+                "General Ledger Entry",
+                gl_name,
+                ignore_permissions=True,
+                force=True,
+            )

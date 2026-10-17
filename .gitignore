@@ -39,13 +39,13 @@ logs/
 # ─── Node / Frontend ──────────────────────────────────────────────────────────
 node_modules/
 # Vite intermediate build artefacts (the final books.js IS committed)
-zoho_books_clone/public/js/dist/
-zoho_books_clone/public/js/books_vue/dist/
+psd_books/public/js/dist/
+psd_books/public/js/books_vue/dist/
 
 # ─── Frappe bench installation ────────────────────────────────────────────────
 # The full bench (920 MB: env, sites, frappe source) must never be committed.
-# Only the app source inside apps/zoho_books_clone is tracked via this repo.
-zoho_books_clone/frappe-bench/
+# Only the app source inside apps/psd_books is tracked via this repo.
+psd_books/frappe-bench/
 
 # ─── Frappe / ERPNext site data ───────────────────────────────────────────────
 sites/
@@ -67,3 +67,4 @@ config/pids/
 *_Audit*.docx
 *_Report*.docx
 Zoho_Books_Gap_Analysis_Report.pdf
+*:Zone.Identifier

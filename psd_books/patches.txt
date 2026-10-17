@@ -1,0 +1,129 @@
+[pre_model_sync]
+psd_books.patches.v1_0.create_indexes
+psd_books.patches.v1_0.seed_default_currency
+psd_books.patches.v1_0.seed_modes_of_payment
+psd_books.patches.v1_1.fix_company_names
+psd_books.patches.v1_2.seed_tax_templates_per_company
+psd_books.patches.v1_3.seed_landed_cost_charge_accounts
+
+[post_model_sync]
+# Seeds the "Stock Received But Not Billed" (GR/IR) account for every
+# existing company and back-fills Books Company.default_inventory_account /
+# stock_received_not_billed / default_cogs_account — these are new columns
+# added via books_company.json, so this patch must run AFTER schema sync
+# creates them, not before (pre_model_sync would hit "Unknown column" since
+# the ALTER TABLE hasn't happened yet).
+psd_books.patches.v1_4.seed_grir_and_inventory_defaults
+
+# Renames the GR/IR account's display name from "Stock Received But Not
+# Billed" to "Stock Received" for every company. account_type is left
+# unchanged (still "Stock Received But Not Billed") since it's a fixed
+# Select option used by GL posting / balance sheet logic.
+psd_books.patches.v1_5.rename_grir_account
+
+# Seeds the new "Expense Category" master with the union of the two
+# previously-hardcoded Select lists on Expense.expense_type and Expense
+# Claim Detail.expense_type, now both Link fields against Expense Category
+# (new doctype, so must run after schema sync creates its table).
+psd_books.patches.v1_6.seed_expense_categories
+
+# Phase 0 of the QC quarantine-workflow rework: back-fills the new
+# Books Company.default_fg_quarantine_warehouse and QC Inspection.
+# release_status columns for existing records. Must run after schema sync
+# creates these new columns (pre_model_sync would hit "Unknown column").
+psd_books.patches.v1_7.backfill_qc_quarantine_fields
+
+# Phase 4 of the QC quarantine-workflow rework: flips existing companies'
+# Books Company.qc_hard_block from the old default (0 / soft-warn) to the
+# new default (1 / hard-block) -- a JSON default change alone only affects
+# companies created from now on, not rows that already have an explicit 0
+# stored. Must run after schema sync (post_model_sync is fine here since
+# the column already existed pre-rework; this could safely run
+# pre_model_sync too, but keeping it alongside the rest of this rework's
+# patches in post_model_sync for consistency).
+psd_books.patches.v1_8.flip_qc_hard_block_default
+
+# Back-fills the Fixed Asset accounts (Fixed Assets group, Fixed Assets -
+# Cost, Accumulated Depreciation, Capital Work in Progress, Depreciation
+# Expense) for every existing company. These were missing from the COA seed
+# template entirely, so the Asset Category "Accounting" section's account
+# pickers were permanently empty for every company, old and new.
+psd_books.patches.v1_9.seed_fixed_asset_accounts
+
+# Phase 1 of the granular roles & permissions rework: back-fills the new
+# lvl_<module> Select fields on Books Company Member from the existing
+# books_role/is_company_admin/mod_<module> fields. New columns, so must
+# run after schema sync (post_model_sync).
+psd_books.patches.v1_10.backfill_permission_levels
+
+# Back-fills Stock Entry.process_loss_qty on the final Manufacture entry of
+# every Work Order whose historical process_loss_qty was recorded before
+# that per-entry field existed, so reverse_manufacture_entry() can roll it
+# back correctly instead of silently subtracting 0. Best-effort (see
+# docstring for the exact heuristic and its limits) -- reads/writes existing
+# columns only, safe in either sync phase, kept in post_model_sync for
+# consistency with the rest of this rework's patches.
+psd_books.patches.v1_11.backfill_historical_process_loss_qty
+
+# QC Flow Redesign Phase 1/4: back-fills the new QC Coverage doctype's
+# source_row from every existing non-cancelled QC Inspection, recovered via
+# best-effort 1:1 matching against the current rows of each inspection's
+# reference document. New doctype, so must run after schema sync
+# (post_model_sync). Safe to re-run.
+psd_books.patches.v1_12.backfill_qc_coverage
+
+# Account.balance_must_be ("Balance Type" Debit/Credit) was accepted by
+# save_account() but never declared as a real field on the Account doctype,
+# so it was silently dropped on every save. New column added in account.json
+# -- back-fill existing rows to 'Debit' (the old implicit assumption) so
+# nothing is left NULL. Safe to re-run.
+psd_books.patches.v1_13.backfill_account_balance_must_be
+
+# Scrap Reuse feature, Phase 1: back-fills Alternative Item.source_type /
+# max_substitution_pct — new columns added via alternative_item.json, so
+# must run after schema sync creates them (pre_model_sync would hit
+# "Unknown column"). source_type is derived per-row from whether
+# alternative_item_code points at an Item typed "Scrap Item"; future rows
+# get this set automatically by AlternativeItem.validate(). Safe to re-run.
+psd_books.patches.v1_14.backfill_alternative_item_source_type
+
+# Scrap Reuse feature, Phase 3: back-fills Work Order Item.is_scrap_row /
+# scrap_reused_qty (both correctly 0 for every pre-existing row -- the
+# partial-reuse engine didn't exist yet) and Material Substitution Log.
+# substitution_type (every pre-existing log came from the whole-row
+# apply_row_substitution() path, so unambiguously "Full Swap"). New
+# columns, so must run after schema sync (post_model_sync). Safe to re-run.
+psd_books.patches.v1_15.backfill_scrap_reuse_phase3_fields
+
+# Phase 7 of the self-contained fixed-asset lifecycle build-out: back-fills
+# Asset.taxable_value/total_tax/grand_total for Asset records submitted
+# before Phase 1 added those columns (mirrors Asset.calculate_totals()'s own
+# backward-compat fallback, which only runs on next save). Also re-derives
+# the Depreciation Schedule on every Asset with a posted Asset Quantity
+# Adjustment that predates Phase 5's rederive_schedule() -- those schedules
+# were left on stale, pre-write-off figures at the time (Phase 3's own
+# msgprint flagged this until Phase 5 landed). New columns/doctype involved,
+# so must run after schema sync (post_model_sync). Safe to re-run.
+psd_books.patches.v1_16.backfill_asset_lifecycle_buildout
+
+# Sava A2: Warehouse gains store_role / project. Makes sure each company has
+# an All Warehouses group, a Central Store and a Rejected Store, and moves
+# existing parentless leaf warehouses under the group so the Warehouses screen
+# lists them. New columns, so must run after schema sync (post_model_sync).
+# Safe to re-run.
+psd_books.patches.v1_17.seed_central_rejected_stores
+
+# Sava A3: Kenya VAT 16%. Creates the "VAT Input" and "VAT Payable" accounts
+# and the "VAT 16%" (Sales) and "Input VAT 16%" (Purchase) tax templates for
+# every existing company. Tax Template / Account are existing doctypes, so no
+# new columns; runs after schema sync with the other seed patches.
+# Safe to re-run.
+psd_books.patches.v1_18.seed_vat_16_templates
+
+# Sava: GST is not used. Deletes every Tax Template with tax_type GST (VAT
+# untouched). Clears Item / Books Settings links to them first; a template
+# still used on a transaction row is kept and reported. Safe to re-run.
+psd_books.patches.v1_20.delete_gst_tax_templates
+
+# Sava A9.4: create the approval roles Purchase Manager, Finance, Director. Safe to re-run.
+psd_books.patches.v1_21.create_approval_roles

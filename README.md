@@ -1,4 +1,4 @@
-# Zoho Books Clone (Frappe App)
+# PSD Books (Frappe App)
 
 A full-featured accounting application built on the Frappe framework, inspired by ZOHO Books.
 
@@ -12,8 +12,8 @@ A full-featured accounting application built on the Frappe framework, inspired b
 
 ## Installation
 ```bash
-bench get-app zoho_books_clone https://github.com/yourorg/zoho_books_clone
-bench --site your.site install-app zoho_books_clone
+bench get-app psd_books https://github.com/yourorg/psd_books
+bench --site your.site install-app psd_books
 bench --site your.site migrate
 ```
 
@@ -21,5 +21,5 @@ bench --site your.site migrate
 ```bash
 bench start
 bench --site your.site console
-bench --site your.site run-tests --app zoho_books_clone
+bench --site your.site run-tests --app psd_books
 ```

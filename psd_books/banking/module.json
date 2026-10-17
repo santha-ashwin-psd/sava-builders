@@ -1,0 +1,9 @@
+{
+ "module_name": "Banking",
+ "app_name": "psd_books",
+ "color": "#0891B2",
+ "icon": "octicon octicon-database",
+ "type": "module",
+ "label": "Banking",
+ "doctype": "Module Def"
+}

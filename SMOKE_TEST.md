@@ -9,17 +9,17 @@ to report.
 
 ```bash
 # Make sure assets are built and the server cache is fresh
-cd /Users/halen/Desktop/frappe-project/frappe-bench/apps/zoho_books_clone/zoho_books_clone/public/js/books_vue
+cd /Users/halen/Desktop/frappe-project/frappe-bench/apps/psd_books/psd_books/public/js/books_vue
 npm run build
 cd /Users/halen/Desktop/frappe-project/frappe-bench
-bench build --app zoho_books_clone
+bench build --app psd_books
 bench clear-cache
 
 # Start dev server (if not already running)
 bench start
 ```
 
-Open <http://localhost:8000/assets/zoho_books_clone/books.html> in a fresh
+Open <http://localhost:8000/assets/psd_books/books.html> in a fresh
 incognito window. Log in. Use the left sidebar to navigate between pages.
 
 **Tip:** Open browser DevTools → Network tab to confirm endpoints return 200,
@@ -271,7 +271,7 @@ convenient opportunity, but Tier 1 is **safe to build on** for Tier 2.
 - `get_vendor_email_defaults` / `send_vendor_statement_email`
 - `bulk_set_vendor_disabled` — bulk enable/disable
 
-**UI changes to [Vendors.vue](zoho_books_clone/public/js/books_vue/src/pages/Vendors.vue):**
+**UI changes to [Vendors.vue](psd_books/public/js/books_vue/src/pages/Vendors.vue):**
 - List view: SummaryStrip (Total Vendors / Active / With Open Balance / Total Payable), BulkActionBar (Disable/Enable/Export CSV), Outstanding column per row, row-level checkbox
 - Detail view: real outstanding + DN credit numbers (was hardcoded ₹0.00)
 - Transactions tab: replaced "No transactions yet" placeholder with real unified history (Bills + DNs + Payments) with color-coded type badges
@@ -290,13 +290,13 @@ Mirror of Vendor side: `get_customer_summary`, `get_customer_transactions`,
 `get_customer_statement`, `get_customer_email_defaults`,
 `send_customer_statement_email`, `bulk_set_customer_disabled`.
 
-**UI changes to [Customers.vue](zoho_books_clone/public/js/books_vue/src/pages/Customers.vue):**
+**UI changes to [Customers.vue](psd_books/public/js/books_vue/src/pages/Customers.vue):**
 - Transactions tab: replaced generic "No transactions data available" placeholder with real unified history (Invoices + Credit Notes + Payments)
 - Auto-loads transactions when a customer is selected
 
 **Note:** Customers.vue already had a working Statement tab that uses
-`zoho_books_clone.db.queries.get_customer_statement` (a separate pre-existing
-endpoint). The new `zoho_books_clone.api.docs.get_customer_statement` is
+`psd_books.db.queries.get_customer_statement` (a separate pre-existing
+endpoint). The new `psd_books.api.docs.get_customer_statement` is
 available too and gives the same shape — they can be unified in a later pass.
 
 **Browser steps:**
@@ -309,7 +309,7 @@ available too and gives the same shape — they can be unified in a later pass.
 - `get_payment_applications` — list invoices/bills/CN/DN this PE settled, with current outstanding
 - `cancel_payment_entry_safe` — cancel PE, GL hooks recompute linked outstanding
 
-**UI changes to [Payments.vue](zoho_books_clone/public/js/books_vue/src/pages/Payments.vue):**
+**UI changes to [Payments.vue](psd_books/public/js/books_vue/src/pages/Payments.vue):**
 - Row actions: ✕ cancel button for submitted PEs, trash delete for drafts/cancelled
 - View drawer footer: Cancel Payment + Delete buttons
 
@@ -322,9 +322,9 @@ available too and gives the same shape — they can be unified in a later pass.
 **Backend endpoint (1 new):**
 - `get_expense_summary` — totals + draft/submitted counts + by-category breakdown
 
-**⚠️ Known pre-existing bug in [Expenses.vue](zoho_books_clone/public/js/books_vue/src/pages/Expenses.vue):**
+**⚠️ Known pre-existing bug in [Expenses.vue](psd_books/public/js/books_vue/src/pages/Expenses.vue):**
 The page calls `apiList("Expense Claim", ...)` but the project's primary
-expense doctype is `Expense` (in `zoho_books_clone.invoicing.doctype.expense`).
+expense doctype is `Expense` (in `psd_books.invoicing.doctype.expense`).
 Both tables are empty so nothing visibly breaks today — but if you enter
 data via the page, it'll save to Expense Claim (Frappe HR) and not appear
 on financial reports that query Expense.
@@ -373,7 +373,7 @@ re-running `/tmp/verify_phase1_v2.py` which now passes 3/3.
 
 ## Print preview wired into all Tier-1 pages
 
-[`useLivePreview.js`](zoho_books_clone/public/js/books_vue/src/composables/useLivePreview.js)
+[`useLivePreview.js`](psd_books/public/js/books_vue/src/composables/useLivePreview.js)
 gained a `printDoc(doc, config)` helper that opens a new browser window with
 the rendered document HTML, a template switcher toolbar (Classic / Modern /
 Minimal), and a Print button. Bills, DebitNotes, CreditNotes, Quotes,
@@ -388,7 +388,7 @@ switch styling → click "🖨 Print" inside the preview to send to printer.
 
 ## Expenses.vue doctype fix (Phase 9b)
 
-[`Expenses.vue`](zoho_books_clone/public/js/books_vue/src/pages/Expenses.vue)
+[`Expenses.vue`](psd_books/public/js/books_vue/src/pages/Expenses.vue)
 now uses the correct `Expense` doctype (was incorrectly calling `Expense Claim`,
 which is Frappe HR's separate doctype). Field-name aliases keep the legacy
 template mostly intact:
@@ -396,7 +396,7 @@ template mostly intact:
 - `total_amount` ↔ `total_claimed_amount`
 - `description` ↔ `notes`
 
-Also fixed [expense.json](zoho_books_clone/invoicing/doctype/expense/expense.json)
+Also fixed [expense.json](psd_books/invoicing/doctype/expense/expense.json)
 autoname (was `"naming_series:"` referencing a missing field; now
 `"EXP-.YYYY.-.#####"` directly).
 
@@ -407,8 +407,8 @@ reflects it, list query returns it. 3/3 PASS.
 
 ## Reports — endpoints verified (Phase 10)
 
-[`Reports.vue`](zoho_books_clone/public/js/books_vue/src/pages/Reports.vue) was
-already wired to 11 endpoints in [db/queries.py](zoho_books_clone/db/queries.py).
+[`Reports.vue`](psd_books/public/js/books_vue/src/pages/Reports.vue) was
+already wired to 11 endpoints in [db/queries.py](psd_books/db/queries.py).
 All 11 confirmed working via `/tmp/verify_reports.py`:
 
 - `get_profit_and_loss` ✅
@@ -433,7 +433,7 @@ Aging tables export to CSV.
 ## Tier 3 / Accounting Foundation — partial shipped
 
 ### Dashboard.vue — verified working
-[`Dashboard.vue`](zoho_books_clone/public/js/books_vue/src/pages/Dashboard.vue)
+[`Dashboard.vue`](psd_books/public/js/books_vue/src/pages/Dashboard.vue)
 uses `useFrappeCall` to wire 6 backend endpoints. All 6 verified via
 `/tmp/verify_dashboard.py`:
 - `get_dashboard_kpis` ✅ (9 KPI fields)
@@ -449,17 +449,17 @@ all populate from real data.
 ### ChartOfAccounts.vue — enhanced with live balance + ledger drill ⭐
 
 The killer accounting feature. Two new wirings in
-[`ChartOfAccounts.vue`](zoho_books_clone/public/js/books_vue/src/pages/ChartOfAccounts.vue):
+[`ChartOfAccounts.vue`](psd_books/public/js/books_vue/src/pages/ChartOfAccounts.vue):
 
 1. **Live "Current Balance" column** — replaces the static "Balance Type"
-   column. Calls `zoho_books_clone.db.queries.get_account_balance` for every
+   column. Calls `psd_books.db.queries.get_account_balance` for every
    ledger account on load (chunked to 10 parallel). Group rows show "—".
 2. **📒 Ledger button** per row → opens a 960-px drawer with full GL drill:
    date-range filter, voucher/type/party columns, debit/credit, running
    balance, closing balance footer, "Export CSV" button.
 
 Backend endpoints used (both pre-existing in
-[`db/queries.py`](zoho_books_clone/db/queries.py)):
+[`db/queries.py`](psd_books/db/queries.py)):
 - `get_account_balance(account, as_of_date?)` ✅
 - `get_gl_entries(company, account, from_date, to_date)` ✅
 
@@ -491,7 +491,7 @@ Audit revealed 3 pages were calling **doctypes that don't exist** in this build:
 Strategy: synthesise DC/PR views from SO/PO `delivered_qty` / `received_qty`
 tracking we already built in Phase 4/5 — no new doctypes needed.
 
-### 4 new backend endpoints in [docs.py](zoho_books_clone/api/docs.py)
+### 4 new backend endpoints in [docs.py](psd_books/api/docs.py)
 - `get_delivery_challan_list(company, limit)` — every SO with delivered_qty > 0,
   rolled up with totals + computed status (Fully / Partially Delivered)
 - `get_delivery_challan_lines(sales_order)` — per-line delivery breakdown
@@ -499,13 +499,13 @@ tracking we already built in Phase 4/5 — no new doctypes needed.
 - `get_purchase_receipt_lines(purchase_order)` — per-line receipt breakdown
 
 ### Frontend fixes
-- [DeliveryChallans.vue](zoho_books_clone/public/js/books_vue/src/pages/DeliveryChallans.vue):
+- [DeliveryChallans.vue](psd_books/public/js/books_vue/src/pages/DeliveryChallans.vue):
   `load()` now calls `get_delivery_challan_list`; `openView()` pulls per-line
   detail; filter pills updated (Fully / Partially Delivered)
-- [PurchaseReceipts.vue](zoho_books_clone/public/js/books_vue/src/pages/PurchaseReceipts.vue):
+- [PurchaseReceipts.vue](psd_books/public/js/books_vue/src/pages/PurchaseReceipts.vue):
   same pattern; `submitGRN()` shows a helpful message pointing the user to
   the Purchase Order page (state changes happen on the PO, not on the derived PR view)
-- [ProformaInvoices.vue](zoho_books_clone/public/js/books_vue/src/pages/ProformaInvoices.vue):
+- [ProformaInvoices.vue](psd_books/public/js/books_vue/src/pages/ProformaInvoices.vue):
   fixed filter — `remarks LIKE %Proforma%` → `notes LIKE %Proforma%` (the
   `remarks` column was renamed to `notes` in this build's SI schema)
 
@@ -533,10 +533,10 @@ Bank Transaction, Journal Entry, Payment Entry) and broken assumptions:
   has `debit`/`credit`
 - BankReconciliation.vue called `GL Entry` doctype — actual name is
   `General Ledger Entry`
-- BankReconciliation also called a `zoho_books_clone.api.banking.reconcile_transactions`
+- BankReconciliation also called a `psd_books.api.banking.reconcile_transactions`
   endpoint that doesn't exist
 
-### 5 new backend endpoints in [docs.py](zoho_books_clone/api/docs.py)
+### 5 new backend endpoints in [docs.py](psd_books/api/docs.py)
 - `get_banking_summary(company)` — dashboard: account count, total balance
   (live from GL), recent transactions, recent transfers, unreconciled count
 - `get_bank_reconciliation(bank_account, from_date, to_date)` — bank txns
@@ -549,10 +549,10 @@ Bank Transaction, Journal Entry, Payment Entry) and broken assumptions:
   one Bank Transaction per row, returns created list + skipped count
 
 ### Frontend fixes
-- [BankTransactions.vue](zoho_books_clone/public/js/books_vue/src/pages/BankTransactions.vue):
+- [BankTransactions.vue](psd_books/public/js/books_vue/src/pages/BankTransactions.vue):
   pulls `debit`/`credit` then aliases to `deposit`/`withdrawal` so the
   existing template keeps working
-- [BankReconciliation.vue](zoho_books_clone/public/js/books_vue/src/pages/BankReconciliation.vue):
+- [BankReconciliation.vue](psd_books/public/js/books_vue/src/pages/BankReconciliation.vue):
   swapped to the consolidated `get_bank_reconciliation` endpoint; rewired
   the "Mark Reconciled" action to call `reconcile_bank_transaction` per row
 
@@ -592,7 +592,7 @@ returns top 5 Payment Entries scored 0–100 by:
 Excludes PEs already linked to another Bank Transaction.
 
 ### Frontend
-[BankReconciliation.vue](zoho_books_clone/public/js/books_vue/src/pages/BankReconciliation.vue)
+[BankReconciliation.vue](psd_books/public/js/books_vue/src/pages/BankReconciliation.vue)
 gained a "🔍 Suggest" button per unreconciled row. Click expands an inline
 panel showing candidate Payment Entries with confidence-coloured badges:
 - Green ≥80% — high confidence
@@ -611,7 +611,7 @@ correctly identifying the original PE. Toggle-collapse works.
 
 ## Tier 3 / Settings — audit-only verified ✅
 
-40 admin endpoints in [`api/admin.py`](zoho_books_clone/api/admin.py) power 14
+40 admin endpoints in [`api/admin.py`](psd_books/api/admin.py) power 14
 sub-pages. Audit (`/tmp/verify_settings.py`) ran 13 endpoint smoke-checks —
 **12 of 13 PASS** (the 1 "FAIL" was a typo in the test script asking for a
 `country` column that the Vue page doesn't actually request; the Vue page
@@ -653,7 +653,7 @@ Recurring + RecurringBills pages now show real data instead of empty lists.
 
 ### 2. Bank Statement CSV upload UI
 Added "📥 Import CSV" button next to the bank-account selector in
-[BankTransactions.vue](zoho_books_clone/public/js/books_vue/src/pages/BankTransactions.vue).
+[BankTransactions.vue](psd_books/public/js/books_vue/src/pages/BankTransactions.vue).
 Reads file client-side via FileReader, POSTs to the existing
 `import_bank_statement_csv` endpoint, shows green/red result banner with
 counts of created and skipped rows.
@@ -672,7 +672,7 @@ Added 3 columns to Payment Entry via ALTER TABLE:
   transitions with required fields per state
 - `get_cheque_summary(company)` — counts + totals per state
 
-[BankCheques.vue](zoho_books_clone/public/js/books_vue/src/pages/BankCheques.vue)
+[BankCheques.vue](psd_books/public/js/books_vue/src/pages/BankCheques.vue)
 rewired:
 - Status pills with live counts (Issued / Cleared / Bounced / Cancelled)
 - 4 colour-coded summary cards
@@ -727,7 +727,7 @@ New first-class doctypes (no longer just derived from SO/PO):
   items, total_qty, remarks.
 - **Purchase Receipt Item** — child table mirroring DN Item.
 
-### Controllers ([delivery_note.py](zoho_books_clone/invoicing/doctype/delivery_note/delivery_note.py), [purchase_receipt.py](zoho_books_clone/invoicing/doctype/purchase_receipt/purchase_receipt.py))
+### Controllers ([delivery_note.py](psd_books/invoicing/doctype/delivery_note/delivery_note.py), [purchase_receipt.py](psd_books/invoicing/doctype/purchase_receipt/purchase_receipt.py))
 - `validate()` — requires ≥1 item row + qty > 0; computes total_qty
 - `on_submit()` — bumps SO `delivered_qty` (or PO `received_qty`) on
   the linked source items; refreshes parent SO/PO status via the

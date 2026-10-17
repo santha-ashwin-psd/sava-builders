@@ -1,0 +1,9 @@
+{
+ "module_name": "Invoicing",
+ "app_name": "psd_books",
+ "color": "#16A34A",
+ "icon": "octicon octicon-file-text",
+ "type": "module",
+ "label": "Invoicing",
+ "doctype": "Module Def"
+}

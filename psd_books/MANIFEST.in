@@ -1,0 +1,2 @@
+include *.md *.txt
+recursive-include psd_books *.json *.js *.css *.html *.py *.md *.png *.svg

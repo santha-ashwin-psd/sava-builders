@@ -1,0 +1,1187 @@
+<template>
+  <div class="cash-page">
+    <div class="cash-actions">
+      <div class="cash-search-wrap"><span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span><input v-model="search" placeholder="Search cash transactions…" class="cash-search-input" /></div>
+      <div style="display:flex;gap:8px;margin-left:auto">
+        <button class="cash-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
+        <button
+          class="cash-btn-ghost"
+          v-if="totalUndeposited>0"
+          :disabled="!$canCreate('banking')"
+          :title="!$canCreate('banking') ? 'Read-only access' : ''"
+          @click="openDeposit"
+        ><span v-html="icon('bank',14)"></span> Deposit <span class="cash-dep-count" style="margin-left:4px">{{ fmtCur(totalUndeposited) }}</span></button>
+        <button class="cash-btn-ghost" v-if="cashAccounts.length" @click="openLedger()"><span v-html="icon('file',14)"></span> Ledger</button>
+        <button class="cash-btn-primary" :disabled="!$canCreate('banking')" :title="!$canCreate('banking') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Cash Entry</button>
+      </div>
+    </div>
+
+    <SummaryStrip v-if="!loading" :cards="[
+      { label: 'Cash In', tone: 'success', value: fmtCur(cashSummary.cash_in), valueClass: 'green' },
+      { label: 'Cash Out', tone: 'danger', value: fmtCur(cashSummary.cash_out), valueClass: 'red' },
+      { label: 'Transfers', tone: 'warn', value: fmtCur(cashSummary.transfers), valueClass: 'orange' },
+      { label: 'Net Cash', tone: 'accent', value: fmtCur(cashSummary.net_cash), valueClass: cashSummary.net_cash>=0?'green':'red' },
+      { label: 'Entries', tone: 'default', value: list.length },
+    ]" />
+
+    <!-- Filter toolbar -->
+    <div v-if="!loading && list.length" class="cash-toolbar">
+      <div class="cash-filter-pills">
+        <button v-for="t in tabs" :key="t.key" class="cash-fpill" :class="{active:activeTab===t.key}" @click="activeTab=t.key">
+          {{ t.label }} <span class="cash-fpill-count">{{ tabCount(t.key) }}</span>
+        </button>
+      </div>
+      <div class="cash-toolbar-right">
+        <span class="cash-result">{{ sorted.length }} of {{ list.length }}</span>
+        <button class="cash-btn-ghost" @click="exportCSV" :disabled="!sorted.length"><span v-html="icon('download',14)"></span> Export</button>
+      </div>
+    </div>
+
+    <!-- Selection bar -->
+    <div v-if="selected.size>0" class="cash-selbar">
+      <span class="cash-sel-count">{{ selected.size }} selected</span>
+      <button class="cash-sel-export" @click="exportCSV"><span v-html="icon('download',13)"></span> Export selected</button>
+      <button class="cash-sel-danger" @click="bulkDelete" :disabled="bulkBusy || !$canDelete('banking')" :title="!$canDelete('banking') ? 'Not permitted' : ''"><span v-html="icon('trash',13)"></span> Delete {{ selected.size }}</button>
+      <div style="flex:1"></div>
+      <button class="cash-sel-clear" @click="selected=new Set()">Clear</button>
+    </div>
+
+    <div class="cash-card">
+      <table class="cash-table cash-desktop-table">
+        <thead><tr>
+          <th style="width:32px"><input type="checkbox" :checked="allSelected" @change="toggleSelectAll" /></th>
+          <th @click="sort('name')" class="sortable">Entry # <span v-html="sortArrow('name')"></span></th>
+          <th @click="sort('party')" class="sortable">Party <span v-html="sortArrow('party')"></span></th>
+          <th @click="sort('payment_date')" class="sortable">Date <span v-html="sortArrow('payment_date')"></span></th>
+          <th>Type</th>
+          <th @click="sort('paid_amount')" class="sortable ta-r">Amount <span v-html="sortArrow('paid_amount')"></span></th>
+        </tr></thead>
+        <tbody>
+          <template v-if="loading"><tr v-for="n in 6" :key="n"><td colspan="6"><div class="cash-shimmer"></div></td></tr></template>
+          <template v-else>
+            <tr v-for="p in paged" :key="p.name" class="cash-row" @click="openView(p)">
+              <td @click.stop><input type="checkbox" :checked="selected.has(p.name)" @change="toggleSelect(p.name)" /></td>
+              <td><DocLink :doctype="p._dt || 'Payment Entry'" :name="p.name" /></td>
+              <td>{{ p.party_name||p.party||'—' }}</td>
+              <td class="mono-sm text-muted">{{ fmtDate(p.payment_date) }}</td>
+              <td><span class="cash-badge" :class="p.payment_type==='Receive'?'badge-green':'badge-red'">{{ p.payment_type==='Receive'?'Cash In':'Cash Out' }}</span></td>
+              <td class="ta-r mono-sm">{{ fmtCur(p.paid_amount) }}</td>
+            </tr>
+            <tr v-if="!sorted.length"><td colspan="6" class="cash-empty">{{ list.length ? 'No entries match this filter' : 'No cash entries found' }}</td></tr>
+          </template>
+        </tbody>
+      </table>
+
+      <!-- Mobile cards (shown at ≤768px) -->
+      <div class="cash-mobile-cards">
+        <template v-if="loading">
+          <div v-for="n in 5" :key="n" class="cash-mobile-card cash-mc--skeleton">
+            <div class="cash-mc-shimmer" style="height:13px;width:55%;margin-bottom:8px"></div>
+            <div class="cash-mc-shimmer" style="height:11px;width:40%;margin-bottom:6px"></div>
+            <div class="cash-mc-shimmer" style="height:11px;width:65%"></div>
+          </div>
+        </template>
+        <div v-else-if="!sorted.length" class="cash-mc-empty">
+          <div style="font-size:32px;margin-bottom:8px">💵</div>
+          <div>{{ list.length ? 'No entries match' : 'No cash entries found' }}</div>
+        </div>
+        <template v-else>
+          <div v-for="p in paged" :key="p.name" class="cash-mobile-card" @click="openView(p)">
+            <div class="cash-mc-top">
+              <span class="cash-mc-docno"><DocLink :doctype="p._dt || 'Payment Entry'" :name="p.name" /></span>
+              <span class="cash-badge" :class="p.payment_type==='Receive'?'badge-green':'badge-red'">{{ p.payment_type==='Receive'?'Cash In':'Cash Out' }}</span>
+            </div>
+            <div class="cash-mc-mid">{{ p.party_name || p.party || '—' }}</div>
+            <div class="cash-mc-meta">
+              <span>{{ fmtDate(p.payment_date) }}</span>
+              <span class="cash-mc-amount" :class="p.payment_type==='Receive'?'cash-mc-pos':'cash-mc-neg'">{{ fmtCur(p.paid_amount) }}</span>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div v-if="!loading && sorted.length" style="padding:4px 0 0">
+      <Pagination v-model:page="page" v-model:page-size="pageSize" :total-items="sorted.length" />
+    </div>
+
+    <!-- New Entry Drawer -->
+    <div v-if="drawerOpen" class="cash-overlay" @click.self="!drawerSaving && (drawerOpen=false)"></div>
+    <div class="cash-drawer" :class="{open:drawerOpen}">
+      <div class="cash-dheader">
+        <button class="cash-dclose cash-dclose-abs" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
+        <div class="cash-dh-top">
+          <div class="cash-dh-ico"><span v-html="icon('cash',20)"></span></div>
+          <div>
+            <div class="cash-dh-title">New Cash Entry</div>
+            <div class="cash-dh-sub">Record a cash receipt or payment</div>
+          </div>
+        </div>
+      </div>
+      <div class="cash-dbody">
+        <div class="cash-fields-grid">
+          <div class="cash-field" style="grid-column:1/-1">
+            <label class="cash-label">Type <span class="req">*</span></label>
+            <div class="cash-radio-group">
+              <label class="cash-radio" :class="{checked:form.payment_type==='Receive'}" @click="form.payment_type='Receive'"><span class="cash-radio-dot" :class="{on:form.payment_type==='Receive'}"></span> Cash In (Received)</label>
+              <label class="cash-radio" :class="{checked:form.payment_type==='Pay'}" @click="form.payment_type='Pay'"><span class="cash-radio-dot" :class="{on:form.payment_type==='Pay'}"></span> Cash Out (Paid)</label>
+            </div>
+          </div>
+          <div class="cash-field"><label class="cash-label">Date <span class="req">*</span></label><input v-model="form.payment_date" type="date" class="cash-input" /></div>
+          <div class="cash-field"><label class="cash-label">Amount <span class="req">*</span></label><input v-model.number="form.paid_amount" type="number" min="0" step="0.01" class="cash-input" /></div>
+          <div class="cash-field" style="grid-column:1/-1">
+            <label class="cash-label">{{ form.payment_type==='Receive'?'Customer':'Vendor' }} <span class="req">*</span></label>
+            <SearchableSelect v-model="form.party" :options="partyOptions" :placeholder="form.payment_type==='Receive'?'Select customer…':'Select vendor…'" @search="fetchParties" />
+          </div>
+          <div class="cash-field" style="grid-column:1/-1" v-if="form.payment_type==='Receive'">
+            <label class="cash-label">Purpose <span class="req">*</span></label>
+            <select v-model="form.custom_purpose" class="cash-input">
+              <option value="">— Select purpose —</option>
+              <option v-for="p in CASH_IN_PURPOSES" :key="p" :value="p">{{ p }}</option>
+            </select>
+          </div>
+          <div class="cash-field" style="grid-column:1/-1" v-else>
+            <label class="cash-label">Expense Category <span class="req">*</span></label>
+            <SearchableSelect v-model="form.custom_expense_category" :options="expenseCategoryOptions" placeholder="Select expense category…" @search="fetchExpenseCategories" @open="fetchExpenseCategories('')" />
+          </div>
+          <div class="cash-field" style="grid-column:1/-1"><label class="cash-label">Remarks</label><textarea v-model="form.remarks" rows="2" class="cash-input" placeholder="Optional…"></textarea></div>
+        </div>
+      </div>
+      <div class="cash-dfooter">
+        <button class="cash-btn-ghost" @click="drawerOpen=false">Cancel</button>
+        <button class="cash-btn-primary" :disabled="drawerSaving" @click="saveCash"><span v-html="icon('check',13)"></span> {{ drawerSaving?'Saving…':'Submit' }}</button>
+      </div>
+    </div>
+
+    <!-- Deposit to Bank Drawer -->
+    <div v-if="depositOpen" class="cash-overlay" @click.self="!depositSaving && (depositOpen=false)"></div>
+    <div class="cash-drawer" :class="{open:depositOpen}">
+      <div class="cash-dheader">
+        <button class="cash-dclose cash-dclose-abs" @click="!depositSaving && (depositOpen=false)"><span v-html="icon('x',16)"></span></button>
+        <div class="cash-dh-top">
+          <div class="cash-dh-ico"><span v-html="icon('bank',20)"></span></div>
+          <div>
+            <div class="cash-dh-title">Deposit</div>
+            <div class="cash-dh-sub">Move undeposited cash to a bank account or another cash account</div>
+          </div>
+        </div>
+      </div>
+      <div class="cash-dbody">
+        <div v-if="depositLoading" class="cash-empty" style="padding:32px 0">Loading undeposited cash…</div>
+        <template v-else>
+          <div v-if="totalUndeposited<=0 && !depositForm.destination_account" class="cash-empty" style="padding:32px 0">
+            No undeposited cash. Every cash receipt has already been deposited.
+          </div>
+          <template v-else>
+            <div class="cash-field">
+              <label class="cash-label">Deposit To <span class="req">*</span></label>
+              <select v-model="depositForm.destination_account" class="cash-input" @change="onDestinationChange">
+                <option value="">— Select account —</option>
+                <optgroup label="Bank Account" v-if="bankDestinations.length">
+                  <option v-for="b in bankDestinations" :key="b.name" :value="b.name">{{ b.name }}</option>
+                </optgroup>
+                <optgroup label="Cash Account" v-if="cashDestinations.length">
+                  <option v-for="c in cashDestinations" :key="c.name" :value="c.name">{{ c.name }}</option>
+                </optgroup>
+              </select>
+              <div v-if="!bankDestinations.length && !cashDestinations.length" class="pmd-warn" style="margin-top:4px">
+                No Bank or other Cash account found — set one up under Accounts first.
+              </div>
+            </div>
+
+            <div class="cash-dep-total" style="margin-bottom:4px">
+              <span>Yet to deposit</span>
+              <strong>{{ fmtCur(totalUndeposited) }}</strong>
+            </div>
+
+            <div class="cash-field">
+              <label class="cash-label">Amount to Deposit <span class="req">*</span></label>
+              <input v-model.number="depositForm.amount" type="number" min="0.01" :max="totalUndeposited" step="0.01" class="cash-input" />
+              <div class="pmd-warn" v-if="depositForm.amount>totalUndeposited" style="margin-top:4px">
+                Cannot deposit more than the undeposited balance ({{ fmtCur(totalUndeposited) }}).
+              </div>
+            </div>
+
+            <div class="cash-field">
+              <label class="cash-label">Deposit Date <span class="req">*</span></label>
+              <input v-model="depositForm.date" type="date" class="cash-input" />
+            </div>
+
+            <div class="cash-field">
+              <label class="cash-label">Notes</label>
+              <textarea v-model="depositForm.notes" rows="2" class="cash-input" placeholder="Optional — deposit slip #, branch, etc."></textarea>
+            </div>
+
+            <div class="cash-dep-total">
+              <span>Remaining after this deposit</span>
+              <strong>{{ fmtCur(Math.max(totalUndeposited - (depositForm.amount||0), 0)) }}</strong>
+            </div>
+          </template>
+        </template>
+      </div>
+      <div class="cash-dfooter">
+        <button class="cash-btn-ghost" :disabled="depositSaving" @click="depositOpen=false">Cancel</button>
+        <button
+          class="cash-btn-primary"
+          :disabled="depositSaving || !depositForm.amount || depositForm.amount<=0 || depositForm.amount>totalUndeposited || !depositForm.destination_account || !depositForm.date"
+          @click="saveDeposit"
+        >
+          <span v-html="icon('check',13)"></span>
+          {{ depositSaving ? "Depositing…" : `Deposit ${fmtCur(depositForm.amount||0)}` }}
+        </button>
+      </div>
+    </div>
+
+    <!-- View Drawer -->
+    <div v-if="viewOpen" class="cash-overlay" @click.self="viewOpen=false"></div>
+    <div class="cash-drawer cash-view-drawer" :class="{open:viewOpen}">
+      <template v-if="viewDoc">
+        <div class="cash-dheader">
+          <button class="cash-dclose cash-dclose-abs" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+          <div class="cash-dh-top">
+            <div class="cash-dh-ico"><span v-html="icon('cash',20)"></span></div>
+            <div>
+              <div class="cash-dh-title">{{ viewDoc.name }}</div>
+              <div class="cash-dh-sub">{{ viewDoc.party_name||viewDoc.party||'—' }} · {{ fmtDate(viewDoc.payment_date) }}</div>
+            </div>
+            <span class="cash-badge" :class="viewDoc.payment_type==='Receive'?'badge-green':'badge-red'">{{ viewDoc.payment_type==='Receive'?'Cash In':'Cash Out' }}</span>
+          </div>
+          <div class="cash-dh-amount">
+            <div class="cash-dh-amt-lbl">{{ viewDoc.payment_type==='Receive'?'Received':'Paid Out' }}</div>
+            <div class="cash-dh-amt-val" :class="viewDoc.payment_type==='Receive'?'pos':'neg'">{{ fmtCur(viewDoc.paid_amount) }}</div>
+          </div>
+        </div>
+        <div class="cash-dbody">
+          <div class="cash-section-hdr"><span v-html="icon('info',13)"></span> Details</div>
+          <div class="cash-meta-grid">
+            <div><div class="cash-meta-lbl">Date</div><div class="mono-sm">{{ fmtDate(viewDoc.payment_date) }}</div></div>
+            <div><div class="cash-meta-lbl">{{ viewDoc.payment_type==='Receive'?'Customer':'Vendor' }}</div><div>{{ viewDoc.party_name||viewDoc.party||'—' }}</div></div>
+            <div><div class="cash-meta-lbl">Type</div><div>{{ viewDoc.payment_type==='Receive'?'Cash In':'Cash Out' }}</div></div>
+            <div><div class="cash-meta-lbl">Mode</div><div>Cash</div></div>
+            <div v-if="viewDoc.payment_type==='Receive'"><div class="cash-meta-lbl">Purpose</div><div>{{ viewDoc.custom_purpose||'—' }}</div></div>
+            <div v-else><div class="cash-meta-lbl">Expense Category</div><div>{{ expenseCategoryLabel(viewDoc.custom_expense_category) }}</div></div>
+          </div>
+          <template v-if="viewDoc.remarks">
+            <div class="cash-section-hdr"><span v-html="icon('file',13)"></span> Remarks</div>
+            <div class="cash-remark">{{ viewDoc.remarks }}</div>
+          </template>
+
+          <div class="inv-view-footer" v-if="viewDoc.owner">
+            Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
+            <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
+          </div>
+        </div>
+        <div class="cash-dfooter">
+          <button class="cash-btn-danger-ghost" @click="deleteEntry(viewDoc)" :disabled="actionBusy || !$canDelete('banking')" :title="!$canDelete('banking') ? 'Not permitted' : ''"><span v-html="icon('trash',13)"></span> Delete</button>
+          <div style="margin-left:auto"><button class="cash-btn-ghost" @click="viewOpen=false">Close</button></div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Account Ledger Drawer -->
+    <div v-if="ledgerOpen" class="cash-overlay" @click.self="ledgerOpen=false"></div>
+    <div class="cash-drawer cash-ledger-drawer" :class="{open:ledgerOpen}">
+      <div class="cash-dheader">
+        <button class="cash-dclose cash-dclose-abs" @click="ledgerOpen=false"><span v-html="icon('x',16)"></span></button>
+        <div class="cash-dh-top">
+          <div class="cash-dh-ico"><span v-html="icon('cash',20)"></span></div>
+          <div>
+            <div class="cash-dh-title">Account Ledger</div>
+            <div class="cash-dh-sub">Trace every entry that hit this account</div>
+          </div>
+          <div v-if="ledgerData" class="ledger-range-badge">
+            <span v-html="icon('calendar',13)"></span>
+            {{ ledgerEffectiveFrom ? fmtDate(ledgerEffectiveFrom) : 'Start' }} – {{ ledgerEffectiveTo ? fmtDate(ledgerEffectiveTo) : 'Now' }}
+          </div>
+        </div>
+      </div>
+      <div class="cash-dbody">
+        <div class="ledger-filter-card">
+          <div class="cash-field" style="margin-bottom:12px">
+            <label class="cash-label">Account</label>
+            <select v-model="ledgerAccount" class="cash-input" @change="loadLedger">
+              <option v-for="a in cashAccounts" :key="a" :value="a">{{ a }}</option>
+            </select>
+          </div>
+          <div class="ledger-filter-row">
+            <div class="cash-field ledger-filter-item">
+              <label class="cash-label">Date Range</label>
+              <select v-model="ledgerRange" class="cash-input">
+                <option v-for="r in LEDGER_RANGES" :key="r.key" :value="r.key">{{ r.label }}</option>
+              </select>
+            </div>
+            <template v-if="ledgerRange==='custom'">
+              <div class="cash-field ledger-filter-item">
+                <label class="cash-label">From</label>
+                <input type="date" v-model="ledgerCustomFrom" class="cash-input" @change="loadLedger" />
+              </div>
+              <div class="cash-field ledger-filter-item">
+                <label class="cash-label">To</label>
+                <input type="date" v-model="ledgerCustomTo" class="cash-input" @change="loadLedger" />
+              </div>
+            </template>
+            <div class="cash-field ledger-reset-field">
+              <label class="cash-label ledger-reset-label">&nbsp;</label>
+              <button class="cash-btn-ghost ledger-reset-btn" @click="resetLedgerFilters" title="Reset filters"><span v-html="icon('refresh',13)"></span></button>
+            </div>
+          </div>
+        </div>
+
+        <template v-if="ledgerLoading">
+          <div class="cash-ledger-summary">
+            <div class="cash-ledger-sum-item" v-for="n in 3" :key="n">
+              <div class="cash-shimmer" style="height:9px;width:60px;margin-bottom:8px"></div>
+              <div class="cash-shimmer" style="height:16px;width:90px"></div>
+            </div>
+          </div>
+          <div class="cash-shimmer" style="height:200px;border-radius:10px"></div>
+        </template>
+        <template v-else-if="ledgerData">
+          <div class="ledger-summary-cards">
+            <div class="ledger-sum-card ledger-sum-green">
+              <div class="ledger-sum-ico">💼</div>
+              <div>
+                <div class="ledger-sum-lbl">{{ ledgerEffectiveFrom ? `Balance as of ${fmtDate(ledgerEffectiveFrom)}` : 'Opening Balance' }}</div>
+                <div class="ledger-sum-val" :class="{neg: ledgerData.opening_balance<0}">{{ fmtCur(ledgerData.opening_balance) }}</div>
+                <div class="ledger-sum-sub">Balance at start of period</div>
+              </div>
+            </div>
+            <div class="ledger-sum-card ledger-sum-blue">
+              <div class="ledger-sum-ico">📈</div>
+              <div>
+                <div class="ledger-sum-lbl">Closing Balance</div>
+                <div class="ledger-sum-val" :class="{neg: ledgerData.closing_balance<0}">{{ fmtCur(ledgerData.closing_balance) }}</div>
+                <div class="ledger-sum-sub">Balance at end of period</div>
+              </div>
+            </div>
+            <div class="ledger-sum-card ledger-sum-purple">
+              <div class="ledger-sum-ico">🧾</div>
+              <div>
+                <div class="ledger-sum-lbl">Total Entries</div>
+                <div class="ledger-sum-val">{{ ledgerFilteredEntries.length }}<span v-if="ledgerFilteredEntries.length!==ledgerData.entries.length" class="cash-ledger-sum-of"> / {{ ledgerData.entries.length }}</span></div>
+                <div class="ledger-sum-sub">Vouchers in this period</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cash-ledger-filter-row">
+            <div class="cash-search-wrap cash-ledger-search">
+              <span v-html="icon('search',14)"></span>
+              <input class="cash-search-input" v-model="ledgerSearch" placeholder="Search voucher, party or remarks..." />
+            </div>
+            <select v-model="ledgerTypeFilter" class="cash-input cash-ledger-type-select">
+              <option value="">All voucher types</option>
+              <option v-for="t in ledgerVoucherTypes" :key="t" :value="t">{{ t }}</option>
+            </select>
+            <div class="ledger-export-wrap">
+              <button class="cash-btn-ghost" @click="ledgerExportOpen=!ledgerExportOpen" :disabled="!ledgerFilteredEntries.length">
+                <span v-html="icon('download',13)"></span> Export
+                <span class="ledger-export-caret" :class="{open:ledgerExportOpen}">▾</span>
+              </button>
+              <div v-if="ledgerExportOpen" class="ledger-export-backdrop" @click="ledgerExportOpen=false"></div>
+              <div v-if="ledgerExportOpen" class="ledger-export-menu">
+                <button class="ledger-export-opt" @click="exportLedgerCSV(); ledgerExportOpen=false">
+                  <span v-html="icon('download',13)"></span> Export as CSV
+                </button>
+                <button class="ledger-export-opt" :disabled="ledgerPdfLoading" @click="exportLedgerPDF()">
+                  <span v-html="icon('download',13)"></span> {{ ledgerPdfLoading ? 'Generating PDF…' : 'Export as PDF' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="cash-ledger-table-wrap cash-desktop-only">
+            <table class="cash-table cash-ledger-table" style="width:100%">
+              <thead><tr>
+                <th class="ledger-sortable" @click="toggleLedgerSort('posting_date')">Date <span class="ledger-sort-arrow" v-if="ledgerSortKey==='posting_date'">{{ ledgerSortDir===1?'▲':'▼' }}</span></th>
+                <th class="ledger-sortable" @click="toggleLedgerSort('voucher_type')">Voucher <span class="ledger-sort-arrow" v-if="ledgerSortKey==='voucher_type'">{{ ledgerSortDir===1?'▲':'▼' }}</span></th>
+                <th class="ledger-sortable" @click="toggleLedgerSort('party')">Party / Source <span class="ledger-sort-arrow" v-if="ledgerSortKey==='party'">{{ ledgerSortDir===1?'▲':'▼' }}</span></th>
+                <th class="ta-r ledger-sortable" @click="toggleLedgerSort('debit')">Debit <span class="ledger-sort-arrow" v-if="ledgerSortKey==='debit'">{{ ledgerSortDir===1?'▲':'▼' }}</span></th>
+                <th class="ta-r ledger-sortable" @click="toggleLedgerSort('credit')">Credit <span class="ledger-sort-arrow" v-if="ledgerSortKey==='credit'">{{ ledgerSortDir===1?'▲':'▼' }}</span></th>
+                <th class="ta-r ledger-sortable" @click="toggleLedgerSort('balance')">Balance <span class="ledger-sort-arrow" v-if="ledgerSortKey==='balance'">{{ ledgerSortDir===1?'▲':'▼' }}</span></th>
+              </tr></thead>
+              <tbody>
+                <tr v-if="!ledgerFilteredEntries.length"><td colspan="6" class="cash-empty">No entries match this filter</td></tr>
+                <tr v-for="(e,i) in ledgerVisibleEntries" :key="i" class="cash-ledger-row">
+                  <td class="cash-ledger-date">{{ fmtDate(e.posting_date) }}</td>
+                  <td>
+                    <div class="cash-ledger-voucher-cell">
+                      <span class="cash-ledger-voucher-chip" :class="'vt-'+(e.voucher_type||'').toLowerCase().replace(/[^a-z]/g,'')">
+                        {{ e.voucher_type }}
+                      </span>
+                      <DocLink :doctype="e.voucher_type" :name="e.voucher_no" :mono-style="false" />
+                    </div>
+                  </td>
+                  <td class="cash-ledger-party" :title="e.party || e.remarks || ''"><span>{{ e.party || e.remarks || '—' }}</span></td>
+                  <td class="ta-r mono-sm cash-ledger-debit">{{ e.debit>0 ? fmtCur(e.debit) : '—' }}</td>
+                  <td class="ta-r mono-sm cash-ledger-credit">{{ e.credit>0 ? fmtCur(e.credit) : '—' }}</td>
+                  <td class="ta-r mono-sm cash-ledger-balance" :class="{neg: e.balance<0}">{{ fmtCur(e.balance) }}</td>
+                </tr>
+              </tbody>
+              <tfoot v-if="ledgerFilteredEntries.length">
+                <tr class="cash-ledger-total-row">
+                  <td colspan="3" class="ta-r">Total ({{ ledgerFilteredEntries.length }} {{ ledgerFilteredEntries.length===1?'entry':'entries' }})</td>
+                  <td class="ta-r mono-sm">{{ fmtCur(ledgerFilteredTotals.debit) }}</td>
+                  <td class="ta-r mono-sm">{{ fmtCur(ledgerFilteredTotals.credit) }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="cash-mobile-cards" style="margin-top:10px; border-radius:10px; overflow:hidden; border:1px solid #e5e7eb;">
+            <div v-if="!ledgerFilteredEntries.length" class="cash-empty">No entries match this filter</div>
+            <div v-for="(e,i) in ledgerVisibleEntries" :key="i" class="cash-mobile-card">
+              <div class="cash-mc-top">
+                <div class="cash-mc-docno" style="display:flex;align-items:center;gap:6px">
+                  <span class="cash-ledger-voucher-chip" :class="'vt-'+(e.voucher_type||'').toLowerCase().replace(/[^a-z]/g,'')">{{ e.voucher_type }}</span>
+                  <DocLink :doctype="e.voucher_type" :name="e.voucher_no" :mono-style="false" />
+                </div>
+                <div class="cash-mc-meta">{{ fmtDate(e.posting_date) }}</div>
+              </div>
+              <div class="cash-mc-mid">{{ e.party || e.remarks || '—' }}</div>
+              <div class="cash-mc-meta">
+                <span class="cash-mc-pos" v-if="e.debit>0">Dr: {{ fmtCur(e.debit) }}</span>
+                <span class="cash-mc-neg" v-if="e.credit>0">Cr: {{ fmtCur(e.credit) }}</span>
+                <span style="margin-left:auto;font-weight:700">Bal: <span :class="{neg: e.balance<0}">{{ fmtCur(e.balance) }}</span></span>
+              </div>
+            </div>
+            <div v-if="ledgerFilteredEntries.length" class="cash-mobile-card" style="background:#f8fafc; border-top:1px solid #e5e7eb;">
+              <div class="cash-mc-mid" style="font-size:12px; margin-bottom:8px">Total ({{ ledgerFilteredEntries.length }} entries)</div>
+              <div class="cash-mc-meta">
+                <span class="cash-mc-pos">Dr: {{ fmtCur(ledgerFilteredTotals.debit) }}</span>
+                <span class="cash-mc-neg" style="margin-left:12px">Cr: {{ fmtCur(ledgerFilteredTotals.credit) }}</span>
+              </div>
+            </div>
+          </div>
+          <div class="ledger-pagination-wrap" v-if="ledgerFilteredEntries.length">
+            <span class="ledger-showing-lbl">Showing {{ ledgerVisibleEntries.length }} of {{ ledgerFilteredEntries.length }} entries</span>
+            <button v-if="ledgerVisible < ledgerFilteredEntries.length" class="cash-btn-ghost" @click="loadMoreLedger">
+              Load more <span class="cash-ledger-loadmore-count">({{ ledgerFilteredEntries.length - ledgerVisible }} more)</span>
+            </button>
+          </div>
+          <div class="ledger-tip">💡 Tip: use search or filters to quickly find specific transactions. Amounts are in {{ companyCurrency }}.</div>
+        </template>
+      </div>
+    </div>
+  </div>
+</template>
+<script setup>
+import { ref, reactive, computed, onMounted, watch } from "vue";
+import { apiList, apiGet, apiSave, apiSubmit, apiCancel, apiDelete, resolveCompany, apiGET, apiPOST } from "../api/client.js";
+import { useToast } from "../composables/useToast.js";
+import { useConfirm } from "../composables/useConfirm.js";
+import { icon } from "../utils/icons.js";
+import { flt, fmtDate } from "../utils/format.js";
+import { ownerName } from "../utils/userNames.js";
+import SummaryStrip from "../components/SummaryStrip.vue";
+import SearchableSelect from "../components/SearchableSelect.vue";
+import Pagination from "../components/Pagination.vue";
+import { usePagination } from "../composables/usePagination.js";
+import DocLink from "../components/DocLink.vue";
+const { toast } = useToast();
+const { confirm } = useConfirm();
+const cashAccount=ref(""),cashAccounts=ref([]),receivableAccount=ref(""),payableAccount=ref(""),companyCurrency=ref("INR");
+async function loadAccounts(){try{const co=await resolveCompany();const[cashAccs,recvAcc,payAcc,comp]=await Promise.all([apiList("Account",{fields:["name"],filters:[["company","=",co],["account_type","=","Cash"],["is_group","=",0]]}),apiList("Account",{fields:["name"],filters:[["company","=",co],["account_type","=","Receivable"],["is_group","=",0]],limit:1}),apiList("Account",{fields:["name"],filters:[["company","=",co],["account_type","=","Payable"],["is_group","=",0]],limit:1}),apiList("Books Company",{fields:["currency"],filters:[["name","=",co]],limit:1})]);cashAccounts.value=cashAccs.map(a=>a.name);cashAccount.value=cashAccounts.value[0]||"";receivableAccount.value=recvAcc[0]?.name||"";payableAccount.value=payAcc[0]?.name||"";companyCurrency.value=comp[0]?.currency||"INR";}catch(e){console.error("Failed to load accounts",e);}}
+const activeTab=ref("all");
+const tabs=[{key:"all",label:"All"},{key:"Receive",label:"Cash In"},{key:"Pay",label:"Cash Out"}];
+const list=ref([]),loading=ref(false),search=ref("");
+const drawerOpen=ref(false),drawerSaving=ref(false),actionBusy=ref(false),bulkBusy=ref(false);
+const viewOpen=ref(false),viewDoc=ref(null);
+const ledgerOpen=ref(false),ledgerLoading=ref(false),ledgerData=ref(null),ledgerAccount=ref(""),ledgerExportOpen=ref(false),ledgerPdfLoading=ref(false);
+const ledgerSearch=ref(""),ledgerTypeFilter=ref(""),ledgerPageSize=10,ledgerVisible=ref(10);
+const LEDGER_RANGES=[
+  {key:"today",     label:"Today"},
+  {key:"yesterday", label:"Yesterday"},
+  {key:"this_week",  label:"This Week"},
+  {key:"last_week",  label:"Last Week"},
+  {key:"this_month", label:"This Month"},
+  {key:"last_month", label:"Last Month"},
+  {key:"all",        label:"All"},
+  {key:"custom",     label:"Custom"},
+];
+const ledgerRange=ref("today");
+const ledgerCustomFrom=ref(""),ledgerCustomTo=ref(new Date().toISOString().slice(0,10));
+function toISO(d){return d.toISOString().slice(0,10);}
+// Weeks run Monday–Sunday.
+function startOfWeek(d){const x=new Date(d);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);return x;}
+function ledgerRangeToDates(){
+  const now=new Date();
+  switch(ledgerRange.value){
+    case "today": return {from:toISO(now),to:toISO(now)};
+    case "yesterday": {const d=new Date(now);d.setDate(d.getDate()-1);return{from:toISO(d),to:toISO(d)};}
+    case "this_week": {const s=startOfWeek(now);const e=new Date(s);e.setDate(e.getDate()+6);return{from:toISO(s),to:toISO(e)};}
+    case "last_week": {const s=startOfWeek(now);s.setDate(s.getDate()-7);const e=new Date(s);e.setDate(e.getDate()+6);return{from:toISO(s),to:toISO(e)};}
+    case "this_month": {const s=new Date(now.getFullYear(),now.getMonth(),1);const e=new Date(now.getFullYear(),now.getMonth()+1,0);return{from:toISO(s),to:toISO(e)};}
+    case "last_month": {const s=new Date(now.getFullYear(),now.getMonth()-1,1);const e=new Date(now.getFullYear(),now.getMonth(),0);return{from:toISO(s),to:toISO(e)};}
+    case "custom": return {from:ledgerCustomFrom.value||"",to:ledgerCustomTo.value||""};
+    case "all":
+    default: return {from:"",to:""};
+  }
+}
+const ledgerEffectiveFrom=computed(()=>ledgerRangeToDates().from);
+const ledgerEffectiveTo=computed(()=>ledgerRangeToDates().to);
+function openLedger(account){
+  ledgerAccount.value=account||cashAccount.value||cashAccounts.value[0]||"";
+  ledgerRange.value="today";
+  ledgerSearch.value="";ledgerTypeFilter.value="";ledgerVisible.value=ledgerPageSize;
+  ledgerOpen.value=true;
+  loadLedger();
+}
+async function loadLedger(){
+  if(!ledgerAccount.value)return;
+  if(ledgerRange.value==="custom"&&(!ledgerCustomFrom.value||!ledgerCustomTo.value))return;
+  ledgerLoading.value=true;
+  ledgerVisible.value=ledgerPageSize;
+  try{
+    const {from,to}=ledgerRangeToDates();
+    ledgerData.value=await apiGET("psd_books.api.banking.get_account_ledger",{account:ledgerAccount.value,from_date:from,to_date:to});
+  }catch(e){toast.error(e.message||"Failed to load ledger");ledgerData.value=null;}
+  finally{ledgerLoading.value=false;}
+}
+watch(ledgerRange,()=>{loadLedger();});
+watch([ledgerCustomFrom,ledgerCustomTo],()=>{if(ledgerRange.value==="custom")loadLedger();});
+const ledgerVoucherTypes=computed(()=>{
+  if(!ledgerData.value)return[];
+  const set=new Set(ledgerData.value.entries.map(e=>e.voucher_type).filter(Boolean));
+  return[...set];
+});
+const ledgerSortKey=ref(""),ledgerSortDir=ref(1);
+function toggleLedgerSort(key){
+  if(ledgerSortKey.value===key){ledgerSortDir.value=-ledgerSortDir.value;}
+  else{ledgerSortKey.value=key;ledgerSortDir.value=1;}
+}
+const ledgerFilteredEntries=computed(()=>{
+  if(!ledgerData.value)return[];
+  let rows=ledgerData.value.entries;
+  if(ledgerTypeFilter.value)rows=rows.filter(e=>e.voucher_type===ledgerTypeFilter.value);
+  if(ledgerSearch.value.trim()){
+    const q=ledgerSearch.value.trim().toLowerCase();
+    rows=rows.filter(e=>(e.voucher_no||"").toLowerCase().includes(q)||(e.party||"").toLowerCase().includes(q)||(e.remarks||"").toLowerCase().includes(q));
+  }
+  if(ledgerSortKey.value){
+    const k=ledgerSortKey.value,dir=ledgerSortDir.value;
+    rows=[...rows].sort((a,b)=>{
+      let av=a[k],bv=b[k];
+      if(k==="posting_date"){av=new Date(av);bv=new Date(bv);}
+      else if(typeof av==="string"){av=(av||"").toLowerCase();bv=(bv||"").toLowerCase();}
+      if(av<bv)return -1*dir;
+      if(av>bv)return 1*dir;
+      return 0;
+    });
+  }
+  return rows;
+});
+function resetLedgerFilters(){
+  ledgerRange.value="today";ledgerSearch.value="";ledgerTypeFilter.value="";
+  ledgerSortKey.value="";ledgerSortDir.value=1;
+  loadLedger();
+}
+function exportLedgerCSV(){
+  const rows=ledgerFilteredEntries.value;
+  if(!rows.length)return;
+  const esc=v=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const lines=[["Date","Voucher Type","Voucher #","Party/Source","Debit","Credit","Balance"].join(",")];
+  for(const e of rows){
+    lines.push([fmtDate(e.posting_date),e.voucher_type||"",e.voucher_no||"",e.party||e.remarks||"",e.debit>0?flt(e.debit):"",e.credit>0?flt(e.credit):"",flt(e.balance)].map(esc).join(","));
+  }
+  const blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=`ledger_${ledgerAccount.value.replace(/[^a-z0-9]/gi,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();URL.revokeObjectURL(url);
+  toast.success(`Exported ${rows.length} row(s)`);
+}
+// Renders the ledger to a print-styled HTML table and posts it to the same
+// server-side wkhtmltopdf endpoint used for invoice/quote PDFs, so the
+// output is a real PDF (consistent page margins, no browser print chrome)
+// instead of relying on window.print().
+async function exportLedgerPDF(){
+  const rows=ledgerFilteredEntries.value;
+  if(!rows.length||ledgerPdfLoading.value)return;
+  ledgerPdfLoading.value=true;
+  try{
+    const esc=v=>String(v==null?"":v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    const rangeLabel=`${ledgerEffectiveFrom.value?fmtDate(ledgerEffectiveFrom.value):'Start'} – ${ledgerEffectiveTo.value?fmtDate(ledgerEffectiveTo.value):'Now'}`;
+    const bodyRows=rows.map(e=>`
+      <tr>
+        <td>${esc(fmtDate(e.posting_date))}</td>
+        <td>${esc(e.voucher_type||"")}<br/><span class="muted">${esc(e.voucher_no||"")}</span></td>
+        <td>${esc(e.party||e.remarks||"—")}</td>
+        <td class="ta-r">${e.debit>0?esc(fmtCur(e.debit)):"—"}</td>
+        <td class="ta-r">${e.credit>0?esc(fmtCur(e.credit)):"—"}</td>
+        <td class="ta-r">${esc(fmtCur(e.balance))}</td>
+      </tr>`).join("");
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8"/><style>
+      @page{size:A4;margin:16mm 12mm;}
+      *{box-sizing:border-box;}
+      body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;margin:0;}
+      h1{font-size:16px;margin:0 0 2px;}
+      .sub{font-size:11px;color:#64748b;margin:0 0 14px;}
+      .summary{display:flex;gap:24px;margin-bottom:16px;font-size:11px;}
+      .summary b{display:block;font-size:13px;margin-top:2px;}
+      table{width:100%;border-collapse:collapse;font-size:10.5px;}
+      th{background:#f1f5f9;text-align:left;padding:6px 8px;border-bottom:1px solid #cbd5e1;text-transform:uppercase;font-size:9.5px;letter-spacing:.02em;}
+      td{padding:6px 8px;border-bottom:1px solid #e5e7eb;vertical-align:top;}
+      .ta-r{text-align:right;}
+      .muted{color:#94a3b8;font-size:9.5px;}
+      tfoot td{font-weight:700;border-top:2px solid #cbd5e1;border-bottom:none;}
+    </style></head><body>
+      <h1>Account Ledger — ${esc(ledgerAccount.value)}</h1>
+      <div class="sub">${esc(rangeLabel)} · Generated ${esc(fmtDate(new Date()))}</div>
+      <div class="summary">
+        <div>Opening Balance<b>${esc(fmtCur(ledgerData.value?.opening_balance||0))}</b></div>
+        <div>Closing Balance<b>${esc(fmtCur(ledgerData.value?.closing_balance||0))}</b></div>
+        <div>Total Entries<b>${rows.length}</b></div>
+      </div>
+      <table>
+        <thead><tr><th>Date</th><th>Voucher</th><th>Party / Source</th><th class="ta-r">Debit</th><th class="ta-r">Credit</th><th class="ta-r">Balance</th></tr></thead>
+        <tbody>${bodyRows}</tbody>
+        <tfoot><tr><td colspan="3" class="ta-r">Total (${rows.length} ${rows.length===1?'entry':'entries'})</td><td class="ta-r">${esc(fmtCur(ledgerFilteredTotals.value.debit))}</td><td class="ta-r">${esc(fmtCur(ledgerFilteredTotals.value.credit))}</td><td></td></tr></tfoot>
+      </table>
+    </body></html>`;
+    const filename=`ledger_${ledgerAccount.value.replace(/[^a-z0-9]/gi,'_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+    const csrf=window.frappe?.csrf_token||"";
+    const res=await fetch('/api/method/psd_books.api.docs.render_pdf_from_html',{
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded','X-Frappe-CSRF-Token':csrf},
+      credentials:'same-origin',
+      body:new URLSearchParams({pdf_html:html,filename}),
+    });
+    if(!res.ok)throw new Error('PDF generation failed');
+    const blob=await res.blob();
+    const objectUrl=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=objectUrl;a.download=filename;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(objectUrl),5000);
+    toast.success(`Exported ${rows.length} row(s)`);
+  }catch(e){
+    toast.error(e.message||"Failed to generate PDF");
+  }finally{
+    ledgerPdfLoading.value=false;
+    ledgerExportOpen.value=false;
+  }
+}
+const ledgerVisibleEntries=computed(()=>ledgerFilteredEntries.value.slice(0,ledgerVisible.value));
+const ledgerFilteredTotals=computed(()=>{
+  let debit=0,credit=0;
+  for(const e of ledgerFilteredEntries.value){debit+=Number(e.debit)||0;credit+=Number(e.credit)||0;}
+  return{debit,credit};
+});
+watch([ledgerSearch,ledgerTypeFilter],()=>{ledgerVisible.value=ledgerPageSize;});
+function loadMoreLedger(){ledgerVisible.value+=ledgerPageSize;}
+const depositOpen=ref(false),depositLoading=ref(false),depositSaving=ref(false);
+const depositDestinations=ref([]); // [{name, account_type}]
+const totalUndeposited=ref(0);
+const depositForm=reactive({amount:0,destination_account:"",date:new Date().toISOString().slice(0,10),notes:""});
+const bankDestinations=computed(()=>depositDestinations.value.filter(d=>d.account_type==="Bank"));
+const cashDestinations=computed(()=>depositDestinations.value.filter(d=>d.account_type==="Cash"));
+const selected=ref(new Set());
+const partyOptions=ref([]);
+const expenseCategoryOptions=ref([]);
+const expenseCategoryLabelCache=ref({});
+function expenseCategoryLabel(name){
+  if(!name) return '—';
+  const cached=expenseCategoryOptions.value.find(o=>o.value===name)||expenseCategoryLabelCache.value[name];
+  if(cached) return typeof cached==='string'?cached:cached.label;
+  apiList("Account",{fields:["name","account_name"],filters:[["name","=",name]],limit:1})
+    .then(rows=>{expenseCategoryLabelCache.value[name]=rows?.[0]?.account_name||name;})
+    .catch(()=>{expenseCategoryLabelCache.value[name]=name;});
+  return name;
+}
+const CASH_IN_PURPOSES=["Sales Receipt","Customer Advance","Loan Received","Capital Introduced","Other Income","Refund Received","Other"];
+async function fetchExpenseCategories(q=""){
+  try{
+    const company=await resolveCompany();
+    const filters=[["is_group","=",0],["disabled","=",0],["company","=",company],["account_type","=","Expense"]];
+    if(q)filters.push(["name","like",`%${q}%`]);
+    const rows=await apiList("Account",{fields:["name","account_name"],filters,limit:30,order:"name asc"});
+    expenseCategoryOptions.value=rows.map(r=>({label:r.account_name||r.name,value:r.name}));
+  }catch{expenseCategoryOptions.value=[];}
+}
+const sortCol=ref("payment_date"),sortDir=ref("desc");
+const form=reactive({payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",custom_purpose:"",custom_expense_category:"",remarks:""});
+async function load(){
+  loading.value=true;
+  try{
+    const co=await resolveCompany();
+    // Resolve Cash accounts inline (not via mode_of_payment label) so this
+    // list always matches the same source of truth as get_undeposited_cash:
+    // the actual GL account money is sitting in, not a free-text mode field
+    // that can drift out of sync with where the entry really posted.
+    const cashAccs = cashAccounts.value.length ? cashAccounts.value
+      : (await apiList("Account",{fields:["name"],filters:[["company","=",co],["account_type","=","Cash"],["is_group","=",0]]})).map(a=>a.name);
+    if(!cashAccs.length){ list.value=[]; selected.value=new Set(); return; }
+    const [cashIn, cashOutPE, cashOut] = await Promise.all([
+      // Cash In: real Payment Entries (Dr Cash / Cr Accounts Receivable).
+      apiList("Payment Entry",{fields:["name","party","party_name","payment_type","payment_date","paid_amount","remarks","custom_purpose","custom_expense_category","docstatus","custom_deposited_to_bank"],filters:[["company","=",co],["paid_to","in",cashAccs],["payment_type","=","Receive"],["docstatus","=",1]],limit:200,order:"payment_date desc, creation desc"}),
+      // Cash Out: real Payment Entries (Dr Payable / Cr Cash) — bill payments made in cash.
+      apiList("Payment Entry",{fields:["name","party","party_name","payment_type","payment_date","paid_amount","remarks","custom_purpose","custom_expense_category","docstatus"],filters:[["company","=",co],["paid_from","in",cashAccs],["payment_type","=","Pay"],["docstatus","=",1]],limit:200,order:"payment_date desc, creation desc"}),
+      // Cash Out: Journal Entries (Dr Expense / Cr Cash-in-Hand) tagged by this page — cash expenses with no vendor bill.
+      apiList("Journal Entry",{fields:["name","posting_date","total_debit","remark","custom_expense_category","custom_party","custom_party_name","docstatus"],filters:[["company","=",co],["custom_cash_out_entry","=",1],["docstatus","=",1]],limit:200,order:"posting_date desc, creation desc"}),
+    ]);
+    const normalizedOut = cashOut.map(j=>({
+      name:j.name, _dt:"Journal Entry",
+      party:j.custom_party||"", party_name:j.custom_party_name||j.custom_party||"",
+      payment_type:"Pay", payment_date:j.posting_date, paid_amount:j.total_debit,
+      remarks:j.remark||"", custom_purpose:"", custom_expense_category:j.custom_expense_category||"",
+      docstatus:j.docstatus,
+    }));
+    const normalizedOutPE = cashOutPE.map(p=>({...p,_dt:"Payment Entry"}));
+    const normalizedIn = cashIn.map(p=>({...p,_dt:"Payment Entry"}));
+    list.value=[...normalizedIn,...normalizedOutPE,...normalizedOut];
+    selected.value=new Set();
+  }catch(e){toast.error(e.message||"Failed to load cash entries");}
+  finally{loading.value=false;}
+}
+const filtered=computed(()=>{let r=list.value;if(activeTab.value!=="all")r=r.filter(p=>p.payment_type===activeTab.value);if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(p=>(p.party_name||p.party||"").toLowerCase().includes(q)||(p.name||"").toLowerCase().includes(q)||(p.remarks||"").toLowerCase().includes(q));}return r;});
+const sorted=computed(()=>{const col=sortCol.value;return[...filtered.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
+// Selection/export act on the full filtered+sorted set (all pages); only the
+// table rendering itself is paginated via `paged`.
+const { page, pageSize, paged } = usePagination(sorted, { storageKey: "bank-cash" });
+function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
+function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}
+const cashIn=computed(()=>list.value.filter(p=>p.payment_type==="Receive").reduce((s,p)=>s+flt(p.paid_amount),0));
+const cashOut=computed(()=>list.value.filter(p=>p.payment_type==="Pay").reduce((s,p)=>s+flt(p.paid_amount),0));
+// Authoritative, uncapped, all-time totals for the summary strip — sourced
+// from a single backend endpoint so Cash In / Cash Out / Transfers / Net Cash
+// always reconcile (Net Cash = Cash In - Cash Out - Transfers) instead of
+// each card being computed independently from the (200-row-capped) list above.
+const cashSummary=ref({cash_in:0,cash_out:0,transfers:0,net_cash:0});
+async function loadCashSummary(){
+  try{
+    const co=await resolveCompany();
+    const d=await apiGET("psd_books.api.books_data.get_cash_summary",{company:co});
+    cashSummary.value={
+      cash_in: flt(d?.cash_in), cash_out: flt(d?.cash_out),
+      transfers: flt(d?.transfers), net_cash: flt(d?.net_cash),
+    };
+  }catch(e){ /* leave previous values in place — non-fatal for the page */ }
+}
+function tabCount(key){if(key==="all")return list.value.length;return list.value.filter(p=>p.payment_type===key).length;}
+function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
+
+// ── selection ──
+function toggleSelect(name){const s=new Set(selected.value);if(s.has(name))s.delete(name);else s.add(name);selected.value=s;}
+const allSelected=computed(()=>sorted.value.length>0&&sorted.value.every(p=>selected.value.has(p.name)));
+function toggleSelectAll(){if(allSelected.value){selected.value=new Set();}else{selected.value=new Set(sorted.value.map(p=>p.name));}}
+
+function exportCSV(){
+  const rows=selected.value.size?sorted.value.filter(p=>selected.value.has(p.name)):sorted.value;
+  if(!rows.length)return;
+  const esc=v=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
+  const lines=[["Entry #","Party","Date","Type","Amount","Purpose/Expense Category","Remarks"].join(",")];
+  for(const p of rows){
+    lines.push([p.name,p.party||"",fmtDate(p.payment_date),p.payment_type==="Receive"?"Cash In":"Cash Out",flt(p.paid_amount)||0,p.payment_type==="Receive"?(p.custom_purpose||""):(p.custom_expense_category||""),p.remarks||""].map(esc).join(","));
+  }
+  const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download=`cash_entries_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();URL.revokeObjectURL(url);
+  toast.success(`Exported ${rows.length} row(s)`);
+}
+
+async function bulkDelete(){
+  const rows=sorted.value.filter(p=>selected.value.has(p.name));
+  if(!rows.length)return;
+  const ok=await confirm({title:`Delete ${rows.length} cash entr${rows.length>1?'ies':'y'}?`,body:"This cancels and deletes the selected entries, reversing their ledger impact. This cannot be undone.",okLabel:"Delete",okStyle:"danger"});
+  if(!ok)return;
+  bulkBusy.value=true;let done=0;
+  try{for(const p of rows){const dt=p._dt||"Payment Entry";try{await apiCancel(dt,p.name);}catch{}try{await apiDelete(dt,p.name);done++;}catch{}}toast.success(`Deleted ${done} entr${done>1?'ies':'y'}`);await Promise.all([load(),refreshUndepositedCount(),loadCashSummary()]);}
+  finally{bulkBusy.value=false;}
+}
+
+async function fetchParties(q=""){
+  const dt=form.payment_type==="Receive"?"Customer":"Supplier";
+  const nameField=dt==="Customer"?"customer_name":"supplier_name";
+  try{
+    const filters=[["disabled","=",0]];
+    if(q)filters.push([nameField,"like","%"+q+"%"]);
+    const rows=await apiList(dt,{fields:["name",nameField],filters,limit:30,order:nameField+" asc"});
+    partyOptions.value = rows.map(r => ({
+      label: r[nameField] || r.name,
+      value: r.name,
+      party_name: r[nameField] || r.name
+    }));
+  }catch{partyOptions.value=[];}
+}
+// Switching Cash In/Out changes the party master — reset selection + reload list.
+watch(()=>form.payment_type,()=>{form.party="";form.custom_purpose="";form.custom_expense_category="";if(drawerOpen.value){fetchParties("");if(form.payment_type==="Pay")fetchExpenseCategories("");}});
+
+function openNew(){Object.assign(form,{payment_type:"Receive",payment_date:new Date().toISOString().slice(0,10),paid_amount:0,party:"",custom_purpose:"",custom_expense_category:"",remarks:""});partyOptions.value=[];expenseCategoryOptions.value=[];fetchParties("");drawerOpen.value=true;}
+async function openView(p){
+  viewDoc.value=p;viewOpen.value=true;
+  try{
+    const doc=await apiGet(p._dt||"Payment Entry",p.name);
+    if(doc) viewDoc.value={...p,owner:doc.owner,creation:doc.creation,modified:doc.modified,modified_by:doc.modified_by};
+  }catch{}
+}
+
+async function saveCash(){
+  if(!flt(form.paid_amount))return toast.error("Amount is required");
+  if(!form.party.trim())return toast.error(form.payment_type==="Receive"?"Customer is required":"Vendor is required");
+  if(form.payment_type==="Receive"&&!form.custom_purpose)return toast.error("Purpose is required");
+  if(form.payment_type==="Pay"&&!form.custom_expense_category)return toast.error("Expense Category is required");
+  if(!cashAccount.value)return toast.error("Cash account not configured — check chart of accounts");
+  if(form.payment_type==="Receive"&&!receivableAccount.value)return toast.error("No Receivable account found — check chart of accounts");
+  drawerSaving.value=true;
+  try{
+    const company=await resolveCompany();const isCashIn=form.payment_type==="Receive";
+    const selectedParty = partyOptions.value.find(
+      o => o.value === form.party
+    );
+    const partyName = selectedParty?.party_name || form.party;
+
+    if(isCashIn){
+      // Dr Cash-in-Hand / Cr Accounts Receivable (customer pays cash).
+      const doc={doctype:"Payment Entry",company,payment_type:"Receive",party_type:"Customer",party:form.party,party_name: partyName,mode_of_payment:"Cash",paid_from:receivableAccount.value,paid_to:cashAccount.value,paid_from_account_currency:companyCurrency.value,paid_to_account_currency:companyCurrency.value,source_exchange_rate:1,target_exchange_rate:1,paid_amount:flt(form.paid_amount),received_amount:flt(form.paid_amount),payment_date:form.payment_date,custom_purpose:form.custom_purpose,custom_expense_category:"",remarks:form.remarks||""};
+      const saved=await apiSave(doc);await apiSubmit("Payment Entry",saved.name);
+      toast.success(`Cash entry ${saved?.name||""} created`);
+    }else{
+      // Direct cash expense (no vendor bill being settled) — must be a Journal
+      // Entry: Dr [selected Expense account] / Cr Cash-in-Hand. A Payment
+      // Entry can't be used here because its "Pay" leg is hard-locked to a
+      // Payable account, which would silently misbook this as settling a
+      // vendor bill that doesn't exist and never touch the expense ledger.
+      const amt=flt(form.paid_amount);
+      const doc={
+        doctype:"Journal Entry", company, posting_date:form.payment_date,
+        voucher_type:"Journal Entry", naming_series:"JV-.YYYY.-",
+        remark: form.remarks || `Cash expense — ${partyName}`,
+        custom_cash_out_entry:1, custom_expense_category:form.custom_expense_category,
+        custom_party:form.party, custom_party_name:partyName,
+        accounts:[
+          {doctype:"Journal Entry Account", account:form.custom_expense_category, party_type:"Supplier", party:form.party, debit:amt, credit:0},
+          {doctype:"Journal Entry Account", account:cashAccount.value, debit:0, credit:amt},
+        ],
+      };
+      const saved=await apiSave(doc);await apiSubmit("Journal Entry",saved.name);
+      toast.success(`Cash entry ${saved?.name||""} created`);
+    }
+    drawerOpen.value=false;await Promise.all([load(),refreshUndepositedCount(),loadCashSummary()]);
+  }catch(e){toast.error(e.message||"Failed to save");}finally{drawerSaving.value=false;}
+}
+
+async function deleteEntry(p){
+  const ok=await confirm({title:"Delete cash entry?",body:`This cancels and deletes ${p.name}, reversing its ledger impact.`,okLabel:"Delete",okStyle:"danger"});
+  if(!ok)return;
+  actionBusy.value=true;
+  const dt=p._dt||"Payment Entry";
+  try{try{await apiCancel(dt,p.name);}catch{}await apiDelete(dt,p.name);toast.success(`${p.name} deleted`);viewOpen.value=false;await Promise.all([load(),refreshUndepositedCount(),loadCashSummary()]);}
+  catch(e){toast.error(e.message||"Failed to delete");}finally{actionBusy.value=false;}
+}
+
+async function refreshUndepositedCount(){
+  try{
+    const co=await resolveCompany();
+    const d=await apiGET("psd_books.api.books_data.get_undeposited_cash",{company:co});
+    totalUndeposited.value=flt(d?.total_undeposited||0);
+  }catch{totalUndeposited.value=0;}
+}
+
+async function loadDepositPool(excludeAccount){
+  const co=await resolveCompany();
+  const params={company:co};
+  if(excludeAccount)params.exclude_account=excludeAccount;
+  const d=await apiGET("psd_books.api.books_data.get_undeposited_cash",params);
+  totalUndeposited.value=flt(d?.total_undeposited||0);
+  depositDestinations.value=d?.destination_accounts||[];
+  return d;
+}
+
+async function openDeposit(){
+  depositOpen.value=true;depositLoading.value=true;
+  Object.assign(depositForm,{amount:0,destination_account:"",date:new Date().toISOString().slice(0,10),notes:""});
+  viewOpen.value=false;
+  try{
+    await loadDepositPool();
+    // Default to depositing the full pooled balance — user can edit down for a partial deposit.
+    depositForm.amount=totalUndeposited.value;
+  }catch(e){toast.error(e.message||"Failed to load undeposited cash");totalUndeposited.value=0;}
+  finally{depositLoading.value=false;}
+}
+
+async function onDestinationChange(){
+  // If the destination is itself a Cash account (e.g. Petty Cash), the pool
+  // must exclude that account's own balance — money can't move from an
+  // account into itself. Re-fetch the pool total accordingly.
+  const dest=depositDestinations.value.find(d=>d.name===depositForm.destination_account);
+  const excludeAccount = dest && dest.account_type==="Cash" ? dest.name : null;
+  depositLoading.value=true;
+  try{
+    const prevAmount=depositForm.amount;
+    const prevWasFull = prevAmount>=totalUndeposited.value; // was the user depositing "everything"?
+    const keepDestination=depositForm.destination_account;
+    await loadDepositPool(excludeAccount);
+    if(keepDestination && !depositDestinations.value.some(d=>d.name===keepDestination)){
+      const original=dest||{name:keepDestination,account_type:"Cash"};
+      depositDestinations.value=[...depositDestinations.value,original];
+    }
+    depositForm.amount = prevWasFull ? totalUndeposited.value : Math.min(prevAmount, totalUndeposited.value);
+  }catch(e){toast.error(e.message||"Failed to refresh balance");}
+  finally{depositLoading.value=false;}
+}
+
+async function saveDeposit(){
+  if(!depositForm.amount||depositForm.amount<=0)return toast.error("Enter an amount to deposit");
+  if(!depositForm.destination_account)return toast.error("Select where to deposit the cash");
+  if(!depositForm.date)return toast.error("Deposit date is required");
+  depositSaving.value=true;
+  try{
+    // Re-check the pool right before submitting — totalUndeposited may be
+    // stale if another payment/deposit landed since the drawer was opened
+    // or the destination was last changed. The backend re-validates too,
+    // but catching it here gives a clearer message before the API call.
+    const dest=depositDestinations.value.find(d=>d.name===depositForm.destination_account);
+    const excludeAccount = dest && dest.account_type==="Cash" ? dest.name : null;
+    await loadDepositPool(excludeAccount);
+    if(depositForm.amount>totalUndeposited.value){
+      toast.error(`Only ${fmtCur(totalUndeposited.value)} is available now — please adjust the amount.`);
+      depositSaving.value=false;
+      return;
+    }
+    const co=await resolveCompany();
+    const res=await apiPOST("psd_books.api.books_data.deposit_cash_to_bank",{
+      amount:depositForm.amount,
+      destination_account:depositForm.destination_account,
+      deposit_date:depositForm.date,
+      notes:depositForm.notes||"",
+      company:co,
+    });
+    toast.success(`Deposited ${fmtCur(res?.amount||depositForm.amount)} to ${depositForm.destination_account} via ${res?.journal_entry||"Journal Entry"}`);
+    depositOpen.value=false;
+    await Promise.all([load(),refreshUndepositedCount(),loadCashSummary()]);
+  }catch(e){toast.error(e.message||"Deposit failed");}
+  finally{depositSaving.value=false;}
+}
+
+onMounted(()=>{load();loadAccounts();refreshUndepositedCount();loadCashSummary();});
+</script>
+<style scoped>
+.cash-page{display:flex;flex-direction:column;gap:16px;padding:24px;overflow-y:auto;}
+.cash-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.cash-search-wrap{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:6px 12px;min-width:240px;}
+.cash-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
+.cash-btn-primary{display:inline-flex;align-items:center;gap:6px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;}
+.cash-btn-primary:hover{background:#1d4ed8;}.cash-btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+.cash-dep-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#fef3c7;color:#b45309;font-size:10.5px;font-weight:700;margin-left:2px;}
+.cash-dep-count{margin-left:auto;font-size:11px;font-weight:600;color:#64748b;text-transform:none;letter-spacing:0;}
+.cash-dep-list{display:flex;flex-direction:column;border:1px solid #e5e7eb;border-radius:8px;}
+.cash-dep-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f3f4f6;font-size:12.5px;cursor:pointer;transition:background .12s;}
+.cash-dep-row:last-child{border-bottom:none;}.cash-dep-row:hover{background:#f9fafb;}
+.cash-dep-row.selected{background:#eff6ff;}
+.cash-dep-row.selected:hover{background:#e0f0ff;}
+.cash-dep-row input[type=checkbox]{flex-shrink:0;width:15px;height:15px;accent-color:#2563eb;cursor:pointer;}
+.cash-dep-row--hdr{position:sticky;top:0;z-index:1;background:#f9fafb;font-weight:600;color:#475569;cursor:default;}
+.cash-dep-row--hdr:hover{background:#f9fafb;}
+.cash-dep-col-main{flex:1;display:flex;flex-direction:column;gap:1px;min-width:0;}
+.cash-dep-sub{font-size:11px;color:#94a3b8;}
+.cash-dep-col-amt{flex-shrink:0;width:88px;text-align:right;font-weight:600;color:#0f172a;}
+.cash-dep-total{display:flex;justify-content:space-between;align-items:center;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:13px;color:#166534;transition:background .15s,border-color .15s,color .15s;}
+.cash-dep-total strong{font-size:15px;}
+.cash-dep-total--empty{background:#f8fafc;border-color:#e5e7eb;color:#94a3b8;}
+.cash-dep-total--empty strong{color:#94a3b8;}
+.pmd-warn{font-size:11.5px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:6px 8px;}
+.cash-btn-ghost{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;color:#334155;cursor:pointer;}
+.cash-btn-ghost:hover:not(:disabled){background:#f8fafc;border-color:#cbd5e1;}.cash-btn-ghost:disabled{opacity:.5;cursor:not-allowed;}
+.cash-btn-danger-ghost{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;font-size:13px;color:#dc2626;cursor:pointer;}
+.cash-btn-danger-ghost:hover:not(:disabled){background:#fef2f2;}.cash-btn-danger-ghost:disabled{opacity:.5;cursor:not-allowed;}
+
+/* toolbar */
+.cash-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.cash-filter-pills{display:inline-flex;align-items:center;gap:3px;background:#eef2f7;border:1px solid #e2e8f0;border-radius:12px;padding:4px;}
+.cash-fpill{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;border:none;background:transparent;color:#64748b;cursor:pointer;font-family:inherit;transition:color .15s,background .15s,box-shadow .15s;}
+.cash-fpill:hover:not(.active){color:#334155;}
+.cash-fpill.active{background:#fff;color:#1d4ed8;box-shadow:0 1px 2px rgba(15,23,42,.08),0 0 0 1px rgba(37,99,235,.08);}
+.cash-fpill-count{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:18px;padding:0 6px;border-radius:9px;background:rgba(100,116,139,.16);color:#64748b;font-size:10.5px;font-weight:700;line-height:1;}
+.cash-fpill.active .cash-fpill-count{background:#dbeafe;color:#1d4ed8;}
+.cash-toolbar-right{display:flex;align-items:center;gap:12px;}
+.cash-result{font-size:12px;color:#94a3b8;font-weight:600;white-space:nowrap;}
+
+/* selection bar */
+.cash-selbar{display:flex;align-items:center;gap:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 14px;flex-wrap:wrap;}
+.cash-sel-count{font-size:13px;color:#1e3a8a;font-weight:700;}
+.cash-sel-export{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+.cash-sel-export:hover{background:#dbeafe;}
+.cash-sel-danger{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #fecaca;color:#dc2626;border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+.cash-sel-danger:hover:not(:disabled){background:#fef2f2;}.cash-sel-danger:disabled{opacity:.5;cursor:not-allowed;}
+.cash-sel-clear{background:transparent;border:none;color:#64748b;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+.cash-sel-clear:hover{color:#1d4ed8;text-decoration:underline;}
+
+.cash-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
+.cash-table{width:100%;border-collapse:collapse;font-size:13px;}
+.cash-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
+.cash-table th.sortable{cursor:pointer;user-select:none;}.cash-table th.sortable:hover{color:#2563eb;}
+.ta-r{text-align:right!important;}
+.cash-row td{padding:10px 12px;border-bottom:1px solid #f3f4f6;cursor:pointer;}
+.cash-row:last-child td{border-bottom:none;}.cash-row:hover td{background:#f9fafb;}
+.cash-num{font-size:13px;color:#2563eb;font-weight:600;}
+.mono-sm{font-size:13px;}.text-muted{color:#6b7280;}
+.cash-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:11.5px;font-weight:600;}
+.badge-green{background:#dcfce7;color:#16a34a;}.badge-red{background:#fee2e2;color:#dc2626;}.badge-amber{background:#fef3c7;color:#b45309;}
+.cash-empty{text-align:center;color:#9ca3af;padding:48px!important;cursor:default!important;}
+.cash-shimmer{height:13px;background:linear-gradient(90deg,#f3f4f6 25%,#e5e7eb 50%,#f3f4f6 75%);border-radius:4px;animation:shimmer 1.2s infinite;background-size:200% 100%;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* drawer */
+.cash-overlay{position:fixed;inset:0;background:rgba(15,23,42,.28);z-index:40;}
+.cash-drawer{position:fixed;top:0;right:-440px;bottom:0;width:440px;max-width:96vw;background:#fff;border-left:1px solid #e5e7eb;box-shadow:-8px 0 28px rgba(15,23,42,.12);z-index:50;display:flex;flex-direction:column;transition:right .24s ease;}
+.cash-drawer.open{right:0;}
+.cash-view-drawer{width:400px;right:-400px;}.cash-view-drawer.open{right:0;}
+.cash-ledger-drawer{width:780px;max-width:92vw;right:-780px;}.cash-ledger-drawer.open{right:0;}
+.cash-dheader{position:relative;flex-shrink:0;padding:20px;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%);}
+.cash-dclose{background:transparent;border:none;cursor:pointer;color:#475569;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;}
+.cash-dclose:hover{background:rgba(255,255,255,.6);color:#0f172a;}
+.cash-dclose-abs{position:absolute;top:12px;right:12px;}
+.cash-dh-top{display:flex;align-items:center;gap:13px;padding-right:36px;}
+.cash-dh-ico{width:42px;height:42px;background:#fff;border-radius:11px;display:flex;align-items:center;justify-content:center;color:#2563eb;flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,.08);}
+.cash-dh-title{font-size:15px;font-weight:700;color:#0f172a;}
+.cash-dh-sub{font-size:12px;color:#475569;margin-top:1px;}
+.cash-dh-top .cash-badge{margin-left:auto;text-wrap-mode: nowrap;}
+.cash-dh-amount{margin-top:16px;}
+.cash-dh-amt-lbl{font-size:10.5px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;font-weight:600;}
+.cash-dh-amt-val{font-size:26px;font-weight:800;letter-spacing:-.01em;margin-top:2px;}
+.cash-dh-amt-val.pos{color:#16a34a;}.cash-dh-amt-val.neg{color:#dc2626;}
+.cash-dbody{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;}
+.cash-section-hdr{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#0f172a;margin-top:4px;}
+.cash-section-hdr span{color:#2563eb;display:inline-flex;}
+.cash-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.cash-field{display:flex;flex-direction:column;gap:4px;}
+.cash-label{font-size:12px;font-weight:600;color:#334155;}.req{color:#dc2626;}
+.cash-input{border:1px solid #e2e8f0;border-radius:8px;padding:8px 11px;font:inherit;font-size:13px;outline:none;background:#fff;color:#0f172a;transition:border-color .15s,box-shadow .15s;}
+.cash-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);}
+textarea.cash-input{resize:vertical;}
+.cash-radio-group{display:flex;gap:10px;}
+.cash-radio{display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;font-size:13px;color:#374151;user-select:none;}
+.cash-radio.checked{border-color:#2563eb;background:#eff6ff;color:#2563eb;}
+.cash-radio-dot{width:14px;height:14px;border-radius:50%;border:2px solid #d1d5db;display:inline-block;flex-shrink:0;}
+.cash-radio-dot.on{border-color:#2563eb;background:#2563eb;box-shadow:inset 0 0 0 3px #fff;}
+.cash-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.cash-meta-lbl{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600;}
+.cash-remark{font-size:13px;color:#334155;line-height:1.5;background:#f8fafc;border:1px solid #eef2f7;border-radius:10px;padding:12px 14px;}
+.cash-dfooter{display:flex;align-items:center;gap:8px;padding:14px 20px;border-top:1px solid #e5e7eb;flex-shrink:0;}
+
+/* ── Mobile card defaults ── */
+.cash-mobile-cards { display: none; }
+.cash-desktop-table { display: table; }
+
+/* Account Ledger */
+.cash-ledger-summary{display:flex;align-items:stretch;background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:14px 18px;margin-bottom:16px;}
+.cash-ledger-sum-item{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;}
+.cash-ledger-sum-div{width:1px;background:#e5e7eb;margin:2px 20px;}
+.cash-ledger-sum-lbl{font-size:10.5px;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;font-weight:700;}
+.cash-ledger-sum-val{font-size:16px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;}
+.cash-ledger-sum-val--main{font-size:19px;color:#2563eb;}
+.cash-ledger-sum-val.neg{color:#dc2626;}
+
+.cash-ledger-table-wrap{border:1px solid #e5e7eb;border-radius:10px;}
+.cash-ledger-table{font-size:12.5px;min-width:520px;table-layout:fixed;}
+.cash-ledger-table thead th{position:sticky;top:0;z-index:1;background:#f8fafc;overflow:hidden;text-overflow:ellipsis;}
+.cash-ledger-table th:nth-child(1),.cash-ledger-table td:nth-child(1){width:88px;}
+.cash-ledger-table th:nth-child(2),.cash-ledger-table td:nth-child(2){width:118px;}
+.cash-ledger-table th:nth-child(3),.cash-ledger-table td:nth-child(3){width:auto;}
+.cash-ledger-table th:nth-child(4),.cash-ledger-table td:nth-child(4),
+.cash-ledger-table th:nth-child(5),.cash-ledger-table td:nth-child(5){width:88px;}
+.cash-ledger-table th:nth-child(6),.cash-ledger-table td:nth-child(6){width:92px;}
+.cash-ledger-table .cash-ledger-row td{padding:11px 12px;cursor:default;}
+.cash-ledger-table .cash-ledger-row:nth-child(even) td{background:#fafbfc;}
+.cash-ledger-table .cash-ledger-row:hover td{background:#f1f5f9;}
+.cash-ledger-date{color:#64748b;white-space:nowrap;font-size:12px;overflow:hidden;text-overflow:ellipsis;}
+.cash-ledger-voucher-cell{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;}
+.cash-ledger-voucher-cell .doc-link,.cash-ledger-voucher-cell .doc-link-disabled{font-size:11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;}
+.cash-ledger-party{color:#334155;overflow:hidden;}
+.cash-ledger-party span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cash-ledger-debit{color:#16a34a;font-weight:600;}
+.cash-ledger-credit{color:#dc2626;font-weight:600;}
+.cash-ledger-balance{font-weight:700;color:#0f172a;}
+.cash-ledger-balance.neg{color:#dc2626;}
+.cash-ledger-total-row td{padding:12px;background:#f8fafc;border-top:2px solid #e5e7eb;font-weight:700;font-size:13px;color:#0f172a;}
+.cash-ledger-total-row td:nth-child(4){color:#16a34a;}
+.cash-ledger-total-row td:nth-child(5){color:#dc2626;}
+.cash-ledger-voucher-chip{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;background:#eef2f7;color:#475569;margin-right:6px;}
+.cash-ledger-voucher-chip.vt-journalentry{background:#eef2ff;color:#4338ca;}
+.cash-ledger-voucher-chip.vt-paymententry{background:#eff6ff;color:#1d4ed8;}
+.cash-ledger-voucher-chip.vt-expense{background:#fef2f2;color:#b91c1c;}
+.cash-ledger-voucher-chip.vt-invoice,.cash-ledger-voucher-chip.vt-salesinvoice{background:#f0fdf4;color:#15803d;}
+.cash-ledger-voucher-chip.vt-bill,.cash-ledger-voucher-chip.vt-purchaseinvoice{background:#fffbeb;color:#b45309;}
+.cash-ledger-sum-of{color:#94a3b8;font-weight:600;font-size:13px;}
+.cash-ledger-filter-row{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.cash-ledger-search{flex:1;min-width:0;}
+.cash-ledger-type-select{width:190px;flex-shrink:0;}
+.cash-ledger-loadmore-wrap{display:flex;justify-content:center;padding-top:14px;}
+.cash-ledger-loadmore-count{color:#94a3b8;font-weight:500;}
+.ledger-range-badge{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:12px;font-weight:600;border-radius:20px;padding:5px 12px;white-space:nowrap;}
+.ledger-filter-card{background:#f8fafc;border:1px solid #eef2f7;border-radius:12px;padding:14px 16px;margin-bottom:16px;}
+.ledger-filter-row{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;}
+.ledger-filter-item{flex:0 1 200px;min-width:100px;}
+.ledger-filter-item .cash-input{padding:7px 9px;font-size:12.5px;}
+.ledger-reset-field{flex:0 0 auto;}
+.ledger-reset-label{visibility:hidden;}
+.ledger-reset-btn{width:34px;height:34px;padding:0;justify-content:center;flex-shrink:0;}
+.ledger-summary-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;}
+.ledger-sum-card{display:flex;align-items:flex-start;gap:10px;border-radius:12px;padding:14px 16px;border:1px solid #eef2f7;}
+.ledger-sum-green{background:linear-gradient(135deg,#f0fdf4,#fff);}
+.ledger-sum-blue{background:linear-gradient(135deg,#eff6ff,#fff);}
+.ledger-sum-purple{background:linear-gradient(135deg,#f5f3ff,#fff);}
+.ledger-sum-ico{width:34px;height:34px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 1px 3px rgba(15,23,42,.08);}
+.ledger-sum-lbl{font-size:11px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.03em;}
+.ledger-sum-val{font-size:19px;font-weight:800;color:#0f172a;margin-top:2px;}
+.ledger-sum-val.neg{color:#dc2626;}
+.ledger-sum-sub{font-size:11px;color:#94a3b8;margin-top:2px;}
+.ledger-sortable{cursor:pointer;-webkit-user-select:none;user-select:none;}
+.ledger-sortable:hover{color:#2563eb;}
+.ledger-sort-arrow{font-size:9px;margin-left:3px;color:#2563eb;}
+.ledger-pagination-wrap{display:flex;align-items:center;justify-content:space-between;padding-top:14px;flex-wrap:wrap;gap:8px;}
+.ledger-showing-lbl{font-size:12px;color:#94a3b8;}
+.ledger-tip{margin-top:14px;font-size:11.5px;color:#94a3b8;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;}
+.ledger-export-wrap{position:relative;}
+.ledger-export-caret{font-size:9px;margin-left:2px;}
+.ledger-export-caret.open{transform:rotate(180deg);display:inline-block;}
+.ledger-export-backdrop{position:fixed;inset:0;z-index:19;}
+.ledger-export-menu{position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.12);padding:6px;min-width:170px;z-index:20;display:flex;flex-direction:column;gap:2px;}
+.ledger-export-opt{display:flex;align-items:center;gap:8px;padding:8px 10px;border:none;background:transparent;border-radius:7px;font-size:12.5px;color:#334155;cursor:pointer;text-align:left;font:inherit;}
+.ledger-export-opt:hover{background:#f1f5f9;}
+.ledger-export-opt:disabled{color:#94a3b8;cursor:default;}
+.ledger-export-opt:disabled:hover{background:transparent;}
+@media (max-width: 640px){
+  .ledger-summary-cards{grid-template-columns:1fr;}
+  .ledger-range-badge{margin-left:0;margin-top:8px;}
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .cash-drawer      { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .cash-view-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .cash-ledger-drawer { width: 100% !important; right: -100% !important; max-width: 100%; }
+  .cash-drawer.open,
+  .cash-view-drawer.open { right: 0 !important; }
+  .cash-dbody { padding-bottom: 80px !important; }
+  .cash-desktop-table, .cash-desktop-only { display: none !important; }
+  .cash-mobile-cards { display: flex; flex-direction: column; gap: 0; background: #f8fafc; flex-shrink: 0; }
+  .cash-mobile-card { background: #fff; border-bottom: 1px solid #e5e7eb; padding: 12px 14px; cursor: pointer; transition: background .12s; }
+  .cash-mobile-card:active { background: #f8f9fc; }
+  .cash-mc-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .cash-mc-docno { font-size: 12px; font-weight: 700; color: #2563eb; }
+  .cash-mc-mid { font-size: 13.5px; font-weight: 600; color: #1a1d23; margin-bottom: 4px; }
+  .cash-mc-meta { display: flex; justify-content: space-between; font-size: 12px; color: #868e96; }
+  .cash-mc-amount { font-weight: 700; }
+  .cash-mc-pos { color: #16a34a; }
+  .cash-mc-neg { color: #dc2626; }
+  .cash-mc--skeleton { pointer-events: none; }
+  .cash-mc-shimmer { border-radius: 6px; background: linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size: 200% 100%; animation: cash-mc-sh 1.4s infinite; }
+  @keyframes cash-mc-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .cash-mc-empty { text-align: center; padding: 32px 16px; color: #868e96; font-size: 13px; }
+  .cash-badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 11.5px; font-weight: 600; }
+}
+
+@media (max-width: 480px) {
+  .cash-page { padding: 12px; gap: 12px; }
+  .cash-search-wrap { min-width: 0; flex: 1 1 auto; }
+  .cash-fields-grid { grid-template-columns: 1fr !important; }
+  .cash-radio-group { flex-direction: column; }
+  .cash-meta-grid   { grid-template-columns: 1fr !important; }
+  .cash-dh-amt-val  { font-size: 20px; }
+}
+</style>

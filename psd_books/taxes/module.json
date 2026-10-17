@@ -1,0 +1,9 @@
+{
+ "module_name": "Taxes",
+ "app_name": "psd_books",
+ "color": "#EA580C",
+ "icon": "octicon octicon-tag",
+ "type": "module",
+ "label": "Taxes",
+ "doctype": "Module Def"
+}
