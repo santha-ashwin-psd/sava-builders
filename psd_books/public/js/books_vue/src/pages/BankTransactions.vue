@@ -760,7 +760,7 @@ const counts = computed(() => ({
     t => t.status === "Unreconciled"
   ).length
 }));
-function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
+function fmtCur(v){return new Intl.NumberFormat("en-US",{style:"currency",currency:"KES",minimumFractionDigits:2}).format(flt(v));}
 async function openView(t){
   viewDoc.value=t;viewOpen.value=true;
   try{

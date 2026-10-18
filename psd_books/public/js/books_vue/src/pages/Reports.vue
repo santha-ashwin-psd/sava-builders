@@ -147,13 +147,13 @@
           <div class="pl-trend-body">
             <div class="pl-trend-chart-wrap">
               <div class="pl-trend-yaxis">
-                <span v-for="t in chartTicks" :key="t">₹{{ fmtN(t) }}</span>
+                <span v-for="t in chartTicks" :key="t">KES {{ fmtN(t) }}</span>
               </div>
               <div class="pl-trend-chart">
                 <div v-for="m in plMonthly" :key="m.month" class="pl-trend-col">
                   <div class="pl-trend-bars">
-                    <div class="pl-trend-bar income" :style="{height:barH(m.income)+'px'}" :title="'Income: ₹'+fmtN(m.income)"></div>
-                    <div class="pl-trend-bar expense" :style="{height:barH(m.expense)+'px'}" :title="'Expense: ₹'+fmtN(m.expense)"></div>
+                    <div class="pl-trend-bar income" :style="{height:barH(m.income)+'px'}" :title="'Income: KES '+fmtN(m.income)"></div>
+                    <div class="pl-trend-bar expense" :style="{height:barH(m.expense)+'px'}" :title="'Expense: KES '+fmtN(m.expense)"></div>
                   </div>
                   <div class="pl-trend-month">{{ m.month.slice(5) }}</div>
                 </div>
@@ -503,22 +503,22 @@
                     <span>Customer</span><span class="iws-sort-ind" :class="arSortCls('customer')">&#8645;</span>
                   </th>
                   <th @click="setArSort('current')" class="iws-sortable ta-r">
-                    <span>Current (₹)</span><span class="iws-sort-ind" :class="arSortCls('current')">&#8645;</span>
+                    <span>Current (KES)</span><span class="iws-sort-ind" :class="arSortCls('current')">&#8645;</span>
                   </th>
                   <th @click="setArSort('days_1_30')" class="iws-sortable ta-r">
-                    <span>1–30 Days (₹)</span><span class="iws-sort-ind" :class="arSortCls('days_1_30')">&#8645;</span>
+                    <span>1–30 Days (KES)</span><span class="iws-sort-ind" :class="arSortCls('days_1_30')">&#8645;</span>
                   </th>
                   <th @click="setArSort('days_31_60')" class="iws-sortable ta-r">
-                    <span>31–60 Days (₹)</span><span class="iws-sort-ind" :class="arSortCls('days_31_60')">&#8645;</span>
+                    <span>31–60 Days (KES)</span><span class="iws-sort-ind" :class="arSortCls('days_31_60')">&#8645;</span>
                   </th>
                   <th @click="setArSort('days_61_90')" class="iws-sortable ta-r">
-                    <span>61–90 Days (₹)</span><span class="iws-sort-ind" :class="arSortCls('days_61_90')">&#8645;</span>
+                    <span>61–90 Days (KES)</span><span class="iws-sort-ind" :class="arSortCls('days_61_90')">&#8645;</span>
                   </th>
                   <th @click="setArSort('days_90_plus')" class="iws-sortable ta-r">
-                    <span>90+ Days (₹)</span><span class="iws-sort-ind" :class="arSortCls('days_90_plus')">&#8645;</span>
+                    <span>90+ Days (KES)</span><span class="iws-sort-ind" :class="arSortCls('days_90_plus')">&#8645;</span>
                   </th>
                   <th @click="setArSort('total')" class="iws-sortable ta-r">
-                    <span>Total (₹)</span><span class="iws-sort-ind" :class="arSortCls('total')">&#8645;</span>
+                    <span>Total (KES)</span><span class="iws-sort-ind" :class="arSortCls('total')">&#8645;</span>
                   </th>
                   <th class="iws-kebab-col"></th>
                 </tr>
@@ -623,22 +623,22 @@
                     <span>Vendor</span><span class="iws-sort-ind" :class="apSortCls('supplier')">&#8645;</span>
                   </th>
                   <th @click="setApSort('current')" class="iws-sortable ta-r">
-                    <span>Current (₹)</span><span class="iws-sort-ind" :class="apSortCls('current')">&#8645;</span>
+                    <span>Current (KES)</span><span class="iws-sort-ind" :class="apSortCls('current')">&#8645;</span>
                   </th>
                   <th @click="setApSort('days_1_30')" class="iws-sortable ta-r">
-                    <span>1–30 Days (₹)</span><span class="iws-sort-ind" :class="apSortCls('days_1_30')">&#8645;</span>
+                    <span>1–30 Days (KES)</span><span class="iws-sort-ind" :class="apSortCls('days_1_30')">&#8645;</span>
                   </th>
                   <th @click="setApSort('days_31_60')" class="iws-sortable ta-r">
-                    <span>31–60 Days (₹)</span><span class="iws-sort-ind" :class="apSortCls('days_31_60')">&#8645;</span>
+                    <span>31–60 Days (KES)</span><span class="iws-sort-ind" :class="apSortCls('days_31_60')">&#8645;</span>
                   </th>
                   <th @click="setApSort('days_61_90')" class="iws-sortable ta-r">
-                    <span>61–90 Days (₹)</span><span class="iws-sort-ind" :class="apSortCls('days_61_90')">&#8645;</span>
+                    <span>61–90 Days (KES)</span><span class="iws-sort-ind" :class="apSortCls('days_61_90')">&#8645;</span>
                   </th>
                   <th @click="setApSort('days_90_plus')" class="iws-sortable ta-r">
-                    <span>90+ Days (₹)</span><span class="iws-sort-ind" :class="apSortCls('days_90_plus')">&#8645;</span>
+                    <span>90+ Days (KES)</span><span class="iws-sort-ind" :class="apSortCls('days_90_plus')">&#8645;</span>
                   </th>
                   <th @click="setApSort('total')" class="iws-sortable ta-r">
-                    <span>Total (₹)</span><span class="iws-sort-ind" :class="apSortCls('total')">&#8645;</span>
+                    <span>Total (KES)</span><span class="iws-sort-ind" :class="apSortCls('total')">&#8645;</span>
                   </th>
                   <th class="iws-kebab-col"></th>
                 </tr>
@@ -749,13 +749,13 @@
                     <span>Qty Sold</span><span class="iws-sort-ind" :class="iwsSortCls('qty_sold')">&#8645;</span>
                   </th>
                   <th @click="setIwsSort('avg_rate')" class="iws-sortable ta-r">
-                    <span>Avg Rate (₹)</span><span class="iws-sort-ind" :class="iwsSortCls('avg_rate')">&#8645;</span>
+                    <span>Avg Rate (KES)</span><span class="iws-sort-ind" :class="iwsSortCls('avg_rate')">&#8645;</span>
                   </th>
                   <th @click="setIwsSort('total_discount')" class="iws-sortable ta-r">
-                    <span>Discount (₹)</span><span class="iws-sort-ind" :class="iwsSortCls('total_discount')">&#8645;</span>
+                    <span>Discount (KES)</span><span class="iws-sort-ind" :class="iwsSortCls('total_discount')">&#8645;</span>
                   </th>
                   <th @click="setIwsSort('total_amount')" class="iws-sortable ta-r">
-                    <span>Total Amount (₹)</span><span class="iws-sort-ind" :class="iwsSortCls('total_amount')">&#8645;</span>
+                    <span>Total Amount (KES)</span><span class="iws-sort-ind" :class="iwsSortCls('total_amount')">&#8645;</span>
                   </th>
                   <th class="iws-kebab-col"></th>
                 </tr>
@@ -865,22 +865,22 @@
                     <span>Invoices</span><span class="iws-sort-ind" :class="cwsSortCls('invoice_count')">&#8645;</span>
                   </th>
                   <th @click="setCwsSort('net_total')" class="iws-sortable ta-r">
-                    <span>Net Total (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('net_total')">&#8645;</span>
+                    <span>Net Total (KES)</span><span class="iws-sort-ind" :class="cwsSortCls('net_total')">&#8645;</span>
                   </th>
                   <th @click="setCwsSort('total_discount')" class="iws-sortable ta-r">
-                    <span>Discount (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('total_discount')">&#8645;</span>
+                    <span>Discount (KES)</span><span class="iws-sort-ind" :class="cwsSortCls('total_discount')">&#8645;</span>
                   </th>
                   <th @click="setCwsSort('total_tax')" class="iws-sortable ta-r">
-                    <span>Tax (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('total_tax')">&#8645;</span>
+                    <span>Tax (KES)</span><span class="iws-sort-ind" :class="cwsSortCls('total_tax')">&#8645;</span>
                   </th>
                   <th @click="setCwsSort('avg_invoice_value')" class="iws-sortable ta-r">
-                    <span>Avg Invoice (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('avg_invoice_value')">&#8645;</span>
+                    <span>Avg Invoice (KES)</span><span class="iws-sort-ind" :class="cwsSortCls('avg_invoice_value')">&#8645;</span>
                   </th>
                   <th @click="setCwsSort('outstanding_amount')" class="iws-sortable ta-r">
-                    <span>Outstanding (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('outstanding_amount')">&#8645;</span>
+                    <span>Outstanding (KES)</span><span class="iws-sort-ind" :class="cwsSortCls('outstanding_amount')">&#8645;</span>
                   </th>
                   <th @click="setCwsSort('total_amount')" class="iws-sortable ta-r">
-                    <span>Total Amount (₹)</span><span class="iws-sort-ind" :class="cwsSortCls('total_amount')">&#8645;</span>
+                    <span>Total Amount (KES)</span><span class="iws-sort-ind" :class="cwsSortCls('total_amount')">&#8645;</span>
                   </th>
                   <th class="iws-kebab-col"></th>
                 </tr>
@@ -992,16 +992,16 @@
                     <span>Qty Sold</span><span class="iws-sort-ind" :class="pwSortCls('qty_sold')">&#8645;</span>
                   </th>
                   <th @click="setPwSort('revenue')" class="iws-sortable ta-r">
-                    <span>Revenue (₹)</span><span class="iws-sort-ind" :class="pwSortCls('revenue')">&#8645;</span>
+                    <span>Revenue (KES)</span><span class="iws-sort-ind" :class="pwSortCls('revenue')">&#8645;</span>
                   </th>
                   <th @click="setPwSort('cost_rate')" class="iws-sortable ta-r">
-                    <span>Cost Rate (₹)</span><span class="iws-sort-ind" :class="pwSortCls('cost_rate')">&#8645;</span>
+                    <span>Cost Rate (KES)</span><span class="iws-sort-ind" :class="pwSortCls('cost_rate')">&#8645;</span>
                   </th>
                   <th @click="setPwSort('total_cost')" class="iws-sortable ta-r">
-                    <span>Total Cost (₹)</span><span class="iws-sort-ind" :class="pwSortCls('total_cost')">&#8645;</span>
+                    <span>Total Cost (KES)</span><span class="iws-sort-ind" :class="pwSortCls('total_cost')">&#8645;</span>
                   </th>
                   <th @click="setPwSort('profit')" class="iws-sortable ta-r">
-                    <span>Profit (₹)</span><span class="iws-sort-ind" :class="pwSortCls('profit')">&#8645;</span>
+                    <span>Profit (KES)</span><span class="iws-sort-ind" :class="pwSortCls('profit')">&#8645;</span>
                   </th>
                   <th @click="setPwSort('margin_pct')" class="iws-sortable ta-r">
                     <span>Margin %</span><span class="iws-sort-ind" :class="pwSortCls('margin_pct')">&#8645;</span>
@@ -1128,13 +1128,13 @@
                     <span>Customer</span><span class="iws-sort-ind" :class="ipSortCls('customer')">&#8645;</span>
                   </th>
                   <th @click="setIpSort('revenue')" class="iws-sortable ta-r">
-                    <span>Revenue (₹)</span><span class="iws-sort-ind" :class="ipSortCls('revenue')">&#8645;</span>
+                    <span>Revenue (KES)</span><span class="iws-sort-ind" :class="ipSortCls('revenue')">&#8645;</span>
                   </th>
                   <th @click="setIpSort('total_cost')" class="iws-sortable ta-r">
-                    <span>Est. Cost (₹)</span><span class="iws-sort-ind" :class="ipSortCls('total_cost')">&#8645;</span>
+                    <span>Est. Cost (KES)</span><span class="iws-sort-ind" :class="ipSortCls('total_cost')">&#8645;</span>
                   </th>
                   <th @click="setIpSort('profit')" class="iws-sortable ta-r">
-                    <span>Profit (₹)</span><span class="iws-sort-ind" :class="ipSortCls('profit')">&#8645;</span>
+                    <span>Profit (KES)</span><span class="iws-sort-ind" :class="ipSortCls('profit')">&#8645;</span>
                   </th>
                   <th @click="setIpSort('margin_pct')" class="iws-sortable ta-r">
                     <span>Margin %</span><span class="iws-sort-ind" :class="ipSortCls('margin_pct')">&#8645;</span>
@@ -1312,16 +1312,16 @@
                   <span>Type</span><span class="iws-sort-ind" :class="tbSortCls('account_type')">&#8645;</span>
                 </th>
                 <th @click="setTbSort('opening')" class="iws-sortable ta-r">
-                  <span>Opening (₹)</span><span class="iws-sort-ind" :class="tbSortCls('opening')">&#8645;</span>
+                  <span>Opening (KES)</span><span class="iws-sort-ind" :class="tbSortCls('opening')">&#8645;</span>
                 </th>
                 <th @click="setTbSort('debit')" class="iws-sortable ta-r">
-                  <span>Debit (₹)</span><span class="iws-sort-ind" :class="tbSortCls('debit')">&#8645;</span>
+                  <span>Debit (KES)</span><span class="iws-sort-ind" :class="tbSortCls('debit')">&#8645;</span>
                 </th>
                 <th @click="setTbSort('credit')" class="iws-sortable ta-r">
-                  <span>Credit (₹)</span><span class="iws-sort-ind" :class="tbSortCls('credit')">&#8645;</span>
+                  <span>Credit (KES)</span><span class="iws-sort-ind" :class="tbSortCls('credit')">&#8645;</span>
                 </th>
                 <th @click="setTbSort('closing')" class="iws-sortable ta-r">
-                  <span>Closing (₹)</span><span class="iws-sort-ind" :class="tbSortCls('closing')">&#8645;</span>
+                  <span>Closing (KES)</span><span class="iws-sort-ind" :class="tbSortCls('closing')">&#8645;</span>
                 </th>
                 <th class="iws-kebab-col"></th>
               </tr>
@@ -1454,13 +1454,13 @@
                     <span>Inventory Account</span><span class="iws-sort-ind" :class="sglAccSortCls('account')">&#8645;</span>
                   </th>
                   <th @click="setSglAccSort('bin_stock_value')" class="iws-sortable ta-r">
-                    <span>Bin Stock Value (₹)</span><span class="iws-sort-ind" :class="sglAccSortCls('bin_stock_value')">&#8645;</span>
+                    <span>Bin Stock Value (KES)</span><span class="iws-sort-ind" :class="sglAccSortCls('bin_stock_value')">&#8645;</span>
                   </th>
                   <th @click="setSglAccSort('gl_balance')" class="iws-sortable ta-r">
-                    <span>GL Balance (₹)</span><span class="iws-sort-ind" :class="sglAccSortCls('gl_balance')">&#8645;</span>
+                    <span>GL Balance (KES)</span><span class="iws-sort-ind" :class="sglAccSortCls('gl_balance')">&#8645;</span>
                   </th>
                   <th @click="setSglAccSort('difference')" class="iws-sortable ta-r">
-                    <span>Difference (₹)</span><span class="iws-sort-ind" :class="sglAccSortCls('difference')">&#8645;</span>
+                    <span>Difference (KES)</span><span class="iws-sort-ind" :class="sglAccSortCls('difference')">&#8645;</span>
                   </th>
                   <th>Status</th>
                   <th class="iws-kebab-col"></th>
@@ -1508,10 +1508,10 @@
                     <span>Qty</span><span class="iws-sort-ind" :class="sglItemSortCls('actual_qty')">&#8645;</span>
                   </th>
                   <th @click="setSglItemSort('valuation_rate')" class="iws-sortable ta-r">
-                    <span>Valuation Rate (₹)</span><span class="iws-sort-ind" :class="sglItemSortCls('valuation_rate')">&#8645;</span>
+                    <span>Valuation Rate (KES)</span><span class="iws-sort-ind" :class="sglItemSortCls('valuation_rate')">&#8645;</span>
                   </th>
                   <th @click="setSglItemSort('stock_value')" class="iws-sortable ta-r">
-                    <span>Stock Value (₹)</span><span class="iws-sort-ind" :class="sglItemSortCls('stock_value')">&#8645;</span>
+                    <span>Stock Value (KES)</span><span class="iws-sort-ind" :class="sglItemSortCls('stock_value')">&#8645;</span>
                   </th>
                   <th class="iws-kebab-col"></th>
                 </tr>
@@ -1595,7 +1595,7 @@
                 <tr>
                   <th class="iws-idx">#</th>
                   <th>Warehouse</th>
-                  <th class="ta-r">Stock Value (₹)</th>
+                  <th class="ta-r">Stock Value (KES)</th>
                   <th class="ta-r">% of Total</th>
                 </tr>
               </thead>
@@ -1658,8 +1658,8 @@
                 <th>Item</th>
                 <th>Warehouse</th>
                 <th class="ta-r">Stock Qty</th>
-                <th class="ta-r">Selling Price (₹)</th>
-                <th class="ta-r">MRP (₹)</th>
+                <th class="ta-r">Selling Price (KES)</th>
+                <th class="ta-r">MRP (KES)</th>
               </tr>
             </thead>
             <tbody>
@@ -1833,7 +1833,7 @@
         <!-- Sales Target vs Achievement -->
         <template v-else-if="salesMisTab === 'target'">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-            <label class="dr-label">Sales Target (₹)</label>
+            <label class="dr-label">Sales Target (KES)</label>
             <input type="number" v-model.number="salesTarget" class="dr-input" style="width:160px" min="0" />
             <span style="font-size:11.5px;color:#94a3b8">No target is stored — enter one to compare against actuals for this period.</span>
           </div>
@@ -2094,7 +2094,7 @@
         <!-- Collection Target vs Achievement -->
         <template v-else-if="receivablesTab === 'coll_target'">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-            <label class="dr-label">Collection Target (₹)</label>
+            <label class="dr-label">Collection Target (KES)</label>
             <input type="number" v-model.number="collectionTarget" class="dr-input" style="width:160px" min="0" />
             <span style="font-size:11.5px;color:#94a3b8">No target is stored — enter one to compare against actual collections for this period.</span>
           </div>
@@ -2260,7 +2260,7 @@
         <!-- Purchase Target / Budget vs Actual -->
         <template v-else-if="purchaseMisTab === 'target'">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-            <label class="dr-label">Purchase Target / Budget (₹)</label>
+            <label class="dr-label">Purchase Target / Budget (KES)</label>
             <input type="number" v-model.number="purchaseTarget" class="dr-input" style="width:160px" min="0" />
             <span style="font-size:11.5px;color:#94a3b8">No target/budget is stored — enter one to compare against actual purchases for this period.</span>
           </div>
@@ -4691,7 +4691,7 @@
             <div class="mis-summary-card"><span class="bucket-label">Sales with No Salesperson</span><span class="mis-summary-val">{{ fmtAmt(employeeMis.salesperson_achievement.unassigned_sales) }}</span></div>
           </div>
           <table v-if="employeeMis.salesperson_achievement.rows.length" class="books-table aging-table" style="width:100%">
-            <thead><tr><th>Salesperson</th><th class="ta-r">Invoices</th><th class="ta-r">Achieved</th><th class="ta-r">Target (₹)</th><th class="ta-r">Achievement %</th></tr></thead>
+            <thead><tr><th>Salesperson</th><th class="ta-r">Invoices</th><th class="ta-r">Achieved</th><th class="ta-r">Target (KES)</th><th class="ta-r">Achievement %</th></tr></thead>
             <tbody>
               <tr v-for="r in employeeMis.salesperson_achievement.rows" :key="r.sales_person">
                 <td>{{ r.sales_person_name || r.sales_person }}</td>
@@ -4833,9 +4833,9 @@ import { apiGET, resolveCompany } from "../api/client.js";
 import Modal from "../components/Modal.vue";
 
 const fmt    = formatCurrency;
-const fmtAmt = (v) => v != null ? "₹" + Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
-const fmtN   = (v) => Number(v||0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
-const fmtN2  = (v) => Number(v||0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtAmt = (v) => v != null ? "KES " + Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
+const fmtN   = (v) => Number(v||0).toLocaleString("en-US", { maximumFractionDigits: 0 });
+const fmtN2  = (v) => Number(v||0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 function totalValStyle(text) {
   const len = String(text || "").length;
   let size = 24;

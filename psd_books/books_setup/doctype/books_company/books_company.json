@@ -57,7 +57,7 @@
    "fieldtype": "Link",
    "options": "Currency",
    "label": "Default Currency",
-   "default": "INR",
+   "default": "KES",
    "idx": 11
   },
   {
@@ -65,7 +65,7 @@
    "fieldtype": "Select",
    "label": "Fiscal Year Start Month",
    "options": "January\nFebruary\nMarch\nApril\nMay\nJune\nJuly\nAugust\nSeptember\nOctober\nNovember\nDecember",
-   "default": "April",
+   "default": "January",
    "idx": 12
   },
   {
@@ -74,16 +74,25 @@
    "idx": 13
   },
   {
+   "fieldname": "kra_pin",
+   "fieldtype": "Data",
+   "label": "KRA PIN",
+   "length": 11,
+   "idx": 14
+  },
+  {
    "fieldname": "gstin",
    "fieldtype": "Data",
    "label": "GSTIN",
-   "idx": 14
+   "idx": 14,
+   "hidden": 1
   },
   {
    "fieldname": "gst_state",
    "fieldtype": "Data",
    "label": "GST State",
-   "idx": 15
+   "idx": 15,
+   "hidden": 1
   },
   {
    "fieldname": "sec_address",
@@ -113,7 +122,7 @@
   {
    "fieldname": "pincode",
    "fieldtype": "Data",
-   "label": "Pincode",
+   "label": "Postal Code",
    "idx": 24
   },
   {
@@ -617,6 +626,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
- "search_fields": "company_name,company_abbr,gstin",
+ "search_fields": "company_name,company_abbr,kra_pin",
  "title_field": "company_name"
 }

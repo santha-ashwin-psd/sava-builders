@@ -281,7 +281,7 @@ const MODULES = [
   { key: "accounts",  label: "Chart of Accounts" },
   { key: "reports",   label: "Reports" },
   { key: "customers", label: "Customers & Suppliers" },
-  { key: "taxes",     label: "Taxes & GST" },
+  { key: "taxes",     label: "Taxes" },
   { key: "admin",     label: "Admin / Settings" },
 ];
 

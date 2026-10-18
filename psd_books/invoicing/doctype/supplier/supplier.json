@@ -737,7 +737,7 @@
       "print_width": "",
       "fieldname": "pincode",
       "fieldtype": "Data",
-      "label": "Pincode"
+      "label": "Postal Code"
     },
     {
       "creation": "2026-03-17 11:02:53.037714",

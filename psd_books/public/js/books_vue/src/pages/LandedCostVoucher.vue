@@ -794,8 +794,8 @@ async function amendLcv() {
 
 // ── UTIL ─────────────────────────────────────────────────────
 function INR(n) {
-  if (n == null || isNaN(n)) return "₹0.00";
-  return "₹" + Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (n == null || isNaN(n)) return "KES 0.00";
+  return "KES " + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const ICONS = {

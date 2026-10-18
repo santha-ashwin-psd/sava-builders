@@ -2,6 +2,7 @@
 // All pages reuse these three templates by calling printDoc(doc, config).
 
 import { reactive, computed } from "vue";
+import { apiGet } from "../api/client.js";
 
 const _state = reactive({
   template: "classic",
@@ -36,7 +37,7 @@ async function _loadBranding(company) {
     if (d.pdf_template) _state.template   = d.pdf_template;
     if (d.brand_color)  _state.brandColor = d.brand_color;
     if (d.company_logo) _state.logo       = d.company_logo;
-    _state.companyGstin    = d.gstin || "";
+    _state.companyGstin    = d.kra_pin || "";
     _state.companyAddress  = d.company_address || "";
     _state.companyCity     = d.company_city || "";
     _state.companyState    = d.company_state || "";
@@ -59,18 +60,23 @@ function _esc(s) {
     c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 function _currencySymbol(currency) {
-  return (currency && currency !== "INR") ? currency : "₹";
+  return currency || "KES";
 }
 function _fmt(v, currency) {
-  const symbol = (currency && currency !== "INR") ? (currency + " ") : "₹";
-  return symbol + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const symbol = (currency || "KES") + " ";
+  return symbol + Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 // Plain number, no currency symbol — used inside the Classic template's item
 // table / totals / HSN summary, where the currency is already indicated once
-// in the column header ("Rate (₹)", "Amount (₹)", …), matching the reference
+// in the column header ("Rate (KES)", "Amount (KES)", …), matching the reference
 // invoice which never repeats the symbol on data rows.
+function _fmtNumFor(v, currency) {
+  // KES groups as 123,456.00
+  const locale = "en-US";
+  return Number(v || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 function _fmtNum(v) {
-  return Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return _fmtNumFor(v, "KES");
 }
 // Reference invoice shows dates as "13-Jul-2026" (full 4-digit year).
 function _fmtDocDate(d) {
@@ -79,30 +85,29 @@ function _fmtDocDate(d) {
   if (isNaN(dt)) return String(d);
   return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }).replace(/ /g, "-");
 }
-function _numberToWords(n) {
-  n = Math.round(Number(n) || 0);
-  if (n === 0) return "Rupees Zero Only";
+// Western number words (thousand / million / billion) for KES amounts.
+function _westernWords(n) {
+  n = Math.floor(Number(n) || 0);
+  if (n === 0) return "Zero";
   const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
     "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
   const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-  function two(x) {
-    if (x < 20) return ones[x];
-    return tens[Math.floor(x / 10)] + (x % 10 ? " " + ones[x % 10] : "");
-  }
-  function three(x) {
-    if (x >= 100) return ones[Math.floor(x / 100)] + " Hundred" + (x % 100 ? " " + two(x % 100) : "");
-    return two(x);
-  }
-  let parts = [];
-  let crore = Math.floor(n / 10000000); n %= 10000000;
-  let lakh = Math.floor(n / 100000); n %= 100000;
-  let thousand = Math.floor(n / 1000); n %= 1000;
-  let rest = n;
-  if (crore) parts.push(three(crore) + " Crore");
-  if (lakh) parts.push(three(lakh) + " Lakh");
+  const two = x => x < 20 ? ones[x] : tens[Math.floor(x / 10)] + (x % 10 ? " " + ones[x % 10] : "");
+  const three = x => x >= 100 ? ones[Math.floor(x / 100)] + " Hundred" + (x % 100 ? " " + two(x % 100) : "") : two(x);
+  const parts = [];
+  const billion = Math.floor(n / 1e9); n %= 1e9;
+  const million = Math.floor(n / 1e6); n %= 1e6;
+  const thousand = Math.floor(n / 1e3); n %= 1e3;
+  if (billion) parts.push(three(billion) + " Billion");
+  if (million) parts.push(three(million) + " Million");
   if (thousand) parts.push(three(thousand) + " Thousand");
-  if (rest) parts.push(three(rest));
-  return "Rupees " + parts.join(" ") + " Only";
+  if (n) parts.push(three(n));
+  return parts.join(" ");
+}
+function _kesWords(v) {
+  const total = Math.round((Number(v) || 0) * 100);
+  const whole = Math.floor(total / 100), cents = total % 100;
+  return "Kenya Shillings " + _westernWords(whole) + (cents ? " and " + _westernWords(cents) + " Cents" : "") + " Only";
 }
 function _today() {
   return new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
@@ -114,7 +119,7 @@ function _bulletList(text) {
   return `<ul>${lines.map(l => `<li>${_esc(l)}</li>`).join("")}</ul>`;
 }
 // Group line items by HSN/SAC code for the print footer's tax-rate summary
-// table (HSN/SAC Code | Taxable | CGST% | CGST₹ | SGST% | SGST₹, or IGST
+// table (HSN/SAC Code | Taxable | CGST% | CGST (KES) | SGST% | SGST (KES), or IGST
 // variant). Amounts are derived from each item's taxable_amount × rate,
 // since that's what the per-item CGST/SGST/IGST % columns are computed from.
 function _hsnSummary(items) {
@@ -160,7 +165,8 @@ function _formatAddrLines(raw) {
 function _renderClassic(doc, cfg) {
   const brand    = _state.brandColor;
   const logo     = _logoSrc(_state.logo);
-  const currency = doc.currency || "INR";
+  const currency = cfg.currency || doc.currency || "KES";
+  const _fmtNum = (v) => _fmtNumFor(v, currency);   // shadows the default helper for this document
   const netTotal = doc.net_total != null ? doc.net_total
     : (doc.grand_total || 0) - (doc.total_taxes_and_charges ?? doc.total_tax ?? (doc.taxes || []).reduce((s, t) => s + (t.tax_amount || 0), 0));
   const party    = doc[cfg.partyField] || doc.customer || doc.supplier || "";
@@ -171,7 +177,7 @@ function _renderClassic(doc, cfg) {
   const includeGst = cfg.includeGst !== false && (hasIgst || hasCgst);
   const totalTax = doc.total_taxes_and_charges ?? (doc.taxes || []).reduce((s, t) => s + (t.tax_amount || 0), 0);
   const roundOff = doc.grand_total != null ? Math.round((doc.grand_total - (netTotal + totalTax)) * 100) / 100 : 0;
-  const amountWords = doc.in_words || _numberToWords(Math.round(doc.grand_total || 0));
+  const amountWords = doc.in_words || _kesWords(doc.grand_total);
 
   function _fmtExpiry(d) {
     if (!d) return "";
@@ -198,8 +204,10 @@ function _renderClassic(doc, cfg) {
       <td class="r b nw">${_fmtNum(it.amount)}</td>
     </tr>`).join("");
   const taxRows = (doc.taxes || []).map(t => {
-    const label = (t.description || t.account_head || "Tax").replace(/[@(]?\s*[\d.]+\s*%\)?/g, "").replace(/\(\s*\)/g, "").trim();
-    return `<div class="row"><span>Add ${_esc(label)} (₹)</span><span>${_fmtNum(t.tax_amount || 0)}</span></div>`;
+    const rawLabel = t.description || t.account_head || "Tax";
+    // Purchase Orders keep the rate in the label ("VAT 16%"); invoices strip it ("Add CGST").
+    const label = cfg.keepTaxLabel ? String(rawLabel).trim() : rawLabel.replace(/[@(]?\s*[\d.]+\s*%\)?/g, "").replace(/\(\s*\)/g, "").trim();
+    return `<div class="row"><span>Add ${_esc(label)} (${_esc(_currencySymbol(currency))})</span><span>${_fmtNum(t.tax_amount || 0)}</span></div>`;
   }).join("");
   const colspan = 6 + (cfg.includeHsn ? 1 : 0) + (cfg.includeDiscount ? 1 : 0) + (includeMrp ? 1 : 0) + (includeGst ? (hasIgst ? 2 : 3) : 0);
   const hsnRows = includeGst ? _hsnSummary(doc.items) : [];
@@ -323,11 +331,11 @@ function _renderClassic(doc, cfg) {
   </div>
   <div class="title">${_esc(cfg.title)}</div>
   <div class="hdr-bot" style="border-bottom:none">
-    <div class="hb-l">${(doc.company_gstin || doc.gstin || _state.companyGstin) ? `<b>GSTIN :</b> ${_esc(doc.company_gstin || doc.gstin || _state.companyGstin)}` : ""}</div>
+    <div class="hb-l">${(doc.company_gstin || doc.gstin || _state.companyGstin) ? `<b>${_esc(cfg.taxIdLabel || "KRA PIN :")}</b> ${_esc(doc.company_gstin || doc.gstin || _state.companyGstin)}` : ""}</div>
     <div class="hb-r">
       <div class="inv-no"><b>${_esc(cfg.title ? cfg.title.charAt(0) + cfg.title.slice(1).toLowerCase() : "")} No. :</b> ${_esc(doc.name || "")}</div>
       <div><b>Date :</b> ${_esc(_fmtDocDate(docDate))}</div>
-      ${doc.due_date ? `<div><b>Due Date :</b> ${_esc(_fmtDocDate(doc.due_date))}</div>` : ""}
+      ${doc.due_date ? `<div><b>Due Date :</b> ${_esc(_fmtDocDate(doc.due_date))}</div>` : ""}${cfg.po && doc.expected_delivery_date ? `<div><b>Delivery Date :</b> ${_esc(_fmtDocDate(doc.expected_delivery_date))}</div>` : ""}
     </div>
   </div>
   ${(() => {
@@ -346,7 +354,7 @@ function _renderClassic(doc, cfg) {
           <div class="addr-nm">${_esc(party)}</div>
           ${companyNm ? `<div class="addr-nm">${_esc(companyNm)}</div>` : ""}
           ${lines.map(l => `<div class="addr-ln">${_esc(l)}</div>`).join("")}
-          ${gstin ? `<div class="addr-ln"><b>GSTIN :</b> ${_esc(gstin)}</div>` : ""}
+          ${gstin ? `<div class="addr-ln"><b>${_esc(cfg.taxIdLabel || "KRA PIN :")}</b> ${_esc(gstin)}</div>` : ""}
           ${phone ? `<div class="addr-ln"><b>Phone :</b> ${_esc(phone)}</div>` : ""}`;
       return `
       <div class="addr-col">
@@ -354,6 +362,31 @@ function _renderClassic(doc, cfg) {
         <div class="addr-body">${bodyInner}</div>
       </div>`;
     };
+    if (cfg.po) {
+      // Purchase Order: Vendor (supplier) | Deliver To (the PO's own addresses; no India-style re-formatting)
+      const lns = raw => String(raw || "").split("\n").map(s => s.trim()).filter(Boolean);
+      const vendorLines = lns(doc.supplier_address);
+      const delivery = lns(doc.delivery_address || doc.billing_address);
+      const billing = (doc.delivery_address && doc.billing_address && doc.billing_address !== doc.delivery_address) ? lns(doc.billing_address) : [];
+      return `<div class="addr-table">
+      <div class="addr-col">
+        <div class="addr-h">Vendor</div>
+        <div class="addr-body">
+          <div class="addr-nm">${_esc(party)}</div>
+          ${vendorLines.map(l => `<div class="addr-ln">${_esc(l)}</div>`).join("")}
+          ${gstin ? `<div class="addr-ln"><b>${_esc(cfg.taxIdLabel || "KRA PIN :")}</b> ${_esc(gstin)}</div>` : ""}
+          ${phone ? `<div class="addr-ln"><b>Phone :</b> ${_esc(phone)}</div>` : ""}
+        </div>
+      </div>
+      <div class="addr-col">
+        <div class="addr-h">Deliver To</div>
+        <div class="addr-body">
+          ${delivery.length ? delivery.map(l => `<div class="addr-ln">${_esc(l)}</div>`).join("") : `<div class="addr-ln">&mdash;</div>`}
+          ${billing.length ? `<div class="addr-ln" style="margin-top:6px"><b>Billing Address :</b></div>${billing.map(l => `<div class="addr-ln">${_esc(l)}</div>`).join("")}` : ""}
+        </div>
+      </div>
+    </div>`;
+    }
     if (!billLines.length && !shipLines.length && !gstin && !phone && !companyNm) return "";
     const dispatchTable = hasDispatch ? `
       <div class="dispatch-table">
@@ -387,36 +420,38 @@ function _renderClassic(doc, cfg) {
       (doc.terms || doc.customer_note) ? `<div><div class="h">${doc.customer_note ? "Note :" : "Terms &amp; Conditions :"}</div>${_bulletList(doc.customer_note || doc.terms)}</div>` : "",
       doc.remarks ? `<div style="margin-top:${(doc.terms || doc.customer_note) ? "10px" : "0"}"><div class="h">Remarks :</div>${_bulletList(doc.remarks)}</div>` : "",
     ].filter(Boolean).join("");
+    const payLines = (doc.payment_lines || []).filter(Boolean);
+    const payHtml = cfg.po ? (payLines.length ? `<div class="h">Payment Details :</div>${payLines.map(l => _esc(l)).join("<br/>")}` : "") : null;
     return `<div class="bottom-frame">
   <div class="bf-row">
     <div class="bf-cell">
-      ${_state.bankName || _state.bankAccountNo ? `
+      ${payHtml !== null ? payHtml : (_state.bankName || _state.bankAccountNo) ? `
         <div class="h">Bank Details :</div>
         ${_state.bankName ? `Bank Name: ${_esc(_state.bankName)}<br/>` : ""}
         ${_state.bankBranch ? `Branch: ${_esc(_state.bankBranch)}<br/>` : ""}
         ${_state.bankAccountNo ? `Account No.: ${_esc(_state.bankAccountNo)}<br/>` : ""}
-        ${_state.bankIfsc ? `IFSC: ${_esc(_state.bankIfsc)}` : ""}
+        ${_state.bankIfsc ? `Bank Code: ${_esc(_state.bankIfsc)}` : ""}
       ` : ""}
     </div>
     <div class="bf-cell">
-      <div class="h">Total Invoice Amount in Words :</div>
+      <div class="h">${_esc(cfg.amountWordsLabel || "Total Invoice Amount in Words :")}</div>
       <div class="val">${_esc(amountWords)}</div>
     </div>
     <div class="bf-cell bf-cell-totals">
       <div class="tot-figs">
-        <div class="row"><span>Total Amount before Tax (₹)</span><span>${_fmtNum(netTotal)}</span></div>
+        <div class="row"><span>Total Amount before Tax (${_esc(_currencySymbol(currency))})</span><span>${_fmtNum(netTotal)}</span></div>
         ${taxRows}
-        ${doc.discount_amount ? `<div class="row"><span style="color:#b91c1c">Discount (₹)</span><span style="color:#b91c1c">− ${_fmtNum(doc.discount_amount)}</span></div>` : ""}
-        ${roundOff ? `<div class="row"><span>Round Off (₹)</span><span>${roundOff > 0 ? "" : "− "}${_fmtNum(Math.abs(roundOff))}</span></div>` : ""}
-        <div class="row grand"><span>Grand Total (₹)</span><span>${_fmtNum(doc.grand_total)}</span></div>
+        ${doc.discount_amount ? `<div class="row"><span style="color:#b91c1c">Discount (${_esc(_currencySymbol(currency))})</span><span style="color:#b91c1c">− ${_fmtNum(doc.discount_amount)}</span></div>` : ""}
+        ${roundOff ? `<div class="row"><span>Round Off (${_esc(_currencySymbol(currency))})</span><span>${roundOff > 0 ? "" : "− "}${_fmtNum(Math.abs(roundOff))}</span></div>` : ""}
+        <div class="row grand"><span>Grand Total (${_esc(_currencySymbol(currency))})</span><span>${_fmtNum(doc.grand_total)}</span></div>
       </div>
     </div>
   </div>
   ${notesHtml ? `<div class="bf-row"><div class="bf-cell">${notesHtml}</div></div>` : ""}
   <div class="bf-row bf-row-sign">
-    <div class="bf-cell sign-note-cell">This is a computer-generated invoice. E. &amp; O. E.</div>
+    <div class="bf-cell sign-note-cell">${cfg.footerNote ? _esc(cfg.footerNote) : "This is a computer-generated invoice. E. &amp; O. E."}</div>
     <div class="bf-cell sign-qr-cell">
-  <img src="${_logoSrc("/assets/psd_books/img/upi.png")}" alt="UPI QR Code"/>
+  ${cfg.showQr === false ? "" : `<img src="${_logoSrc("/assets/psd_books/img/upi.png")}" alt="UPI QR Code"/>`}
 </div>
     <div class="bf-cell sign-for-cell">
       <div>For, ${_esc(doc.company || cfg.companyName || "")}</div>
@@ -426,8 +461,8 @@ function _renderClassic(doc, cfg) {
 </div>`;
   })()}
   ${hsnRows.length ? `<table class="hsn-tbl"><thead><tr>
-    <th>HSN/SAC Code</th><th class="r">Taxable (₹)</th>
-    ${hasIgst ? `<th class="r">IGST %</th><th class="r">IGST (₹)</th>` : `<th class="r">CGST %</th><th class="r">CGST (₹)</th><th class="r">SGST %</th><th class="r">SGST (₹)</th>`}
+    <th>HSN/SAC Code</th><th class="r">Taxable (${_esc(_currencySymbol(currency))})</th>
+    ${hasIgst ? `<th class="r">IGST %</th><th class="r">IGST (${_esc(_currencySymbol(currency))})</th>` : `<th class="r">CGST %</th><th class="r">CGST (${_esc(_currencySymbol(currency))})</th><th class="r">SGST %</th><th class="r">SGST (${_esc(_currencySymbol(currency))})</th>`}
   </tr></thead><tbody>
     ${hsnRows.map(r => `<tr><td>${_esc(r.hsn)}</td><td class="r">${_fmtNum(r.taxable)}</td>
       ${hasIgst ? `<td class="r">${r.igstRate.toFixed(2)}%</td><td class="r">${_fmtNum(r.igstAmt)}</td>` : `<td class="r">${r.cgstRate.toFixed(2)}%</td><td class="r">${_fmtNum(r.cgstAmt)}</td><td class="r">${r.sgstRate.toFixed(2)}%</td><td class="r">${_fmtNum(r.sgstAmt)}</td>`}
@@ -460,7 +495,7 @@ function _renderClassic(doc, cfg) {
 function _renderModern(doc, cfg) {
   const brand    = _state.brandColor;
   const logo     = _logoSrc(_state.logo);
-  const currency = doc.currency || "INR";
+  const currency = doc.currency || "KES";
   const netTotal = doc.net_total != null ? doc.net_total
     : (doc.grand_total || 0) - (doc.total_taxes_and_charges ?? doc.total_tax ?? (doc.taxes || []).reduce((s, t) => s + (t.tax_amount || 0), 0));
   const party    = doc[cfg.partyField] || doc.customer || doc.supplier || "";
@@ -531,7 +566,7 @@ function _renderModern(doc, cfg) {
     <div>
       ${logo ? `<img src="${_esc(logo)}"/>` : ""}
       <div class="co">${_esc(doc.company || cfg.companyName || "")}</div>
-      ${doc.company_gstin || doc.gstin ? `<div class="gst">GSTIN: ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}
+      ${doc.company_gstin || doc.gstin ? `<div class="gst">KRA PIN: ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}
     </div>
     <div class="rt">
       <div class="print-copy-text" style="font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#fff;text-align:right;margin-bottom:6px">${_esc(cfg.copyText || "")}</div>
@@ -549,8 +584,8 @@ function _renderModern(doc, cfg) {
     ${doc.place_of_supply ? `<div class="chip"><div class="l">Place of Supply</div><div class="v">${_esc(doc.place_of_supply)}</div></div>` : ""}
   </div>
   <div class="cards">
-    <div class="card"><div class="l">From</div><div class="nm">${_esc(doc.company || cfg.companyName || "")}</div>${doc.company_gstin || doc.gstin ? `<div class="sub">GSTIN: ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}</div>
-    <div class="card"><div class="l">${_esc(cfg.partyLabel)}</div><div class="nm">${_esc(party)}</div>${doc.address_display ? `<div class="sub">${_esc(doc.address_display)}</div>` : ""}${doc.customer_gstin || doc.supplier_gstin ? `<div class="sub">GSTIN: ${_esc(doc.customer_gstin || doc.supplier_gstin)}</div>` : ""}</div>
+    <div class="card"><div class="l">From</div><div class="nm">${_esc(doc.company || cfg.companyName || "")}</div>${doc.company_gstin || doc.gstin ? `<div class="sub">KRA PIN: ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}</div>
+    <div class="card"><div class="l">${_esc(cfg.partyLabel)}</div><div class="nm">${_esc(party)}</div>${doc.address_display ? `<div class="sub">${_esc(doc.address_display)}</div>` : ""}${doc.customer_gstin || doc.supplier_gstin ? `<div class="sub">KRA PIN: ${_esc(doc.customer_gstin || doc.supplier_gstin)}</div>` : ""}</div>
   </div>
   <div class="tbl-card"><table>
     <thead><tr>
@@ -577,7 +612,7 @@ function _renderModern(doc, cfg) {
 function _renderMinimal(doc, cfg) {
   const brand    = _state.brandColor;
   const logo     = _logoSrc(_state.logo);
-  const currency = doc.currency || "INR";
+  const currency = doc.currency || "KES";
   const netTotal = doc.net_total != null ? doc.net_total
     : (doc.grand_total || 0) - (doc.total_taxes_and_charges ?? doc.total_tax ?? (doc.taxes || []).reduce((s, t) => s + (t.tax_amount || 0), 0));
   const party    = doc[cfg.partyField] || doc.customer || doc.supplier || "";
@@ -648,12 +683,12 @@ function _renderMinimal(doc, cfg) {
   <div class="hdr">
     <div>
       <div class="co">${logo ? `<img src="${_esc(logo)}"/>` : ""}${_esc(doc.company || cfg.companyName || "")}</div>
-      ${doc.company_gstin || doc.gstin ? `<div class="gst">GSTIN ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}
+      ${doc.company_gstin || doc.gstin ? `<div class="gst">KRA PIN ${_esc(doc.company_gstin || doc.gstin)}</div>` : ""}
     </div>
     <div class="rt"><div class="print-copy-text" style="font-size:10px;font-weight:700;color:#111;text-transform:uppercase;margin-bottom:6px;letter-spacing:.05em;text-align:right">${_esc(cfg.copyText || "")}</div><div class="t">${_esc(cfg.title)}</div><div class="num mono">${_esc(doc.name || "")}</div></div>
   </div>
   <div class="meta">
-    <div class="m" style="grid-column:span 2"><div class="l">${_esc(cfg.partyLabel)}</div><div class="v">${_esc(party)}</div>${doc.address_display ? `<div class="v sub">${_esc(doc.address_display)}</div>` : ""}${doc.customer_gstin || doc.supplier_gstin ? `<div class="v sub">GSTIN ${_esc(doc.customer_gstin || doc.supplier_gstin)}</div>` : ""}</div>
+    <div class="m" style="grid-column:span 2"><div class="l">${_esc(cfg.partyLabel)}</div><div class="v">${_esc(party)}</div>${doc.address_display ? `<div class="v sub">${_esc(doc.address_display)}</div>` : ""}${doc.customer_gstin || doc.supplier_gstin ? `<div class="v sub">KRA PIN ${_esc(doc.customer_gstin || doc.supplier_gstin)}</div>` : ""}</div>
     <div class="m"><div class="l">Date</div><div class="v mono">${_esc(docDate)}</div></div>
     ${doc.due_date ? `<div class="m"><div class="l">Due</div><div class="v mono">${_esc(doc.due_date)}</div></div>` : (doc.valid_till ? `<div class="m"><div class="l">Valid Till</div><div class="v mono">${_esc(doc.valid_till)}</div></div>` : "<div class='m'></div>")}
     ${doc.po_no ? `<div class="m"><div class="l">PO Number</div><div class="v mono">${_esc(doc.po_no)}</div></div>` : ""}
@@ -686,6 +721,39 @@ function _renderMinimal(doc, cfg) {
 
 
 // ── Public API ────────────────────────────────────────────────────────────────
+// Purchase Order (LPO) print: the Classic layout with KES, VAT lines, a Vendor / Deliver To box,
+// payment details from the supplier's payment terms, and no UPI QR / "E. & O. E." invoice wording.
+export const PO_PRINT_CONFIG = {
+  title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name",
+  po: true, currency: "KES", taxIdLabel: "KRA PIN :", keepTaxLabel: true,
+  amountWordsLabel: "Total Amount in Words :",
+  footerNote: "This is a computer-generated Purchase Order.",
+  showQr: false, includeHsn: false, includeDiscount: false,
+};
+
+// Adds what the PO record doesn't carry: the supplier's KRA PIN, contact, address and payment terms.
+// Never throws: anything it can't read is simply left off the print.
+export async function preparePOPrint(doc) {
+  const out = { ...doc, currency: "KES" };
+  if (!doc?.supplier) return out;
+  try {
+    const sup = await apiGet("Supplier", doc.supplier);
+    if (sup) {
+      out.supplier_gstin = sup.tax_id || "";
+      out.contact_mobile = sup.mobile_no || sup.phone || "";
+      out.supplier_address = [sup.address_line1, sup.address_line2,
+        [sup.city, sup.state, sup.pincode].filter(Boolean).join(", "), sup.country].filter(Boolean).join("\n");
+      if (sup.payment_terms) {
+        let pt = null;
+        try { pt = await apiGet("Payment Terms", sup.payment_terms); } catch { /* name only */ }
+        out.payment_lines = [`Payment Terms: ${sup.payment_terms}`,
+          pt?.credit_days ? `Credit Days: ${pt.credit_days}` : "", pt?.description || ""].filter(Boolean);
+      }
+    }
+  } catch { /* print without supplier details */ }
+  return out;
+}
+
 export function useLivePreview() {
   function setCompany(c)    { return _loadBranding(c); }
   function refreshBranding() { return _loadBranding(_state.company); }

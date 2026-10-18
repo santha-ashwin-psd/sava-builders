@@ -72,7 +72,7 @@ const MODULES = [
   { key: "accounts",  lbl: "Accounting" },
   { key: "reports",   lbl: "Reports" },
   { key: "customers", lbl: "Customers & Suppliers" },
-  { key: "taxes",     lbl: "Taxes & GST" },
+  { key: "taxes",     lbl: "Taxes" },
   { key: "admin",     lbl: "Admin / Settings" },
 ];
 

@@ -315,10 +315,9 @@ const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov
 const monthLabel = (m) => m ? (MONTHS[parseInt(m.slice(5, 7)) - 1] ?? m.slice(5)) : "";
 function fmtShort(v) {
   if (!v) return "0";
-  if (v >= 1_00_00_000) return "₹" + (v / 1_00_00_000).toFixed(1) + "Cr";
-  if (v >= 1_00_000)    return "₹" + (v / 1_00_000).toFixed(1) + "L";
-  if (v >= 1_000)       return "₹" + (v / 1_000).toFixed(0) + "K";
-  return "₹" + v;
+  if (v >= 1_000_000)   return "KES " + (v / 1_000_000).toFixed(1) + "M";
+  if (v >= 1_000)       return "KES " + (v / 1_000).toFixed(0) + "K";
+  return "KES " + v;
 }
 
 // ── KPI tiles ──

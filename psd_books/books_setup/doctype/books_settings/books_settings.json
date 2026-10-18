@@ -92,7 +92,7 @@
    "fieldtype": "Link",
    "label": "Default Currency",
    "options": "Currency",
-   "default": "INR",
+   "default": "KES",
    "idx": 3,
    "creation": "2026-03-16 04:22:11.189548",
    "modified": "2026-03-16 04:22:11.189548",
@@ -630,7 +630,7 @@
   {
    "fieldname": "reconcile_tolerance",
    "fieldtype": "Currency",
-   "label": "Reconciliation Tolerance (\u20b9)",
+   "label": "Reconciliation Tolerance (KES)",
    "default": 1,
    "idx": 16,
    "creation": "2026-03-16 04:22:11.189548",

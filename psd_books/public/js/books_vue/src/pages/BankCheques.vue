@@ -236,7 +236,7 @@ function tabCount(key) {
   if (key === "all") return list.value.length;
   return list.value.filter(p => (p.cheque_status || "Issued") === key).length;
 }
-function fmtCur(v) { return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(flt(v)); }
+function fmtCur(v) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "KES", minimumFractionDigits: 2 }).format(flt(v)); }
 
 // ── selection ──
 function toggleSelect(name){const s=new Set(selected.value);if(s.has(name))s.delete(name);else s.add(name);selected.value=s;}

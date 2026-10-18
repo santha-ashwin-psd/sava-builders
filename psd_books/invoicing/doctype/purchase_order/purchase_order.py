@@ -18,6 +18,9 @@ class PurchaseOrder(Document):
             except Exception:
                 self.fiscal_year = ""   # only suppress unexpected errors (e.g. table missing on install)
         self._calculate_totals()
+        # A10.1: Pending Approval / Sent Back belong to the approval flow; a PO pending approval is locked.
+        from psd_books.invoicing.po_approval_rules import validate_status
+        validate_status(self)
 
     def _calculate_totals(self):
         for item in (self.items or []):
@@ -30,6 +33,12 @@ class PurchaseOrder(Document):
         self.net_total   = round(net, 2)
         self.total_tax   = round(tax_total, 2)
         self.grand_total = round(net + tax_total, 2)
+
+    def before_submit(self):
+        # A10.2: a PO is only submitted once every approval level has approved it (the last approval
+        # submits it). Covers the Submit button, Issue PO, save_doc and the REST API; no admin bypass.
+        from psd_books.invoicing.po_approval_rules import check_ready_to_submit
+        check_ready_to_submit(self)
 
     def on_submit(self):
         self._update_ordered_qty(direction=+1)

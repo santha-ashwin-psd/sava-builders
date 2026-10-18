@@ -3,6 +3,15 @@
 // a free-text input when the array is empty.
 
 export const COUNTRY_STATES = {
+  "Kenya": [
+    "Baringo","Bomet","Bungoma","Busia","Elgeyo-Marakwet","Embu","Garissa","Homa Bay",
+    "Isiolo","Kajiado","Kakamega","Kericho","Kiambu","Kilifi","Kirinyaga","Kisii",
+    "Kisumu","Kitui","Kwale","Laikipia","Lamu","Machakos","Makueni","Mandera",
+    "Marsabit","Meru","Migori","Mombasa","Murang'a","Nairobi","Nakuru","Nandi",
+    "Narok","Nyamira","Nyandarua","Nyeri","Samburu","Siaya","Taita-Taveta",
+    "Tana River","Tharaka-Nithi","Trans Nzoia","Turkana","Uasin Gishu","Vihiga",
+    "Wajir","West Pokot",
+  ],
   "India": [
     "Andaman and Nicobar Islands","Andhra Pradesh","Arunachal Pradesh","Assam","Bihar",
     "Chandigarh","Chhattisgarh","Dadra and Nagar Haveli and Daman and Diu","Delhi",

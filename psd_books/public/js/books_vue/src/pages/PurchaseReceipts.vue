@@ -233,6 +233,18 @@
                   <div class="pr-info-lbl">Purchase Order</div>
                   <div class="pr-info-val pr-info-link"><DocLink doctype="Purchase Order" :name="viewDoc.purchase_order" /></div>
                 </div>
+                <div v-if="viewDoc.supplier_delivery_note" class="pr-info-item">
+                  <div class="pr-info-lbl">Supplier DN No.</div>
+                  <div class="pr-info-val">{{ viewDoc.supplier_delivery_note }}</div>
+                </div>
+                <div v-if="viewDoc.vehicle_no" class="pr-info-item">
+                  <div class="pr-info-lbl">Vehicle No.</div>
+                  <div class="pr-info-val">{{ viewDoc.vehicle_no }}</div>
+                </div>
+                <div v-if="viewDoc.driver_name || viewDoc.driver_id_no" class="pr-info-item">
+                  <div class="pr-info-lbl">Driver</div>
+                  <div class="pr-info-val">{{ viewDoc.driver_name||'—' }}<span v-if="viewDoc.driver_id_no"> (ID {{ viewDoc.driver_id_no }})</span></div>
+                </div>
                 <div v-if="viewDoc.remarks" class="pr-info-item pr-info-full">
                   <div class="pr-info-lbl">Remarks</div>
                   <div class="pr-info-val" style="color:#6b7280">{{ viewDoc.remarks }}</div>
@@ -367,6 +379,22 @@
                   <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…"
                     :createable="true" :staticCreate="true" createLabel="+ Create Warehouse" createDoctype="Warehouse" @search="fetchWarehouses" @open="fetchWarehouses('')" @create="fetchWarehouses('')" />
                 </div>
+                <div>
+                  <label class="inv-lbl">Supplier Delivery Note No.</label>
+                  <input class="inv-fi" v-model="form.supplier_delivery_note" maxlength="140" placeholder="Supplier's DN number" />
+                </div>
+                <div>
+                  <label class="inv-lbl">Vehicle No.</label>
+                  <input class="inv-fi" v-model="form.vehicle_no" maxlength="140" placeholder="e.g. KDA 123A" />
+                </div>
+                <div>
+                  <label class="inv-lbl">Driver Name</label>
+                  <input class="inv-fi" v-model="form.driver_name" maxlength="140" placeholder="Driver's full name" />
+                </div>
+                <div>
+                  <label class="inv-lbl">Driver ID No.</label>
+                  <input class="inv-fi" v-model="form.driver_id_no" maxlength="140" placeholder="National ID / passport" />
+                </div>
                 <div style="grid-column:1/-1">
                   <label class="inv-lbl">Remarks</label>
                   <textarea class="inv-fi" v-model="form.remarks" rows="2" maxlength="500" placeholder="Optional remarks" style="resize:vertical"></textarea>
@@ -438,7 +466,10 @@
                       <div class="po-item-num-row">
                         <div class="po-item-field">
                           <label>Qty <span class="inv-req">*</span></label>
-                          <input class="inv-fi" type="number" v-model.number="it.qty" placeholder="1" min="0.01" step="0.01"/>
+                          <input class="inv-fi" type="number" v-model.number="it.qty" placeholder="1" min="0.01" :max="it.po_pending || undefined" step="0.01"/>
+                          <div v-if="it.po_qty" class="exp-field-hint" :class="{'exp-field-hint-err': flt(it.qty) > flt(it.po_pending) + 0.0001}">
+                            Ordered {{ it.po_qty }} · Received {{ it.po_received }} · Pending {{ it.po_pending }}
+                          </div>
                         </div>
                         <div class="po-item-field">
                           <label>Accepted Qty</label>
@@ -563,7 +594,7 @@ const collapsed = reactive({ details: false, receiving: false, items: false });
 
 const form = reactive({
   supplier: "", supplier_name: "", posting_date: new Date().toISOString().slice(0,10),
-  purchase_order: "", set_warehouse: "", project: "", remarks: "", items: [],
+  purchase_order: "", set_warehouse: "", project: "", remarks: "", supplier_delivery_note: "", vehicle_no: "", driver_name: "", driver_id_no: "", items: [],
 });
 
 const counts = computed(() => ({
@@ -760,7 +791,7 @@ async function confirmAction() {
 function resetForm() {
   Object.assign(form, {
     supplier: "", supplier_name: "", posting_date: new Date().toISOString().slice(0,10),
-    purchase_order: "", set_warehouse: "", project: "", remarks: "", items: [],
+    purchase_order: "", set_warehouse: "", project: "", remarks: "", supplier_delivery_note: "", vehicle_no: "", driver_name: "", driver_id_no: "", items: [],
   });
 }
 
@@ -796,6 +827,10 @@ async function openEdit(r) {
       set_warehouse:  doc.set_warehouse || "",
       project:        doc.project || "",
       remarks:        doc.remarks || "",
+      supplier_delivery_note: doc.supplier_delivery_note || "",
+      vehicle_no:     doc.vehicle_no || "",
+      driver_name:    doc.driver_name || "",
+      driver_id_no:   doc.driver_id_no || "",
       items: [],
     });
     fetchProjects("", doc.project || "");
@@ -898,6 +933,11 @@ async function onPOSelect(opt) {
       const p = pr?.[0]?.project;
       if (p) { form.project = p; fetchProjects("", p); }
     }
+    if (!form.supplier) {
+      const ps = await apiList("Purchase Order", { fields: ["name", "supplier", "supplier_name"], filters: [["name", "=", poName]], limit: 1 });
+      const sp = ps?.[0];
+      if (sp?.supplier) { form.supplier = sp.supplier; form.supplier_name = sp.supplier_name || sp.supplier; fetchVendors(""); }
+    }
   } catch {}
   try {
     const res = await apiGET("psd_books.api.docs.get_purchase_order_fulfillment", { purchase_order: poName });
@@ -910,6 +950,7 @@ async function onPOSelect(opt) {
         qty:          flt(it.remaining_to_receive) || flt(it.qty) || 1,
         accepted_qty: flt(it.remaining_to_receive) || flt(it.qty) || 1,
         uom:          it.uom || "Nos",
+        po_qty: flt(it.qty), po_received: flt(it.received_qty), po_pending: flt(it.remaining_to_receive),
         has_batch_no: 0, batch_no: "", manufacturing_date: "", expiry_date: "", batchOptions: [], collapsedUI: false,
       }));
       // Resolve has_batch_no per item so the Batch No field shows up for
@@ -1069,6 +1110,10 @@ async function saveGRN(submit) {
       set_warehouse: form.set_warehouse || null,
       project: form.project || null,
       remarks: form.remarks || "",
+      supplier_delivery_note: form.supplier_delivery_note || "",
+      vehicle_no: form.vehicle_no || "",
+      driver_name: form.driver_name || "",
+      driver_id_no: form.driver_id_no || "",
       items: usable.map(it => {
         const rowQty = parseFloat(it.qty) || 1;
         const rawAccepted = parseFloat(it.accepted_qty);

@@ -453,7 +453,7 @@ def get_invoice_email_defaults(invoice_name):
             f"Please find your invoice <b>{inv.name}</b> details below:<br><br>"
             f"<table style='border-collapse:collapse;font-size:14px'>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Invoice #</td><td><b>{inv.name}</b></td></tr>"
-            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{inv.grand_total:,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>KES {inv.grand_total:,.2f}</b></td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Due Date</td><td>{inv.due_date}</td></tr>"
             f"</table><br>"
             f"Kindly make the payment by the due date.<br><br>"
@@ -963,6 +963,11 @@ def delete_doc(doctype, name):
     from psd_books.utils.access import assert_can
     assert_can(doctype, "delete")
 
+    # A10: a Purchase Order pending approval can't be deleted, whatever the screen shows.
+    if doctype == "Purchase Order":
+        from psd_books.invoicing.po_approval_rules import assert_deletable
+        assert_deletable(frappe.db.get_value("Purchase Order", name, "status"))
+
     # force=True bypasses before_delete hooks, so we run the lock check explicitly
     # before handing off to Frappe's delete path.
     from psd_books.accounts.central_validator import assert_not_locked
@@ -1217,7 +1222,7 @@ def get_bill_email_defaults(bill_name):
             f"Please find your bill <b>{bill.name}</b> details below:<br><br>"
             f"<table style='border-collapse:collapse;font-size:14px'>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Bill #</td><td><b>{bill.name}</b></td></tr>"
-            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{bill.grand_total:,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>KES {bill.grand_total:,.2f}</b></td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Due Date</td><td>{bill.due_date or '—'}</td></tr>"
             f"</table><br>"
             f"Regards,<br>{bill.company or ''}"
@@ -1304,7 +1309,7 @@ def get_bill_payment_defaults(bill_name):
         "supplier": bill.supplier,
         "grand_total": flt(bill.grand_total),
         "balance_due": outstanding,
-        "currency": bill.currency or "INR",
+        "currency": bill.currency or "KES",
         "payment_date": today(),
         "bank_accounts": bank_accounts,
         "payment_modes": payment_modes,
@@ -1353,7 +1358,7 @@ def record_vendor_payment(bill_name, amount_paid=None, payment_date=None,
         "paid_from": bank,
         "paid_to": ap,
         "paid_amount": amount,
-        "currency": bill.currency or "INR",
+        "currency": bill.currency or "KES",
         "received_amount": amount,
         "source_exchange_rate": 1,
         "target_exchange_rate": 1,
@@ -1464,7 +1469,7 @@ def record_vendor_payment_multi(
             )
         bills[bill.name] = (bill, outstanding)
         company = company or (bill.company or _get_company(frappe.session.user))
-        currency = currency or (bill.currency or "INR")
+        currency = currency or (bill.currency or "KES")
 
     # Fiscal year lock — block payments into a locked or closed period
     validate_fiscal_year(payment_date, company)
@@ -1498,7 +1503,7 @@ def record_vendor_payment_multi(
     pe.received_amount        = amount
     pe.source_exchange_rate   = 1
     pe.target_exchange_rate   = 1
-    pe.currency                = currency or "INR"
+    pe.currency                = currency or "KES"
     pe.reference_no           = reference_no or f"PMT-{supplier}-{len(clean_allocations)}bills"
     pe.reference_date         = payment_date
     bill_list_str              = ", ".join(bills.keys())
@@ -2637,7 +2642,7 @@ def get_credit_note_email_defaults(credit_note_name):
             f"Please find your credit note <b>{cn.name}</b> details below:<br><br>"
             f"<table style='border-collapse:collapse;font-size:14px'>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Credit Note #</td><td><b>{cn.name}</b></td></tr>"
-            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{abs(cn.grand_total):,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>KES {abs(cn.grand_total):,.2f}</b></td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{cn.posting_date}</td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Against Invoice</td><td>{cn.return_against or '—'}</td></tr>"
             f"</table><br>"
@@ -2708,7 +2713,7 @@ def get_debit_note_email_defaults(debit_note_name):
             f"Please find your debit note <b>{dn.name}</b> details below:<br><br>"
             f"<table style='border-collapse:collapse;font-size:14px'>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Debit Note #</td><td><b>{dn.name}</b></td></tr>"
-            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{abs(dn.grand_total):,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>KES {abs(dn.grand_total):,.2f}</b></td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{dn.posting_date}</td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Against Bill</td><td>{dn.return_against or '—'}</td></tr>"
             f"</table><br>"
@@ -3413,7 +3418,7 @@ def get_quote_email_defaults(quotation_name):
             f"Please find your quotation <b>{qd.name}</b> details below:<br><br>"
             f"<table style='border-collapse:collapse;font-size:14px'>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Quotation #</td><td><b>{qd.name}</b></td></tr>"
-            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{qd.grand_total:,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>KES {qd.grand_total:,.2f}</b></td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Date</td><td>{qd.transaction_date}</td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Valid Till</td><td>{qd.valid_till or '—'}</td></tr>"
             f"</table><br>"
@@ -3889,7 +3894,7 @@ def get_sales_order_email_defaults(sales_order):
             f"Confirmation of your Sales Order:<br><br>"
             f"<table style='border-collapse:collapse;font-size:14px'>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order #</td><td><b>{so.name}</b></td></tr>"
-            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{so.grand_total:,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>KES {so.grand_total:,.2f}</b></td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order Date</td><td>{so.transaction_date}</td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Delivery Date</td><td>{so.delivery_date or '—'}</td></tr>"
             f"</table><br>"
@@ -3967,7 +3972,7 @@ def get_purchase_order_fulfillment(purchase_order):
         frappe.throw("Not permitted", frappe.PermissionError)
     rows = frappe.get_all("Purchase Order Item",
         filters={"parent": purchase_order},
-        fields=["name", "item_code", "item_name", "qty", "rate", "amount",
+        fields=["name", "item_code", "item_name", "qty", "uom", "rate", "amount",
                 "received_qty", "billed_qty"],
         order_by="idx asc")
     for r in rows:
@@ -4235,10 +4240,18 @@ def cancel_purchase_order_safe(purchase_order):
             f"Cancel those bills first."
         )
     po = frappe.get_doc("Purchase Order", purchase_order)
+    from psd_books.invoicing import po_approval_rules as _po_rules
+    if po.docstatus == 0 and po.status == _po_rules.PENDING_APPROVAL:
+        frappe.throw("This Purchase Order is pending approval. Cancel it with a reason from the "
+                     "Purchase Order screen (the person who sent it, or an approver of the pending level).")
     if po.docstatus == 1:
         po.flags.ignore_permissions = True
         po.cancel()
     else:
+        # A Sent Back PO still has untouched later levels: close them with the PO.
+        for _row in _po_rules.cancel_open_steps(po):
+            frappe.db.set_value("Purchase Order Approval", _row.name, "status", _po_rules.STEP_CANCELLED,
+                                update_modified=False)
         frappe.db.set_value("Purchase Order", purchase_order, "status", "Cancelled",
                             update_modified=True)
     frappe.db.commit()
@@ -4271,7 +4284,7 @@ def get_purchase_order_email_defaults(purchase_order):
             f"Please find our Purchase Order:<br><br>"
             f"<table style='border-collapse:collapse;font-size:14px'>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>PO #</td><td><b>{po.name}</b></td></tr>"
-            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>₹{po.grand_total:,.2f}</b></td></tr>"
+            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>KES {po.grand_total:,.2f}</b></td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order Date</td><td>{po.transaction_date}</td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Expected Delivery</td><td>{po.expected_delivery_date or '—'}</td></tr>"
             f"</table><br>"
@@ -4498,11 +4511,11 @@ def get_vendor_email_defaults(vendor):
         f"Please find your account statement below.<br><br>"
         f"<table style='border-collapse:collapse;font-size:14px'>"
         f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Total Outstanding</td>"
-        f"<td><b>₹{summary['outstanding']:,.2f}</b></td></tr>"
+        f"<td><b>KES {summary['outstanding']:,.2f}</b></td></tr>"
         f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Open Bills</td>"
         f"<td>{summary['open_bill_count']}</td></tr>"
         f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Unused Debit-Note Credits</td>"
-        f"<td>₹{summary['dn_credit']:,.2f}</td></tr>"
+        f"<td>KES {summary['dn_credit']:,.2f}</td></tr>"
         f"</table><br>"
         f"Regards,<br>{v.books_company or ''}"
     )
@@ -4744,11 +4757,11 @@ def get_customer_email_defaults(customer):
         f"Please find your account statement below.<br><br>"
         f"<table style='border-collapse:collapse;font-size:14px'>"
         f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Total Outstanding</td>"
-        f"<td><b>₹{summary['outstanding']:,.2f}</b></td></tr>"
+        f"<td><b>KES {summary['outstanding']:,.2f}</b></td></tr>"
         f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Open Invoices</td>"
         f"<td>{summary['open_invoice_count']}</td></tr>"
         f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Available Credit Notes</td>"
-        f"<td>₹{summary['cn_credit']:,.2f}</td></tr>"
+        f"<td>KES {summary['cn_credit']:,.2f}</td></tr>"
         f"</table><br>"
         f"Kindly settle the open invoices at your earliest.<br><br>"
         f"Regards,<br>{c.books_company or ''}"

@@ -870,7 +870,8 @@
               <div style="display:flex;min-width:0">
                 <select v-model="form.mobile_code" style="width:85px;flex-shrink:0;flex-grow:0;border:1px solid #d1d5db;border-right:none;border-top-right-radius:0;border-bottom-right-radius:0;border-top-left-radius:6px;border-bottom-left-radius:6px;text-align:center;background:#f9fafb;padding:0 5px;font-size:13px;height:38px;outline:none"
                   @change="delete formErrors.mobile_no; if(form.mobile_no) validateField('mobile_no')">
-                  <option value="+91">🇮🇳 +91</option>
+                  <option value="+254">🇰🇪 +254</option>
+                    <option value="+91">🇮🇳 +91</option>
                   <option value="+1">🇺🇸 +1</option>
                   <option value="+44">🇬🇧 +44</option>
                   <option value="+61">🇦🇺 +61</option>
@@ -998,7 +999,7 @@
             <div>
               <label class="inv-lbl">Default Currency</label>
               <select v-model="form.default_currency" class="inv-fi" style="cursor:pointer">
-                <option>KES</option><option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SGD</option>
+                <option>KES</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>SGD</option>
               </select>
             </div>
           </div>
@@ -1006,7 +1007,7 @@
           <div class="inv-sec-lbl">Opening Balance</div>
           <div class="cus-form-grid2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px">
             <div>
-              <label class="inv-lbl">Opening Balance (₹)</label>
+              <label class="inv-lbl">Opening Balance (KES)</label>
               <input v-model.number="form.opening_balance" type="number" min="0" class="inv-fi" placeholder="0.00"
                 :style="formErrors.opening_balance?'border-color:#dc2626;background:#fff5f5':''"
                 @input="delete formErrors.opening_balance"
@@ -1243,7 +1244,7 @@ const form = reactive({
   supplier_name: "", supplier_type: "Company",
   supplier_group: "",
   tax_id: "", default_currency: "KES", payment_terms: "",
-  email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
+  email_id: "", mobile_code: "+254", mobile_no: "", phone: "", website: "",
   address_line1: "", address_line2: "",
   city: "", state: "", pincode: "", country: "Kenya",
   ship_address_line1: "", ship_address_line2: "",
@@ -1337,7 +1338,7 @@ function resetForm() {
     owner: "", creation: "", modified: "", modified_by: "",
     supplier_group: "",
     tax_id: "", default_currency: "KES", payment_terms: "",
-    email_id: "", mobile_code: "+91", mobile_no: "", phone: "", website: "",
+    email_id: "", mobile_code: "+254", mobile_no: "", phone: "", website: "",
     address_line1: "", address_line2: "",
     city: "", state: "", pincode: "", country: "Kenya",
     ship_address_line1: "", ship_address_line2: "",
@@ -1395,7 +1396,7 @@ async function openEdit(name) {
       default_currency: doc.default_currency || "KES",
       payment_terms: doc.payment_terms || "",
       email_id: doc.email_id || "",
-      mobile_code: mno.startsWith("+") && mno.includes(" ") ? mno.split(" ")[0] : "+91",
+      mobile_code: mno.startsWith("+") && mno.includes(" ") ? mno.split(" ")[0] : "+254",
       mobile_no:   mno.startsWith("+") && mno.includes(" ") ? mno.substring(mno.indexOf(" ") + 1) : mno,
       phone: doc.phone || "",
       website: doc.website || "",
@@ -2039,7 +2040,7 @@ function vendorInitials(name) {
   return (name || "?").split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
 }
 function fmtCur(v) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(Number(v || 0));
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "KES", minimumFractionDigits: 2 }).format(Number(v || 0));
 }
 
 async function loadAllBalances() {

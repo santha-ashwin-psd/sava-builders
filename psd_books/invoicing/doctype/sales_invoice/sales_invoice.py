@@ -262,7 +262,7 @@ class SalesInvoice(Document):
                     frappe.throw(_(
                         "Cannot submit Credit Note {0}: the Sales Invoice {1} "
                         "already has its claimable value fully used "
-                        "(remaining: ₹{2:,.2f}, this note: ₹{3:,.2f})."
+                        "(remaining: KES {2:,.2f}, this note: KES {3:,.2f})."
                     ).format(
                         self.name,
                         self.return_against,
@@ -461,7 +461,7 @@ class SalesInvoice(Document):
             ).format(self.name, ", ".join(r.parent for r in linked)))
 
     def _get_currency_symbol(self):
-        cur = self.currency or "INR"
+        cur = self.currency or "KES"
         sym = frappe.db.get_value("Currency", cur, "symbol")
         return sym or (cur + " ")
 
@@ -472,7 +472,7 @@ class SalesInvoice(Document):
             frappe.throw(_("Customer {0} has no email").format(self.customer))
 
         sym = self._get_currency_symbol()
-        cur = self.currency or "INR"
+        cur = self.currency or "KES"
         subject = f"Invoice {self.name} ({cur})"
         body = (
             f"Dear {self.customer_name},<br><br>"

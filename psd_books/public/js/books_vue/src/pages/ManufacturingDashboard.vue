@@ -182,7 +182,7 @@ function progressPct(wo) {
   return Math.min(100, Math.round(((parseFloat(wo.produced_qty) || 0) / qty) * 100));
 }
 function fmtNum(n) {
-  return (parseFloat(n) || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  return (parseFloat(n) || 0).toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 // A Completed WO with produced_qty short of qty and process_loss_qty
 // covering the difference was finished via loss reconciliation rather

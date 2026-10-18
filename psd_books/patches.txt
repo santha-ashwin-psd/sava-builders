@@ -127,3 +127,5 @@ psd_books.patches.v1_20.delete_gst_tax_templates
 
 # Sava A9.4: create the approval roles Purchase Manager, Finance, Director. Safe to re-run.
 psd_books.patches.v1_21.create_approval_roles
+# Sava KES step 3: KES base currency on the company, accounts and default price lists. Safe to re-run.
+psd_books.patches.v1_22.set_company_currency_kes

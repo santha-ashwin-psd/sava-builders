@@ -45,7 +45,7 @@ const { state, _ok, _cancel } = useConfirmCascade();
 
 function fmt(v) {
   if (v == null) return "—";
-  return "₹" + Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return "KES " + Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 </script>
 

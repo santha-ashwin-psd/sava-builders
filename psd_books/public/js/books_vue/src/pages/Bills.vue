@@ -42,7 +42,7 @@
 
     <!-- ── Bulk action bar ── -->
     <BulkActionBar :count="selected.size" @clear="selected=new Set()">
-      <button @click="bulkPayment" :disabled="!$canCreate('payments')" :title="!$canCreate('payments') ? 'Read-only access' : ''">₹ Pay Vendor</button>
+      <button @click="bulkPayment" :disabled="!$canCreate('payments')" :title="!$canCreate('payments') ? 'Read-only access' : ''">Pay Vendor</button>
       <button @click="bulkEmail" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''"><span v-html="icon('mail',13)"></span> Send Email</button>
       <button @click="bulkCancel" :disabled="!$canDelete('bills')" :title="!$canDelete('bills') ? 'Not permitted' : ''">Cancel Submitted</button>
       <button class="bab-danger" @click="bulkDelete" :disabled="!$canDelete('bills')" :title="!$canDelete('bills') ? 'Not permitted' : ''">Delete Drafts</button>
@@ -91,7 +91,7 @@
 >
   <span v-html="icon('edit',13)"></span>
 </button>
-                <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="inv-act-btn inv-act-pay" :disabled="!$canCreate('payments')" @click="payBill(b)" :title="!$canCreate('payments') ? 'Read-only access' : 'Record Payment'">₹</button>
+                <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="inv-act-btn inv-act-pay" :disabled="!$canCreate('payments')" @click="payBill(b)" :title="!$canCreate('payments') ? 'Read-only access' : 'Record Payment'">Pay</button>
                 <button v-if="b.docstatus===0 || b.docstatus===2" class="inv-act-btn bill-act-del" :disabled="!$canDelete('bills')" @click="deleteBill(b)" :title="!$canDelete('bills') ? 'Not permitted' : 'Delete'"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
@@ -187,7 +187,7 @@
 >
   <span v-html="icon('edit',13)"></span>
 </button>
-                <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="inv-act-btn inv-act-pay" :disabled="!$canCreate('payments')" @click.stop="payBill(b)" :title="!$canCreate('payments') ? 'Read-only access' : 'Record Payment'">₹</button>
+                <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="inv-act-btn inv-act-pay" :disabled="!$canCreate('payments')" @click.stop="payBill(b)" :title="!$canCreate('payments') ? 'Read-only access' : 'Record Payment'">Pay</button>
                 <button v-if="b.docstatus===0||b.docstatus===2" class="inv-act-btn" style="color:#dc2626" :disabled="!$canDelete('bills')" @click.stop="deleteBill(b)" :title="!$canDelete('bills') ? 'Not permitted' : 'Delete'"><span v-html="icon('trash',13)"></span></button>
               </div>
             </div>
@@ -276,7 +276,7 @@
                     <option v-for="cc in costCenters" :key="cc" :value="cc">{{ cc }}</option>
                   </select>
                 </div>
-                <div>
+                <div v-if="SHOW_PLACE_OF_SUPPLY">
                   <label class="inv-lbl">Place of Supply</label>
                   <select v-model="form.place_of_supply" class="inv-fi" :disabled="billEditMode === 'submitted'">
                     <option value="">— Select State —</option>
@@ -371,9 +371,9 @@
                     <th class="th-item">ITEM NAME &amp; DESCRIPTION</th>
                     <th class="th-hsn">HSN/SAC</th>
                     <th class="th-uom">UOM</th>
-                    <th class="th-mrp">MRP (₹)</th>
+                    <th class="th-mrp">MRP (KES)</th>
                     <th class="th-qty">QTY</th>
-                    <th class="th-rate">RATE (₹)</th>
+                    <th class="th-rate">RATE (KES)</th>
                     <th class="th-disc">DISC %</th>
                     <th class="th-tax">TAX TEMPLATE</th>
                     <th class="th-batch">BATCH NO</th>
@@ -465,7 +465,7 @@
                   <span style="display:flex;gap:6px;align-items:center;justify-content:flex-end">
                     <select v-model="form.discount_type" class="inv-fi" style="width:74px;padding:2px 4px">
                       <option value="Percentage">%</option>
-                      <option value="Amount">₹</option>
+                      <option value="Amount">KES</option>
                     </select>
                     <input
                       v-if="form.discount_type==='Percentage'"
@@ -713,14 +713,14 @@
                           <th>Item &amp; Description</th>
                           <th>HSN/SAC</th>
                           <th>UOM</th>
-                          <th class="th-r">MRP (₹)</th>
+                          <th class="th-r">MRP (KES)</th>
                           <th class="th-r">Qty</th>
-                          <th class="th-r">Rate (₹)</th>
+                          <th class="th-r">Rate (KES)</th>
                           <th class="th-r">Disc %</th>
                           <th>Batch No</th>
                           <th>Exp Date</th>
                           <th>Tax Template</th>
-                          <th class="th-r">Amount (₹)</th>
+                          <th class="th-r">Amount (KES)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -794,7 +794,7 @@
                   <span style="color:#6b7280;font-weight:600">Cost Center:</span>
                   <span style="background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;border-radius:5px;padding:2px 10px;font-weight:600">{{ viewDoc.cost_center }}</span>
                 </div>
-                <div v-if="viewDoc.place_of_supply" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px">
+                <div v-if="SHOW_PLACE_OF_SUPPLY && viewDoc.place_of_supply" style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12.5px">
                   <span style="color:#6b7280;font-weight:600">Place of Supply:</span>
                   <span style="background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;border-radius:5px;padding:2px 10px;font-weight:600">{{ viewDoc.place_of_supply }}</span>
                 </div>
@@ -910,7 +910,7 @@
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="1.3" style="margin-bottom:10px"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                   <div>No payments recorded yet.</div>
                   <div v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1" style="margin-top:12px">
-                    <button class="inv-view-cta" :disabled="!$canCreate('payments')" :title="!$canCreate('payments') ? 'Read-only access' : ''" @click="payBill(viewDoc)" style="font-size:12px;padding:7px 14px">₹ Record Payment</button>
+                    <button class="inv-view-cta" :disabled="!$canCreate('payments')" :title="!$canCreate('payments') ? 'Read-only access' : ''" @click="payBill(viewDoc)" style="font-size:12px;padding:7px 14px">Record Payment</button>
                   </div>
                 </div>
               </template>
@@ -924,7 +924,7 @@
                 voucher-type="Purchase Invoice"
                 :voucher-no="viewDoc.name"
                 label="Bill"
-                :currency="viewDoc.currency || 'INR'"
+                :currency="viewDoc.currency || 'KES'"
               />
             </div>
           </template>
@@ -1035,6 +1035,7 @@ import JournalTab from "../components/JournalTab.vue";
 import DocLink from "../components/DocLink.vue";
 
 const TDS_RATES = { "194C": 1, "194J": 10, "194A": 10, "194H": 5, "194I": 10, "192": 0, "195": 20, "Other": 10 };
+const SHOW_PLACE_OF_SUPPLY = false; // Kenya VAT is flat; set true only if GST-type templates are used again
 const INDIAN_STATES = [
   "01-Jammu and Kashmir","02-Himachal Pradesh","03-Punjab","04-Chandigarh","05-Uttarakhand",
   "06-Haryana","07-Delhi","08-Rajasthan","09-Uttar Pradesh","10-Bihar","11-Sikkim",
@@ -1138,13 +1139,13 @@ const copyingLast = ref(false);
 
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", item_name: "", description: "", hsn_code: "", qty: 1, rate: 0, uom: "Nos", _standardRate: 0, discount_percentage: 0, discount_amount: 0, amount: 0, tax_code: "", expense_account: "", collapsed: false, has_batch_no: 0, batch_no: "", batch_expiry_date: "", batchOptions: [], _batchQty: null });
-const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", project: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "33-Tamil Nadu", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
+const form = reactive({ supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "KES", exchange_rate: 1, update_stock: 1, set_warehouse: "", project: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
 const vendorAddresses = ref([]);
 const { projects, fetchProjects } = useProjectOptions();
 const addrModal = reactive({
   open: false, saving: false,
   address_title: "", address_type: "Billing", address_line1: "", address_line2: "",
-  city: "", state: "", pincode: "", country: "India",
+  city: "", state: "", pincode: "", country: "Kenya",
 });
 
 function formatAddress(a) {
@@ -1181,7 +1182,7 @@ function onBillingAddrSelect(opt) {
   form.billing_address = opt ? formatAddress(opt) : "";
 }
 function openAddrModal() {
-  Object.assign(addrModal, { open: true, saving: false, address_title: "", address_type: "Billing", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
+  Object.assign(addrModal, { open: true, saving: false, address_title: "", address_type: "Billing", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "Kenya" });
 }
 
 async function saveNewAddress() {
@@ -1194,7 +1195,7 @@ async function saveNewAddress() {
       address_title: addrModal.address_title, address_type: addrModal.address_type,
       address_line1: addrModal.address_line1, address_line2: addrModal.address_line2 || "",
       city: addrModal.city || "", state: addrModal.state || "",
-      pincode: addrModal.pincode || "", country: addrModal.country || "India",
+      pincode: addrModal.pincode || "", country: addrModal.country || "Kenya",
       links: form.supplier ? [{ doctype: "Address", link_doctype: "Supplier", link_name: form.supplier }] : [],
     };
     const saved = await apiSave(doc);
@@ -1213,7 +1214,7 @@ async function fetchCostCenters(){try{const co=await resolveCompany();const r=aw
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function fmtCur(v) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(Math.abs(flt(v)));
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "KES", minimumFractionDigits: 2 }).format(Math.abs(flt(v)));
 }
 
 async function load() {
@@ -1373,7 +1374,7 @@ const timelineSteps = computed(() => {
 function openNew() {
   billEditMode.value = "normal";
   editingName.value = "";
-  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", project: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "33-Tamil Nadu", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
+  Object.assign(form, { supplier: "", posting_date: todayStr(), due_date: "", bill_no: "", bill_date: "", remarks: "", currency: "KES", exchange_rate: 1, update_stock: 1, set_warehouse: "", project: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
   vendorAddresses.value = [];
   lines.value = [blankLine()];
   Object.assign(billCollapsed, { details: false, billing: true, lines: false, remarks: true });
@@ -1384,7 +1385,7 @@ async function openEdit(b, fromView = false) {
   reopenViewAfterSave.value = fromView;
   billEditMode.value = b.docstatus === 1 ? "submitted" : "normal";
   editingName.value = b.name;
-  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", remarks: b.remark || "", currency: "INR", exchange_rate: 1, update_stock: 1, set_warehouse: "", project: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "33-Tamil Nadu", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
+  Object.assign(form, { supplier: b.supplier || "", posting_date: b.posting_date || todayStr(), due_date: b.due_date || "", bill_no: b.bill_no || "", bill_date: b.bill_date || "", remarks: b.remark || "", currency: "KES", exchange_rate: 1, update_stock: 1, set_warehouse: "", project: "", billing_address: "", billing_address_name: "", cost_center: "", place_of_supply: "", tds_applicable: false, tds_section: "", tds_rate: 0, discount_type: "Percentage", additional_discount_percentage: 0, additional_discount_amount: 0 });
   vendorAddresses.value = [];
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems(""); fetchWarehouses(""); fetchProjects("", b.project || "");
@@ -1556,7 +1557,7 @@ async function fetchItems(q = "") {
   } catch { items.value = []; }
 }
 watch(() => form.supplier, async (name) => {
-  if (!name) { form.tds_applicable = false; form.tds_section = ""; form.tds_rate = 0; form.place_of_supply = "33-Tamil Nadu"; return; }
+  if (!name) { form.tds_applicable = false; form.tds_section = ""; form.tds_rate = 0; form.place_of_supply = ""; return; }
   try {
     const doc = await apiGET("psd_books.api.docs.get_doc", { doctype: "Supplier", name });
     // Vendors here don't reliably carry a State field, and falling back to ""
@@ -1565,7 +1566,7 @@ watch(() => form.supplier, async (name) => {
     // Default to Tamil Nadu — same fixed default Invoices.vue uses for
     // place_of_supply — so an unset vendor state is treated as intra-state.
     // This is just the auto-fill; the field itself is user-editable below.
-    form.place_of_supply = matchIndianState(doc?.state) || matchIndianState(stateFromGstin(doc?.tax_id)) || "33-Tamil Nadu";
+    form.place_of_supply = matchIndianState(doc?.state) || matchIndianState(stateFromGstin(doc?.tax_id)) || "";
     if (doc?.tds_applicable) {
       form.tds_applicable = true;
       form.tds_section = doc.tds_section || "";
@@ -1682,7 +1683,7 @@ function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
 function fmtN(n) {
   if (n == null) return '—';
-  return Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function lineConversionHint(line) {
   const stockUom = line._stock_uom;
@@ -1735,7 +1736,7 @@ const taxLines = computed(() =>
 const taxAmount = computed(() => taxLines.value.reduce((s, t) => s + t.amount, 0));
 const tdsAmount = computed(() => form.tds_applicable && form.tds_rate > 0 ? Math.round(netTotal.value * form.tds_rate / 100 * 100) / 100 : 0);
 // GST rule (Sec 170, CGST Act): the total is rounded off to the nearest
-// rupee, with the adjustment shown as its own "Round Off" line — mirrors
+// shilling, with the adjustment shown as its own "Round Off" line — mirrors
 // Invoices.vue's preRoundTotal/roundOff, and keeps this preview in sync
 // with what purchase_invoice.py's calculate_totals() will actually save.
 const preRoundTotal = computed(() => netTotal.value + taxAmount.value - tdsAmount.value);
@@ -1862,8 +1863,8 @@ async function saveBill(submit) {
       project: form.project || null,
       cost_center: form.cost_center || "",
       place_of_supply: form.place_of_supply || "",
-      currency: form.currency || "INR",
-      conversion_rate: form.currency === "INR" ? 1 : (form.exchange_rate || 1),
+      currency: form.currency || "KES",
+      conversion_rate: form.currency === "KES" ? 1 : (form.exchange_rate || 1),
       discount_type: form.discount_type || "Percentage",
       additional_discount_percentage: form.discount_type === "Percentage" ? flt(form.additional_discount_percentage) : 0,
       additional_discount_amount: flt(discountAmount.value),

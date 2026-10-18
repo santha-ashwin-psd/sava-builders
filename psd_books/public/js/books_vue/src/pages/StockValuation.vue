@@ -165,8 +165,8 @@ function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db
 const totalValue=computed(()=>list.value.reduce((s,i)=>s+flt(i.stock_value),0));
 const totalQty=computed(()=>list.value.reduce((s,i)=>s+flt(i.actual_qty),0));
 const zeroStock=computed(()=>list.value.filter(i=>flt(i.actual_qty)<=0).length);
-function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
-function fmtQty(v){return Number(flt(v)).toLocaleString("en-IN",{maximumFractionDigits:3});}
+function fmtCur(v){return new Intl.NumberFormat("en-US",{style:"currency",currency:"KES",minimumFractionDigits:2}).format(flt(v));}
+function fmtQty(v){return Number(flt(v)).toLocaleString("en-US",{maximumFractionDigits:3});}
 function exportCSV(){
   const rows=sorted.value;
   if(!rows.length)return;

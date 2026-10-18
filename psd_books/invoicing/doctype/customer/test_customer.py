@@ -2,7 +2,7 @@
 # See license.txt
 """
 Tests for Customer (invoicing/doctype/customer/customer.py) -- validate()
-guards (required name, email format, GSTIN format + normalization, the
+guards (required name, email format, KRA PIN format + normalization, the
 opening-balance-edit guard once already-posted), the on_update opening
 balance GL sync (with its deliberate non-blocking failure handling), and
 on_trash's delete guard.
@@ -67,24 +67,29 @@ class TestValidateBasics(unittest.TestCase):
         doc.validate()  # should not raise
 
 
-class TestValidateGstin(unittest.TestCase):
+class TestValidateKraPin(unittest.TestCase):
 
-    def test_valid_gstin_passes_and_is_normalized(self):
-        doc = _make_customer(tax_id=" 29abcde1234f1z5 ")
+    def test_valid_kra_pin_passes_and_is_normalized(self):
+        doc = _make_customer(tax_id=" a123456789z ")
         doc.validate()
-        self.assertEqual(doc.tax_id, "29ABCDE1234F1Z5")
+        self.assertEqual(doc.tax_id, "A123456789Z")
 
-    def test_malformed_gstin_throws(self):
-        doc = _make_customer(tax_id="NOT-A-GSTIN")
+    def test_malformed_kra_pin_throws(self):
+        doc = _make_customer(tax_id="NOT-A-PIN")
         with self.assertRaises(frappe.ValidationError):
             doc.validate()
 
-    def test_wrong_length_gstin_throws(self):
-        doc = _make_customer(tax_id="29ABCDE1234F1Z")  # one char short
+    def test_old_gstin_format_is_rejected(self):
+        doc = _make_customer(tax_id="29ABCDE1234F1Z5")
         with self.assertRaises(frappe.ValidationError):
             doc.validate()
 
-    def test_blank_gstin_skips_check(self):
+    def test_wrong_length_kra_pin_throws(self):
+        doc = _make_customer(tax_id="A12345678Z")  # one digit short
+        with self.assertRaises(frappe.ValidationError):
+            doc.validate()
+
+    def test_blank_kra_pin_skips_check(self):
         doc = _make_customer(tax_id=None)
         doc.validate()  # should not raise
 

@@ -430,7 +430,7 @@
                 class="bomx-field-hint"
                 style="color:var(--bx-amber);margin-bottom:8px"
               >
-                ⚠ Planned Operating Cost is ₹0.00 despite planned time being set — the Operations table likely has no Hour Rate
+                ⚠ Planned Operating Cost is KES 0.00 despite planned time being set — the Operations table likely has no Hour Rate
                 stored (captured as 0 when this was last loaded from the BOM). Click Recalculate to
                 <button type="button" class="bomx-btn-link" style="border:none;background:none;color:var(--bx-mfgB);text-decoration:underline;cursor:pointer;padding:0;font:inherit" :disabled="!$canEdit('inventory')" @click="recalcOperatingCost(true)">re-pull current Workstation hour rates</button>
                 and resync.
@@ -438,11 +438,11 @@
               <div class="bomx-hdr-fields bomx-hf-cols-1-1" style="padding:0;border:none;background:none;margin-bottom:8px">
                 <div>
                   <div class="bomx-hf-label">Planned Operating Cost</div>
-                  <div class="bomx-rm-static" >₹ {{ fmt(wo.planned_operating_cost) }}</div>
+                  <div class="bomx-rm-static" >KES {{ fmt(wo.planned_operating_cost) }}</div>
                 </div>
                 <div>
                   <div class="bomx-hf-label">Actual Operating Cost</div>
-                  <div class="bomx-rm-static" >₹ {{ fmt(wo.actual_operating_cost) }}</div>
+                  <div class="bomx-rm-static" >KES {{ fmt(wo.actual_operating_cost) }}</div>
                 </div>
                 <div>
                   <div class="bomx-hf-label">Additional Operating Cost</div>
@@ -450,7 +450,7 @@
                 </div>
                 <div>
                   <div class="bomx-hf-label">Total Operating Cost</div>
-                  <div class="bomx-rm-static" style="font-weight:700">₹ {{ fmt(totalOperatingCostPreview) }}</div>
+                  <div class="bomx-rm-static" style="font-weight:700">KES {{ fmt(totalOperatingCostPreview) }}</div>
                 </div>
               </div>
             </template>
@@ -628,8 +628,8 @@
                         </div>
                       </div>
                       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap" v-if="flt(se.operating_cost_absorbed) || flt(se.manufacturing_variance_loss)">
-                        <span class="bomx-badge badge-active" v-if="flt(se.operating_cost_absorbed)">Op. Cost Absorbed: ₹ {{ fmt(se.operating_cost_absorbed) }}</span>
-                        <span class="bomx-badge" style="background:var(--bx-redS);color:var(--bx-red)" v-if="flt(se.manufacturing_variance_loss)">Variance Loss: ₹ {{ fmt(se.manufacturing_variance_loss) }}</span>
+                        <span class="bomx-badge badge-active" v-if="flt(se.operating_cost_absorbed)">Op. Cost Absorbed: KES {{ fmt(se.operating_cost_absorbed) }}</span>
+                        <span class="bomx-badge" style="background:var(--bx-redS);color:var(--bx-red)" v-if="flt(se.manufacturing_variance_loss)">Variance Loss: KES {{ fmt(se.manufacturing_variance_loss) }}</span>
                       </div>
                       <!-- Only the most recent submitted Manufacture entry is reversible
                            (reverse_manufacture_entry enforces this server-side too, to keep
@@ -663,38 +663,38 @@
               <div class="bomx-cost-card">
                 <div class="bomx-cost-card-hdr">
                   <span>Cost Breakdown</span>
-                  <span class="bomx-cost-total-pill">₹ {{ fmt(plannedCostShown) }}</span>
+                  <span class="bomx-cost-total-pill">KES {{ fmt(plannedCostShown) }}</span>
                 </div>
                 <div class="bomx-cost-card-body">
                   <div class="bomx-cost-item">
                     <div class="bomx-cost-item-lbl">
                       <span class="bomx-cost-dot" style="background:var(--bx-mfg)"></span>Raw Material Cost
                     </div>
-                    <div class="bomx-cost-item-val">₹ {{ fmt(rawMaterialCost) }}</div>
+                    <div class="bomx-cost-item-val">KES {{ fmt(rawMaterialCost) }}</div>
                   </div>
                   <div class="bomx-cost-plus">+</div>
                   <div class="bomx-cost-item">
                     <div class="bomx-cost-item-lbl">
                       <span class="bomx-cost-dot" style="background:var(--bx-violet)"></span>Operation Cost
                     </div>
-                    <div class="bomx-cost-item-val">₹ {{ fmt(totalOperatingCostPreview) }}</div>
+                    <div class="bomx-cost-item-val">KES {{ fmt(totalOperatingCostPreview) }}</div>
                   </div>
                   <div class="bomx-cost-eq">=</div>
                   <div class="bomx-cost-item bomx-cost-item--total">
                     <div class="bomx-cost-item-lbl">Total Cost (Planned)</div>
-                    <div class="bomx-cost-item-val bomx-cost-item-val--total">₹ {{ fmt(plannedCostShown) }}</div>
+                    <div class="bomx-cost-item-val bomx-cost-item-val--total">KES {{ fmt(plannedCostShown) }}</div>
                   </div>
                   <div class="bomx-cost-item bomx-cost-item--total" v-if="actualAbsorbedCost !== null" style="margin-top:6px">
                     <div class="bomx-cost-item-lbl" title="Everything actually spent on this Work Order's completions so far: raw material consumed + operating cost absorbed, before any split between what was capitalized into the finished good and what was written off as abnormal loss.">Total Cost (Actual)</div>
-                    <div class="bomx-cost-item-val bomx-cost-item-val--total">₹ {{ fmt(actualAbsorbedCost + manufacturingVarianceLoss) }}</div>
+                    <div class="bomx-cost-item-val bomx-cost-item-val--total">KES {{ fmt(actualAbsorbedCost + manufacturingVarianceLoss) }}</div>
                   </div>
                   <div class="bomx-cost-item" style="flex-basis:100%;margin-top:2px;padding-left:14px" v-if="actualAbsorbedCost !== null">
                     <div class="bomx-cost-item-lbl" title="Portion of the actual cost above that was capitalized into the finished good's stock value.">↳ Capitalized into Finished Good</div>
-                    <div class="bomx-cost-item-val" style="font-size:14px">₹ {{ fmt(actualAbsorbedCost) }}</div>
+                    <div class="bomx-cost-item-val" style="font-size:14px">KES {{ fmt(actualAbsorbedCost) }}</div>
                   </div>
                   <div class="bomx-cost-item" style="flex-basis:100%;margin-top:2px;padding-left:14px" v-if="manufacturingVarianceLoss > 0">
                     <div class="bomx-cost-item-lbl" style="color:var(--bx-red)" title="Portion of the actual cost above that was abnormal process loss and/or scrap value exceeding the available cost pool -- written off instead of being capitalized into the finished good's cost. Posted to a variance/loss account in the GL.">↳ Manufacturing Variance Loss (written off)</div>
-                    <div class="bomx-cost-item-val" style="font-size:14px;color:var(--bx-red)">₹ {{ fmt(manufacturingVarianceLoss) }}</div>
+                    <div class="bomx-cost-item-val" style="font-size:14px;color:var(--bx-red)">KES {{ fmt(manufacturingVarianceLoss) }}</div>
                   </div>
                 </div>
               </div>
@@ -798,7 +798,7 @@
                 <input class="bomx-fi bomx-fi-mono" type="number" v-model="s.qty" min="0" step="any"/>
               </div>
               <div class="bomx-rm-field" v-if="!s.is_process_loss">
-                <label>Rate (₹)</label>
+                <label>Rate (KES)</label>
                 <input class="bomx-fi bomx-fi-mono" type="number" v-model="s.rate" min="0" step="any" placeholder="Valuation rate"/>
               </div>
               <button class="bomx-btn-icon danger" @click="completeForm.scrap_items.splice(idx,1)" title="Remove">
@@ -984,7 +984,7 @@ function isLossReconciledRow(row) {
 
 function fmtNum(n) {
   if (n === undefined || n === null) return "0";
-  return Number(n).toLocaleString("en-IN", { maximumFractionDigits: 3 });
+  return Number(n).toLocaleString("en-US", { maximumFractionDigits: 3 });
 }
 function fmtDate(d) {
   if (!d) return "—";
@@ -1382,7 +1382,7 @@ const totalPlannedOperationMinutes = computed(() =>
 // Mirrors the backend's PER-ROW logic (see work_order.py::calculate_operating_cost):
 // each operation row contributes its actual cost if it has logged actual time,
 // else its planned cost. Switching the WHOLE total to "actual" the moment any
-// one row gets a Job Card would make every not-yet-started row contribute ₹0
+// one row gets a Job Card would make every not-yet-started row contribute KES 0
 // instead of its planned cost, understating the true cost-to-date.
 const totalOperatingCostPreview = computed(() => {
   const rowsTotal = (wo.value.operations || []).reduce((sum, op) => {
@@ -2937,8 +2937,8 @@ function scrapBreakdownFor(rm) {
 }
 function scrapBreakdownTooltip(rm) {
   const b = scrapBreakdownFor(rm);
-  const fresh = `Fresh: ${b.freshQty.toFixed(4)} ${rm.uom || ''} (₹${b.freshValue.toFixed(2)})`;
-  const scrap = `Scrap: ${b.scrapQty.toFixed(4)} (₹${b.scrapValue.toFixed(2)})${b.scrapItems ? ' from ' + b.scrapItems : ''}`;
+  const fresh = `Fresh: ${b.freshQty.toFixed(4)} ${rm.uom || ''} (KES ${b.freshValue.toFixed(2)})`;
+  const scrap = `Scrap: ${b.scrapQty.toFixed(4)} (KES ${b.scrapValue.toFixed(2)})${b.scrapItems ? ' from ' + b.scrapItems : ''}`;
   return `${fresh} + ${scrap}`;
 }
 
@@ -2998,11 +2998,11 @@ async function submitSubstitute() {
 function flt(n) { const v = parseFloat(n); return isNaN(v) ? 0 : v; }
 function fmt(n) {
   if (isNaN(n) || n == null) return "0.00";
-  return Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fmtQty(n) {
   if (isNaN(n) || n == null) return "0.0000";
-  return Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+  return Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 }
 // ── UTIL ─────────────────────────────────────────────────────
 const ICONS = {

@@ -582,7 +582,7 @@ async function cancelPS() {
 // ── UTIL ─────────────────────────────────────────────────────
 function flt(n) { const v = parseFloat(n); return isNaN(v) ? 0 : v; }
 function round4(n) { return Math.round((flt(n) + Number.EPSILON) * 10000) / 10000; }
-function fmt(n) { const v = parseFloat(n); return isNaN(v) ? "0.00" : v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmt(n) { const v = parseFloat(n); return isNaN(v) ? "0.00" : v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtDate(d) {
   if (!d) return "—";
   const o = new Date(d);

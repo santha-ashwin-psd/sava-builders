@@ -841,7 +841,7 @@
               </select>
               <input v-else class="nim-input" v-model="form.state" placeholder="Enter state / province"/>
             </div>
-            <div><label class="nim-label">Pincode</label><input class="nim-input" v-model="form.pincode" placeholder="Pincode"/></div>
+            <div><label class="nim-label">Postal Code</label><input class="nim-input" v-model="form.pincode" placeholder="Postal Code"/></div>
           </div>
           <div class="nim-section-label">Flags</div>
           <div style="display:flex;gap:24px">

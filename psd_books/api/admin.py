@@ -673,7 +673,7 @@ def get_notifications():
             notifs.append({
                 "type":"overdue_invoice","icon":"alert","color":"#C92A2A","bg":"#FFF5F5",
                 "title":"Overdue Invoice",
-                "body":f"{inv['name']} — {inv['customer_name']} — ₹{flt(inv['outstanding_amount']):,.2f}",
+                "body":f"{inv['name']} — {inv['customer_name']} — KES {flt(inv['outstanding_amount']):,.2f}",
                 "link":f"#/invoices/{inv['name']}","date":str(inv["due_date"]),
             })
     except Exception:
@@ -690,7 +690,7 @@ def get_notifications():
             notifs.append({
                 "type":"bill_due","icon":"purchase","color":"#E67700","bg":"#FFF8F0",
                 "title":"Bill Due",
-                "body":f"{bill['name']} — {bill['supplier_name']} — ₹{flt(bill['outstanding_amount']):,.2f}",
+                "body":f"{bill['name']} — {bill['supplier_name']} — KES {flt(bill['outstanding_amount']):,.2f}",
                 "link":"#/purchases","date":str(bill["due_date"]),
             })
     except Exception:
@@ -755,9 +755,10 @@ def get_company_settings():
     result = {
         "default_company": company_name,
         "is_default": 0,
-        "default_currency": "INR",
+        "default_currency": "KES",
         "fiscal_year_start_month": "April",
         "invoice_prefix": "INV",
+        "kra_pin": "",
         "gstin": "",
         "gst_state": "",
         "logo_url": "",
@@ -788,8 +789,9 @@ def get_company_settings():
     if company_name and frappe.db.exists("Books Company", company_name):
         try:
             co = frappe.get_doc("Books Company", company_name)
-            result["default_currency"]        = co.currency or "INR"
+            result["default_currency"]        = co.currency or "KES"
             result["fiscal_year_start_month"] = co.fiscal_year_start_month or "April"
+            result["kra_pin"]                 = co.kra_pin or ""
             result["gstin"]                   = co.gstin or ""
             result["gst_state"]               = co.gst_state or ""
             result["logo_url"]                = co.logo_url or ""
@@ -878,6 +880,8 @@ def save_company_settings(**kwargs):
                 co.currency = kwargs["default_currency"]
             if "fiscal_year_start_month" in kwargs:
                 co.fiscal_year_start_month = kwargs["fiscal_year_start_month"]
+            if "kra_pin" in kwargs:
+                co.kra_pin = kwargs["kra_pin"]
             if "gstin" in kwargs:
                 co.gstin = kwargs["gstin"]
             if "gst_state" in kwargs:

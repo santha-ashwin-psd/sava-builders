@@ -1166,7 +1166,7 @@ def send_customer_statement(customer: str, company: str) -> dict:
     cname = data["customer_name"]
     rows_html = "".join(
         f"<tr><td>{i['name']}</td><td>{i['posting_date']}</td><td>{i['due_date']}</td>"
-        f"<td style='text-align:right'>₹{flt(i['outstanding_amount']):,.2f}</td>"
+        f"<td style='text-align:right'>KES {flt(i['outstanding_amount']):,.2f}</td>"
         f"<td style='color:{'#c92a2a' if i['is_overdue'] else '#2f9e44'}'>"
         f"{'Overdue' if i['is_overdue'] else 'Due'}</td></tr>"
         for i in data["invoices"]
@@ -1184,7 +1184,7 @@ def send_customer_statement(customer: str, company: str) -> dict:
   <tfoot>
     <tr style="font-weight:700;background:#f3f4f6">
       <td colspan="3">Total Outstanding</td>
-      <td style="text-align:right">₹{data['total_outstanding']:,.2f}</td><td></td>
+      <td style="text-align:right">KES {data['total_outstanding']:,.2f}</td><td></td>
     </tr>
   </tfoot>
 </table>

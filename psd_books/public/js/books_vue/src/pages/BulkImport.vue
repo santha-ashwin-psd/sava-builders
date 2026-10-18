@@ -347,7 +347,7 @@ import { apiPOST, apiGET } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { usePagination } from "../composables/usePagination.js";
 import { icon } from "../utils/icons.js";
-import { GSTIN_REGEX } from "../composables/useValidation.js";
+import { KRA_PIN_REGEX } from "../composables/useValidation.js";
 import Pagination from "../components/Pagination.vue";
 
 const { toast } = useToast();
@@ -372,7 +372,7 @@ const TYPES = [
     { key: "email_id",      label: "Email",          required: false, type: "email" },
     { key: "mobile_no",     label: "Mobile",         required: false, type: "text" },
     { key: "phone",         label: "Phone",          required: false, type: "text" },
-    { key: "tax_id",        label: "Tax ID / GSTIN", required: false, type: "gstin" },
+    { key: "tax_id",        label: "KRA PIN", required: false, type: "gstin" },
     { key: "city",          label: "City",           required: false, type: "text" },
     { key: "state",         label: "State",          required: false, type: "text" },
     { key: "country",       label: "Country",        required: false, type: "text" },
@@ -384,7 +384,7 @@ const TYPES = [
     { key: "email_id",      label: "Email",          required: false, type: "email" },
     { key: "mobile_no",     label: "Mobile",         required: false, type: "text" },
     { key: "phone",         label: "Phone",          required: false, type: "text" },
-    { key: "tax_id",        label: "Tax ID / GSTIN", required: false, type: "gstin" },
+    { key: "tax_id",        label: "KRA PIN", required: false, type: "gstin" },
     { key: "city",          label: "City",           required: false, type: "text" },
     { key: "state",         label: "State",          required: false, type: "text" },
     { key: "country",       label: "Country",        required: false, type: "text" },
@@ -805,9 +805,9 @@ function validateRow(data, fields) {
       badNumber = true;
       issues.push({ field: f.key, kind: "number", message: `${f.label} "${val}" isn't numeric — will be treated as 0` });
     }
-    if (f.type === "gstin" && val && !GSTIN_REGEX.test(val.toUpperCase())) {
+    if (f.type === "gstin" && val && !KRA_PIN_REGEX.test(val.toUpperCase())) {
       badGstin = true;
-      issues.push({ field: f.key, kind: "gstin", message: `${f.label} "${val}" isn't a valid GSTIN (e.g. 27AAPFU0939F1ZV)` });
+      issues.push({ field: f.key, kind: "gstin", message: `${f.label} "${val}" isn't a valid KRA PIN (e.g. A123456789Z)` });
     }
   }
   let status = "ready";

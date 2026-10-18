@@ -56,10 +56,10 @@ export function useFrappeList(doctype, opts = {}) {
   return { list, loading, error, fetch };
 }
 
-/** Format a number as INR currency */
-export function formatCurrency(val, currency = "INR") {
+/** Format a number as KES currency */
+export function formatCurrency(val, currency = "KES") {
   if (val == null) return "—";
-  return new Intl.NumberFormat("en-IN", {
+  return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
     maximumFractionDigits: 0,

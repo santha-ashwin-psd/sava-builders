@@ -36,6 +36,29 @@ class PurchaseReceipt(Document):
                 )
             row.rejected_qty = flt(row.qty) - row.accepted_qty
         self.total_qty = sum(flt(r.qty) for r in self.items)
+        self._block_over_receipt()
+
+    def _block_over_receipt(self):
+        """A11: a receipt may not take in more than the LPO still has pending.
+
+        Pending = PO line qty - received_qty (submitted receipts only, so a
+        draft being edited never counts against itself). Rows that carry
+        po_item are checked against that line; rows without it are pooled by
+        item_code against the PO's remaining qty for that item.
+        """
+        if not self.purchase_order:
+            return
+        po_rows = frappe.db.sql("""
+            SELECT name, item_code, item_name, qty, received_qty
+            FROM `tabPurchase Order Item` WHERE parent=%s ORDER BY idx
+        """, (self.purchase_order,), as_dict=True)
+        errors = over_receipt_errors(po_rows, self.items)
+        if errors:
+            frappe.throw(
+                _("Over-receipt blocked against {0}:").format(self.purchase_order)
+                + "<br>" + "<br>".join(errors),
+                title=_("Over-receipt"),
+            )
 
     def on_submit(self):
         self._adjust_po_received(direction=+1)
@@ -164,3 +187,45 @@ class PurchaseReceipt(Document):
                                 new_status, update_modified=True)
         except Exception:
             pass
+
+
+def over_receipt_errors(po_rows, receipt_rows):
+    """Pure check (no DB): list of error strings, empty when the receipt fits.
+
+    po_rows: dicts/objects with name, item_code, item_name, qty, received_qty.
+    receipt_rows: objects with idx, item_code, qty, po_item.
+    """
+    eps = 0.0001
+    g = lambda o, k: o.get(k) if isinstance(o, dict) else getattr(o, k, None)
+    pending = {g(r, "name"): flt(g(r, "qty")) - flt(g(r, "received_qty")) for r in po_rows}
+    by_code = {}
+    for r in po_rows:
+        by_code.setdefault(g(r, "item_code"), []).append(g(r, "name"))
+    label = {g(r, "name"): (g(r, "item_name") or g(r, "item_code")) for r in po_rows}
+
+    linked = {}      # po row -> qty on this receipt
+    pooled = {}      # item_code -> qty on this receipt (rows with no po_item)
+    for row in receipt_rows:
+        po_item = g(row, "po_item")
+        if po_item and po_item in pending:
+            linked[po_item] = linked.get(po_item, 0.0) + flt(g(row, "qty"))
+        else:
+            code = g(row, "item_code")
+            pooled[code] = pooled.get(code, 0.0) + flt(g(row, "qty"))
+
+    errors = []
+    for name, qty in linked.items():
+        if qty > max(pending[name], 0.0) + eps:
+            errors.append(_("{0}: receiving {1}, only {2} pending on the LPO.")
+                          .format(label[name], flt(qty), max(flt(pending[name]), 0.0)))
+    for code, qty in pooled.items():
+        names = by_code.get(code)
+        if not names:
+            errors.append(_("{0}: not on this LPO.").format(code))
+            continue
+        # what is still free on the item's PO lines after the linked rows above
+        free = sum(max(pending[n] - linked.get(n, 0.0), 0.0) for n in names)
+        if qty > free + eps:
+            errors.append(_("{0}: receiving {1}, only {2} pending on the LPO.")
+                          .format(label[names[0]], flt(qty), flt(free)))
+    return errors

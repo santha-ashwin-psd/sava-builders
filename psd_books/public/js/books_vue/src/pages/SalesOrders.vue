@@ -705,7 +705,7 @@
                     <div class="inv-dmeta-icon-row">
                       <span class="inv-dmeta-icon" v-html="icon('indianrupee',13)"></span>
                       <span class="inv-dmeta-lbl">Grand Total</span>
-                      <span v-if="viewDoc.currency && viewDoc.currency !== 'INR'" style="font-size:10px;font-weight:700;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:4px;padding:1px 5px;margin-left:4px">{{ viewDoc.currency }}</span>
+                      <span v-if="viewDoc.currency && viewDoc.currency !== 'KES'" style="font-size:10px;font-weight:700;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:4px;padding:1px 5px;margin-left:4px">{{ viewDoc.currency }}</span>
                     </div>
                     <div class="inv-balance-val">
                       {{ fmtAmt(viewDoc.grand_total, viewDoc.currency) }}
@@ -1264,7 +1264,7 @@ const form = reactive({
   billing_address: "", billing_address_name: "",
   shipping_address: "", shipping_address_name: "",
   set_warehouse: "", terms: "",
-  currency: "INR", exchange_rate: 1,
+  currency: "KES", exchange_rate: 1,
 });
 
 // ── Address state ─────────────────────────────────────────────────────
@@ -1272,7 +1272,7 @@ const customerAddresses = ref([]);
 const addrModal = reactive({
   open: false, saving: false, forField: "billing",
   address_title: "", address_type: "Billing",
-  address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India",
+  address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "Kenya",
 });
 const selectedBillingAddr  = computed(() => customerAddresses.value.find(a => a.name === form.billing_address_name) || null);
 const selectedShippingAddr = computed(() => customerAddresses.value.find(a => a.name === form.shipping_address_name) || null);
@@ -1292,9 +1292,9 @@ const deliverModal = reactive({ open: false, saving: false, soName: "", warehous
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function deliveryDefault() { const d = new Date(); d.setDate(d.getDate() + 14); return d.toISOString().slice(0, 10); }
-const currencySymbol = "₹";
+const currencySymbol = "KES";
 function fmtAmt(v) {
-  return "₹" + Math.abs(flt(v)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return "KES " + Math.abs(flt(v)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fmtCur(v) { return fmtAmt(v); }
 
@@ -1520,7 +1520,7 @@ const deliverModalQty = computed(() =>
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   editingName.value = "";
-  Object.assign(form, { customer: "", transaction_date: todayStr(), delivery_date: deliveryDefault(), po_number: "", billing_address: "", billing_address_name: "", shipping_address: "", shipping_address_name: "", set_warehouse: "", terms: "", currency: "INR", exchange_rate: 1 });
+  Object.assign(form, { customer: "", transaction_date: todayStr(), delivery_date: deliveryDefault(), po_number: "", billing_address: "", billing_address_name: "", shipping_address: "", shipping_address_name: "", set_warehouse: "", terms: "", currency: "KES", exchange_rate: 1 });
   customerAddresses.value = [];
   lines.value = [blankLine()];
   Object.assign(collapsed, { details: false, lines: false, notes: true });
@@ -1535,7 +1535,7 @@ async function openEdit(o) {
     billing_address: "", billing_address_name: "",
     shipping_address: "", shipping_address_name: "",
     set_warehouse: "", terms: o.terms || "",
-    currency: o.currency || "INR", exchange_rate: o.exchange_rate || 1,
+    currency: o.currency || "KES", exchange_rate: o.exchange_rate || 1,
   });
   lines.value = [blankLine()];
   Object.assign(collapsed, { details: false, lines: false, notes: true });
@@ -1627,7 +1627,7 @@ async function onCustomerChange() {
     if (firstShipping) { form.shipping_address_name = firstShipping.name; form.shipping_address = formatAddress(firstShipping); }
     if (custDoc?.default_currency) {
       form.currency = custDoc.default_currency;
-      form.exchange_rate = form.currency !== "INR" ? (await fetchRate(form.currency, "INR") || 1) : 1;
+      form.exchange_rate = form.currency !== "KES" ? (await fetchRate(form.currency, "KES") || 1) : 1;
     }
   } catch {}
   addressLoading.value = false;
@@ -1666,7 +1666,7 @@ function onShippingAddrSelect(opt) {
   form.shipping_address = opt ? formatAddress(opt) : "";
 }
 function openAddrModal(field) {
-  Object.assign(addrModal, { open: true, saving: false, forField: field, address_title: "", address_type: field === "billing" ? "Billing" : "Shipping", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
+  Object.assign(addrModal, { open: true, saving: false, forField: field, address_title: "", address_type: field === "billing" ? "Billing" : "Shipping", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "Kenya" });
 }
 async function saveNewAddress() {
   if (!addrModal.address_title.trim()) return toast.error("Address Title is required");
@@ -1678,7 +1678,7 @@ async function saveNewAddress() {
       address_title: addrModal.address_title, address_type: addrModal.address_type,
       address_line1: addrModal.address_line1, address_line2: addrModal.address_line2 || "",
       city: addrModal.city || "", state: addrModal.state || "",
-      pincode: addrModal.pincode || "", country: addrModal.country || "India",
+      pincode: addrModal.pincode || "", country: addrModal.country || "Kenya",
       links: form.customer ? [{ doctype: "Address", link_doctype: "Customer", link_name: form.customer }] : [],
     };
     const saved = await apiSave(doc);
@@ -1801,8 +1801,8 @@ async function saveSO(newStatus) {
       // Sales Order is is_submittable=0 — docstatus is never settable here
       // and Frappe silently drops it; status is the only confirm signal.
       terms: form.terms || "",
-      currency: form.currency || "INR",
-      exchange_rate: form.currency === "INR" ? 1 : (form.exchange_rate || 1),
+      currency: form.currency || "KES",
+      exchange_rate: form.currency === "KES" ? 1 : (form.exchange_rate || 1),
       items: lines.value.filter(l => l.item_code).map(l => { calcLine(l); return {
         doctype: "Sales Order Item", item_code: l.item_code,
         description: l.description || l.item_code,

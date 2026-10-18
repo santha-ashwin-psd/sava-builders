@@ -114,7 +114,7 @@
    "read_only": 1
   },
   {
-   "default": "INR",
+   "default": "KES",
    "fieldname": "currency",
    "fieldtype": "Link",
    "label": "Currency",
@@ -367,7 +367,7 @@
    "fetch_from": "customer.tax_id",
    "fieldname": "customer_gstin",
    "fieldtype": "Data",
-   "label": "Customer GSTIN"
+   "label": "Customer KRA PIN"
   },
   {
    "fetch_from": "customer.mobile_no",

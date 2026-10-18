@@ -48,7 +48,7 @@
             <div class="pl-card-name">{{ pl.name }}</div>
             <div class="pl-card-sub">
               {{ pl.selling && pl.buying ? 'Both' : pl.selling ? 'Selling' : 'Buying' }}
-              · {{ pl.currency || 'INR' }}
+              · {{ pl.currency || 'KES' }}
               <span v-if="pl._ic != null"> · {{ pl._ic }} item{{ pl._ic !== 1 ? 's' : '' }}</span>
             </div>
           </div>
@@ -135,7 +135,7 @@
               <div class="pl-es-pick-name">{{ pl.name }}</div>
               <div class="pl-es-pick-sub">
                 {{ pl.selling && pl.buying ? 'Both' : pl.selling ? 'Selling' : 'Buying' }}
-                · {{ pl.currency || 'INR' }}
+                · {{ pl.currency || 'KES' }}
               </div>
             </div>
             <span class="pl-es-pick-arrow">›</span>
@@ -167,7 +167,7 @@
         <div class="pl-panel-title-row">
           <h2 class="pl-panel-name">{{ selectedList.name }}</h2>
           <span :class="typeBadgeClass(selectedList)">{{ typeLabel(selectedList) }}</span>
-          <span class="b-badge b-badge-blue" style="font-size:11px">{{ selectedList.currency || 'INR' }}</span>
+          <span class="b-badge b-badge-blue" style="font-size:11px">{{ selectedList.currency || 'KES' }}</span>
           <span class="b-badge" :class="selectedList.enabled ? 'b-badge-green' : 'b-badge-muted'" style="font-size:11px">
             {{ selectedList.enabled ? 'Active' : 'Inactive' }}
           </span>
@@ -674,7 +674,7 @@ const { confirm } = useConfirm();
 
 // ── Currency list ────────────────────────────────────────────────────────────
 const CURRENCY_LIST = [
-  { code: "INR",  name: "Indian Rupee" },
+  { code: "KES",  name: "Kenyan Shilling" },
   { code: "USD",  name: "US Dollar" },
   { code: "EUR",  name: "Euro" },
   { code: "GBP",  name: "British Pound" },
@@ -734,8 +734,8 @@ let   itemFetchTimer = null;
 const showListDialog   = ref(false);
 const listDialogMode   = ref("new");
 const savingList       = ref(false);
-const originalCurrency = ref("INR");
-const listForm         = reactive({ name: "", currency: "INR", selling: 1, buying: 0, description: "" });
+const originalCurrency = ref("KES");
+const listForm         = reactive({ name: "", currency: "KES", selling: 1, buying: 0, description: "" });
 const listFormErrors   = reactive({ name: "" });
 
 // ── Duplicate ────────────────────────────────────────────────────────────────
@@ -751,7 +751,7 @@ const csvPreviewRows   = ref([]);
 const importingCSV     = ref(false);
 
 // ── Currency symbol map ──────────────────────────────────────────────────────
-const CURRENCY_SYMBOLS = { INR: "₹", USD: "$", EUR: "€", GBP: "£", AED: "د.إ", SGD: "S$", JPY: "¥", CAD: "C$", AUD: "A$" };
+const CURRENCY_SYMBOLS = { KES: "KES", USD: "$", EUR: "€", GBP: "£", AED: "د.إ", SGD: "S$", JPY: "¥", CAD: "C$", AUD: "A$" };
 
 // ── Computed ─────────────────────────────────────────────────────────────────
 const filteredLists = computed(() => {
@@ -787,7 +787,7 @@ const pageOffset  = computed(() => page.value * pageSize);
 const pagedPrices = computed(() => sortedPrices.value.slice(pageOffset.value, pageOffset.value + pageSize));
 
 const currencySymbol = computed(() =>
-  CURRENCY_SYMBOLS[selectedList.value?.currency] || selectedList.value?.currency || "₹"
+  CURRENCY_SYMBOLS[selectedList.value?.currency] || selectedList.value?.currency || "KES"
 );
 
 const validRows  = computed(() => csvPreviewRows.value.filter(r => !r._hasError));
@@ -919,7 +919,7 @@ function onDocClick(e) {
 
 // ── Price List dialog (New / Edit) ───────────────────────────────────────────
 function openNewListDialog() {
-  Object.assign(listForm, { name: "", currency: "INR", selling: 1, buying: 0, description: "" });
+  Object.assign(listForm, { name: "", currency: "KES", selling: 1, buying: 0, description: "" });
   listFormErrors.name = "";
   listDialogMode.value = "new";
   showListDialog.value = true;
@@ -928,12 +928,12 @@ function openNewListDialog() {
 function openEditListDialog(pl) {
   Object.assign(listForm, {
     name: pl.name,
-    currency: pl.currency || "INR",
+    currency: pl.currency || "KES",
     selling: pl.selling ? 1 : 0,
     buying:  pl.buying  ? 1 : 0,
     description: pl.description || "",
   });
-  originalCurrency.value = pl.currency || "INR";
+  originalCurrency.value = pl.currency || "KES";
   listFormErrors.name    = "";
   listDialogMode.value   = "edit";
   showListDialog.value   = true;
@@ -953,7 +953,7 @@ async function saveListDialog() {
   try {
     const doc = {
       doctype: "Price List",
-      currency: listForm.currency || "INR",
+      currency: listForm.currency || "KES",
       selling:  listForm.selling ? 1 : 0,
       buying:   listForm.buying  ? 1 : 0,
       enabled:  1,
@@ -1322,7 +1322,7 @@ function exportCSV() {
 function fmtRate(v) {
   const n   = flt(v) || 0;
   const sym = currencySymbol.value;
-  return sym + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return sym + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function typeLabel(pl) {

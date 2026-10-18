@@ -6,13 +6,13 @@ export function flt(v) { return parseFloat(v) || 0; }
 export function fmt(v, c) {
   if (v == null || v === "") return "—";
   try {
-    return new Intl.NumberFormat("en-IN", {
+    return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: c || "INR",
+      currency: c || "KES",
       maximumFractionDigits: 2,
     }).format(v);
   } catch {
-    return "₹" + Number(v).toLocaleString("en-IN");
+    return "KES " + Number(v).toLocaleString("en-US");
   }
 }
 

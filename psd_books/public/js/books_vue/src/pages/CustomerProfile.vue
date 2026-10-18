@@ -85,7 +85,7 @@
             <a v-if="customer.phone" :href="`tel:${customer.phone}`" class="cp-link">{{ customer.phone }}</a>
             <span v-else>—</span>
           </div>
-          <div class="cp-kv"><span class="cp-k">GSTIN</span><span class="mono">{{ customer.tax_id || '—' }}</span></div>
+          <div class="cp-kv"><span class="cp-k">KRA PIN</span><span class="mono">{{ customer.tax_id || '—' }}</span></div>
         </div>
       </div>
       <div class="cp-contact-section">
@@ -257,7 +257,7 @@ const initials = computed(() => {
 });
 
 function fmtCur(v) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 }).format(Number(v || 0));
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "KES", minimumFractionDigits: 0 }).format(Number(v || 0));
 }
 
 function daysAgo(d) {
@@ -415,7 +415,7 @@ async function printStatement() {
 // instead of the previous plain CSV export.
 function fmtStmtAmt(v) {
   const n = Number(v || 0);
-  return n ? n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+  return n ? n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
 }
 
 function fmtStmtDate(d) {

@@ -202,7 +202,7 @@ def verify_signup_otp(email, otp):
         company_doc = frappe.new_doc("Books Company")
         company_doc.company_name = company_name
         company_doc.is_active = 1
-        company_doc.currency = "INR"
+        company_doc.currency = "KES"
         company_doc.fiscal_year_start_month = "April"
         company_doc.email = email
         company_doc.insert(ignore_permissions=True)
@@ -423,10 +423,11 @@ def verify_login_otp(email, otp):
 @frappe.whitelist(methods=["POST"])
 def complete_onboarding(
     company_name="",
+    kra_pin="",
     gstin="",
     gst_state="",
     invoice_prefix="INV",
-    currency="INR",
+    currency="KES",
     fy_start="04-01",
 ):
     """Save initial company settings and bootstrap COA + FY after the onboarding wizard."""
@@ -449,7 +450,7 @@ def complete_onboarding(
                 ("gstin",            gstin),
                 ("gst_state",        gst_state),
                 ("invoice_prefix",   invoice_prefix or "INV"),
-                ("default_currency", currency or "INR"),
+                ("default_currency", currency or "KES"),
             ]:
                 if val:
                     cur = frappe.db.get_single_value("Books Settings", field)
@@ -457,6 +458,16 @@ def complete_onboarding(
                         frappe.db.set_single_value("Books Settings", field, val)
         except Exception as exc:
             frappe.log_error(f"Books Settings update — {exc}", "Books Onboarding")
+
+        # Kenya: save the company KRA PIN on the Books Company (format-checked)
+        if company_name and kra_pin:
+            try:
+                import re as _re
+                _pin = (kra_pin or "").strip().upper()
+                if _re.match(r"^[AP][0-9]{9}[A-Z]$", _pin) and frappe.db.exists("Books Company", company_name):
+                    frappe.db.set_value("Books Company", company_name, "kra_pin", _pin)
+            except Exception as exc:
+                frappe.log_error(f"KRA PIN save — {exc}", "Books Onboarding")
 
         # Always set the per-user company default
         if company_name:

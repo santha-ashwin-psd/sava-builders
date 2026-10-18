@@ -10,6 +10,7 @@ export const URL_REGEX    = /^https?:\/\/.+\..+/;
 
 // Rules keyed by dial code (used for the mobile field that has a +XX selector)
 export const PHONE_RULES = {
+  "+254": { min: 9, max: 9, pattern: /^[17]\d{8}$/,   hint: "9 digits starting with 7 or 1 (Kenya)" },
   "+91":  { min: 10, max: 10, pattern: /^[6-9]\d{9}$/,   hint: "10 digits starting with 6–9 (India)" },
   "+1":   { min: 10, max: 10, pattern: /^\d{10}$/,        hint: "10 digits (US/Canada)" },
   "+44":  { min: 10, max: 10, pattern: /^7\d{9}$/,        hint: "10 digits starting with 7 (UK mobile)" },
@@ -32,6 +33,7 @@ export const PHONE_RULES = {
 
 // Rules keyed by country name (used for pincode/ZIP/postcode field)
 export const PINCODE_RULES = {
+  "Kenya":          { pattern: /^\d{5}$/,                       placeholder: "00100",      hint: "5 digits",                 filterRe: /\D/g,                maxlen: 5 },
   "India":          { pattern: /^\d{6}$/,                       placeholder: "400001",     hint: "6 digits",                 filterRe: /\D/g,            maxlen: 6  },
   "United States":  { pattern: /^\d{5}(-\d{4})?$/,             placeholder: "90210",      hint: "5 digits (e.g. 90210)",    filterRe: /[^\d-]/g,        maxlen: 10 },
   "United Kingdom": { pattern: /^[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2}$/i, placeholder: "SW1A 1AA", hint: "e.g. SW1A 1AA",  filterRe: /[^A-Za-z0-9\s]/g, maxlen: 8  },

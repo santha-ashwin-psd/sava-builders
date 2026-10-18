@@ -101,7 +101,7 @@
   <!-- ── Bulk actions bar ── -->
   <div v-if="selectedRows.size>0" class="inv-bulk-bar">
     <span class="inv-bulk-count">{{ selectedRows.size }} selected</span>
-    <button class="inv-bulk-btn inv-bulk-pay" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''" @click="bulkPayment">₹ Record Payment</button>
+    <button class="inv-bulk-btn inv-bulk-pay" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''" @click="bulkPayment">Record Payment</button>
     <button class="inv-bulk-btn" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''" @click="bulkEmail"><span v-html="icon('mail',13)"></span> Send Email</button>
     <button class="inv-bulk-btn" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''" @click="bulkCancel">Cancel Submitted</button>
     <button class="inv-bulk-btn inv-bulk-danger" :disabled="!$canDelete('invoices')" :title="!$canDelete('invoices') ? 'Not permitted' : ''" @click="bulkDelete">Delete Drafts</button>
@@ -149,7 +149,7 @@
             <td @click="openView(inv)" :class="isOverdue(inv)?'text-danger':'text-muted'" class="mono-sm">{{ fmtDate(inv.due_date) }}</td>
             <td @click="openView(inv)">
               <span class="inv-status-badge" :class="statusCls(inv)">{{ statusLabel(inv) }}</span>
-              <span v-if="inv.docstatus===1 && inv.customer_gstin && !inv.is_return"
+              <span v-if="SHOW_EINVOICE && inv.docstatus===1 && inv.customer_gstin && !inv.is_return"
                 class="ei-status-dot"
                 :class="inv.irn && inv.einvoice_status!=='Cancelled' ? 'ei-dot-green' : inv.einvoice_status==='Cancelled' ? 'ei-dot-grey' : 'ei-dot-orange'"
                 :title="inv.irn && inv.einvoice_status!=='Cancelled' ? 'e-Invoice: IRN Generated' : inv.einvoice_status==='Cancelled' ? 'e-Invoice: Cancelled' : 'e-Invoice: IRN Pending'">
@@ -164,7 +164,7 @@
                 <button class="inv-act-btn" @click="openView(inv)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="inv.docstatus===0 || (inv.docstatus===1 && flt(inv.outstanding_amount)>0)" class="inv-act-btn" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : 'Edit'" @click="openEdit(inv)"><span v-html="icon('edit',13)"></span></button>
                 <button v-if="inv.docstatus===0||inv.docstatus===2" class="inv-act-btn" style="color:#dc2626" :disabled="!$canDelete('invoices')" :title="!$canDelete('invoices') ? 'Not permitted' : 'Delete'" @click.stop="confirmAction('delete',inv)"><span v-html="icon('trash',13)"></span></button>
-                <button v-if="inv.outstanding_amount>0&&inv.docstatus===1" class="inv-act-btn inv-act-pay" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : 'Record Payment'" @click="openPayment(inv)">₹</button>
+                <button v-if="inv.outstanding_amount>0&&inv.docstatus===1" class="inv-act-btn inv-act-pay" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : 'Record Payment'" @click="openPayment(inv)">Pay</button>
               </div>
             </td>
           </tr>
@@ -260,7 +260,7 @@
               <div style="display:flex;gap:6px;border-top:1px solid #f3f4f6;padding-top:10px">
                 <button class="inv-act-btn" @click.stop="openView(inv)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="inv.docstatus===0 || (inv.docstatus===1 && flt(inv.outstanding_amount)>0)" class="inv-act-btn" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : 'Edit'" @click.stop="openEdit(inv)"><span v-html="icon('edit',13)"></span></button>
-                <button v-if="inv.outstanding_amount>0&&inv.docstatus===1" class="inv-act-btn inv-act-pay" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : 'Record Payment'" @click.stop="openPayment(inv)">₹</button>
+                <button v-if="inv.outstanding_amount>0&&inv.docstatus===1" class="inv-act-btn inv-act-pay" :disabled="!$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : 'Record Payment'" @click.stop="openPayment(inv)">Pay</button>
                 <button v-if="inv.docstatus===0||inv.docstatus===2" class="inv-act-btn" style="color:#dc2626" :disabled="!$canDelete('invoices')" :title="!$canDelete('invoices') ? 'Not permitted' : 'Delete'" @click.stop="confirmAction('delete',inv)"><span v-html="icon('trash',13)"></span></button>
               </div>
             </div>
@@ -373,7 +373,7 @@
                       <SearchableSelect v-model="form.sales_person" :options="salesPersons"
                         placeholder="Select sales person"/>
                     </div>
-                    <div>
+                    <div v-if="SHOW_PLACE_OF_SUPPLY">
                       <label class="inv-lbl">Place of Supply</label>
                       <div v-if="isOverseas" class="inv-fi" style="background:#dbeafe;color:#1d4ed8;font-size:12px;display:flex;align-items:center;gap:6px;padding:8px 10px;border-color:#bfdbfe">
                         <span>🌐</span> Outside India — Not applicable for export invoices
@@ -596,7 +596,7 @@
                     <span style="display:flex;gap:6px;align-items:center;justify-content:flex-end">
                       <select v-model="form.discount_type" class="inv-fi" style="width:74px;padding:2px 4px">
                         <option value="Percentage">%</option>
-                        <option value="Amount">₹</option>
+                        <option value="Amount">KES</option>
                       </select>
                       <input
                         v-if="form.discount_type==='Percentage'"
@@ -883,7 +883,7 @@
             Payments
             <span v-if="viewPayments.length + viewCreditApps.length > 0" class="inv-vtab-count">{{ viewPayments.length + viewCreditApps.length }}</span>
           </button>
-          <button v-if="viewInv.docstatus===1 && !viewInv.is_return" class="inv-vtab" :class="{ active: viewTab==='einvoice' }" @click="viewTab='einvoice'; fetchCompanyGstin()">
+          <button v-if="SHOW_EINVOICE && viewInv.docstatus===1 && !viewInv.is_return" class="inv-vtab" :class="{ active: viewTab==='einvoice' }" @click="viewTab='einvoice'; fetchCompanyGstin()">
             e-Invoice
             <span v-if="viewInv.irn && viewInv.einvoice_status!=='Cancelled'" class="inv-vtab-count" style="background:#dcfce7;color:#16a34a">✓</span>
             <span v-else-if="viewInv.customer_gstin && !viewInv.irn" class="inv-vtab-count" style="background:#fff7ed;color:#ea580c">!</span>
@@ -933,7 +933,7 @@
               </div>
 
               <!-- Place of Supply -->
-              <div class="inv-details-meta-col">
+              <div v-if="SHOW_PLACE_OF_SUPPLY" class="inv-details-meta-col">
                 <div class="inv-dmeta-icon-row">
                   <span class="inv-dmeta-icon" v-html="icon('map-pin',13)"></span>
                   <span class="inv-dmeta-lbl">Place of Supply</span>
@@ -972,14 +972,14 @@
                       <th style="width:36px">#</th>
                       <th>Item &amp; Description</th>
                       <th>HSN/SAC</th>
-                      <th class="th-r">MRP (₹)</th>
+                      <th class="th-r">MRP (KES)</th>
                       <th class="th-r">Qty</th>
-                      <th class="th-r">Rate (₹)</th>
-                      <th class="th-r">Discount (₹)</th>
+                      <th class="th-r">Rate (KES)</th>
+                      <th class="th-r">Discount (KES)</th>
                       <th>Tax Template</th>
                       <th>Batch No</th>
                       <th>Expiry Date</th>
-                      <th class="th-r">Amount (₹)</th>
+                      <th class="th-r">Amount (KES)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1115,7 +1115,7 @@
                       voucher-type="Sales Invoice"
                       :voucher-no="viewInv.name"
                       label="Invoice"
-                      :currency="viewInv.currency || 'INR'"
+                      :currency="viewInv.currency || 'KES'"
                     />
                   </template>
                   <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">Journal entries are posted once the invoice is submitted.</div>
@@ -1503,6 +1503,9 @@ const eiManualSaving = ref(false);
 const eiManualIrn    = ref("");
 const eiManualAckNo  = ref("");
 const eiManualAckDate = ref(new Date().toISOString().slice(0, 10));
+// Sava (Kenya): India e-Invoice (IRN) is hidden, not removed. Set true to show again.
+const SHOW_EINVOICE = false;
+const SHOW_PLACE_OF_SUPPLY = false; // Kenya VAT is flat; set true only if GST-type templates are used again
 const companyGstin   = ref("");
 const companyGstinLoading = ref(false);
 
@@ -1513,7 +1516,7 @@ async function fetchCompanyGstin() {
     const co = await resolveCompany();
     console.log("[BooksCompany][Invoices.vue] fetchCompanyGstin() resolveCompany() ->", co);
     const cd = await apiGET("psd_books.api.docs.get_doc", { doctype: "Books Company", name: co });
-    companyGstin.value = cd?.gstin || "";
+    companyGstin.value = cd?.kra_pin || cd?.gstin || "";
   } catch { companyGstin.value = ""; }
   finally { companyGstinLoading.value = false; }
 }
@@ -1623,7 +1626,7 @@ function matchIndianState(raw) {
   if (!clean) return "";
   return INDIAN_STATES.find(s => s.split("-").slice(1).join("-").toLowerCase() === clean) || "";
 }
-const CURRENCY_SYMBOLS = { INR: "₹" };
+const CURRENCY_SYMBOLS = { KES: "KES" };
 const TEMPLATES = [
   { key:"classic", label:"Classic" },
   { key:"modern",  label:"Modern"  },
@@ -1673,10 +1676,10 @@ const moreActionsOpen = ref(false);
 const collapsed = reactive({ branding: false, details: false, billing: true, lines: false, notes: true });
 const form = reactive({
   customer:"", posting_date:"", due_date:"", po_no:"",
-  payment_terms:"", place_of_supply:"33-Tamil Nadu", billing_address:"",
+  payment_terms:"", place_of_supply:"", billing_address:"",
   billing_address_name:"", shipping_address:"", shipping_address_name:"",
   terms:"", remarks:"", docstatus:0,
-  currency:"INR", exchange_rate:1, gst_treatment:"",
+  currency: "KES", exchange_rate:1, gst_treatment:"",
   price_list:"",
   update_stock:1, set_warehouse:"",
   logo:"",
@@ -1690,7 +1693,7 @@ const customerAddresses     = ref([]);
 const addrModal = reactive({
   open: false, saving: false, forField: "billing",
   address_title: "", address_type: "Billing",
-  address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India",
+  address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "Kenya",
 });
 const selectedBillingAddr  = computed(() => customerAddresses.value.find(a => a.name === form.billing_address_name) || null);
 const selectedShippingAddr = computed(() => customerAddresses.value.find(a => a.name === form.shipping_address_name) || null);
@@ -1746,11 +1749,11 @@ const viewPaymentsLoading = ref(false);
 const confirmModal = reactive({ open:false, loading:false, title:"", message:"", actionLabel:"Confirm", action: null, payments:[] });
 
 // ── Helpers ────────────────────────────────────────────────────────────
-const currencySymbol = computed(() => CURRENCY_SYMBOLS[form.currency] || "₹");
+const currencySymbol = computed(() => CURRENCY_SYMBOLS[form.currency] || "KES");
 function fmtAmt(v, currency) {
-  const cur = currency || form.currency || "INR";
-  const sym = CURRENCY_SYMBOLS[cur] || "₹";
-  const locale = cur === "INR" ? "en-IN" : "en-US";
+  const cur = currency || form.currency || "KES";
+  const sym = CURRENCY_SYMBOLS[cur] || "KES";
+  const locale = "en-US";
   return sym + Number(v||0).toLocaleString(locale,{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 const isOverseas = computed(() => form.gst_treatment === "Overseas");
@@ -1851,7 +1854,7 @@ function exactLineAmount(l) {
 }
 // The source invoice truncates (not rounds) its printed Subtotal from the
 // unrounded total across all lines — summing pre-rounded per-line amounts
-// instead overstates it by a paisa (e.g. ₹33,812.95 vs the correct ₹33,812.94).
+// instead overstates it by a paisa (e.g. KES 33,812.95 vs the correct KES 33,812.94).
 const subtotal = computed(()=>Math.floor(lines.value.reduce((s,l)=>s+exactLineAmount(l),0)*100)/100);
 
 // Common invoice-level discount, applied on the subtotal before tax —
@@ -1878,7 +1881,7 @@ const taxLines = computed(()=>
   }).map(r=>({ template:r.description, description:r.description, tax_type:r.tax_type, rate:r.rate, account_head:r.account_head, amount:r.amount }))
 );
 
-// Per-line GST breakup (e.g. "CGST 2.5% ₹226.60", "SGST 2.5% ₹226.60") — same
+// Per-line GST breakup (e.g. "CGST 2.5% KES 226.60", "SGST 2.5% KES 226.60") — same
 // engine as the invoice-level taxLines, just scoped to a single line so each
 // item card can show its own tax like the printed invoice's per-item columns.
 function lineTaxBreakup(line) {
@@ -1909,7 +1912,7 @@ function withItemTaxRates(items, placeOfSupply){
 // Line Total (incl. GST) must be rounded ONCE on the combined value — adding
 // the already-rounded Amount to the already-rounded GST (double rounding)
 // overstates it by a paisa vs. the source invoice's printed Amount column
-// (e.g. ₹9,517.15 instead of the correct ₹9,517.14).
+// (e.g. KES 9,517.15 instead of the correct KES 9,517.14).
 function lineAmountWithTax(line) {
   const exact = exactLineAmount(line);
   const rateTotal = lineTaxBreakup(line).reduce((s,t)=>s+t.rate,0);
@@ -1918,8 +1921,8 @@ function lineAmountWithTax(line) {
 
 const taxAmount  = computed(()=>taxLines.value.reduce((s,t)=>s+t.amount,0));
 // GST rule (Sec 170, CGST Act): the invoice total is rounded off to the
-// nearest rupee. Without this step the app's total (e.g. ₹35,503.61) will
-// never match the printed/e-invoice total (₹35,504.00), which always
+// nearest shilling. Without this step the app's total (e.g. KES 35,503.61) will
+// never match the printed/e-invoice total (KES 35,504.00), which always
 // carries an explicit Round Off line.
 const preRoundTotal = computed(()=>netTotal.value+taxAmount.value);
 const roundOff   = computed(()=>Math.round((Math.round(preRoundTotal.value)-preRoundTotal.value)*100)/100);
@@ -2317,7 +2320,7 @@ function fmtDateTime(d) {
 }
 function fmtN(n) {
   if (n==null) return '—';
-  return Number(n).toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 });
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
 }
 function overdueDays(inv) {
   if (!inv?.due_date) return 0;
@@ -2718,7 +2721,7 @@ async function onCustomerChange() {
   addressLoading.value=true;
   try {
     const custDoc = await apiGet("Customer", form.customer);
-    form.currency = "INR";
+    form.currency = "KES";
     form.exchange_rate = 1;
     // Apply payment terms
     if (custDoc?.payment_terms && !form.payment_terms) { form.payment_terms = custDoc.payment_terms; applyPaymentTerms(); }
@@ -2791,7 +2794,7 @@ function onShippingAddrSelect(opt) {
   form.shipping_address = opt ? formatAddress(opt) : "";
 }
 function openAddrModal(field) {
-  Object.assign(addrModal, { open: true, saving: false, forField: field, address_title: "", address_type: field === "billing" ? "Billing" : "Shipping", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
+  Object.assign(addrModal, { open: true, saving: false, forField: field, address_title: "", address_type: field === "billing" ? "Billing" : "Shipping", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "Kenya" });
 }
 async function saveNewAddress() {
   if (!addrModal.address_title.trim()) return toast.error("Address Title is required");
@@ -2803,7 +2806,7 @@ async function saveNewAddress() {
       address_title: addrModal.address_title, address_type: addrModal.address_type,
       address_line1: addrModal.address_line1, address_line2: addrModal.address_line2 || "",
       city: addrModal.city || "", state: addrModal.state || "",
-      pincode: addrModal.pincode || "", country: addrModal.country || "India",
+      pincode: addrModal.pincode || "", country: addrModal.country || "Kenya",
       links: form.customer ? [{ doctype: "Address", link_doctype: "Customer", link_name: form.customer }] : [],
     };
     const saved = await apiSave(doc);
@@ -2849,7 +2852,7 @@ function openAdd() {
   moreActionsOpen.value=false;
   Object.assign(collapsed,{branding:false,details:false,billing:true,lines:false,notes:true});
   lines.value=[{id:Date.now(),item_code:"",item_name:"",description:"",hsn_code:"",qty:1,rate:0,uom:"Nos",discount_percentage:0,discount_amount:0,amount:0,tax_code:"",income_account:"",collapsed:false,has_batch_no:0,batch_no:"",batch_expiry_date:"",batchOptions:[],_batchQty:null}];
-  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"33-Tamil Nadu",billing_address:"",billing_address_name:"",shipping_address:"",shipping_address_name:"",terms:"",remarks:"",docstatus:0,currency:"INR",exchange_rate:1,gst_treatment:"",price_list:"",update_stock:1,set_warehouse:"",logo:"",cost_center:"",sales_person:"",discount_type:"Percentage",additional_discount_percentage:0,additional_discount_amount:0});
+  Object.assign(form,{customer:"",posting_date:todayStr(),due_date:dueDateDefault(),po_no:"",payment_terms:"Net 30",place_of_supply:"",billing_address:"",billing_address_name:"",shipping_address:"",shipping_address_name:"",terms:"",remarks:"",docstatus:0,currency: "KES",exchange_rate:1,gst_treatment:"",price_list:"",update_stock:1,set_warehouse:"",logo:"",cost_center:"",sales_person:"",discount_type:"Percentage",additional_discount_percentage:0,additional_discount_amount:0});
   customerAddresses.value=[];
   customerBillingAddrs.value=[]; customerShippingAddrs.value=[]; sameAsBillingAddr.value=false;
   fetchWarehouses("");
@@ -2863,7 +2866,7 @@ async function openEdit(inv) {
   // outstanding balance, so "submitted" here always means "editing a
   // submitted invoice that still has money owed on it", never a draft.
   invEditMode.value = inv.docstatus === 1 ? "submitted" : "normal";
-  Object.assign(form,{customer:inv.customer||"",currency:inv.currency||"INR",exchange_rate:inv.exchange_rate||1,price_list:inv.price_list||"",posting_date:inv.posting_date||todayStr(),due_date:inv.due_date||dueDateDefault(),po_no:"",payment_terms:"",place_of_supply:"33-Tamil Nadu",billing_address:"",billing_address_name:"",shipping_address:"",shipping_address_name:"",terms:"",remarks:"",docstatus:inv.docstatus||0,update_stock:1,set_warehouse:"",sales_person:inv.sales_person||"",discount_type:"Percentage",additional_discount_percentage:0,additional_discount_amount:0});
+  Object.assign(form,{customer:inv.customer||"",currency:inv.currency|| "KES",exchange_rate:inv.exchange_rate||1,price_list:inv.price_list||"",posting_date:inv.posting_date||todayStr(),due_date:inv.due_date||dueDateDefault(),po_no:"",payment_terms:"",place_of_supply:"",billing_address:"",billing_address_name:"",shipping_address:"",shipping_address_name:"",terms:"",remarks:"",docstatus:inv.docstatus||0,update_stock:1,set_warehouse:"",sales_person:inv.sales_person||"",discount_type:"Percentage",additional_discount_percentage:0,additional_discount_amount:0});
 
 
   customerAddresses.value=[];
@@ -2881,7 +2884,7 @@ async function openEdit(inv) {
       billing_address:doc.billing_address||"",billing_address_name:doc.billing_address_name||"",
       shipping_address:doc.shipping_address||"",shipping_address_name:doc.shipping_address_name||"",
       terms:doc.terms||"",remarks:doc.remarks||"",docstatus:doc.docstatus||0,
-      currency:doc.currency||"INR",exchange_rate:doc.exchange_rate||1,gst_treatment:doc.gst_category||"",
+      currency:doc.currency|| "KES",exchange_rate:doc.exchange_rate||1,gst_treatment:doc.gst_category||"",
       price_list:doc.price_list||"",
       update_stock:1,set_warehouse:doc.set_warehouse||"",
       logo:doc.logo||"",cost_center:doc.cost_center||"",sales_person:doc.sales_person||"",
@@ -3063,7 +3066,7 @@ async function saveInvoice(docstatus, andNew = false) {
     const pendingDataUrl = (form.logo||"").startsWith("data:") ? form.logo : "";
     const resolvedLogoPath = pendingDataUrl ? "" : (form.logo || "");
 
-    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",billing_address_name:form.billing_address_name||"",shipping_address:shipAddr,shipping_address_name:form.shipping_address_name||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency||"INR",price_list:form.price_list||"",exchange_rate:form.currency==="INR"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:1,set_warehouse:form.set_warehouse||"",logo:resolvedLogoPath,cost_center:form.cost_center||"",sales_person:form.sales_person||"",discount_type:form.discount_type||"Percentage",additional_discount_percentage:form.discount_type==="Percentage"?flt(form.additional_discount_percentage):0,additional_discount_amount:flt(discountAmount.value)};
+    const doc={doctype:"Sales Invoice",customer:form.customer,posting_date:form.posting_date,due_date:form.due_date||form.posting_date,po_no:form.po_no||"",payment_terms:form.payment_terms||"",billing_address:form.billing_address||"",billing_address_name:form.billing_address_name||"",shipping_address:shipAddr,shipping_address_name:form.shipping_address_name||"",place_of_supply:form.place_of_supply||"",remarks:form.remarks||"",terms:form.terms||"",items:invItems,taxes,company,currency:form.currency|| "KES",price_list:form.price_list||"",exchange_rate:form.currency=== "KES"?1:(form.exchange_rate||1),gst_category:form.gst_treatment==="Overseas"?"Overseas":form.gst_treatment==="SEZ"?"SEZ":"Regular",update_stock:1,set_warehouse:form.set_warehouse||"",logo:resolvedLogoPath,cost_center:form.cost_center||"",sales_person:form.sales_person||"",discount_type:form.discount_type||"Percentage",additional_discount_percentage:form.discount_type==="Percentage"?flt(form.additional_discount_percentage):0,additional_discount_amount:flt(discountAmount.value)};
     if (editingName.value) doc.name=editingName.value;
     const saved=await apiSave(doc);
     // Lock onto the saved docname right away — if a stray second saveInvoice()

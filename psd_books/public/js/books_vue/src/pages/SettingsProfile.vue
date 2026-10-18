@@ -112,14 +112,14 @@
             <label class="nim-label">Phone</label>
             <div class="sp-input-icon-wrap">
               <svg class="sp-input-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              <input class="nim-input sp-icon-input" v-model="profile.phone" placeholder="+91 00000 00000"/>
+              <input class="nim-input sp-icon-input" v-model="profile.phone" placeholder="+254 700 000 000"/>
             </div>
           </div>
           <div class="nim-field">
             <label class="nim-label">Mobile</label>
             <div class="sp-input-icon-wrap">
               <svg class="sp-input-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
-              <input class="nim-input sp-icon-input" v-model="profile.mobile_no" placeholder="+91 00000 00000"/>
+              <input class="nim-input sp-icon-input" v-model="profile.mobile_no" placeholder="+254 700 000 000"/>
             </div>
           </div>
         </div>

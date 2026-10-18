@@ -4,7 +4,9 @@ from frappe import _
 from frappe.utils import flt
 from frappe.model.document import Document
 from psd_books.db.validators import validate_fiscal_year, set_posting_time
-from psd_books.inventory.store_issue import update_issued_qty, validate_store_issue
+from psd_books.inventory.store_issue import (
+    update_issued_qty, validate_store_issue, validate_stock_transfer, is_stock_transfer, is_warehouse_move,
+)
 
 
 class DeliveryNote(Document):
@@ -23,23 +25,28 @@ class DeliveryNote(Document):
             if flt(row.qty) <= 0:
                 frappe.throw(_("Row {0}: qty must be > 0").format(row.idx))
         self.total_qty = sum(flt(r.qty) for r in self.items)
-        if not self.get("material_request") and not self.customer:
+        if not self.get("material_request") and not is_stock_transfer(self) and not self.customer:
             frappe.throw(_("Customer is required."))
         validate_store_issue(self)
+        validate_stock_transfer(self)
 
     def before_submit(self):
         validate_store_issue(self, lock=True)   # re-check pending MRN qty under a row lock
+        validate_stock_transfer(self)           # re-check stock on hand at submit
 
     def on_submit(self):
         self._adjust_so_delivered(direction=+1)
-        if not self._stock_owned_by_invoice() and not self.get("material_request"):
+        if not self._stock_owned_by_invoice() and not is_warehouse_move(self):
             self._release_reserved_qty(direction=-1)   # goods shipped → release reservation
         update_issued_qty(self, +1)
         self.db_set("status", "Submitted", update_modified=False)
 
     def on_cancel(self):
+        if self.get("received_on"):
+            frappe.throw(_("Receipt was confirmed on {0}. Clear the receipt confirmation before cancelling this note.")
+                         .format(self.received_on))
         self._adjust_so_delivered(direction=-1)
-        if not self._stock_owned_by_invoice() and not self.get("material_request"):
+        if not self._stock_owned_by_invoice() and not is_warehouse_move(self):
             self._release_reserved_qty(direction=+1)   # shipment reversed → restore reservation
         update_issued_qty(self, -1)
         self.db_set("status", "Cancelled", update_modified=False)

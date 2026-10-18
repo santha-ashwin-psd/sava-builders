@@ -214,7 +214,7 @@ def _check_sales_items_are_sellable(doc):
     if doc.doctype not in ("Sales Invoice", "Sales Order", "Quotation", "Delivery Note", "Credit Note"):
         return
     # Sava A6.1: a store issue to site (Delivery Note linked to an MRN) is not a sale.
-    if doc.doctype == "Delivery Note" and getattr(doc, "material_request", None):
+    if doc.doctype == "Delivery Note" and (getattr(doc, "material_request", None) or getattr(doc, "is_stock_transfer", 0)):
         return
 
     for row in (getattr(doc, "items", []) or []):

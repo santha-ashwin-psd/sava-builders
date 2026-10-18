@@ -58,6 +58,8 @@ const irnPending = ref(0);
 
 const STATUS_LABEL = { active: "Active", available: "Available", not_configured: "Not Configured", coming_soon: "Coming Soon" };
 
+// Sava (Kenya): GSTR-1, GSTR-3B, e-Invoice and E-Way Bill cards are hidden, not removed.
+const SHOW_INDIA_COMPLIANCE = false;
 const integrations = computed(() => [
   { group: "Email & Notifications", key: "smtp", name: "Company SMTP", desc: "Send invoices, reminders, and customer emails from your domain.",
     ico: "mail", bg: "#eff6ff", fg: "#2563eb",
@@ -118,7 +120,7 @@ const integrations = computed(() => [
     ico: "webhook", bg: "#ecfeff", fg: "#0891b2", status: "coming_soon" },
   { group: "On the Roadmap", key: "portal", name: "Customer Portal", desc: "Customers log in to view invoices and pay online.",
     ico: "users", bg: "#fef2f2", fg: "#dc2626", status: "coming_soon" },
-].filter(i => i.key !== "portal")); // customer portal is not used in this project
+].filter(i => i.key !== "portal" && (SHOW_INDIA_COMPLIANCE || i.group !== "GST & E-Invoicing"))); // portal and India GST / e-Invoice cards are hidden in this project
 
 const groups = computed(() => {
   const order = ["Email & Notifications", "Single Sign-On", "Banking", "GST & E-Invoicing", "Inventory & Stock", "Accounting", "On the Roadmap"];

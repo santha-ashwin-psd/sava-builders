@@ -581,7 +581,7 @@ const summaryKpis = computed(() => {
 
 function fmt(val) {
   const n = parseFloat(val) || 0;
-  return n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 function statusClass(status) {

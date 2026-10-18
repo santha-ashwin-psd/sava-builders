@@ -152,7 +152,7 @@ class PurchaseInvoice(Document):
                     frappe.throw(_(
                         "Cannot submit Debit Note {0}: the Purchase Invoice {1} "
                         "already has its claimable value fully used "
-                        "(remaining: ₹{2:,.2f}, this note: ₹{3:,.2f})."
+                        "(remaining: KES {2:,.2f}, this note: KES {3:,.2f})."
                     ).format(
                         self.name,
                         self.return_against,
@@ -358,7 +358,7 @@ class PurchaseInvoice(Document):
             return
         rows = "".join(
             f"<li>{frappe.bold(a.name)} — {a.asset_name} "
-            f"({a.status}, ₹{flt(a.purchase_cost):,.2f})</li>"
+            f"({a.status}, KES {flt(a.purchase_cost):,.2f})</li>"
             for a in linked_assets
         )
         frappe.msgprint(

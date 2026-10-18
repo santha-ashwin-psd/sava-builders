@@ -54,7 +54,7 @@
             <label class="nim-label">Phone</label>
             <div class="sc-input-icon-wrap">
               <svg class="sc-input-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              <input class="nim-input sc-icon-input" v-model="form.company_phone" placeholder="+91 00000 00000"/>
+              <input class="nim-input sc-icon-input" v-model="form.company_phone" placeholder="+254 700 000 000"/>
             </div>
           </div>
           <div class="nim-field">
@@ -119,7 +119,7 @@
 
         <div class="sc-fg sc-fg--single" style="margin-bottom:0">
           <div class="nim-field">
-            <label class="nim-label">Pincode / ZIP</label>
+            <label class="nim-label">Postal Code</label>
             <div class="sc-input-icon-wrap">
               <svg class="sc-input-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
               <input class="nim-input sc-icon-input" v-model="form.company_pincode" placeholder="201309"/>
@@ -194,7 +194,7 @@
               <div class="sc-preview-company-name">{{ form.default_company || 'Company Name' }}</div>
               <div class="sc-preview-company-addr">{{ form.company_address || '123 Business Park, Sector 62' }}</div>
               <div class="sc-preview-company-addr">{{ [form.company_city, form.company_state, form.company_pincode].filter(Boolean).join(', ') || 'City, State 000000' }}</div>
-              <div class="sc-preview-company-addr">{{ form.company_country || 'India' }}</div>
+              <div class="sc-preview-company-addr">{{ form.company_country || 'Kenya' }}</div>
             </div>
           </div>
           <div class="sc-preview-divider"></div>
@@ -218,33 +218,23 @@
           </div>
           <div>
             <div class="sc-card-title">Tax Configuration</div>
-            <div class="sc-card-subtitle">GST and tax settings for India</div>
+            <div class="sc-card-subtitle">VAT and tax settings for Kenya</div>
           </div>
         </div>
         <div class="sc-divider"></div>
         <div class="sc-fg sc-fg--single">
           <div class="nim-field">
-            <label class="nim-label">GSTIN</label>
-            <input class="nim-input" v-model="form.gstin" placeholder="22AAAAA0000A1Z5"
-              @input="form.gstin = form.gstin.toUpperCase()"
-              :style="form.gstin && !GSTIN_REGEX.test(form.gstin) ? 'border-color:#dc2626;background:#fff5f5' :
-                      form.gstin && GSTIN_REGEX.test(form.gstin) ? 'border-color:#2f9e44' : ''"/>
-            <div v-if="form.gstin && !GSTIN_REGEX.test(form.gstin)" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
-              Invalid GSTIN format (e.g. 22AAAAA0000A1Z5)
+            <label class="nim-label">KRA PIN</label>
+            <input class="nim-input" v-model="form.kra_pin" placeholder="A123456789Z" maxlength="11"
+              @input="form.kra_pin = (form.kra_pin || '').toUpperCase()"
+              :style="form.kra_pin && !KRA_PIN_REGEX.test(form.kra_pin) ? 'border-color:#dc2626;background:#fff5f5' :
+                      form.kra_pin && KRA_PIN_REGEX.test(form.kra_pin) ? 'border-color:#2f9e44' : ''"/>
+            <div v-if="form.kra_pin && !KRA_PIN_REGEX.test(form.kra_pin)" style="margin-top:4px;font-size:12px;color:#dc2626;display:flex;align-items:center;gap:4px">
+              Invalid KRA PIN format (e.g. A123456789Z)
             </div>
-            <div v-else-if="form.gstin && GSTIN_REGEX.test(form.gstin)" style="margin-top:4px;font-size:12px;color:#2f9e44;display:flex;align-items:center;gap:4px">
+            <div v-else-if="form.kra_pin && KRA_PIN_REGEX.test(form.kra_pin)" style="margin-top:4px;font-size:12px;color:#2f9e44;display:flex;align-items:center;gap:4px">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-              Valid GSTIN
-            </div>
-          </div>
-          <div class="nim-field">
-            <label class="nim-label">GST State</label>
-            <input class="nim-input sc-input--readonly" :value="form.gst_state" readonly tabindex="-1"
-              placeholder="Auto-filled from GSTIN"/>
-            <div class="sc-field-hint">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="8.01"/></svg>
-              Derived automatically from the GSTIN's first 2 digits (state code).
+              Valid KRA PIN
             </div>
           </div>
         </div>
@@ -255,17 +245,16 @@
         <div class="sc-info-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16.01"/></svg>
         </div>
-        <div class="sc-info-title">About GSTIN</div>
+        <div class="sc-info-title">About KRA PIN</div>
         <div class="sc-info-body">
-          <p>GSTIN is a 15-digit unique identification number assigned to every GST registered business in India.</p>
-          <p>Format: <code>22AAAAA0000A1Z5</code></p>
+          <p>The KRA PIN is the Personal Identification Number issued by the Kenya Revenue Authority. It identifies your business for tax and VAT.</p>
+          <p>Format: <code>A123456789Z</code></p>
           <ul>
-            <li>First 2 digits — State code</li>
-            <li>Next 10 — PAN number</li>
-            <li>13th digit — Entity number</li>
-            <li>14th — Z (default)</li>
-            <li>15th — Check digit</li>
+            <li>First letter — A (company) or P (individual)</li>
+            <li>Next 9 — digits</li>
+            <li>Last letter — check letter</li>
           </ul>
+          <p>VAT is charged at 16% and shown on LPOs and invoices.</p>
         </div>
       </div>
     </div>
@@ -366,7 +355,7 @@
           <ul>
             <li>Use a PNG logo with a transparent background for best results.</li>
             <li>Your brand color appears on invoice headers and accent elements.</li>
-            <li>The Classic template works best for most Indian businesses.</li>
+            <li>The Classic template works best for most Kenyan businesses.</li>
           </ul>
         </div>
       </div>
@@ -497,16 +486,16 @@ import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import { apiGET, apiPOST, setBooksCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
-import { COUNTRIES, statesFor, stateFromGstin } from "../composables/useCountryState.js";
-import { GSTIN_REGEX } from "../composables/useValidation.js";
+import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
+import { KRA_PIN_REGEX } from "../composables/useValidation.js";
 
 const { toast } = useToast();
 const route = useRoute();
 
 const form = reactive({
-  default_company: "", is_default: 0, default_currency: "INR", fiscal_year_start_month: "April",
-  invoice_prefix: "INV", gstin: "", gst_state: "", logo_url: "",
-  company_address: "", company_city: "", company_country: "India",
+  default_company: "", is_default: 0, default_currency: "KES", fiscal_year_start_month: "April",
+  invoice_prefix: "INV", kra_pin: "", gstin: "", gst_state: "", logo_url: "",
+  company_address: "", company_city: "", company_country: "Kenya",
   company_state: "", company_pincode: "",
   company_phone: "", company_email: "", company_website: "",
   auto_send_invoice: 0, send_payment_reminders: 0,
@@ -556,8 +545,6 @@ function handleBrandingLogoUpload(e) {
 
 const stateOptions = computed(() => statesFor(form.company_country));
 
-// GST State is always derived from the GSTIN's first 2 digits (state code).
-watch(() => form.gstin, (g) => { form.gst_state = stateFromGstin(g); });
 
 async function load() {
   try {

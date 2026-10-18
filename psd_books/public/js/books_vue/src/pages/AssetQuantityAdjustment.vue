@@ -206,8 +206,8 @@ const toast = useToast();
 
 function flt(n) { const x = Number(n); return isNaN(x) ? 0 : x; }
 function INR(n) {
-  if (n === null || n === undefined || n === '' || isNaN(n)) return '₹0.00';
-  return '₹' + Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (n === null || n === undefined || n === '' || isNaN(n)) return 'KES 0.00';
+  return 'KES ' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function todayLocal() {
   const d = new Date();

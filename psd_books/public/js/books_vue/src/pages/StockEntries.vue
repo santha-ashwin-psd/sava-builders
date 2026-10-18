@@ -241,7 +241,7 @@
           <div class="se-items-head">
             <div>Item</div>
             <div class="ta-r">Qty</div>
-            <div class="ta-r">Rate (₹)</div>
+            <div class="ta-r">Rate (KES)</div>
             <div></div>
           </div>
           <div v-for="line in lines" :key="line.id" class="se-items-line">
@@ -326,7 +326,7 @@
                 <input v-model.number="line.qty" type="number" min="0" step="0.001" class="se-input ta-r" />
               </div>
               <div class="se-aic-field">
-                <label class="se-label">Rate (₹)</label>
+                <label class="se-label">Rate (KES)</label>
                 <input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" />
               </div>
             </div>
@@ -545,7 +545,7 @@
                 voucher-type="Stock Entry"
                 :voucher-no="viewDoc.name"
                 label="Stock Entry"
-                :currency="viewDoc.currency || 'INR'"
+                :currency="viewDoc.currency || 'KES'"
               />
             </template>
             <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">Journal entries are posted once the stock entry is submitted.</div>
@@ -792,7 +792,7 @@ function sortArrow(col) {
   return sortDir.value === "asc" ? "↑" : "↓";
 }
 function fmtCur(v) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(flt(v));
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "KES", minimumFractionDigits: 2 }).format(flt(v));
 }
 
 async function load() {

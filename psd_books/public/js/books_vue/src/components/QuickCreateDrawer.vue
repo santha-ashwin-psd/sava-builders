@@ -30,7 +30,7 @@
                   <option value="Individual">Individual</option>
                 </select>
               </div>
-              <div class="qcd-field">
+              <div v-if="SHOW_INDIA_FIELDS" class="qcd-field">
                 <label class="qcd-lbl">GST Treatment</label>
                 <select v-model="form.gst_treatment" class="qcd-input">
                   <option value="Registered Business">Registered Business</option>
@@ -45,11 +45,11 @@
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">Mobile</label>
-                <input v-model="form.mobile_no" type="tel" class="qcd-input" placeholder="9876543210" />
+                <input v-model="form.mobile_no" type="tel" class="qcd-input" placeholder="712345678" />
               </div>
               <div class="qcd-field">
-                <label class="qcd-lbl">Tax ID / GSTIN</label>
-                <input v-model="form.tax_id" class="qcd-input" placeholder="27AAPFU0939F1ZV" @input="form.tax_id = form.tax_id.toUpperCase()" />
+                <label class="qcd-lbl">KRA PIN</label>
+                <input v-model="form.tax_id" class="qcd-input" placeholder="A123456789Z" @input="form.tax_id = form.tax_id.toUpperCase()" />
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">Country</label>
@@ -99,7 +99,7 @@
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">Mobile</label>
-                <input v-model="form.mobile_no" type="tel" class="qcd-input" placeholder="9876543210" />
+                <input v-model="form.mobile_no" type="tel" class="qcd-input" placeholder="712345678" />
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">KRA PIN <span class="qcd-req">*</span></label>
@@ -154,7 +154,7 @@
                 </select>
               </div>
               <div class="qcd-field">
-                <label class="qcd-lbl">Standard Rate (₹)</label>
+                <label class="qcd-lbl">Standard Rate (KES)</label>
                 <input v-model.number="form.standard_rate" type="number" min="0" step="0.01" class="qcd-input" placeholder="0.00" />
               </div>
               <div class="qcd-field">
@@ -164,7 +164,7 @@
                   <option v-for="u in uomList" :key="u" :value="u">{{u}}</option>
                 </select>
               </div>
-              <div class="qcd-field">
+              <div v-if="SHOW_INDIA_FIELDS" class="qcd-field">
                 <label class="qcd-lbl">HSN / SAC Code</label>
                 <input v-model="form.hsn_code" class="qcd-input" placeholder="HSN or SAC code" />
               </div>
@@ -206,8 +206,8 @@
                 <input v-model="form.city" class="qcd-input" placeholder="City" />
               </div>
               <div class="qcd-field">
-                <label class="qcd-lbl">PIN Code</label>
-                <input v-model="form.pin" class="qcd-input" placeholder="6-digit PIN" maxlength="6" />
+                <label class="qcd-lbl">Postal Code</label>
+                <input v-model="form.pin" class="qcd-input" placeholder="e.g. 00100" maxlength="10" />
               </div>
               <div class="qcd-field">
                 <label class="qcd-lbl">Country</label>
@@ -294,6 +294,7 @@
 </template>
 
 <script setup>
+const SHOW_INDIA_FIELDS = false; // GST Treatment / HSN-SAC hidden for Kenya; set true to show again
 import { reactive, ref, watch, onMounted } from "vue";
 import { apiSave, apiList, resolveCompany } from "../api/client.js";
 import { useQuickCreate } from "../composables/useQuickCreate.js";
@@ -344,7 +345,7 @@ watch(() => state.open, (open) => {
     Object.assign(form, {
       customer_name: state.prefill, customer_type: "Company",
       gst_treatment: "Registered Business",
-      email_id: "", mobile_no: "", tax_id: "", country: "India", state: "", payment_terms: "",
+      email_id: "", mobile_no: "", tax_id: "", country: "Kenya", state: "", payment_terms: "",
     });
   } else if (state.doctype === "Supplier") {
     Object.assign(form, {
@@ -360,7 +361,7 @@ watch(() => state.open, (open) => {
   } else if (state.doctype === "Warehouse") {
     Object.assign(form, {
       warehouse_name: state.prefill, warehouse_type: "Stores",
-      parent_warehouse: "", address_line_1: "", city: "", state: "", pin: "", country: "India",
+      parent_warehouse: "", address_line_1: "", city: "", state: "", pin: "", country: "Kenya",
     });
   } else if (state.doctype === "Account") {
     Object.assign(form, {

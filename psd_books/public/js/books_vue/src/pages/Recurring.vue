@@ -664,7 +664,7 @@ function isDue(r) {
 function fmtCurrency(v) {
   if (v == null || v === "") return "—";
   const n = Number(v) || 0;
-  return "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  return "KES " + n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 function sort(col) {

@@ -652,7 +652,7 @@ function sortArrow(col) {
 }
 
 function fmtCur(v) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0 }).format(flt(v));
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "KES", minimumFractionDigits: 0 }).format(flt(v));
 }
 function statusClass(s) {
   if (s === "Cancelled") return "badge-grey";

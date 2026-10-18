@@ -246,6 +246,7 @@ def handle_qc_result(doc, method=None):
             indicator="red",
             title=_("QC Failed — Stock Held in Quarantine"),
         )
+        _move_rejected_to_rejected_store(doc)
     else:
         # Read default quarantine warehouse from the inspection's own company
         # (Books Company), not the global Books Settings singleton — quarantine
@@ -537,6 +538,8 @@ def handle_qc_cancel(doc, method=None):
     if doc.status != "Fail":
         return  # Nothing was auto-triggered for a Pending inspection
 
+    _reverse_rejected_store_move(doc)
+
     if doc.get("qc_hold"):
         se_name = doc.get("quarantine_stock_entry")
         if se_name:
@@ -577,6 +580,66 @@ def handle_qc_cancel(doc, method=None):
         title=_("QC Hold Reversed"),
         alert=True,
     )
+
+
+_REJECTED_STORE_NOTE = "QC rejected quantity to Rejected Store"
+
+
+def _move_rejected_to_rejected_store(doc):
+    """Sava A11: when an inspection fails, the rejected quantity leaves quarantine
+    for the company's Rejected Store. Only the rejected_qty moves; any accepted
+    quantity stays in quarantine as before. Best-effort and non-fatal: a failure
+    is logged and the Fail result still stands."""
+    try:
+        qty = flt(doc.get("rejected_qty"))
+        quarantine_wh = doc.get("quarantine_warehouse")
+        if qty <= 0 or not quarantine_wh:
+            return
+        marker = f"QC Inspection: {doc.name} | {_REJECTED_STORE_NOTE}"
+        if frappe.db.exists("Stock Entry", {"remarks": ["like", f"%{marker}%"], "docstatus": 1}):
+            return  # already moved
+        from psd_books.inventory.stock_link import _rejected_store
+        store = _rejected_store(_get_inspection_company(doc))
+        if not store:
+            frappe.msgprint(
+                _("No Rejected Store found — the rejected quantity of {0} stays in quarantine.").format(doc.item),
+                indicator="orange", alert=True,
+            )
+            return
+        se_name = _create_release_stock_entry(
+            doc.item, quarantine_wh, store, doc.name,
+            qty=qty, batch_no=doc.get("batch_no") or None,
+            note=_REJECTED_STORE_NOTE,
+        )
+        if se_name:
+            frappe.msgprint(
+                _("Rejected quantity {0} moved to the Rejected Store via {1}.").format(qty, frappe.bold(se_name)),
+                indicator="orange", alert=True,
+            )
+    except Exception:
+        frappe.log_error(
+            title=f"Rejected Store move failed for {doc.name}",
+            message=frappe.get_traceback(),
+        )
+
+
+def _reverse_rejected_store_move(doc):
+    """Cancel the Stock Entry made by _move_rejected_to_rejected_store, if any."""
+    try:
+        marker = f"QC Inspection: {doc.name} | {_REJECTED_STORE_NOTE}"
+        for row in frappe.get_all(
+            "Stock Entry",
+            filters={"remarks": ["like", f"%{marker}%"], "docstatus": 1},
+            fields=["name"],
+        ):
+            se = frappe.get_doc("Stock Entry", row.name)
+            se.flags.ignore_permissions = True
+            se.cancel()
+    except Exception:
+        frappe.log_error(
+            title=f"Failed to reverse Rejected Store move on cancel of {doc.name}",
+            message=frappe.get_traceback(),
+        )
 
 
 def _reverse_release_on_pass_cancel(doc):

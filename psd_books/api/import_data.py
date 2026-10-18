@@ -291,7 +291,7 @@ def _build_doc(doctype, row, company):
             "customer_name": customer_name,
             "posting_date": _parse_date(row.get("posting_date")),
             "due_date": _parse_date(row.get("due_date")),
-            "currency": row.get("currency") or "INR",
+            "currency": row.get("currency") or "KES",
             "remarks": row.get("remarks") or "",
             "items": [
                 {
@@ -319,7 +319,7 @@ def _build_doc(doctype, row, company):
             "customer_name": customer_name,
             "transaction_date": _parse_date(row.get("transaction_date")),
             "valid_till": _parse_date(row.get("valid_till")),
-            "currency": row.get("currency") or "INR",
+            "currency": row.get("currency") or "KES",
             "remarks": row.get("remarks") or "",
             "items": [
                 {
@@ -346,7 +346,7 @@ def _build_doc(doctype, row, company):
             "customer_name": customer_name,
             "delivery_date": _parse_date(row.get("delivery_date")),
             "transaction_date": _parse_date(row.get("transaction_date")),
-            "currency": row.get("currency") or "INR",
+            "currency": row.get("currency") or "KES",
             "remarks": row.get("remarks") or "",
             "items": [
                 {
@@ -376,7 +376,7 @@ def _build_doc(doctype, row, company):
             "bill_date": _parse_date(row.get("bill_date")),
             "posting_date": _parse_date(row.get("posting_date")),
             "due_date": _parse_date(row.get("due_date")),
-            "currency": row.get("currency") or "INR",
+            "currency": row.get("currency") or "KES",
             "remark": row.get("remarks") or "",
             "items": [
                 {
@@ -445,7 +445,7 @@ def _build_doc(doctype, row, company):
             "supplier_name": supplier_name,
             "transaction_date": _parse_date(row.get("transaction_date")),
             "expected_delivery_date": _parse_date(row.get("expected_delivery_date")),
-            "currency": row.get("currency") or "INR",
+            "currency": row.get("currency") or "KES",
             "remarks": row.get("remarks") or "",
             "items": [
                 {
@@ -648,16 +648,16 @@ def _build_tax_rows(tax_rate, tax_type=None):
     """
     Return Tax Line child rows if tax_rate > 0, else empty list.
     tax_type must be one of: CGST, SGST, IGST, VAT, Cess, Other.
-    Defaults to IGST when not supplied.
+    Defaults to VAT when not supplied.
     account_head is intentionally omitted — it is optional on Tax Line
     and was causing "Could not find Account Head" errors on import.
     """
     if not tax_rate:
         return []
     valid_types = {"CGST", "SGST", "IGST", "VAT", "Cess", "Other"}
-    ttype = (tax_type or "IGST").strip()
+    ttype = (tax_type or "VAT").strip()
     if ttype not in valid_types:
-        ttype = "IGST"
+        ttype = "VAT"
     return [
         {
             "tax_type": ttype,
@@ -685,19 +685,19 @@ def get_sample_csv(doctype):
         },
         "Sales Invoice": {
             "headers": ["customer","posting_date","due_date","item_code","qty","rate","tax_type","tax_rate","currency","remarks"],
-            "sample":  [["Acme Corp","2025-01-15","2025-02-14","ITEM-001","2","500","IGST","18","INR","Bulk import invoice"]],
+            "sample":  [["Acme Corp","2025-01-15","2025-02-14","ITEM-001","2","500","VAT","16","KES","Bulk import invoice"]],
         },
         "Quotation": {
             "headers": ["customer","valid_till","item_code","qty","rate","tax_type","tax_rate","currency","remarks","transaction_date"],
-            "sample":  [["Acme Corp","2025-02-28","ITEM-001","5","450","IGST","18","INR","Quote for Q1","2025-01-15"]],
+            "sample":  [["Acme Corp","2025-02-28","ITEM-001","5","450","VAT","16","KES","Quote for Q1","2025-01-15"]],
         },
         "Sales Order": {
             "headers": ["customer","delivery_date","item_code","qty","rate","tax_type","tax_rate","currency","remarks","transaction_date"],
-            "sample":  [["Acme Corp","2025-01-30","ITEM-001","10","480","IGST","18","INR","Bulk order Jan","2025-01-15"]],
+            "sample":  [["Acme Corp","2025-01-30","ITEM-001","10","480","VAT","16","KES","Bulk order Jan","2025-01-15"]],
         },
         "Purchase Invoice": {
             "headers": ["supplier","bill_no","bill_date","posting_date","due_date","item_code","qty","rate","tax_type","tax_rate","currency","remarks"],
-            "sample":  [["Global Supplies","BILL-001","2025-01-15","2025-01-15","2025-02-14","ITEM-001","3","400","IGST","18","INR","Purchase bill Jan"]],
+            "sample":  [["Global Supplies","BILL-001","2025-01-15","2025-01-15","2025-02-14","ITEM-001","3","400","VAT","16","KES","Purchase bill Jan"]],
         },
         "Expense": {
             "headers": ["posting_date","expense_type","description","amount","gst_rate","expense_account","paid_through","vendor","reference_no","notes"],
@@ -705,7 +705,7 @@ def get_sample_csv(doctype):
         },
         "Purchase Order": {
             "headers": ["supplier","transaction_date","expected_delivery_date","item_code","qty","rate","tax_type","tax_rate","currency","remarks"],
-            "sample":  [["Global Supplies","2025-01-10","2025-01-30","ITEM-001","20","380","IGST","18","INR","PO for Q1 stock"]],
+            "sample":  [["Global Supplies","2025-01-10","2025-01-30","ITEM-001","20","380","VAT","16","KES","PO for Q1 stock"]],
         },
         "Asset": {
             "headers": ["asset_name","asset_code","asset_category","purchase_date","available_for_use_date","qty","purchase_cost","taxable_value","location","department","supplier","depreciation_method","useful_life","salvage_value","description"],

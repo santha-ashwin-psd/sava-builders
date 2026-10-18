@@ -155,3 +155,29 @@ def refresh_mrn_status(mrn_name):
 	new = status_from_lines(lines)
 	if new != row.status:
 		frappe.db.set_value("Material Request", mrn_name, "status", new, update_modified=False)
+
+
+def is_stock_transfer(doc):
+	"""Sava A12: a Delivery Note that moves stock between two warehouses (no MRN, no customer)."""
+	return bool(doc.get("is_stock_transfer"))
+
+
+def is_warehouse_move(doc):
+	"""True for any Delivery Note that moves stock between warehouses instead of delivering to a customer."""
+	return is_store_issue(doc) or is_stock_transfer(doc)
+
+
+def validate_stock_transfer(doc):
+	if not is_stock_transfer(doc):
+		return
+	if doc.get("material_request") or doc.get("sales_order"):
+		frappe.throw(_("A stock transfer cannot be linked to a Material Request or a Sales Order. "
+			"Use a store issue for an MRN."))
+	missing = [label for field, label in REQUIRED if not doc.get(field)]
+	if missing:
+		frappe.throw(_("Please fill in: {0}").format(", ".join(missing)), title=_("Stock transfer incomplete"))
+	if doc.from_warehouse == doc.to_warehouse:
+		frappe.throw(_("Source and destination warehouse must be different."))
+	for row in doc.items:
+		row.warehouse = doc.from_warehouse
+	_check_stock(doc)

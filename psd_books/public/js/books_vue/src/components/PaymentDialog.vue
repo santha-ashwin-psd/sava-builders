@@ -317,7 +317,7 @@ watch(() => state.open, async (open) => {
 });
 
 function fmt(v) {
-  return "₹" + Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return "KES " + Number(v || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 async function onSave() {

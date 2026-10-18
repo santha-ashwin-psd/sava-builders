@@ -396,7 +396,7 @@ const totalQty = computed(() => filteredRowsForCount.value.reduce((s, b) => s + 
 const expiringCount = computed(() => list.value.filter(b => batchStatus(b) === "expiring").length);
 const expiredCount = computed(() => list.value.filter(b => batchStatus(b) === "expired").length);
 
-function fmtQty(v) { return Number(flt(v)).toLocaleString("en-IN", { maximumFractionDigits: 3 }); }
+function fmtQty(v) { return Number(flt(v)).toLocaleString("en-US", { maximumFractionDigits: 3 }); }
 
 function openNew() {
   editingName.value = null;

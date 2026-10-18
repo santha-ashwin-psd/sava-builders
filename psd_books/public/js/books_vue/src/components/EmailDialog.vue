@@ -128,7 +128,9 @@ async function onSend() {
     // emailed document matches the on-screen download exactly.
     if (state.printConfig) {
       try {
-        const doc = await apiGet(state.doctype, state.name);
+        let doc = await apiGet(state.doctype, state.name);
+        // A page can supply prepareDoc to add data the record doesn't carry (e.g. the PO's supplier details).
+        if (state.printConfig.prepareDoc) doc = await state.printConfig.prepareDoc(doc);
         await setCompany(doc?.company || "");
         payload.pdf_html = renderDocument(doc, {
           ...state.printConfig,

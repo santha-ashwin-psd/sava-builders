@@ -93,8 +93,8 @@
           <input v-else v-model="form.state" class="am-input" placeholder="State" />
         </div>
         <div class="am-form-field">
-          <label class="am-lbl">Pincode</label>
-          <input v-model="form.pincode" class="am-input" placeholder="Pincode" />
+          <label class="am-lbl">Postal Code</label>
+          <input v-model="form.pincode" class="am-input" placeholder="Postal Code" />
         </div>
         <div class="am-form-field am-span2">
           <label class="am-lbl">Phone</label>
@@ -136,7 +136,7 @@ let _tempCounter = 0;
 const form = reactive({
   address_type: "Billing",
   address_line1: "", address_line2: "",
-  city: "", state: "", pincode: "", country: "India", phone: "",
+  city: "", state: "", pincode: "", country: "Kenya", phone: "",
 });
 
 const byType = (type) => addresses.value.filter(a => a.address_type === type);
@@ -171,7 +171,7 @@ async function loadAddresses() {
 function openNew(type) {
   editingAddr.value = null;
   Object.assign(form, { address_type: type, address_line1: "", address_line2: "",
-                        city: "", state: "", pincode: "", country: "India", phone: "" });
+                        city: "", state: "", pincode: "", country: "Kenya", phone: "" });
   showForm.value = true;
 }
 
@@ -184,7 +184,7 @@ function openEdit(addr) {
     city:          addr.city || "",
     state:         addr.state || "",
     pincode:       addr.pincode || "",
-    country:       addr.country || "India",
+    country:       addr.country || "Kenya",
     phone:         addr.phone || "",
   });
   showForm.value = true;
@@ -208,7 +208,7 @@ async function save() {
       city:    form.city.trim(),
       state:   form.state.trim(),
       pincode: form.pincode.trim(),
-      country: form.country.trim() || "India",
+      country: form.country.trim() || "Kenya",
       phone:   form.phone.trim(),
     };
     const updated = editingAddr.value
@@ -232,7 +232,7 @@ async function save() {
       city:     form.city.trim(),
       state:    form.state.trim(),
       pincode:  form.pincode.trim(),
-      country:  form.country.trim() || "India",
+      country:  form.country.trim() || "Kenya",
       phone:    form.phone.trim(),
       links: [{ link_doctype: props.partyDoctype, link_name: props.partyName }],
     };

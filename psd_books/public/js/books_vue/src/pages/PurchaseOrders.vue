@@ -369,7 +369,7 @@
                         <div v-if="line.qty > 999999999" class="exp-field-hint exp-field-hint-err">Max 9 digits</div>
                       </div>
                       <div class="po-item-field">
-                        <label>Rate (₹)</label>
+                        <label>Rate (KES)</label>
                         <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999}" @input="calcLine(line)" />
                         <div v-if="line.rate > 999999999" class="exp-field-hint exp-field-hint-err">Max 9 digits</div>
                       </div>
@@ -426,9 +426,9 @@
             <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save Draft' }}
           </button>
           <button class="add-btn-more" :disabled="drawerSaving || !(editingName ? $canEdit('bills') : $canCreate('bills'))" :title="!(editingName ? $canEdit('bills') : $canCreate('bills')) ? 'Read-only access' : ''"
-            @click="savePO(form.purchase_type === 'Services' ? 'To Receive' : 'To Receive')">
+            @click="savePO('Draft', true)">
             <span v-html="icon('check',13)"></span>
-            {{ drawerSaving ? 'Saving…' : (form.purchase_type === 'Services' ? 'Confirm Order' : 'Issue PO') }}
+            {{ drawerSaving ? 'Saving…' : 'Send for approval' }}
           </button>
         </div>
       </div>
@@ -480,7 +480,7 @@
               <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
             </button>
             <button v-if="canEdit(viewDoc) && $canEdit('bills')" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="submitPO(viewDoc)">
-              <span v-html="icon('check',13)"></span> <span class="ab-label">Submit</span>
+              <span v-html="icon('check',13)"></span> <span class="ab-label">Send for approval</span>
             </button>
             <button class="inv-ab-btn" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="emailPO(viewDoc)">
               <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
@@ -508,11 +508,11 @@
                 </button>
               </div>
             </div>
-            <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods' && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled'" class="inv-ab-btn" @click="markAllReceived" :disabled="actionRunning || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
+            <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods' && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled' && !isApprovalStage(viewDoc)" class="inv-ab-btn" @click="markAllReceived" :disabled="actionRunning || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
               <span v-html="icon('truck',13)"></span> <span class="ab-label">Mark Received</span>
             </button>
             <span class="inv-ab-spacer"></span>
-            <button v-if="canCancel(viewDoc) && $canDelete('bills')" class="inv-ab-btn inv-ab-danger" @click="cancelPO(viewDoc)">
+            <button v-if="canCancel(viewDoc) && (viewDoc?.status === 'Pending Approval' ? !!approval?.can_cancel : $canDelete('bills'))" class="inv-ab-btn inv-ab-danger" @click="cancelPO(viewDoc)">
               Cancel
             </button>
             <button v-if="canDelete(viewDoc) && $canDelete('bills')" class="inv-ab-btn inv-ab-danger" @click="deletePO(viewDoc)">
@@ -673,6 +673,48 @@
                 </div>
               </template>
 
+              <!-- Approval (A10.3) -->
+              <div v-if="approval && ((approval.approval_steps||[]).length || (approval.can_send && (approval.preview_roles||[]).length))" class="po-terms">
+                <div class="po-meta-lbl">Approval</div>
+                <div v-if="approval.can_send && (approval.preview_roles||[]).length" class="exp-field-hint" style="margin:6px 0">
+                  Needs approval from: {{ approval.preview_roles.join(' → ') }} (based on the saved total incl. VAT).
+                </div>
+                <div v-if="viewDoc.status==='Sent Back' && approval.rejection_reason" class="exp-field-hint" style="margin:6px 0;color:#b91c1c">
+                  Sent back: {{ approval.rejection_reason }}. Correct it and send it for approval again.
+                </div>
+                <div v-if="(approval.approval_steps||[]).length" style="overflow-x:auto;margin-top:6px">
+                  <table class="inv-table pr-items-tbl">
+                    <thead><tr><th style="width:60px">Level</th><th>Role</th><th style="width:100px">Status</th><th>Approver</th><th style="width:150px">On</th><th>Remarks</th></tr></thead>
+                    <tbody>
+                      <tr v-for="st in approval.approval_steps" :key="st.level" class="inv-row">
+                        <td class="mono">{{ st.level }}</td>
+                        <td>{{ st.role }}</td>
+                        <td><span class="inv-status-badge" :class="stepClass(st.status)">{{ st.status }}</span></td>
+                        <td class="c-muted">{{ st.approver ? ownerName(st.approver) : '—' }}</td>
+                        <td class="c-muted mono-sm">{{ st.approved_on ? String(st.approved_on).slice(0,16) : '—' }}</td>
+                        <td class="c-muted">{{ st.remarks || '' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-if="approval.raised_by" class="exp-field-hint" style="margin:6px 0 0">Sent for approval by {{ ownerName(approval.raised_by) }}</div>
+                <div v-if="viewDoc.status==='Pending Approval'" style="margin-top:10px">
+                  <template v-if="approval.action && approval.action.can_act">
+                    <div class="exp-field-hint" style="margin:0 0 8px">Level {{ approval.action.level }} ({{ approval.action.role }}) is waiting for you.</div>
+                    <input class="inv-fi" v-model="approvalRemarks" maxlength="300" placeholder="Remarks (optional)" style="width:100%;max-width:420px"/>
+                    <div style="display:flex;gap:8px;margin-top:8px">
+                      <button class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" :disabled="approvalBusy" @click="approvePO(viewDoc)">
+                        <span v-html="icon('check',13)"></span> <span class="ab-label">{{ approvalBusy ? 'Working…' : 'Approve' }}</span>
+                      </button>
+                      <button class="inv-ab-btn inv-ab-danger" :disabled="approvalBusy" @click="sendBackPO(viewDoc)"><span class="ab-label">Send back</span></button>
+                    </div>
+                  </template>
+                  <div v-else class="exp-field-hint" style="margin:0">
+                    <template v-if="approval.action && approval.action.level">Waiting for level {{ approval.action.level }} ({{ approval.action.role }}). </template>{{ (approval.action && approval.action.reason) || '' }}
+                  </div>
+                </div>
+              </div>
+
               <!-- Terms -->
               <div v-if="viewDoc.terms" class="po-terms">
                 <div class="po-meta-lbl">Terms &amp; Conditions</div>
@@ -735,7 +777,7 @@
                   </div>
                 </div>
 
-                <div v-if="hasUnreceived && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled'" style="display:flex;justify-content:flex-end;margin-top:12px">
+                <div v-if="hasUnreceived && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled' && !isApprovalStage(viewDoc)" style="display:flex;justify-content:flex-end;margin-top:12px">
                   <button class="inv-view-cta" @click="markAllReceived" :disabled="actionRunning || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
                     <span v-html="icon('truck',14)"></span> Mark All Received
                   </button>
@@ -948,7 +990,8 @@ import { COUNTRIES, statesFor } from "../composables/useCountryState.js";
 import { useToast } from "../composables/useToast.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useConfirm } from "../composables/useConfirm.js";
-import { useLivePreview } from "../composables/useLivePreview.js";
+import { usePrompt } from "../composables/usePrompt.js";
+import { useLivePreview, PO_PRINT_CONFIG, preparePOPrint } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { flt, fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
@@ -976,19 +1019,21 @@ import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
+const { prompt } = usePrompt();
 const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
-async function printPO(d) { try { await refreshBranding(); } catch {} printDoc({ ...d, items: viewItems.value }, { title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name", companyName: d?.company || "" }); }
+async function printPO(d) { try { await refreshBranding(); } catch {} printDoc(await preparePOPrint({ ...d, items: viewItems.value }), { ...PO_PRINT_CONFIG, companyName: d?.company || "" }); }
 
 const showDownloadMenu = ref(false);
 
 function downloadPOPdf(mode = 'pdf') {
   showDownloadMenu.value = false;
-  const doc = { ...viewDoc.value, items: viewItems.value };
+  // viewPrint = the PO plus the supplier's KRA PIN, address and payment terms, prepared when the PO was opened
+  // (the click must stay synchronous so the browser doesn't block the pop-up).
+  const base = { ...viewDoc.value, items: viewItems.value, currency: "KES" };
+  const doc = viewPrint.value && viewPrint.value.name === base.name ? { ...viewPrint.value, items: viewItems.value } : base;
   if (!doc?.name) return;
   const html = renderDocument(doc, {
-    title: "PURCHASE ORDER",
-    partyLabel: "Vendor",
-    partyField: "supplier_name",
+    ...PO_PRINT_CONFIG,
     companyName: doc.company || window.__booksCompany || "",
   });
   if (mode === 'print') {
@@ -1027,7 +1072,10 @@ const tabs = [
 
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
 const viewMode = ref("table"); // "table" | "grid"
-const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref("");
+const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref(""), editingStatus = ref("");
+// A10.3: approval state of the PO open in the view drawer (null until loaded)
+const approval = ref(null), approvalRemarks = ref(""), approvalBusy = ref(false);
+const viewPrint = ref(null);
 const poCollapsed = reactive({ details: false, address: true, lines: false, terms: true });
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const viewLoading = ref(false), viewItems = ref([]);
@@ -1041,7 +1089,7 @@ const vendorAddresses = ref([]);
 const addrModal = reactive({
   open: false, saving: false, forField: "",
   address_title: "", address_type: "Billing", address_line1: "", address_line2: "",
-  city: "", state: "", pincode: "", country: "India",
+  city: "", state: "", pincode: "", country: "Kenya",
 });
 
 let _id = 1;
@@ -1069,7 +1117,7 @@ const billModal = reactive({ open: false, saving: false, poName: "", lines: [],
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
 function expectedDefault() { const d = new Date(); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); }
-function fmtCur(v) { return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(flt(v)); }
+function fmtCur(v) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "KES", minimumFractionDigits: 2 }).format(flt(v)); }
 
 function isPastExpected(o) {
   if (!o?.expected_delivery_date) return false;
@@ -1082,6 +1130,8 @@ function badgeClass(o) {
   const s = (o?.status||"").toLowerCase();
   if (!s || s === "draft")  return "status-draft";
   if (s === "cancelled")    return "status-cancelled";
+  if (s === "pending approval") return "status-open";
+  if (s === "sent back")    return "status-overdue";
   if (s === "closed" || s === "billed") return "status-closed";
   if (s.includes("received") && !s.includes("partially")) return "status-submitted";
   if (s === "to receive" || s.includes("partially") || s === "sent" || s === "confirmed") return "status-open";
@@ -1089,7 +1139,8 @@ function badgeClass(o) {
 }
 function headerBg(o) {
   const s = (o?.status||"").toLowerCase();
-  if (s === "cancelled") return "linear-gradient(135deg,#7f1d1d,#dc2626)";
+  if (s === "cancelled" || s === "sent back") return "linear-gradient(135deg,#7f1d1d,#dc2626)";
+  if (s === "pending approval") return "linear-gradient(135deg,#78350f,#d97706)";
   if (s === "closed" || s === "billed") return "linear-gradient(135deg,#064e3b,#059669)";
   if (s === "to receive" || s.includes("partially") || s === "sent" || s === "confirmed") return "linear-gradient(135deg,#78350f,#d97706)";
   if (s === "received") return "linear-gradient(135deg,#1e3a5f,#1a6ef7)";
@@ -1097,11 +1148,17 @@ function headerBg(o) {
 }
 function canBill(o) {
   const s = (o?.status||"").toLowerCase();
+  if (isApprovalStage(o)) return false;
   return s !== "draft" && s !== "" && s !== "cancelled" && s !== "closed" && s !== "billed";
 }
 function canEdit(o) {
   const s = (o?.status||"").toLowerCase();
-  return s === "draft" || s === "";
+  return s === "draft" || s === "" || s === "sent back";
+}
+// A10.3: Pending Approval and Sent Back are not-yet-issued stages (docstatus 0).
+function isApprovalStage(o) {
+  const s = (o?.status||"").toLowerCase();
+  return s === "pending approval" || s === "sent back";
 }
 function canCancel(o) {
   const s = (o?.status||"").toLowerCase();
@@ -1110,8 +1167,8 @@ function canCancel(o) {
 }
 function canDelete(o) {
   const s = (o?.status||"").toLowerCase();
-  // Only allow delete on draft or cancelled (never on live/closed orders)
-  return s === "draft" || s === "" || s === "cancelled";
+  // Delete on draft, sent back (editable like a draft) or cancelled; never on pending approval or live/closed orders
+  return s === "draft" || s === "" || s === "sent back" || s === "cancelled";
 }
 
 async function load() {
@@ -1153,7 +1210,7 @@ const counts = computed(() => {
     const s = (o.status||"draft").toLowerCase();
     if (s === "cancelled") c.cancelled++;
     else if (s === "closed" || s === "billed") c.closed++;
-    else if (s === "draft") c.draft++;
+    else if (s === "draft" || s === "pending approval" || s === "sent back") c.draft++;
     else if (s === "received") c.toBill++;
     else c.toReceive++;
   }
@@ -1180,11 +1237,11 @@ const filtered = computed(() => {
   if (activeTab.value !== "all") {
     r = r.filter(o => {
       const s = (o.status||"draft").toLowerCase();
-      if (activeTab.value === "draft")     return s === "draft";
+      if (activeTab.value === "draft")     return s === "draft" || s === "pending approval" || s === "sent back";
       if (activeTab.value === "cancelled") return s === "cancelled";
       if (activeTab.value === "closed")    return s === "closed" || s === "billed";
       if (activeTab.value === "toBill")    return s === "received";
-      if (activeTab.value === "toReceive") return s !== "cancelled" && s !== "closed" && s !== "billed" && s !== "draft" && s !== "received";
+      if (activeTab.value === "toReceive") return s !== "cancelled" && s !== "closed" && s !== "billed" && s !== "draft" && s !== "received" && s !== "pending approval" && s !== "sent back";
       return true;
     });
   }
@@ -1264,9 +1321,12 @@ const timelineSteps = computed(() => {
   const received = s === "received" || s === "billed" || s === "closed";
   const billed   = s === "billed"   || s === "closed";
   const closed   = s === "closed";
+  const pendingA = s === "pending approval", sentBack = s === "sent back";
+  const issuedUp = s !== "draft" && s !== "" && !pendingA && !sentBack;
   return [
     { key:"draft",    label:"Draft",    done:true },
-    { key:"issued",   label:"Issued",   done:s!=="draft", current:s==="to receive"||s==="sent"||s==="confirmed" },
+    { key:"approval", label:sentBack ? "Sent back" : "Approval", done:issuedUp, current:pendingA || sentBack, danger:sentBack },
+    { key:"issued",   label:"Issued",   done:issuedUp, current:s==="to receive"||s==="sent"||s==="confirmed" },
     { key:"received", label:"Received", done:received, current:s==="received" && !billed },
     { key:"billed",   label:"Billed",   done:billed, current:billed && !closed },
     { key:"closed",   label:"Closed",   done:closed, current:closed },
@@ -1282,7 +1342,7 @@ const threeWayMismatch = computed(() =>
 
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
-  editingName.value = "";
+  editingName.value = ""; editingStatus.value = "";
   Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "" });
   fetchWarehouses(""); fetchProjects("");
   lines.value = [blankLine()];
@@ -1290,7 +1350,7 @@ function openNew() {
   drawerOpen.value = true;
 }
 async function openEdit(o) {
-  editingName.value = o.name;
+  editingName.value = o.name; editingStatus.value = o.status || "";
   Object.assign(form, {
     supplier: o.supplier || "", transaction_date: o.transaction_date || todayStr(),
     expected_delivery_date: o.expected_delivery_date || expectedDefault(),
@@ -1340,14 +1400,19 @@ async function openView(o) {
   viewItems.value = [];
   fulfill.lines = []; fulfill.computed_status = "";
   links.bills = []; links.purchase_receipts = [];
+  approval.value = null; approvalRemarks.value = "";
   try {
-    const [doc, ful, lnk] = await Promise.all([
+    const [doc, ful, lnk, apr] = await Promise.all([
       apiGet("Purchase Order", o.name),
       apiGET("psd_books.api.docs.get_purchase_order_fulfillment", { purchase_order: o.name }).catch(() => null),
       apiGET("psd_books.api.docs.get_purchase_order_links", { purchase_order: o.name }).catch(() => null),
+      apiGET("psd_books.api.purchase_order_approval.get_approval_state", { name: o.name }).catch(() => null),
     ]);
+    approval.value = apr || null;
     viewItems.value = doc?.items || [];
     viewDoc.value = { ...o, ...doc };
+    viewPrint.value = null;
+    preparePOPrint({ ...viewDoc.value, items: viewItems.value }).then(p => { if (viewDoc.value?.name === p.name) viewPrint.value = p; }).catch(() => {});
     // Resolve address objects for view drawer cards
     const addrNames = [doc?.billing_address_name, doc?.delivery_address_name].filter(Boolean);
     for (const n of addrNames) {
@@ -1414,7 +1479,7 @@ function onDeliveryAddrSelect(opt) {
 }
 function openAddrModal(field) {
   const addrType = field === "billing" ? "Billing" : "Shipping";
-  Object.assign(addrModal, { open: true, saving: false, forField: field, address_title: "", address_type: addrType, address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
+  Object.assign(addrModal, { open: true, saving: false, forField: field, address_title: "", address_type: addrType, address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "Kenya" });
 }
 
 async function saveNewAddress() {
@@ -1431,7 +1496,7 @@ async function saveNewAddress() {
       city: addrModal.city || "",
       state: addrModal.state || "",
       pincode: addrModal.pincode || "",
-      country: addrModal.country || "India",
+      country: addrModal.country || "Kenya",
       links: form.supplier ? [{ doctype: "Address", link_doctype: "Supplier", link_name: form.supplier }] : [],
     };
     const saved = await apiSave(doc);
@@ -1513,7 +1578,7 @@ function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
 function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100; }
 
-async function savePO(newStatus) {
+async function savePO(newStatus, sendAfter = false) {
   if (!form.supplier) return toast.error("Vendor is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
   if (form.purchase_type === "Goods" && !form.set_warehouse) return toast.error("Receiving Warehouse is required for Goods orders");
@@ -1560,8 +1625,9 @@ async function savePO(newStatus) {
       set_warehouse: form.set_warehouse || "",
       material_request: form.material_request || "",
       project: form.project || null,
-      status: newStatus || "Draft",
-      docstatus: newStatus === "Draft" ? 0 : 1,
+      // A10.3: a PO is never submitted from here; the last approval submits it.
+      status: editingStatus.value === "Sent Back" ? "Sent Back" : "Draft",
+      docstatus: 0,
       terms: form.terms || "",
       items: lines.value.filter(l => l.item_code).map(l => ({
         doctype: "Purchase Order Item", item_code: l.item_code,
@@ -1574,8 +1640,16 @@ async function savePO(newStatus) {
     };
     if (editingName.value) doc.name = editingName.value;
     const saved = await apiSave(doc);
-    const msg = newStatus === "Draft" ? "saved as Draft" : "confirmed";
-    toast.success(`Purchase Order ${saved?.name || ""} ${msg}`);
+    if (sendAfter && saved?.name) {
+      try {
+        await apiPOST("psd_books.api.purchase_order_approval.send_for_approval", { name: saved.name });
+        toast.success(`Purchase Order ${saved.name} sent for approval`);
+      } catch (e) {
+        toast.error(`Saved ${saved.name} but could not send it for approval: ${e.message || e}`);
+      }
+    } else {
+      toast.success(`Purchase Order ${saved?.name || ""} saved as ${editingStatus.value === "Sent Back" ? "Sent Back" : "Draft"}`);
+    }
     drawerOpen.value = false;
     await load();
   } catch (e) { toast.error(e.message || "Failed to save PO"); }
@@ -1589,7 +1663,7 @@ async function emailPO(o) {
     getDefaultsEndpoint: "psd_books.api.docs.get_purchase_order_email_defaults",
     sendEndpoint: "psd_books.api.docs.send_purchase_order_email",
     paramKey: "purchase_order",
-    printConfig: { title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name" },
+    printConfig: { ...PO_PRINT_CONFIG, prepareDoc: preparePOPrint },
   });
 }
 
@@ -1711,19 +1785,48 @@ async function markAllReceived() {
 }
 
 async function submitPO(o) {
-  const label = (o?.purchase_type === "Services") ? "Confirm Order" : "Issue PO";
-  if (!await confirm({ title: label, body: `Submit ${o.name}? This will confirm the order and it can no longer be edited.`, okLabel: label })) return;
+  if (!await confirm({ title: "Send for approval", body: `Send ${o.name} for approval? It can't be edited while it waits for approval.`, okLabel: "Send for approval" })) return;
   try {
-    const submitted = await apiPOST("psd_books.api.docs.submit_purchase_order", { purchase_order: o.name });
-    toast.success(`Purchase Order ${o.name} confirmed`);
+    await apiPOST("psd_books.api.purchase_order_approval.send_for_approval", { name: o.name });
+    toast.success(`Purchase Order ${o.name} sent for approval`);
     await load();
     await openView({ name: o.name });
-  } catch (e) { toast.error(e.message || "Submit failed"); }
+  } catch (e) { toast.error(e.message || "Could not send for approval"); }
 }
-async function cancelPO(o) {
-  if (!await confirm({ title: "Cancel Purchase Order", body: `Cancel ${o.name}? Linked bills must be cancelled separately.`, okLabel: "Cancel PO" })) return;
+async function approvePO(o) {
+  approvalBusy.value = true;
   try {
-    await apiPOST("psd_books.api.docs.cancel_purchase_order_safe", { purchase_order: o.name });
+    const r = await apiPOST("psd_books.api.purchase_order_approval.approve_po", { name: o.name, remarks: approvalRemarks.value.trim() });
+    toast.success(r?.docstatus === 1 ? `Purchase Order ${o.name} approved and issued` : `Level approved on ${o.name}`);
+    await load();
+    await openView({ name: o.name });
+  } catch (e) { toast.error(e.message || "Approval failed"); }
+  finally { approvalBusy.value = false; }
+}
+async function sendBackPO(o) {
+  const reason = await prompt({ title: "Send back", label: "Reason for sending back (required):", okLabel: "Send back" });
+  if (!reason || !reason.trim()) return;
+  approvalBusy.value = true;
+  try {
+    await apiPOST("psd_books.api.purchase_order_approval.send_back_po", { name: o.name, reason: reason.trim() });
+    toast.success(`Purchase Order ${o.name} sent back`);
+    await load();
+    await openView({ name: o.name });
+  } catch (e) { toast.error(e.message || "Send back failed"); }
+  finally { approvalBusy.value = false; }
+}
+function stepClass(st) { return st === "Approved" ? "b-badge-green" : (st === "Rejected" ? "b-badge-red" : (st === "Cancelled" ? "b-badge-muted" : "b-badge-orange")); }
+async function cancelPO(o) {
+  const pending = (o.status || "") === "Pending Approval";
+  let reason = "";
+  if (pending) {
+    // Pending approval: the sender or an approver of the pending level cancels, with a reason.
+    reason = await prompt({ title: "Cancel Purchase Order", label: "Reason for cancelling (required):", okLabel: "Cancel PO" });
+    if (!reason || !reason.trim()) return;
+  } else if (!await confirm({ title: "Cancel Purchase Order", body: `Cancel ${o.name}? Linked bills must be cancelled separately.`, okLabel: "Cancel PO" })) return;
+  try {
+    if (pending) await apiPOST("psd_books.api.purchase_order_approval.cancel_po", { name: o.name, reason: reason.trim() });
+    else await apiPOST("psd_books.api.docs.cancel_purchase_order_safe", { purchase_order: o.name });
     toast.success("Purchase Order cancelled");
     await load(); if (viewDoc.value?.name === o.name) await openView(o);
   } catch (e) { toast.error(e.message || "Cancel failed"); }
@@ -1757,7 +1860,7 @@ async function bulkEmail() {
       getDefaultsEndpoint: "psd_books.api.docs.get_purchase_order_email_defaults",
       sendEndpoint: "psd_books.api.docs.send_purchase_order_email",
       paramKey: "purchase_order",
-      printConfig: { title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name" },
+      printConfig: { ...PO_PRINT_CONFIG, prepareDoc: preparePOPrint },
     });
     if (ok) sent++;
   }

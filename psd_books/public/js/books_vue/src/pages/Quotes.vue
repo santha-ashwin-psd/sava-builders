@@ -495,7 +495,7 @@
                           <input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-fi" @input="calcLine(line)"/>
                         </div>
                         <div class="po-item-field">
-                          <label>Rate ({{ CURRENCY_SYMBOLS[form.currency] || '₹' }})</label>
+                          <label>Rate ({{ CURRENCY_SYMBOLS[form.currency] || 'KES' }})</label>
                           <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)"/>
                         </div>
                       </div>
@@ -1154,7 +1154,7 @@ const TEMPLATES = [
   { key: "modern",  label: "Modern"  },
   { key: "minimal", label: "Minimal" },
 ];
-const CURRENCY_SYMBOLS = { INR: "₹" };
+const CURRENCY_SYMBOLS = { KES: "KES" };
 
 // ── Tax presets ──────────────────────────────────────────────────────
 const TAX_PRESETS = [
@@ -1218,21 +1218,21 @@ function validTillDefault() {
   return d.toISOString().slice(0, 10);
 }
 function fmtCur(v, currency) {
-  const cur = currency || form.currency || "INR";
-  const locale = cur === "INR" ? "en-IN" : "en-US";
+  const cur = currency || form.currency || "KES";
+  const locale = "en-US";
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency", currency: cur, minimumFractionDigits: 2,
     }).format(flt(v));
   } catch {
-    return new Intl.NumberFormat("en-IN", {
-      style: "currency", currency: "INR", minimumFractionDigits: 2,
+    return new Intl.NumberFormat("en-US", {
+      style: "currency", currency: "KES", minimumFractionDigits: 2,
     }).format(flt(v));
   }
 }
 function fmtDocCur(v, doc) {
-  const cur = doc?.currency || "INR";
-  const locale = cur === "INR" ? "en-IN" : "en-US";
+  const cur = doc?.currency || "KES";
+  const locale = "en-US";
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency", currency: cur, minimumFractionDigits: 2,
@@ -1254,7 +1254,7 @@ const form = reactive({
   billing_address_name: "",
   shipping_address: "",
   shipping_address_name: "",
-  currency: "INR",
+  currency: "KES",
   exchange_rate: 1,
   logo: "",  // stores the Frappe file URL from logo_attach field
 });
@@ -1264,7 +1264,7 @@ const customerAddresses = ref([]);
 const addrModal = reactive({
   open: false, saving: false, forField: "billing",
   address_title: "", address_type: "Billing",
-  address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India",
+  address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "Kenya",
 });
 const selectedBillingAddr  = computed(() => customerAddresses.value.find(a => a.name === form.billing_address_name) || null);
 const selectedShippingAddr = computed(() => customerAddresses.value.find(a => a.name === form.shipping_address_name) || null);
@@ -1615,7 +1615,7 @@ async function onCustomerChange() {
   addressLoading.value = true;
   try {
     const custDoc = await apiGet("Customer", form.customer);
-    form.currency = "INR";
+    form.currency = "KES";
     form.exchange_rate = 1;
     await fetchCustomerAddresses(form.customer);
     // Auto-select first billing address if available
@@ -1663,7 +1663,7 @@ function onShippingAddrSelect(opt) {
   form.shipping_address = opt ? formatAddress(opt) : "";
 }
 function openAddrModal(field) {
-  Object.assign(addrModal, { open: true, saving: false, forField: field, address_title: "", address_type: field === "billing" ? "Billing" : "Shipping", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
+  Object.assign(addrModal, { open: true, saving: false, forField: field, address_title: "", address_type: field === "billing" ? "Billing" : "Shipping", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "Kenya" });
 }
 async function saveNewAddress() {
   if (!addrModal.address_title.trim()) return toast.error("Address Title is required");
@@ -1675,7 +1675,7 @@ async function saveNewAddress() {
       address_title: addrModal.address_title, address_type: addrModal.address_type,
       address_line1: addrModal.address_line1, address_line2: addrModal.address_line2 || "",
       city: addrModal.city || "", state: addrModal.state || "",
-      pincode: addrModal.pincode || "", country: addrModal.country || "India",
+      pincode: addrModal.pincode || "", country: addrModal.country || "Kenya",
       links: form.customer ? [{ doctype: "Address", link_doctype: "Customer", link_name: form.customer }] : [],
     };
     const saved = await apiSave(doc);
@@ -1775,7 +1775,7 @@ function openNew() {
     title: "", terms: "", remarks: "",
     billing_address: "", billing_address_name: "",
     shipping_address: "", shipping_address_name: "",
-    currency: "INR", exchange_rate: 1, logo: "",
+    currency: "KES", exchange_rate: 1, logo: "",
   });
   showPreview.value = false;
   lines.value = [blankLine()];
@@ -1792,7 +1792,7 @@ async function openEdit(q) {
   Object.assign(form, {
     customer: q.customer || "", transaction_date: q.transaction_date || todayStr(),
     valid_till: q.valid_till || validTillDefault(), title: q.title || "",
-    terms: q.terms || "", currency: q.currency || "INR",
+    terms: q.terms || "", currency: q.currency || "KES",
     exchange_rate: q.exchange_rate || 1, remarks: "",
     billing_address: "", billing_address_name: "",
     shipping_address: "", shipping_address_name: "",
@@ -1927,8 +1927,8 @@ async function saveQT(newStatus, andNew = false) {
       remarks: form.remarks || "",
       billing_address: form.billing_address || "", billing_address_name: form.billing_address_name || "",
       shipping_address: form.shipping_address || "", shipping_address_name: form.shipping_address_name || "",
-      currency: form.currency || "INR",
-      exchange_rate: form.currency === "INR" ? 1 : (flt(form.exchange_rate) || 1),
+      currency: form.currency || "KES",
+      exchange_rate: form.currency === "KES" ? 1 : (flt(form.exchange_rate) || 1),
       items: qtItems, taxes,
       logo: resolvedLogoPath,
     };
@@ -2282,7 +2282,7 @@ async function downloadQuotePdf(mode = 'pdf') {
     customer_name: doc.customer_name || doc.customer,
     transaction_date: doc.transaction_date, valid_till: doc.valid_till,
     title: doc.title || "", billing_address: doc.billing_address || doc.address_display || "",
-    currency: doc.currency || "INR", items: doc.items || [], taxes: doc.taxes || [],
+    currency: doc.currency || "KES", items: doc.items || [], taxes: doc.taxes || [],
     subtotal: doc.net_total != null ? flt(doc.net_total) : flt(doc.grand_total) - flt(doc.total_tax),
     totalTax: flt(doc.total_tax), grandTotal: flt(doc.grand_total),
     terms: doc.terms || "", company: doc.company || window.__booksCompany || "",
@@ -2318,7 +2318,7 @@ async function printQuote(data) {
       customer_name: doc.customer_name || doc.customer,
       transaction_date: doc.transaction_date, valid_till: doc.valid_till,
       title: doc.title || "", billing_address: doc.billing_address || doc.address_display || "",
-      currency: doc.currency || "INR", items: doc.items || [], taxes: doc.taxes || [],
+      currency: doc.currency || "KES", items: doc.items || [], taxes: doc.taxes || [],
       subtotal: doc.net_total != null ? flt(doc.net_total) : flt(doc.grand_total) - flt(doc.total_tax),
       totalTax: flt(doc.total_tax), grandTotal: flt(doc.grand_total),
       terms: doc.terms || "", company: doc.company || window.__booksCompany || "",

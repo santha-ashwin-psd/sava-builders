@@ -280,7 +280,7 @@ function makePeriods() {
   for (let i = 0; i < 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const v = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
-    const l = d.toLocaleString("en-IN", { month:"long", year:"numeric" });
+    const l = d.toLocaleString("en-US", { month:"long", year:"numeric" });
     ps.push({ v, l });
   }
   return ps;
@@ -394,7 +394,7 @@ function exportCSV() {
   a.download = `GSTR-1_${period.value}.csv`; a.click();
 }
 
-function fmtCur(v) { return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v)); }
+function fmtCur(v) { return new Intl.NumberFormat("en-US",{style:"currency",currency:"KES",minimumFractionDigits:2}).format(flt(v)); }
 
 onMounted(load);
 </script>

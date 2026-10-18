@@ -760,7 +760,7 @@ async function loadCashSummary(){
   }catch(e){ /* leave previous values in place — non-fatal for the page */ }
 }
 function tabCount(key){if(key==="all")return list.value.length;return list.value.filter(p=>p.payment_type===key).length;}
-function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
+function fmtCur(v){return new Intl.NumberFormat("en-US",{style:"currency",currency:"KES",minimumFractionDigits:2}).format(flt(v));}
 
 // ── selection ──
 function toggleSelect(name){const s=new Set(selected.value);if(s.has(name))s.delete(name);else s.add(name);selected.value=s;}

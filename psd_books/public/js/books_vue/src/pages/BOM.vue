@@ -93,7 +93,7 @@
               <th class="sortable" @click="sortBy('item_name')">BOM Name <span v-html="sortArrow('item_name')"></span></th>
               <th class="sortable" @click="sortBy('status')">Status <span v-html="sortArrow('status')"></span></th>
               <th class="sortable" @click="sortBy('bom_type')">BOM Type <span v-html="sortArrow('bom_type')"></span></th>
-              <th class="sortable" @click="sortBy('total_cost')">BOM Cost (₹) <span v-html="sortArrow('total_cost')"></span></th>
+              <th class="sortable" @click="sortBy('total_cost')">BOM Cost (KES) <span v-html="sortArrow('total_cost')"></span></th>
               <th class="sortable" @click="sortBy('quantity')">Quantity <span v-html="sortArrow('quantity')"></span></th>
               <th>Default</th>
               <th class="sortable" @click="sortBy('modified')">Last Updated <span v-html="sortArrow('modified')"></span></th>
@@ -254,7 +254,7 @@
               <input class="bomx-fi bomx-fi-mono" type="number" v-model="bom.bulk_qty_per_unit" min="0" step="any" :disabled="readOnly" style="width:100%"/>
             </div>
             <div>
-              <div class="bomx-hf-label">Bulk Item Rate (₹)</div>
+              <div class="bomx-hf-label">Bulk Item Rate (KES)</div>
               <input class="bomx-fi bomx-fi-mono" type="number" v-model="bom.bulk_rate" min="0" step="any" :disabled="readOnly" style="width:100%"/>
             </div>
           </div>
@@ -339,7 +339,7 @@
                       <div v-if="rmUomWarning(rm)" class="bomx-landed-hint">⚠ {{ rmUomWarning(rm) }}</div>
                     </div>
                     <div class="bomx-rm-field">
-                      <label>Rate (₹)</label>
+                      <label>Rate (KES)</label>
                       <input class="bomx-fi bomx-fi-mono" type="number" :value="rm.rate" readonly tabindex="-1" title="Rate comes from the item's stock valuation and follows the selected UOM"/>
                       <div v-if="rmLandedInfo(rm.item_code)?.has_landed_cost" class="bomx-landed-hint" :title="`Base ${INR(rmLandedInfo(rm.item_code).base_rate)} + landed ${INR(rmLandedInfo(rm.item_code).landed_rate)} = ${INR(rmLandedInfo(rm.item_code).valuation_rate)} at ${rmLandedInfo(rm.item_code).warehouse}`">
                         🚚 Warehouse rate incl. landed cost: {{ INR(rmLandedInfo(rm.item_code).valuation_rate) }}/{{ rmStockUom(rm.item_code) }}
@@ -399,7 +399,7 @@
                       <SearchableSelect v-model="pi.uom" :options="ssOpts6" placeholder="— Select —" :disabled="readOnly" compact />
                     </div>
                     <div class="bomx-rm-field">
-                      <label>Rate (₹)</label>
+                      <label>Rate (KES)</label>
                       <input class="bomx-fi bomx-fi-mono" type="number" v-model="pi.rate" min="0" step="any" :disabled="readOnly"/>
                     </div>
                   </div>
@@ -416,8 +416,8 @@
               <div class="bomx-tree-col-hdr" style="margin-top:20px">
                 <div style="flex:1;padding-left:4px">Operations</div>
                 <div style="min-width:80px;text-align:right">Mins</div>
-                <div style="min-width:90px;text-align:right">Hr Rate (₹)</div>
-                <div style="min-width:90px;text-align:right">Cost (₹)</div>
+                <div style="min-width:90px;text-align:right">Hr Rate (KES)</div>
+                <div style="min-width:90px;text-align:right">Cost (KES)</div>
                 <div style="width:36px"></div>
               </div>
               <div class="bomx-tree">
@@ -520,7 +520,7 @@
                       <input class="bomx-fi bomx-fi-mono" type="number" v-model="sc.qty" min="0" step="any" :disabled="readOnly"/>
                     </div>
                     <div class="bomx-rm-field">
-                      <label>Rate (₹)</label>
+                      <label>Rate (KES)</label>
                       <input class="bomx-fi bomx-fi-mono" type="number" v-model="sc.rate" min="0" step="any" :disabled="readOnly"/>
                     </div>
                   </div>
@@ -1661,7 +1661,7 @@ function onSubAssemblyBomChange(rm) {
   const subCost = parseFloat(subBom.total_cost) || 0;
   // Mirrors _calc_costs() in bom.py: rate = that BOM's total_cost / quantity
   // it produces, i.e. its actual per-unit cost — shown live here so the
-  // amount doesn't sit at ₹0.00 until save recomputes it server-side.
+  // amount doesn't sit at KES 0.00 until save recomputes it server-side.
   rm.rate = Math.round((subCost / subQty) * 100) / 100;
 }
 async function onBulkItemChange() {
@@ -2159,8 +2159,8 @@ function printBom() {
 
 // ── UTIL ─────────────────────────────────────────────────────
 function INR(n) {
-  if (n == null || isNaN(n)) return "₹0.00";
-  return "₹" + Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (n == null || isNaN(n)) return "KES 0.00";
+  return "KES " + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 const ICONS = {

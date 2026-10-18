@@ -179,7 +179,7 @@ const TABS = [
   {
     key: "territory", label: "Territories", singular: "Territory", icon: "org",
     doctype: "Territory", nameField: "territory_name", activeField: "is_group", activeMeaning: "is_group",
-    nameLabel: "Territory Name", namePlaceholder: "e.g. South India, Tamil Nadu, Export",
+    nameLabel: "Territory Name", namePlaceholder: "e.g. Nairobi, Coast, Export",
     hint: "Territories define sales regions. They appear in the Territory dropdown on Customers and can be nested under a parent territory.",
     emptyIcon: "🗺️", emptyTitle: "No territories yet", emptySub: "Create territories like North Zone, South Zone or Export",
   },

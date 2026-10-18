@@ -7,7 +7,7 @@
  "autoname": "DN-.YYYY.-.#####",
  "naming_series": null,
  "creation": "2026-05-23 00:00:00.000000",
- "modified": "2026-10-15 12:00:00.000000",
+ "modified": "2026-10-17 00:00:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,
@@ -50,7 +50,7 @@
    "translatable": 0,
    "unique": 0,
    "reqd": 0,
-   "mandatory_depends_on": "eval:!doc.material_request",
+   "mandatory_depends_on": "eval:!doc.material_request && !doc.is_stock_transfer",
    "options": "Customer"
   },
   {
@@ -306,7 +306,19 @@
   {
    "fieldname": "sec_store_issue",
    "fieldtype": "Section Break",
-   "label": "Store Issue (MRN)"
+   "label": "Store Issue (MRN) / Stock Transfer"
+  },
+  {
+   "fieldname": "is_stock_transfer",
+   "fieldtype": "Check",
+   "label": "Stock Transfer (between warehouses)",
+   "in_standard_filter": 1,
+   "search_index": 1,
+   "no_copy": 1,
+   "description": "Set when this Delivery Note issues approved MRN items from a store to a site. Stock is transferred, not sold.",
+   "default": "0",
+   "creation": "2026-10-17 00:00:00.000000",
+   "modified": "2026-10-17 00:00:00.000000"
   },
   {
    "fieldname": "material_request",
@@ -350,6 +362,43 @@
    "label": "Truck No."
   },
   {
+   "fieldname": "sec_receipt",
+   "fieldtype": "Section Break",
+   "label": "Receipt Confirmation",
+   "creation": "2026-10-17 00:00:00.000000",
+   "modified": "2026-10-17 00:00:00.000000"
+  },
+  {
+   "fieldname": "received_by_name",
+   "fieldtype": "Data",
+   "label": "Received By (Name)",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "creation": "2026-10-17 00:00:00.000000",
+   "modified": "2026-10-17 00:00:00.000000"
+  },
+  {
+   "fieldname": "received_by_id",
+   "fieldtype": "Data",
+   "label": "Received By (I.D.)",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "creation": "2026-10-17 00:00:00.000000",
+   "modified": "2026-10-17 00:00:00.000000"
+  },
+  {
+   "fieldname": "received_on",
+   "fieldtype": "Datetime",
+   "label": "Received On",
+   "read_only": 1,
+   "no_copy": 1,
+   "allow_on_submit": 1,
+   "creation": "2026-10-17 00:00:00.000000",
+   "modified": "2026-10-17 00:00:00.000000"
+  },
+  {
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
@@ -387,7 +436,7 @@
    "translatable": 0,
    "unique": 0,
    "reqd": 0,
-   "options": "Draft\nSubmitted\nCancelled",
+   "options": "Draft\nSubmitted\nReceived\nCancelled",
    "default": "Draft"
   },
   {

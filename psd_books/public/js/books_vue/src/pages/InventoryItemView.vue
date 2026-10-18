@@ -396,7 +396,7 @@ import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
 
 // Sava A3: Kenya shilling amounts with Kenyan digit grouping (1,234,567.50).
-// The shared fmt() in utils/format.js is INR / en-IN, so the Item screens
+// The shared fmt() in utils/format.js is KES / en-US, so the Item screens
 // format their own money.
 const money = (v) => {
   if (v == null || v === "") return "—";
@@ -504,7 +504,7 @@ async function deleteLedgerEntry(row) {
 }
 
 function fmtQty(v) {
-  return Number(flt(v)).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  return Number(flt(v)).toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 onMounted(load);

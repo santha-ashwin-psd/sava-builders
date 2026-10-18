@@ -95,7 +95,7 @@
    "label": "Due Date"
   },
   {
-   "default": "INR",
+   "default": "KES",
    "fieldname": "currency",
    "fieldtype": "Link",
    "label": "Currency",

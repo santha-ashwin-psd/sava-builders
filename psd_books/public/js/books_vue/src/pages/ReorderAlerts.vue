@@ -463,7 +463,7 @@ async function createPONow() {
 }
 
 function fmtQty(v) {
-  return Number(flt(v)).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  return Number(flt(v)).toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
 onMounted(load);

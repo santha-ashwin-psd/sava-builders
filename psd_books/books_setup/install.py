@@ -132,6 +132,7 @@ def seed_naming_series():
 # ─── Currencies ──────────────────────────────────────────────────────────────
 def seed_currencies():
     currencies = [
+        ("KES", "KSh", "Cents", 100, "#,###.##"),
         ("INR", "₹", "Paise",  100, "#,##,###.##"),
         ("USD", "$", "Cents",  100, "#,###.##"),
         ("EUR", "€", "Cents",  100, "#,###.##"),
@@ -298,7 +299,7 @@ def create_default_accounts():
                 "parent_account": _acc(parent) if parent else "",
                 "is_group":       is_group,
                 "company":        company,
-                "currency":       "INR",
+                "currency":       "KES",
             }).insert(ignore_permissions=True)
         except Exception as e:
             frappe.log_error(str(e), f"Account seed: {name}")
@@ -344,7 +345,7 @@ def seed_landed_cost_accounts():
                 "parent_account": parent,
                 "is_group":       0,
                 "company":        company,
-                "currency":       "INR",
+                "currency":       "KES",
             }).insert(ignore_permissions=True)
         except Exception as e:
             frappe.log_error(str(e), f"Landed cost account seed: {name}")
@@ -652,8 +653,8 @@ def ensure_company_stores(company, adopt_orphans=False):
 def seed_price_lists():
     """Create default Selling and Buying price lists."""
     price_lists = [
-        ("Standard Selling", "INR", 1, 0),
-        ("Standard Buying",  "INR", 0, 1),
+        ("Standard Selling", "KES", 1, 0),
+        ("Standard Buying",  "KES", 0, 1),
         ("Export Selling",   "USD", 1, 0),
     ]
 

@@ -192,7 +192,7 @@ def _seed_coa(company: str) -> None:
                 "parent_account": parent_full,
                 "is_group":       is_group,
                 "company":        company,
-                "currency":       "INR",
+                "currency":       "KES",
             })
             doc.insert(ignore_permissions=True)
         except Exception as exc:

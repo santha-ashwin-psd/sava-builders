@@ -298,7 +298,7 @@
                 <template v-else>
                   <div v-if="hasShortfall" class="bomx-infobox bomx-ib-amber" style="margin-bottom:14px">
                     <span v-html="icon('alertTriangle',14)"></span>
-                    <span><b>{{ shortfallCount }} material{{ shortfallCount===1?'':'s' }} short</b> — est. ₹{{ fmt(totalShortfallCost) }} to procure. Raise Material Requests before starting production.</span>
+                    <span><b>{{ shortfallCount }} material{{ shortfallCount===1?'':'s' }} short</b> — est. KES {{ fmt(totalShortfallCost) }} to procure. Raise Material Requests before starting production.</span>
                   </div>
                   <div class="bomx-pp-mat-grid">
                     <div v-for="(m, idx) in pp.mr_items" :key="idx" class="bomx-pp-mat-card">
@@ -314,7 +314,7 @@
                       </div>
                       <div v-if="flt(m.shortfall_qty) > 0" class="bomx-pp-mat-row">
                         <span>Est. Cost</span>
-                        <span class="mono">₹{{ fmt(m.estimated_cost) }}</span>
+                        <span class="mono">KES {{ fmt(m.estimated_cost) }}</span>
                       </div>
                     </div>
                   </div>
@@ -942,7 +942,7 @@ async function amendPP() {
 function flt(n) { const v = parseFloat(n); return isNaN(v) ? 0 : v; }
 function fmt(n) {
   if (isNaN(n) || n == null) return "0.00";
-  return Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 function fmtDate(d) {
   if (!d) return "";

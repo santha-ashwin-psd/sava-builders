@@ -143,7 +143,7 @@ def validate_eway_eligibility(inv, threshold=50000, allow_voluntary=True):
 
     grand_total = flt(inv.grand_total)
     if grand_total < threshold and not allow_voluntary:
-        errors.append(_("Invoice value ₹{0} is below the ₹{1} E-Way Bill threshold")
+        errors.append(_("Invoice value KES {0} is below the KES {1} E-Way Bill threshold")
                        .format(grand_total, threshold))
 
     return errors

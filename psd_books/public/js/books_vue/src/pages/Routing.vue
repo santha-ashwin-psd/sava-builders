@@ -24,7 +24,7 @@
     <div class="bomx-sum-card">
       <div class="bomx-sc-bar" style="background:var(--bx-amber)"></div>
       <div class="bomx-sc-lbl" style="color:var(--bx-amber)">Est. Labour Cost</div>
-      <div class="bomx-sc-val" style="color:var(--bx-amber)">₹{{ formatMoney(totalCost) }}</div>
+      <div class="bomx-sc-val" style="color:var(--bx-amber)">KES {{ formatMoney(totalCost) }}</div>
       <div class="bomx-sc-sub">This routing</div>
     </div>
   </div>
@@ -112,11 +112,11 @@
             </div>
             <div class="bomx-sbar-cell">
               <div class="bomx-sbar-lbl">Est. Labour Cost</div>
-              <div class="bomx-sbar-val" style="color:var(--bx-green)">₹{{ formatMoney(totalCost) }}</div>
+              <div class="bomx-sbar-val" style="color:var(--bx-green)">KES {{ formatMoney(totalCost) }}</div>
             </div>
             <div class="bomx-sbar-cell">
               <div class="bomx-sbar-lbl">Avg Rate / Op</div>
-              <div class="bomx-sbar-val" style="color:var(--bx-amber)">₹{{ formatMoney(avgRate) }}</div>
+              <div class="bomx-sbar-val" style="color:var(--bx-amber)">KES {{ formatMoney(avgRate) }}</div>
             </div>
           </div>
 
@@ -314,7 +314,7 @@ function statusClass(row) {
 const activeCount = computed(() => list.value.filter(r => r.is_active).length);
 const totalStepsAll = computed(() => list.value.reduce((s, r) => s + (r.op_count || 0), 0));
 function formatMoney(n) {
-  return Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function selectRouting(name) {

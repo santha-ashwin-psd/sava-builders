@@ -1,0 +1,62 @@
+{
+ "module": "Invoicing",
+ "doctype": "DocType",
+ "creation": "2026-10-17 00:00:00.000000",
+ "modified": "2026-10-17 00:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "docstatus": 0,
+ "idx": 0,
+ "name": "Purchase Order Approval",
+ "istable": 1,
+ "issingle": 0,
+ "track_changes": 0,
+ "is_submittable": 0,
+ "engine": "InnoDB",
+ "permissions": [],
+ "fields": [
+  {
+   "fieldname": "level",
+   "fieldtype": "Int",
+   "label": "Level",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "role",
+   "fieldtype": "Data",
+   "label": "Role",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nApproved\nRejected\nCancelled",
+   "default": "Pending",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "approver",
+   "fieldtype": "Link",
+   "label": "Approver",
+   "options": "User",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "approved_on",
+   "fieldtype": "Datetime",
+   "label": "Acted on",
+   "read_only": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks",
+   "read_only": 1
+  }
+ ]
+}

@@ -723,29 +723,29 @@ input,button,select,textarea{font-family:var(--font)}
         <div class="fg">
           <label class="fl">Fiscal Year Start</label>
           <select class="fi" id="ob-fy-start">
-            <option value="04-01">April 1 (India standard — Apr to Mar)</option>
-            <option value="01-01">January 1 (Jan to Dec)</option>
+            <option value="04-01">April 1 (Apr to Mar)</option>
+            <option value="01-01" selected>January 1 (Jan to Dec)</option>
             <option value="07-01">July 1 (Jul to Jun)</option>
             <option value="10-01">October 1 (Oct to Sep)</option>
           </select>
         </div>
 
         <div class="fg" style="background:#F0F4FF;border-radius:10px;padding:12px 14px;border:1px solid #C5CAE9">
-          <div style="font-size:12px;font-weight:600;color:#3949AB;margin-bottom:4px">GST Registration</div>
+          <div style="font-size:12px;font-weight:600;color:#3949AB;margin-bottom:4px">VAT Registration</div>
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:#374151">
             <input type="checkbox" id="ob-gst-reg" onchange="toggleGstFields(this.checked)" style="width:16px;height:16px;accent-color:#3949AB"/>
-            My business is registered under GST
+            My business is registered for VAT (has a KRA PIN)
           </label>
         </div>
 
         <div id="gst-fields" style="display:none">
           <div class="fg">
-            <label class="fl">GSTIN</label>
-            <input class="fi" id="ob-gstin" type="text" placeholder="22AAAAA0000A1Z5" maxlength="15"
+            <label class="fl">KRA PIN</label>
+            <input class="fi" id="ob-gstin" type="text" placeholder="A123456789Z" maxlength="11"
               oninput="this.value=this.value.toUpperCase()"/>
           </div>
-          <div class="fg">
-            <label class="fl">State (for GST)</label>
+          <div class="fg" style="display:none">
+            <label class="fl">State</label>
             <select class="fi" id="ob-state">
               <option value="">Select your state</option>
               <option value="Andhra Pradesh">Andhra Pradesh</option>
@@ -795,7 +795,7 @@ input,button,select,textarea{font-family:var(--font)}
           <div class="fg">
             <label class="fl">Currency</label>
             <select class="fi" id="ob-currency">
-              <option value="INR">₹ INR — Indian Rupee</option>
+              <option value="KES">KES — Kenyan Shilling</option>
               <option value="USD">$ USD — US Dollar</option>
               <option value="EUR">€ EUR — Euro</option>
               <option value="GBP">£ GBP — British Pound</option>
@@ -1709,11 +1709,10 @@ async function submitOnboarding() {
     await postFrappe("/api/method/psd_books.api.auth.complete_onboarding", {
       company_name: (document.getElementById("ob-company").value || "").trim(),
       business_type: document.getElementById("ob-btype").value || "",
-      gstin: gstReg ? (document.getElementById("ob-gstin")?.value || "").trim() : "",
-      gst_state: gstReg ? (document.getElementById("ob-state")?.value || "") : "",
+      kra_pin: gstReg ? (document.getElementById("ob-gstin")?.value || "").trim() : "",
       invoice_prefix: (document.getElementById("ob-prefix").value || "INV").trim(),
-      currency: document.getElementById("ob-currency").value || "INR",
-      fy_start: document.getElementById("ob-fy-start").value || "04-01",
+      currency: document.getElementById("ob-currency").value || "KES",
+      fy_start: document.getElementById("ob-fy-start").value || "01-01",
     });
   } catch(e) { /* non-blocking */ }
   finally { setLoading("ob-btn", false); }

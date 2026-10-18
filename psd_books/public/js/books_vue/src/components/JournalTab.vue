@@ -66,7 +66,7 @@ const normTotalCredit = computed(() => normalizedRows.value.reduce((s, r) => s +
 
 function fmt(v) {
   const n = Number(v || 0);
-  return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // Frappe account names are stored as "Account Name - CompanyAbbr" (e.g. "Sales Revenue - PSD").

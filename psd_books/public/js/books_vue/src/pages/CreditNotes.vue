@@ -236,7 +236,7 @@
               </div>
               <div class="cn-field" v-if="form.reason === 'Incentive'">
   <label class="inv-lbl">
-    Incentive Amount (₹) <span class="inv-req">*</span>
+    Incentive Amount (KES) <span class="inv-req">*</span>
   </label>
 
  <input
@@ -334,7 +334,7 @@
                         <input v-model.number="line.qty" type="number" min="0.001" step="0.001" class="inv-fi" @input="calcLine(line)" />
                       </div>
                       <div class="cn-item-field">
-                        <label>Rate (₹)</label>
+                        <label>Rate (KES)</label>
                         <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" @input="calcLine(line)" />
                       </div>
                     </div>
@@ -904,7 +904,7 @@ const applyModal = reactive({ open: false, saving: false, cnName: "", balance: 0
 const refundModal = reactive({ open: false, saving: false, cnName: "", balance: 0, amount: 0, mode: "Bank Transfer", reference: "" });
 
 function todayStr() { return new Date().toISOString().slice(0, 10); }
-function fmtCur(v) { return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2 }).format(Math.abs(flt(v))); }
+function fmtCur(v) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "KES", minimumFractionDigits: 2 }).format(Math.abs(flt(v))); }
 
 async function load() {
   loading.value = true;
@@ -1184,7 +1184,7 @@ async function fetchInvoices(q = "") {
     invoices.value = r.map(x => {
       const due = flt(x.outstanding_amount);
       const label = due > 0
-        ? `${x.name} · ₹${Number(due).toLocaleString("en-IN",{minimumFractionDigits:2})} due${x.customer_name ? ` · ${x.customer_name}` : ""}`
+        ? `${x.name} · KES ${Number(due).toLocaleString("en-US",{minimumFractionDigits:2})} due${x.customer_name ? ` · ${x.customer_name}` : ""}`
         : `${x.name} · Paid${x.customer_name ? ` · ${x.customer_name}` : ""}`;
       return { ...x, label, value: x.name };
     });

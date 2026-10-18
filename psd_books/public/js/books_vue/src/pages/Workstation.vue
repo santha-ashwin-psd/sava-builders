@@ -196,8 +196,8 @@
             <div style="margin-top:16px">
               <div class="bomx-hf-label">Hourly Operating Cost <span style="color:var(--bx-red)">*</span></div>
               <div style="position:relative">
-                <span style="position:absolute;left:9px;top:8px;color:var(--bx-muted);font-weight:600;font-size:13px">₹</span>
-                <input class="bomx-fi" type="number" v-model.number="doc.hour_rate" min="0" step="any" style="width:100%;padding-left:24px"/>
+                <span style="position:absolute;left:9px;top:8px;color:var(--bx-muted);font-weight:600;font-size:12px">KES</span>
+                <input class="bomx-fi" type="number" v-model.number="doc.hour_rate" min="0" step="any" style="width:100%;padding-left:40px"/>
               </div>
               <div class="bomx-field-hint">Used for calculating manufacturing costs.</div>
             </div>
@@ -298,7 +298,7 @@ function typeIcon(type) {
 }
 
 function fmtCurrency(val) {
-  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(val || 0);
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'KES', maximumFractionDigits: 0 }).format(val || 0);
 }
 
 function selectWorkstation(name) {

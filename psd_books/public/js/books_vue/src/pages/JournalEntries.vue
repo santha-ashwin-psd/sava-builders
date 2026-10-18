@@ -17,7 +17,7 @@
     </div>
     <div class="jen-sum-card">
       <div class="jen-sum-lbl" style="color:#2f9e44">Total Debits</div>
-      <div class="jen-sum-val" style="color:#2f9e44">{{summary.totalDr>=1000?'₹'+(summary.totalDr/1000).toFixed(1)+'K':fmtINR(summary.totalDr)||'₹0'}}</div>
+      <div class="jen-sum-val" style="color:#2f9e44">{{summary.totalDr>=1000?'KES '+(summary.totalDr/1000).toFixed(1)+'K':fmtKES(summary.totalDr)||'KES 0'}}</div>
     </div>
     <div class="jen-sum-card">
       <div class="jen-sum-lbl" style="color:#c92a2a">Drafts</div>
@@ -130,8 +130,8 @@
             <td style="font-size:12.5px;color:#868e96">{{fmtDateLocal(e.date)}}</td>
             <td><span class="b-badge" :class="JE_TYPE_COLOR[e.type]||'je-type-info'">{{e.type||'Journal Entry'}}</span></td>
             <td style="font-size:13px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{e.narration||'—'}}</td>
-            <td class="ta-r" style="font-weight:600;color:#c92a2a">{{fmtINR(e.total_debit)}}</td>
-            <td class="ta-r" style="font-weight:600;color:#2f9e44">{{fmtINR(e.total_credit)}}</td>
+            <td class="ta-r" style="font-weight:600;color:#c92a2a">{{fmtKES(e.total_debit)}}</td>
+            <td class="ta-r" style="font-weight:600;color:#2f9e44">{{fmtKES(e.total_credit)}}</td>
             <td><span class="b-badge" :class="JE_STATUS_COLOR[e.status]||'je-s-draft'">{{e.status}}</span></td>
             <td style="text-align:center">
               <div style="display:flex;gap:4px;justify-content:center">
@@ -203,12 +203,12 @@
           <div class="jen-mc-amounts">
             <div class="jen-mc-amount-box jen-mc-amount-box--dr">
               <div class="jen-mc-amount-lbl">Total Debit</div>
-              <div class="jen-mc-amount-val jen-mc-amount-val--dr">{{fmtINR(e.total_debit)}}</div>
+              <div class="jen-mc-amount-val jen-mc-amount-val--dr">{{fmtKES(e.total_debit)}}</div>
             </div>
             <div class="jen-mc-amount-divider"></div>
             <div class="jen-mc-amount-box jen-mc-amount-box--cr">
               <div class="jen-mc-amount-lbl">Total Credit</div>
-              <div class="jen-mc-amount-val jen-mc-amount-val--cr">{{fmtINR(e.total_credit)}}</div>
+              <div class="jen-mc-amount-val jen-mc-amount-val--cr">{{fmtKES(e.total_credit)}}</div>
             </div>
           </div>
 
@@ -317,10 +317,10 @@
           <div class="jen-balance-bar" :class="lines.length&&(totalDr>0||totalCr>0)?(balanced?'jen-bal-ok':'jen-bal-err'):'jen-bal-zero'">
             <div style="display:flex;align-items:center;gap:8px">
               <span v-html="icon(balanced&&(totalDr>0)?'check':'info',14)"></span>
-              <span>{{!lines.length||(totalDr===0&&totalCr===0)?'Add debit and credit lines':balanced?'Balanced — ready to post':'Difference: ₹'+Math.abs(totalDr-totalCr).toLocaleString('en-IN',{minimumFractionDigits:2})}}</span>
+              <span>{{!lines.length||(totalDr===0&&totalCr===0)?'Add debit and credit lines':balanced?'Balanced — ready to post':'Difference: KES '+Math.abs(totalDr-totalCr).toLocaleString('en-US',{minimumFractionDigits:2})}}</span>
             </div>
             <div style="font-weight:700">
-              <span v-if="totalDr>0||totalCr>0">Dr: ₹{{totalDr.toLocaleString('en-IN',{minimumFractionDigits:2})}} / Cr: ₹{{totalCr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</span>
+              <span v-if="totalDr>0||totalCr>0">Dr: KES {{totalDr.toLocaleString('en-US',{minimumFractionDigits:2})}} / Cr: KES {{totalCr.toLocaleString('en-US',{minimumFractionDigits:2})}}</span>
             </div>
           </div>
 
@@ -360,8 +360,8 @@
                 </tr>
                 <tr class="jen-total-row">
                   <td colspan="2" style="padding:8px 10px;font-size:12px;font-weight:700;color:#868e96;text-transform:uppercase;letter-spacing:.04em">Totals</td>
-                  <td style="text-align:right;padding:8px 10px;font-weight:700;color:#c92a2a">₹{{totalDr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
-                  <td style="text-align:right;padding:8px 10px;font-weight:700;color:#2f9e44">₹{{totalCr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</td>
+                  <td style="text-align:right;padding:8px 10px;font-weight:700;color:#c92a2a">KES {{totalDr.toLocaleString('en-US',{minimumFractionDigits:2})}}</td>
+                  <td style="text-align:right;padding:8px 10px;font-weight:700;color:#2f9e44">KES {{totalCr.toLocaleString('en-US',{minimumFractionDigits:2})}}</td>
                   <td colspan="2"></td>
                 </tr>
               </tbody>
@@ -429,8 +429,8 @@
             <div v-if="lines.length" class="jen-lmc-totals">
               <span class="jen-lmc-totals-lbl">Totals</span>
               <div class="jen-lmc-totals-vals">
-                <span class="jen-lmc-totals-dr">Dr: ₹{{totalDr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</span>
-                <span class="jen-lmc-totals-cr">Cr: ₹{{totalCr.toLocaleString('en-IN',{minimumFractionDigits:2})}}</span>
+                <span class="jen-lmc-totals-dr">Dr: KES {{totalDr.toLocaleString('en-US',{minimumFractionDigits:2})}}</span>
+                <span class="jen-lmc-totals-cr">Cr: KES {{totalCr.toLocaleString('en-US',{minimumFractionDigits:2})}}</span>
               </div>
             </div>
 
@@ -503,11 +503,11 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px">
             <div style="background:#fff4f4;border:1px solid #ffcdd2;border-radius:8px;padding:12px 16px;text-align:center">
               <div style="font-size:10.5px;color:#c92a2a;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Total Debit (Dr)</div>
-              <div style="font-size:20px;font-weight:700;color:#c92a2a;">{{fmtINR(viewEntry.total_debit)}}</div>
+              <div style="font-size:20px;font-weight:700;color:#c92a2a;">{{fmtKES(viewEntry.total_debit)}}</div>
             </div>
             <div style="background:#f0fff4;border:1px solid #b2f2bb;border-radius:8px;padding:12px 16px;text-align:center">
               <div style="font-size:10.5px;color:#2f9e44;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Total Credit (Cr)</div>
-              <div style="font-size:20px;font-weight:700;color:#2f9e44;">{{fmtINR(viewEntry.total_credit)}}</div>
+              <div style="font-size:20px;font-weight:700;color:#2f9e44;">{{fmtKES(viewEntry.total_credit)}}</div>
             </div>
           </div>
 
@@ -529,8 +529,8 @@
                 <div style="font-weight:500;color:#1a1d23">
                   {{l.account}}
                 </div>
-                <div style="text-align:right;font-weight:600;color:#c92a2a">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
-                <div style="text-align:right;font-weight:600;color:#2f9e44">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
+                <div style="text-align:right;font-weight:600;color:#c92a2a">{{flt(l.dr)>0?fmtKES(l.dr):'—'}}</div>
+                <div style="text-align:right;font-weight:600;color:#2f9e44">{{flt(l.cr)>0?fmtKES(l.cr):'—'}}</div>
               </div>
             </div>
             <!-- Mobile line cards -->
@@ -554,12 +554,12 @@
                 <div class="jen-vlmc-amounts">
                   <div class="jen-vlmc-amt jen-vlmc-amt--dr">
                     <div class="jen-vlmc-amt-lbl">Debit (Dr)</div>
-                    <div class="jen-vlmc-amt-val jen-vlmc-amt-val--dr">{{flt(l.dr)>0?fmtINR(l.dr):'—'}}</div>
+                    <div class="jen-vlmc-amt-val jen-vlmc-amt-val--dr">{{flt(l.dr)>0?fmtKES(l.dr):'—'}}</div>
                   </div>
                   <div class="jen-vlmc-divider"></div>
                   <div class="jen-vlmc-amt jen-vlmc-amt--cr">
                     <div class="jen-vlmc-amt-lbl">Credit (Cr)</div>
-                    <div class="jen-vlmc-amt-val jen-vlmc-amt-val--cr">{{flt(l.cr)>0?fmtINR(l.cr):'—'}}</div>
+                    <div class="jen-vlmc-amt-val jen-vlmc-amt-val--cr">{{flt(l.cr)>0?fmtKES(l.cr):'—'}}</div>
                   </div>
                 </div>
               </div>
@@ -662,11 +662,11 @@ const confType   = ref("");
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const thisMonth = (d) => { const n = new Date(); return (d || "").startsWith(n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0")); };
 
-function fmtINR(v) {
+function fmtKES(v) {
   if (!v && v !== 0) return "—";
   const n = Number(v);
   if (n === 0) return "—";
-  return "₹" + Math.abs(n).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+  return "KES " + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2 });
 }
 function fmtDateLocal(d) {
   if (!d) return "—";

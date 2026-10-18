@@ -51,7 +51,7 @@
       "fieldtype": "Link",
       "label": "Default Currency",
       "options": "Currency",
-      "default": "INR"
+      "default": "KES"
     },
     {
       "fieldname": "payment_terms",
@@ -62,7 +62,7 @@
     {
       "fieldname": "tax_id",
       "fieldtype": "Data",
-      "label": "GSTIN / Tax ID"
+      "label": "KRA PIN"
     },
     {
       "fieldname": "section_contact",
@@ -123,7 +123,7 @@
     {
       "fieldname": "pincode",
       "fieldtype": "Data",
-      "label": "Pincode"
+      "label": "Postal Code"
     },
     {
       "fieldname": "country",

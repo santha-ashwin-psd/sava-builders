@@ -240,7 +240,7 @@ def on_delivery_note_submit(doc, method=None):
         return
     # Sava A6.1: a Delivery Note linked to an MRN moves stock to the site warehouse
     # (Material Transfer) instead of issuing it out of the books.
-    is_transfer = bool(getattr(doc, "material_request", None))
+    is_transfer = bool(getattr(doc, "material_request", None)) or bool(getattr(doc, "is_stock_transfer", 0))
     if is_transfer:
         for r in rows:
             r["to_warehouse"] = doc.to_warehouse
@@ -271,22 +271,91 @@ def on_delivery_note_cancel(doc, method=None):
 def on_purchase_receipt_submit(doc, method=None):
     """Goods received → add stock into the receiving warehouse at the line cost."""
     rows = _stock_rows(doc, direction="receipt")
-    if not rows:
-        return
-    se = _build_stock_entry(
-        entry_type="Material Receipt",
-        posting_date=doc.posting_date or today(),
-        posting_time=getattr(doc, "posting_time", None),
-        company=doc.company,
-        remarks=_("Auto stock receipt — Purchase Receipt {0}").format(doc.name),
-        rows=rows,
-        ref_doctype=doc.doctype,
-        ref_docname=doc.name,
-    )
-    frappe.msgprint(
-        _("Stock received automatically via {0}.").format(frappe.bold(se.name)),
-        indicator="green", alert=True,
-    )
+    if rows:
+        se = _build_stock_entry(
+            entry_type="Material Receipt",
+            posting_date=doc.posting_date or today(),
+            posting_time=getattr(doc, "posting_time", None),
+            company=doc.company,
+            remarks=_("Auto stock receipt — Purchase Receipt {0}").format(doc.name),
+            rows=rows,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name,
+        )
+        frappe.msgprint(
+            _("Stock received automatically via {0}.").format(frappe.bold(se.name)),
+            indicator="green", alert=True,
+        )
+
+    # Sava A11: the rejected part of the delivery goes to the company's Rejected
+    # Store, at zero value (it is not inventory cost; the supplier takes it back).
+    # Linked to the same Purchase Receipt, so cancelling the receipt reverses it too.
+    rej_rows = _rejected_rows(doc)
+    if rej_rows:
+        rse = _build_stock_entry(
+            entry_type="Material Receipt",
+            posting_date=doc.posting_date or today(),
+            posting_time=getattr(doc, "posting_time", None),
+            company=doc.company,
+            remarks=_("Rejected quantity — Purchase Receipt {0}").format(doc.name),
+            rows=rej_rows,
+            ref_doctype=doc.doctype,
+            ref_docname=doc.name,
+        )
+        frappe.msgprint(
+            _("Rejected quantity moved to the Rejected Store via {0}.").format(frappe.bold(rse.name)),
+            indicator="orange", alert=True,
+        )
+
+
+def _rejected_store(company: str | None) -> str | None:
+    """The company's Rejected Store (store_role), created on the spot if missing."""
+    if not company or not frappe.db.has_column("Warehouse", "store_role"):
+        return None
+    filters = {"company": company, "store_role": "Rejected Store", "disabled": 0}
+    name = frappe.db.get_value("Warehouse", filters, "name")
+    if not name:
+        try:
+            from psd_books.books_setup.install import ensure_company_stores
+            ensure_company_stores(company)
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "Rejected Store setup failed")
+        name = frappe.db.get_value("Warehouse", filters, "name")
+    return name
+
+
+def _rejected_rows(doc) -> list[dict]:
+    """Stock Entry rows for the rejected_qty of a Purchase Receipt (zero rate)."""
+    from psd_books.inventory.utils import get_conversion_factor
+    wanted = [r for r in (doc.items or []) if flt(getattr(r, "rejected_qty", 0)) > 0]
+    if not wanted:
+        return []
+    store = _rejected_store(doc.company)
+    rows = []
+    for row in wanted:
+        item_code = getattr(row, "item_code", None)
+        meta = frappe.db.get_value(
+            "Item", item_code, ["is_stock_item", "is_fixed_asset"], as_dict=True
+        ) or {}
+        if not item_code or not meta.get("is_stock_item") or meta.get("is_fixed_asset"):
+            continue
+        if not store:
+            frappe.msgprint(
+                _("No Rejected Store found for {0} — rejected quantity of {1} was not stocked.")
+                .format(doc.company, frappe.bold(item_code)),
+                indicator="orange", alert=True,
+            )
+            continue
+        factor = flt(get_conversion_factor(item_code, getattr(row, "uom", None)) or 1)
+        rows.append({
+            "item_code": item_code,
+            "item_name": getattr(row, "item_name", None) or item_code,
+            "qty":       flt(row.rejected_qty) * factor,
+            "basic_rate": 0,
+            "warehouse": store,
+            "batch_no":  getattr(row, "batch_no", None) or None,
+        })
+    return rows
 
 
 def on_purchase_receipt_cancel(doc, method=None):

@@ -347,7 +347,7 @@
             </div>
             <div class="inv-field">
               <label class="inv-lbl">Mobile <span class="nim-req">*</span></label>
-              <input v-model="form.mobile_no" class="inv-fi" placeholder="98765 43210"
+              <input v-model="form.mobile_no" class="inv-fi" placeholder="712 345 678"
                 :style="formErrors.mobile_no?'border-color:#dc2626;background:#fff5f5':''"
                 @input="delete formErrors.mobile_no"
                 @blur="validateField('mobile_no')"/>
@@ -442,7 +442,7 @@ function blankForm() {
     name: null, sales_person_name: "", employee_id: "", status: "Active",
     department: "", designation: "", reports_to: "", email_id: "", mobile_no: "",
     phone: "", commission_rate: 0, address_line1: "", address_line2: "",
-    city: "", state: "", pincode: "", country: "India", disabled: 0,
+    city: "", state: "", pincode: "", country: "Kenya", disabled: 0,
   };
 }
 const form = reactive(blankForm());
@@ -511,7 +511,7 @@ function reportsToName(id) {
 }
 
 function fmtCur(v) {
-  return "₹" + Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+  return "KES " + Number(v || 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
 async function selectSP(s) {

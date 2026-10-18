@@ -285,7 +285,7 @@ const statusTabs=computed(()=>[
 const totalAmount=computed(()=>list.value.reduce((s,t)=>s+flt(t.amount),0));
 const monthAmount=computed(()=>list.value.filter(t=>String(t.date)>=monthStart).reduce((s,t)=>s+flt(t.amount),0));
 const unreconciledCount=computed(()=>list.value.filter(t=>t.status!=="Reconciled").length);
-function fmtCur(v){return new Intl.NumberFormat("en-IN",{style:"currency",currency:"INR",minimumFractionDigits:2}).format(flt(v));}
+function fmtCur(v){return new Intl.NumberFormat("en-US",{style:"currency",currency:"KES",minimumFractionDigits:2}).format(flt(v));}
 
 // ── selection (keyed by outgoing transaction) ──
 function toggleSelect(id){const s=new Set(selected.value);if(s.has(id))s.delete(id);else s.add(id);selected.value=s;}
