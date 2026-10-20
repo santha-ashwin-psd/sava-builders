@@ -84,7 +84,7 @@
                       <div class="po-item-col po-item-col--right">
                         <div class="po-item-num-row">
                           <div class="po-item-field">
-                            <label>Rate (KES)</label>
+                            <label>Rate (KES per {{ it.uom || 'unit' }})</label>
                             <input class="inv-fi" type="number" min="0" step="0.01" v-model="it.rate" placeholder="Not quoted"/>
                           </div>
                           <div class="po-item-field">

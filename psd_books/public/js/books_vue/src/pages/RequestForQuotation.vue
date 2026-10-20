@@ -697,4 +697,46 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* RFQ view drawer: same look as the GRN / PO view drawers.
+   list.css, view.css, edit.css and add.css are already global (main.js);
+   only the page-scoped pr-* rules were missing here. */
+.pr-view-drawer { width: 900px; max-width: 96vw; }
+
+/* -- Action bar primary button -- */
+.inv-ab-primary { background:#2563eb;border-color:#2563eb;color:#fff; }
+.inv-ab-primary:hover { background:#1d4ed8;border-color:#1d4ed8;color:#fff; }
+.pr-act-cancel:hover { background:#fffbeb !important;border-color:#fde68a !important;color:#d97706 !important; }
+
+/* -- View cards -- */
+.pr-view-card { background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:14px; }
+.pr-view-card-hdr { display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:#f8fafc;border-bottom:1px solid #e5e7eb;font-size:12px;font-weight:700;color:#374151;letter-spacing:.02em; }
+.pr-item-count { font-size:11.5px;font-weight:500;color:#6b7280;letter-spacing:0; }
+
+/* -- Info grid -- */
+.pr-info-grid { display:grid;grid-template-columns:1fr 1fr;gap:0; }
+.pr-info-item { padding:10px 16px;border-bottom:1px solid #f1f5f9; }
+.pr-info-item:nth-child(odd) { border-right:1px solid #f1f5f9; }
+.pr-info-full { grid-column:1/-1; }
+.pr-info-lbl { font-size:10.5px;font-weight:600;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px; }
+.pr-info-val { font-size:13px;color:#111827;line-height:1.4; }
+.pr-info-empty { color:#9ca3af !important; }
+.pr-info-link a, .pr-info-link span { color:#2563eb;font-weight:500; }
+
+/* -- Tables inside cards -- */
+.pr-items-tbl { font-size:12.5px;width:100%; }
+.pr-items-tbl td { vertical-align:middle; }
+.pr-row-num { color:#9ca3af;font-size:11.5px;font-weight:600;text-align:center; }
+.pr-actions-row { display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:nowrap; }
+.pr-actions-row .inv-ab-btn { padding:4px 10px;font-size:12px;white-space:nowrap; }
+
+/* -- Misc -- */
+.ta-r { text-align:right; }
+.c-muted { color:#6b7280; }
+.mono { font-size:13px; }
+
+@media (max-width: 768px) {
+  .pr-info-grid { grid-template-columns:1fr; }
+  .pr-info-item:nth-child(odd) { border-right:none; }
+  .pr-view-card { overflow-x:auto; }
+}
 </style>

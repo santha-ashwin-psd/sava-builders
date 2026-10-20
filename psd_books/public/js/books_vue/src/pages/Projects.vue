@@ -343,7 +343,7 @@ onMounted(() => { load(); loadMembers(); });
 
 <style scoped>
 .pj-tbl { min-width: 720px; }
-.pj-code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+.pj-code { font-family: inherit; }
 .pj-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
 .pj-card { background: #fff; border-radius: 10px; width: 520px; max-width: 98%; }
 .pj-head { padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }

@@ -486,7 +486,7 @@
                   </div>
                   <div>
                     <label class="inv-lbl">Truck No. <span class="inv-req">*</span></label>
-                    <input class="inv-fi" v-model="form.truck_no" maxlength="140" placeholder="e.g. TN 45 AB 1234"/>
+                    <input class="inv-fi" v-model="form.truck_no" maxlength="140" placeholder="e.g. KDA 123A"/>
                   </div>
                 </template>
                 <div v-if="!mrnMode">
@@ -792,7 +792,7 @@ const customerAddresses = ref([]);
 const addrModal = reactive({
   open: false, forField: "shipping", saving: false,
   address_title: "", address_type: "Shipping",
-  address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "Kenya",
+  address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India",
 });
 
 const selectedBillingAddr  = computed(() => customerAddresses.value.find(a => a.name === form.billing_address_name) || null);
@@ -1431,7 +1431,7 @@ function onShippingAddrSelect(opt) {
 }
 function openAddrModal(field) {
   const addrType = field === "billing" ? "Billing" : "Shipping";
-  Object.assign(addrModal, { open: true, saving: false, forField: field, address_type: addrType, address_title: "", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "Kenya" });
+  Object.assign(addrModal, { open: true, saving: false, forField: field, address_type: addrType, address_title: "", address_line1: "", address_line2: "", city: "", state: "", pincode: "", country: "India" });
 }
 
 async function saveNewAddress() {
@@ -1448,7 +1448,7 @@ async function saveNewAddress() {
       city:          addrModal.city || "",
       state:         addrModal.state || "",
       pincode:       addrModal.pincode || "",
-      country:       addrModal.country || "Kenya",
+      country:       addrModal.country || "India",
       links: form.customer ? [{ doctype: "Address", link_doctype: "Customer", link_name: form.customer }] : [],
     };
     const saved = await apiSave(addrDoc);
