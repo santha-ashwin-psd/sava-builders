@@ -252,7 +252,7 @@
               <div class="wh-card-name">{{ child.warehouse_name || child.name }}</div>
               <div class="wh-card-meta">
                 <span v-if="child.city" class="wh-card-city">📍 {{ child.city }}{{ child.state ? ', ' + child.state : '' }}</span>
-                <span v-if="child.project" class="wh-card-city">📁 {{ child.project }}</span>
+                <span v-if="child.projects && child.projects.length" class="wh-card-city">📁 {{ child.projects.join(', ') }}</span>
               </div>
             </div>
             <div class="wh-card-right">
@@ -816,11 +816,28 @@
                 <option v-for="r in STORE_ROLES" :key="r" :value="r">{{ r }}</option>
               </select>
             </div>
-            <div v-if="needsProject(form.store_role)">
-              <label class="nim-label">Project <span class="nim-req">*</span></label>
-              <SearchableSelect v-model="form.project" :options="projects"
-                placeholder="Select project…" @search="q => fetchProjects(q, form.project)"/>
+          </div>
+          <div v-if="!form.is_group && needsProject(form.store_role)" class="nim-mb">
+            <div class="nim-section-label">Projects</div>
+            <div style="font-size:12px;color:#94a3b8;margin-bottom:10px">
+              Projects that use this warehouse. One warehouse can serve several projects.
             </div>
+            <div v-for="(row, idx) in form.projects" :key="idx"
+              style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+              <select class="nim-input" v-model="row.project" style="flex:1"
+                :disabled="drawerMode === 'edit' ? !$canEdit('inventory') : !$canCreate('inventory')">
+                <option value="">— Select project —</option>
+                <option v-for="o in projectOptionsFor(row)" :key="o.value" :value="o.value">{{ o.label }}</option>
+              </select>
+              <button class="wh-action-btn wh-action-btn--danger" @click="removeProjectRow(idx)" title="Remove project"
+                :disabled="drawerMode === 'edit' ? !$canEdit('inventory') : !$canCreate('inventory')">
+                <span v-html="icon('trash', 13)"></span>
+              </button>
+            </div>
+            <button class="wh-action-btn" @click="addProjectRow"
+              :disabled="drawerMode === 'edit' ? !$canEdit('inventory') : !$canCreate('inventory')">
+              <span v-html="icon('plus', 13)"></span> Add Project
+            </button>
           </div>
           <div class="nim-section-label">Address</div>
           <div class="nim-grid-2 nim-mb">
@@ -855,28 +872,6 @@
             </label>
           </div>
 
-          <!-- ── Racks (label-only, leaf warehouses only) ── -->
-          <template v-if="!form.is_group">
-            <div class="nim-section-label" style="margin-top:18px">Racks</div>
-            <div style="font-size:12px;color:#94a3b8;margin-bottom:10px">
-              Optional labels for organizing stock location within this warehouse. Not used for quantity tracking.
-            </div>
-            <div v-for="(r, idx) in form.racks" :key="idx"
-              style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-              <input class="nim-input" v-model="r.rack_no" placeholder="Rack no, e.g. A1" style="flex:1"
-                :disabled="drawerMode === 'edit' ? !$canEdit('inventory') : !$canCreate('inventory')"/>
-              <input class="nim-input" v-model="r.notes" placeholder="Notes (optional)" style="flex:1.4"
-                :disabled="drawerMode === 'edit' ? !$canEdit('inventory') : !$canCreate('inventory')"/>
-              <button class="wh-action-btn wh-action-btn--danger" @click="removeRackRow(idx)" title="Remove rack"
-                :disabled="drawerMode === 'edit' ? !$canEdit('inventory') : !$canCreate('inventory')">
-                <span v-html="icon('trash', 13)"></span>
-              </button>
-            </div>
-            <button class="wh-action-btn" @click="addRackRow"
-              :disabled="drawerMode === 'edit' ? !$canEdit('inventory') : !$canCreate('inventory')">
-              <span v-html="icon('plus', 13)"></span> Add Rack
-            </button>
-          </template>
 
           <div class="inv-view-footer" v-if="form.owner">
             Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
@@ -1039,20 +1034,23 @@ const form = reactive({
   name: "", warehouse_name: "", warehouse_type: "Stores",
   parent_warehouse: "", city: "", country: "Kenya", state: "", address_line1: "", pincode: "",
   is_group: 0, disabled: 0,
-  store_role: "", project: "",
-  racks: [], // [{ rack_no, notes }] — label-only, leaf warehouses only
+  store_role: "", projects: [], // [{ project }] — one row per project that uses this warehouse
 });
 
-// Central / Rejected stores can't carry a project, so drop it when the role changes.
+// Central / Rejected stores can't carry projects, so drop them when the role changes.
 watch(() => form.store_role, (role) => {
-  if (!needsProject(role)) form.project = "";
+  if (!needsProject(role)) form.projects = [];
 });
 
-function addRackRow() {
-  form.racks.push({ rack_no: "", notes: "" });
+function projectOptionsFor(row) {
+  const taken = new Set(form.projects.filter((r) => r !== row).map((r) => r.project).filter(Boolean));
+  return projects.value.filter((o) => o.value === row.project || !taken.has(o.value));
 }
-function removeRackRow(idx) {
-  form.racks.splice(idx, 1);
+function addProjectRow() {
+  form.projects.push({ project: "" });
+}
+function removeProjectRow(idx) {
+  form.projects.splice(idx, 1);
 }
 const transferForm = reactive({
   from_warehouse: "", to_warehouse: "", item_code: "", item_uom: "", qty: 1,
@@ -1102,13 +1100,13 @@ const childWarehouses = computed(() => {
   }
   if (filterRole.value === "__none__") result = result.filter((w) => !w.store_role);
   else if (filterRole.value) result = result.filter((w) => w.store_role === filterRole.value);
-  if (filterProject.value) result = result.filter((w) => w.project === filterProject.value);
+  if (filterProject.value) result = result.filter((w) => (w.projects || []).includes(filterProject.value));
   return result;
 });
 
 // Projects that actually have a warehouse (feeds the Project filter; no extra API call).
 const projectFilterOptions = computed(() =>
-  [...new Set(list.value.map((w) => w.project).filter(Boolean))].sort()
+  [...new Set(list.value.flatMap((w) => w.projects || []).filter(Boolean))].sort()
 );
 const filtersActive = computed(() =>
   filterType.value !== "All" || !!filterRole.value || !!filterProject.value
@@ -1202,6 +1200,10 @@ async function load() {
                "store_role","project","owner","creation","modified_by","modified"],
       limit: 100000,
     }) || [];
+    try {
+      const pmap = await apiGET("psd_books.api.inventory.get_warehouse_projects");
+      list.value.forEach((w) => { w.projects = (pmap && pmap[w.name]) || []; });
+    } catch { list.value.forEach((w) => { w.projects = []; }); }
     // Auto-select: restore last-used group, else fall back to first group
     if (!selectedWH.value) {
       const saved = localStorage.getItem(WH_GROUP_KEY);
@@ -1692,8 +1694,8 @@ function openAddGroup() {
   Object.assign(form, {
     name: "", warehouse_name: "", warehouse_type: "Stores",
     parent_warehouse: "", city: "", country: "Kenya", state: "", address_line1: "", pincode: "",
-    is_group: 1, disabled: 0, racks: [],
-    store_role: "", project: "",
+    is_group: 1, disabled: 0,
+    store_role: "", projects: [],
     owner: null, creation: null, modified_by: null, modified: null,
   });
   showDrawer.value = true;
@@ -1705,8 +1707,8 @@ function openAddChild() {
     name: "", warehouse_name: "", warehouse_type: "Stores",
     parent_warehouse: selectedWH.value?.name || "",
     city: "", country: "Kenya", state: "", address_line1: "", pincode: "",
-    is_group: 0, disabled: 0, racks: [],
-    store_role: "", project: "",
+    is_group: 0, disabled: 0,
+    store_role: "", projects: [],
     owner: null, creation: null, modified_by: null, modified: null,
   });
   fetchProjects("");
@@ -1724,30 +1726,22 @@ async function openEdit(wh) {
     address_line1: wh.address_line1 || "", pincode: wh.pincode || "",
     is_group: wh.is_group ? 1 : 0,
     disabled: wh.disabled ? 1 : 0,
-    store_role: wh.store_role || "", project: wh.project || "",
-    racks: [],
+    store_role: wh.store_role || "", projects: [...new Set(wh.projects || [])].map(p => ({ project: p })),
     owner: wh.owner || null, creation: wh.creation || null,
     modified_by: wh.modified_by || null, modified: wh.modified || null,
   });
-  fetchProjects("", wh.project || "");
+  fetchProjects("", (wh.projects || [])[0] || "");
   showDrawer.value = true;
-  // Racks live only on leaf (non-group) warehouses; fetch the full doc for
-  // its rack rows since the list view above doesn't carry child tables.
-  if (!wh.is_group) {
-    try {
-      const fresh = await apiGET("psd_books.api.docs.get_doc", { doctype: "Warehouse", name: wh.name });
-      form.racks = (fresh?.racks || []).map(r => ({ rack_no: r.rack_no || "", notes: r.notes || "" }));
-    } catch { /* non-fatal — rack list just stays empty if this fails */ }
-  }
 }
 
 async function saveWarehouse() {
   if (!form.warehouse_name.trim()) { toast("Warehouse name is required", "error"); return; }
   // Store role only applies to leaf warehouses; groups never carry a role or project.
   const storeRole = form.is_group ? "" : (form.store_role || "");
-  const storeProject = needsProject(storeRole) ? (form.project || "") : "";
-  if (needsProject(storeRole) && !storeProject) {
-    toast(`Select a Project for the ${storeRole}`, "error"); return;
+  const storeProjects = needsProject(storeRole)
+    ? [...new Set(form.projects.map((r) => (r.project || "").trim()).filter(Boolean))] : [];
+  if (needsProject(storeRole) && !storeProjects.length) {
+    toast(`Add at least one Project for the ${storeRole}`, "error"); return;
   }
   saving.value = true;
   try {
@@ -1771,11 +1765,8 @@ async function saveWarehouse() {
       city: form.city.trim(), state: form.state.trim(),
       address_line1: form.address_line1.trim(), pincode: form.pincode.trim(),
       is_group: form.is_group ? 1 : 0, disabled: form.disabled ? 1 : 0, company,
-      store_role: storeRole, project: storeProject,
-      // Racks are label-only and only meaningful on leaf (non-group) warehouses.
-      racks: form.is_group ? [] : form.racks
-        .filter(r => (r.rack_no || "").trim())
-        .map(r => ({ rack_no: r.rack_no.trim(), notes: r.notes || "" })),
+      store_role: storeRole,
+      projects: storeProjects.map((p) => ({ project: p })),
     };
     let doc = changes;
     if (drawerMode.value === "edit") {

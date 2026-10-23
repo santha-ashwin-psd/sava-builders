@@ -37,7 +37,7 @@
           </button>
           <!-- Dropdown menu -->
           <div v-if="openMenu === u.name" class="su-dropdown" @click.stop>
-            <button class="su-dd-item" :disabled="!$canEdit('admin')" :title="!$canEdit('admin') ? 'Read-only access' : ''" @click="editUser=u;editRole=u.books_role;openMenu=null">
+            <button class="su-dd-item" :disabled="!$canEdit('admin')" :title="!$canEdit('admin') ? 'Read-only access' : ''" @click="editUser=u;editRole=u.books_role;editSava=[...(u.sava_roles||[])];openMenu=null">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               Change Role
             </button>
@@ -85,6 +85,9 @@
             {{ displayRole(u)||'—' }}
           </span>
         </div>
+        <div v-if="(u.sava_roles||[]).length" class="su-card-meta-row" style="flex-wrap:wrap;gap:4px">
+          <span v-for="r in u.sava_roles" :key="r" class="su-role-pill" style="background:#FFF4E6;color:#D9480F">{{ r }}</span>
+        </div>
         <div class="su-card-meta-row">
           <span class="su-card-meta-label">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -128,7 +131,7 @@
         <div class="nim-header">
           <div>
             <span style="font-weight:700;color:#fff;font-size:15px">Add Team Member</span>
-            <div style="font-size:11.5px;color:#868e96;margin-top:2px">Step {{stepIndex}} of {{totalSteps}} — {{step===1?'Assign a Role':(step===2?'Module Access':'Set Credentials')}}</div>
+            <div style="font-size:11.5px;color:#868e96;margin-top:2px">Step {{stepIndex}} of {{totalSteps}} — {{step===1?'Assign a Role':'Set Credentials'}}</div>
           </div>
           <button class="nim-close" @click="showInvite=false">✕</button>
         </div>
@@ -136,26 +139,18 @@
           <div v-for="s in stepsForRole" :key="s" :style="'flex:1;height:3px;border-radius:2px;margin:0 2px;background:'+(step>=s?'#2563eb':'#e4e8f0')"></div>
         </div>
         <div v-if="step===1" class="nim-body" style="display:grid;gap:12px">
-          <div style="font-size:13px;color:#4a5568">Select the role this member will have in your company:</div>
+          <div style="font-size:13px;color:#4a5568">Select Books Admin, or pick one or more job roles for this member:</div>
           <div v-for="r in ROLES" :key="r" @click="selectRole(r)" :style="'padding:14px 16px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .15s;'+(inviteForm.role===r?'border:2px solid #2563eb;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
             <div :style="'width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+ROLE_COLORS[r]"></div>
             <div style="flex:1"><div style="font-weight:700;font-size:13px;color:#1a1a2e">{{r}}</div><div style="font-size:12px;color:#868e96;margin-top:2px">{{ROLE_DESC[r]}}</div></div>
             <div v-if="inviteForm.role===r" style="color:#2563eb;font-size:16px">✓</div>
           </div>
+          <div v-for="r in SAVA_ROLES" :key="r" @click="toggleInviteSava(r)" :style="'padding:14px 16px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .15s;'+(inviteForm.sava_roles.includes(r)?'border:2px solid #2563eb;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
+            <div :style="'width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+SAVA_ROLE_COLORS[r]"></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:13px;color:#1a1a2e">{{r}}</div><div style="font-size:12px;color:#868e96;margin-top:2px">{{SAVA_ROLE_DESC[r]}}</div></div>
+            <div v-if="inviteForm.sava_roles.includes(r)" style="color:#2563eb;font-size:16px">✓</div>
+          </div>
           <div v-if="inviteError" style="background:#fff5f5;border:1px solid #ffd0d0;border-radius:8px;padding:10px 14px;color:#C92A2A;font-size:12.5px">{{inviteError}}</div>
-        </div>
-        <div v-if="step===2" class="nim-body" style="display:grid;gap:14px">
-          <div style="background:#f5f0ff;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">
-            <span :style="'background:'+ROLE_COLORS[inviteForm.role]+';color:#fff;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700'">{{inviteForm.role}}</span>
-            <span style="font-size:12.5px;color:#3b4a7a">Selected — <a href="#" @click.prevent="step=1" style="color:#2563eb;text-decoration:none">Change</a></span>
-          </div>
-          <div style="font-size:13px;color:#4a5568">{{ inviteForm.role==='Custom' ? 'Pick exactly which modules this member can access.' : 'Choose which modules this member can access.' }}</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#f8f9fc;border-radius:8px;padding:14px">
-            <label v-for="m in MODULES" :key="m.key" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;color:#3b4a7a">
-              <input type="checkbox" :checked="inviteForm.modules[m.key]" @change="inviteForm.modules[m.key] = $event.target.checked" style="width:14px;height:14px;cursor:pointer"/>
-              <span>{{m.label}}</span>
-            </label>
-          </div>
         </div>
         <div v-if="step===3" class="nim-body" style="display:grid;gap:14px">
           <div style="background:#f5f0ff;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:10px">
@@ -229,6 +224,11 @@
             <div style="flex:1"><div style="font-weight:600;font-size:13px">{{r}}</div><div style="font-size:11.5px;color:#868e96">{{ROLE_DESC[r]}}</div></div>
             <div v-if="editRole===r" style="color:#2563eb">✓</div>
           </div>
+          <div style="font-size:12.5px;color:#4a5568;margin-top:4px">Sava job roles (module access is set separately under Module Access):</div>
+          <label v-for="r in SAVA_ROLES" :key="r" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid #e4e8f0;border-radius:8px;cursor:pointer">
+            <input type="checkbox" :checked="editSava.includes(r)" @change="toggleEditSava(r)"/>
+            <span style="font-weight:600;font-size:13px">{{r}}</span>
+          </label>
         </div>
         <div class="nim-footer"><button class="nim-btn" @click="editUser=null">Cancel</button><button class="nim-btn nim-btn-primary" @click="changeRole" :disabled="!$canEdit('admin')" :title="!$canEdit('admin') ? 'Read-only access' : ''">Save Role</button></div>
       </div>
@@ -269,6 +269,7 @@ import { apiGET, apiPOST } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { fmtDate } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
+import { SAVA_ROLES, SAVA_ROLE_DESC, savaPrefill, sameRoles } from "../utils/savaRoles.js";
 
 const { toast } = useToast();
 
@@ -287,7 +288,9 @@ const MODULES = [
 
 const LEVELS = ["None", "View", "Create", "Edit", "Delete"];
 
-const ROLES = ["Books Admin", "Accountant", "Books Manager", "Books Viewer", "Custom"];
+// Add Member offers Books Admin plus the Sava job roles; the other Books roles are set automatically
+// from the job roles (see utils/savaRoles.js) and are no longer picked by hand.
+const ROLES = ["Books Admin"];
 const CHANGEABLE_ROLES = ["Books Admin", "Accountant", "Books Manager", "Books Viewer"];
 
 const ROLE_COLORS = {
@@ -296,6 +299,11 @@ const ROLE_COLORS = {
   "Books Manager": "#2F9E44",
   "Books Viewer":  "#868E96",
   "Custom":        "#E67700",
+};
+const SAVA_ROLE_COLORS = {
+  "Store Keeper": "#2F9E44", "Site Engineer": "#2F9E44", "Purchase Officer": "#1971C2",
+  "Accounts Officer": "#1971C2", "Purchase Manager": "#E67700", "Finance": "#E67700", "Director": "#E67700",
+  "Project Manager": "#2F9E44",
 };
 const ROLE_BG = {
   "Books Admin":   "#F3F0FF",
@@ -329,6 +337,7 @@ const showInvite = ref(false);
 const step     = ref(1);
 const editUser = ref(null);
 const editRole = ref("");
+const editSava = ref([]);
 const showRemoveConfirm = ref(null);
 
 const resetPwUser = ref(null);
@@ -340,6 +349,7 @@ const inviteForm = reactive({
   email: "", first_name: "", last_name: "",
   role: "Books Viewer", password: "", confirm_password: "",
   modules: defaultModulesFor("Books Viewer"),
+  sava_roles: [],
 });
 const inviteError = ref("");
 
@@ -353,13 +363,11 @@ const openMenu = ref(null);
 function toggleMenu(name) { openMenu.value = openMenu.value === name ? null : name; }
 function closeAllMenus() { openMenu.value = null; }
 
-const stepsForRole = computed(() => inviteForm.role === "Books Admin" ? [1, 3] : [1, 2, 3]);
+// Modules come from the role(s) picked in step 1 (savaPrefill), so there is no module step.
+const stepsForRole = computed(() => [1, 3]);
 const totalSteps   = computed(() => stepsForRole.value.length);
 const stepIndex    = computed(() => stepsForRole.value.indexOf(step.value) + 1);
-const nextLabel    = computed(() => {
-  if (step.value === 1) return inviteForm.role === "Books Admin" ? "Next: Set Credentials →" : "Next: Module Access →";
-  return "Next: Set Credentials →";
-});
+const nextLabel    = computed(() => "Next: Set Credentials →");
 
 function displayRole(u) {
   if (u.books_role !== "Books Viewer") return u.books_role;
@@ -390,6 +398,7 @@ function openInvite() {
     email: "", first_name: "", last_name: "",
     role: "Books Viewer", password: "", confirm_password: "",
     modules: defaultModulesFor("Books Viewer"),
+    sava_roles: [],
   });
   inviteError.value = "";
   step.value = 1;
@@ -399,21 +408,35 @@ function openInvite() {
 function selectRole(role) {
   inviteForm.role = role;
   inviteForm.modules = defaultModulesFor(role);
+  if (role === "Books Admin") inviteForm.sava_roles = [];
+}
+
+// Ticking Sava roles pre-fills the Books role and modules so the person can
+// actually work; the admin can still change both (step 1 list, step 2 modules).
+function toggleInviteSava(r) {
+  const list = inviteForm.sava_roles;
+  const i = list.indexOf(r);
+  if (i >= 0) list.splice(i, 1); else list.push(r);
+  const pf = savaPrefill(list, MODULES.map((m) => m.key));
+  if (pf) { inviteForm.role = pf.role; inviteForm.modules = pf.modules; }
+  else inviteForm.modules = defaultModulesFor(inviteForm.role);
+}
+
+function toggleEditSava(r) {
+  const i = editSava.value.indexOf(r);
+  if (i >= 0) editSava.value.splice(i, 1); else editSava.value.push(r);
 }
 
 function nextStep() {
   inviteError.value = "";
   if (step.value === 1) {
-    if (!inviteForm.role) { inviteError.value = "Please select a role."; return; }
-    step.value = inviteForm.role === "Books Admin" ? 3 : 2;
-    return;
+    if (inviteForm.role !== "Books Admin" && !inviteForm.sava_roles.length) { inviteError.value = "Select Books Admin or at least one job role."; return; }
+    step.value = 3;
   }
-  if (step.value === 2) { step.value = 3; return; }
 }
 
 function prevStep() {
-  if (step.value === 3) { step.value = inviteForm.role === "Books Admin" ? 1 : 2; return; }
-  if (step.value === 2) { step.value = 1; return; }
+  if (step.value === 3) { step.value = 1; return; }
 }
 
 async function sendInvite() {
@@ -431,6 +454,7 @@ async function sendInvite() {
       last_name: inviteForm.last_name, role: serverRole,
       password: inviteForm.password,
       modules: modulePayload,
+      sava_roles: inviteForm.sava_roles,
     });
     toast("Member added — share the password you set with " + inviteForm.email + ".");
     showInvite.value = false;
@@ -493,6 +517,9 @@ async function savePerms() {
 async function changeRole() {
   try {
     await apiPOST("psd_books.api.admin.update_user_role", { user: editUser.value.name, role: editRole.value });
+    if (!sameRoles(editSava.value, editUser.value.sava_roles)) {
+      await apiPOST("psd_books.api.admin.set_user_sava_roles", { user: editUser.value.name, roles: editSava.value });
+    }
     toast("Role updated"); editUser.value = null; load();
   } catch (e) { toast(e.message, "error"); }
 }

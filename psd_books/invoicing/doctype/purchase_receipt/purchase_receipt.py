@@ -35,8 +35,29 @@ class PurchaseReceipt(Document):
                     .format(row.idx, row.accepted_qty, row.qty)
                 )
             row.rejected_qty = flt(row.qty) - row.accepted_qty
+            # amount is derived, never left to the client: stock valuation divides amount by qty
+            # (inventory/stock_link.py), so an empty amount would value the receipt at zero.
+            row.amount = flt(row.qty) * flt(row.rate)
         self.total_qty = sum(flt(r.qty) for r in self.items)
         self._block_over_receipt()
+        self._warn_project_store()
+
+    def _warn_project_store(self):
+        """A11: a receipt should go to the store of the LPO's project. Warns only, never blocks.
+
+        The project is the receipt's own, else the LPO's. Warehouses with no project (company stores, plain
+        warehouses) never warn."""
+        project = self.get("project")
+        if not project and self.get("purchase_order"):
+            project = frappe.db.get_value("Purchase Order", self.purchase_order, "project")
+        if not project or not frappe.db.has_column("Warehouse", "project"):
+            return
+        codes = {r.get("warehouse") or self.get("set_warehouse") for r in self.items} - {None, ""}
+        by_wh = {w: frappe.get_all("Warehouse Project",
+                 filters={"parent": w, "parenttype": "Warehouse", "parentfield": "projects"},
+                 pluck="project") for w in codes}
+        for msg in project_store_warnings(project, by_wh):
+            frappe.msgprint(msg, indicator="orange", title=_("Project store"))
 
     def _block_over_receipt(self):
         """A11: a receipt may not take in more than the LPO still has pending.
@@ -229,3 +250,17 @@ def over_receipt_errors(po_rows, receipt_rows):
             errors.append(_("{0}: receiving {1}, only {2} pending on the LPO.")
                           .format(label[names[0]], flt(qty), flt(free)))
     return errors
+
+
+def project_store_warnings(project, warehouse_projects):
+    """Pure check (no DB): warning strings for warehouses that belong to a different project.
+
+    warehouse_projects: {warehouse name: list of projects it serves (empty = none)}.
+    """
+    out = []
+    for wh, wp in sorted(warehouse_projects.items()):
+        wps = list(wp) if isinstance(wp, (list, tuple, set)) else ([wp] if wp else [])
+        if project and wps and project not in wps:
+            out.append(_("Warehouse {0} is not set up for project {1}. It is set up for: {2}.")
+                       .format(wh, project, ", ".join(sorted(wps))))
+    return out

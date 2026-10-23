@@ -4,7 +4,8 @@ Endpoints
 - get_approval_state(name): read-only; status, approval levels, what the caller may do, and the levels a
   Draft would need at its current total
 - send_for_approval(name): Draft / Sent Back -> Pending Approval (levels built from the total incl. VAT)
-- approve_po(name, remarks=None): approves the pending level if the caller has its role; the last level
+- approve_po(name, remarks=None): approves the pending level if the caller has its role (the sender may approve;
+  a Books Admin may approve any level); the last level
   submits the PO (status To Receive)
 - send_back_po(name, reason): pending level -> PO goes to Sent Back (reason required); editable again
 - cancel_po(name, reason): PO pending approval -> Cancelled (reason required); the sender or an approver of
@@ -26,6 +27,12 @@ STEP_FIELDS = ["level", "role", "status", "approver", "approved_on", "remarks"]
 def _assert_company(company):
 	from psd_books.utils.access import assert_company
 	assert_company(company)
+
+
+def _is_admin():
+	"""Books Admin (company admin, or the Administrator user): may act on any approval level."""
+	from psd_books.utils.access import _membership
+	return bool(_membership(frappe.session.user).get("admin"))
 
 
 def _load(name):
@@ -54,8 +61,8 @@ def get_approval_state(name):
 		"approval_steps": steps,
 		"can_send": doc.docstatus == 0 and doc.status in rules.SENDABLE,
 		"preview_roles": rules.required_roles(doc.grand_total) if doc.docstatus == 0 and doc.status in rules.SENDABLE else [],
-		"action": rules.action_state(doc.status, doc.get("raised_by"), steps, user, roles),
-		"can_cancel": rules.can_cancel_pending(doc.status, doc.get("raised_by"), steps, user, roles),
+		"action": rules.action_state(doc.status, doc.get("raised_by"), steps, user, roles, _is_admin()),
+		"can_cancel": rules.can_cancel_pending(doc.status, doc.get("raised_by"), steps, user, roles, _is_admin()),
 	}
 
 
@@ -64,7 +71,9 @@ def send_for_approval(name):
 	from psd_books.utils.access import assert_can
 	assert_can(DOCTYPE, "write")
 	doc = _load(name)
-	doc.check_permission("write")
+	# Admins (Books Admin, Director) have full access; they hold no Frappe role permission on this doctype.
+	if not _is_admin():
+		doc.check_permission("write")
 	doc._calculate_totals()
 	rules.send_for_approval(doc, frappe.session.user)
 	doc.save(ignore_permissions=True)
@@ -74,7 +83,7 @@ def send_for_approval(name):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def approve_po(name, remarks=None):
 	doc = _load(name)
-	last = rules.approve(doc, frappe.session.user, frappe.get_roles(), remarks, now_datetime())
+	last = rules.approve(doc, frappe.session.user, frappe.get_roles(), remarks, now_datetime(), _is_admin())
 	if not last:
 		doc.save(ignore_permissions=True)
 		return rules.summary(doc)
@@ -91,14 +100,14 @@ def approve_po(name, remarks=None):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def send_back_po(name, reason):
 	doc = _load(name)
-	rules.send_back(doc, frappe.session.user, frappe.get_roles(), reason, now_datetime())
+	rules.send_back(doc, frappe.session.user, frappe.get_roles(), reason, now_datetime(), _is_admin())
 	doc.save(ignore_permissions=True)
 	return rules.summary(doc)
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def cancel_po(name, reason):
 	doc = _load(name)
-	changed = rules.cancel_pending(doc, frappe.session.user, frappe.get_roles(), reason, now_datetime())
+	changed = rules.cancel_pending(doc, frappe.session.user, frappe.get_roles(), reason, now_datetime(), _is_admin())
 	# Like cancel_purchase_order_safe: plain writes, so period locks don't stop cancelling an unissued PO.
 	for s in changed:
 		frappe.db.set_value("Purchase Order Approval", s.name, {

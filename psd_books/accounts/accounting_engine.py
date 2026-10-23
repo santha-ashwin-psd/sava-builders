@@ -250,10 +250,7 @@ def post_purchase_invoice(doc, replace_existing=False) -> None:
     if split.get("unconfirmed_stock_items"):
         frappe.msgprint(
             _(
-                "{0}: stock item(s) {1} were posted to Expense, not Inventory — "
-                "no Purchase Receipt or 'Update Stock' was found to confirm the "
-                "goods were actually received. Capitalize via a Purchase Receipt "
-                "or check 'Update Stock' on this bill to record them as inventory."
+                "{0}: {1} posted to Expense, not Inventory (no Purchase Receipt found)."
             ).format(doc.name, ", ".join(sorted(set(split["unconfirmed_stock_items"])))),
             indicator="orange",
             alert=True,

@@ -6,8 +6,9 @@
     <div class="bomx-list-panel">
       <div class="bomx-panel-hdr">
         <span class="bomx-panel-title">📦 All Material Requests <span class="bomx-count">({{ sorted.length }})</span></span>
-        <button class="bomx-btn bomx-btn-mfg bomx-btn-sm" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',12)"></span> New</button>
+        <button class="bomx-btn bomx-btn-mfg bomx-btn-sm" :disabled="!canRaiseMR" :title="!canRaiseMR ? MR_CREATOR_NOTE : ''" @click="openAdd"><span v-html="icon('plus',12)"></span> New</button>
       </div>
+      <div class="bomx-who-note">{{ MR_CREATOR_NOTE }}</div>
       <SearchableSelect v-model="filterStatus" :options="ssOpts1" placeholder="All Status" compact />
       <input class="bomx-search" v-model="search" type="text" placeholder="Search Material Requests…"/>
       <div class="bomx-list">
@@ -42,7 +43,8 @@
         <div class="bomx-empty-icon">📦</div>
         <div class="bomx-empty-title">Select a Material Request</div>
         <div class="bomx-empty-sub">Choose a Material Request from the list to view or edit its items.</div>
-        <button class="bomx-btn bomx-btn-mfg" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> Create Material Request</button>
+        <button class="bomx-btn bomx-btn-mfg" :disabled="!canRaiseMR" :title="!canRaiseMR ? MR_CREATOR_NOTE : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> Create Material Request</button>
+        <div v-if="!canRaiseMR" class="bomx-who-note" style="margin-top:10px">{{ MR_CREATOR_NOTE }}</div>
       </div>
 
       <template v-else>
@@ -64,20 +66,20 @@
               </div>
               <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
                 <button class="bomx-btn bomx-btn-ghost-inv" @click="goBackToList" :disabled="saving || submitting">Back</button>
-                <button v-if="!isNew && mr.docstatus===2" class="bomx-btn bomx-btn-light" @click="amendMR" :disabled="submitting || !$canCreate('inventory')">
+                <button v-if="!isNew && mr.docstatus===2" class="bomx-btn bomx-btn-light" @click="amendMR" :disabled="submitting || !canRaiseMR">
                   {{ submitting ? 'Amending…' : 'Amend' }}
                 </button>
                 <button v-if="!isNew && mr.docstatus===1" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="cancelMR" :disabled="submitting || !$canDelete('inventory')">
                   {{ submitting ? 'Cancelling…' : 'Cancel' }}
                 </button>
-                <button v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status !== 'Ordered'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !$canCreate('inventory')">
+                <button v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status !== 'Ordered'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !canCreatePO || !!linkedNote" :title="!canCreatePO ? PO_NOTE : linkedNote">
                   {{ actionLoading === 'po' ? 'Creating…' : 'Create Purchase Order' }}
                 </button>
                 <span v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status === 'Ordered'" class="bomx-badge badge-active" style="align-self:center">Purchase Order Created</span>
-                <button v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createRfq" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'You need Purchases access to request quotations' : ''">
+                <button v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createRfq" :disabled="!canCreateRFQ || !!linkedNote" :title="!canCreateRFQ ? RFQ_NOTE : linkedNote">
                   Create RFQ
                 </button>
-                <button v-if="!isNew && mr.docstatus===1 && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="issueFromStore" :disabled="!$canCreate('invoices')" :title="!$canCreate('invoices') ? 'You need Invoices access to issue stock' : ''">
+                <button v-if="!isNew && mr.docstatus===1 && mr.material_request_type!=='Purchase' && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="issueFromStore" :disabled="!canIssueStock" :title="!canIssueStock ? ISSUE_NOTE : ''">
                   Issue from Store
                 </button>
                 <button v-if="!isNew && mr.docstatus===0 && mr.production_plan" class="bomx-btn bomx-btn-light" @click="submitMR" :disabled="submitting || saving || !$canEdit('inventory')">
@@ -92,13 +94,17 @@
                 <button v-if="!isNew && mr.docstatus===0 && mr.status==='Pending Approval' && approval.can_approve" class="bomx-btn bomx-btn-light" @click="showSendBack = !showSendBack" :disabled="submitting">
                   Send Back
                 </button>
-                <button v-if="!readOnly" class="bomx-btn bomx-btn-light" @click="save" :disabled="saving || loading || !(isNew ? $canCreate('inventory') : $canEdit('inventory'))">
+                <button v-if="!readOnly" class="bomx-btn bomx-btn-light" @click="save" :disabled="saving || loading || !(isNew ? canRaiseMR : canEditMR)">
                   {{ saving ? 'Saving…' : (isNew ? 'Save Material Request' : 'Save Changes') }}
                 </button>
               </div>
             </div>
           </div>
 
+          <div v-if="showFollowOnNotes" class="bomx-who-note" style="margin:10px 16px">
+            <div v-for="n in followOnNotes" :key="n">{{ n }}</div>
+          </div>
+          <div v-if="isNew && !canRaiseMR" class="bomx-who-note" style="margin:10px 16px">{{ MR_CREATOR_NOTE }} You can view this form but not save it.</div>
           <div class="bomx-toggle-row" v-if="!isNew && mr.status==='Pending Approval'">
             <div class="bomx-field-hint" style="margin:0">
               <template v-if="approval.can_approve">Waiting for your approval.</template>
@@ -214,6 +220,7 @@ import { apiGet, apiGET, apiPOST, apiSave, apiList, apiSubmit, apiCancel, apiAme
 import { ownerName } from "../utils/userNames.js";
 import DocLink from "../components/DocLink.vue";
 import { useToast } from "../composables/useToast.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { useConfirm } from "../composables/useConfirm.js";
 
 const route = useRoute();
@@ -260,6 +267,7 @@ function selectMR(name) {
   router.push(`/manufacturing/material-request/${name}`);
 }
 function openAdd() {
+  if (!canRaiseMR.value) { toast(MR_CREATOR_NOTE, "error"); return; }
   router.push("/manufacturing/material-request/new");
 }
 function goBackToList() {
@@ -294,7 +302,58 @@ const itemsList = ref([]);
 const uomList = ref([]);
 const warehouseList = ref([]);
 
-const readOnly = computed(() => !isNew.value && (mr.value.docstatus === 1 || mr.value.docstatus === 2 || mr.value.status === "Pending Approval"));
+// Who may raise a material request is decided on the server (Site Engineer, Books Admin, Director);
+// doc_access carries that answer to the screen. These only disable buttons / fields.
+const { isAdmin, flags } = usePermissions();
+const MR_CREATOR_NOTE = "Only a Site Engineer, Books Admin or Director can raise a material request.";
+const canRaiseMR = computed(() => isAdmin.value || !!flags.value.doc_access?.["Material Request"]?.create);
+const canEditMR = computed(() => isAdmin.value || !!flags.value.doc_access?.["Material Request"]?.edit);
+// Follow-on documents from an approved MRN: who may create each (the server enforces the same rules).
+const PO_NOTE = "Only a Purchase Officer, Books Admin or Director can create a purchase order.";
+const RFQ_NOTE = "Only a Purchase Officer, Books Admin or Director can create an RFQ.";
+const ISSUE_NOTE = "Only a Store Keeper, Books Admin or Director can issue stock from the store.";
+const docRight = (dt) => isAdmin.value || !!flags.value.doc_access?.[dt]?.create;
+const canCreatePO = computed(() => docRight("Purchase Order"));
+const canCreateRFQ = computed(() => docRight("Request for Quotation"));
+const canIssueStock = computed(() => docRight("Delivery Note"));
+// An RFQ or purchase order already made from this MRN locks both buttons, so they can't be created twice.
+// Cancelled ones don't count. Looked up when the MRN is loaded.
+const linkedDocs = ref({ rfq: "", po: "" });
+const linkedNote = computed(() => {
+  const { rfq, po } = linkedDocs.value;
+  if (rfq && po) return `RFQ ${rfq} and purchase order ${po} already exist for this request.`;
+  if (rfq) return `RFQ ${rfq} already exists for this request.`;
+  if (po) return `Purchase order ${po} already exists for this request.`;
+  return "";
+});
+async function loadLinkedDocs() {
+  linkedDocs.value = { rfq: "", po: "" };
+  const m = mr.value;
+  if (!m || !m.name || m.docstatus !== 1 || m.material_request_type !== "Purchase") return;
+  const first = async (dt, filters) => {
+    try { return ((await apiList(dt, { fields: ["name"], filters, limit: 1 })) || [])[0]?.name || ""; }
+    catch { return ""; }
+  };
+  const [rfq, po] = await Promise.all([
+    first("Request for Quotation", [["material_request", "=", m.name], ["status", "!=", "Cancelled"]]),
+    first("Purchase Order", [["material_request", "=", m.name], ["docstatus", "!=", 2]]),
+  ]);
+  if (mr.value && mr.value.name === m.name) linkedDocs.value = { rfq, po };
+}
+const followOnNotes = computed(() => {
+  const out = [];
+  if (mr.value.material_request_type === "Purchase") {
+    if (!canCreatePO.value) out.push(PO_NOTE);
+    if (!canCreateRFQ.value) out.push(RFQ_NOTE);
+  }
+  if (mr.value.material_request_type !== "Purchase" && !canIssueStock.value) out.push(ISSUE_NOTE);
+  return out;
+});
+const showFollowOnNotes = computed(() => !isNew.value && mr.value.docstatus === 1 &&
+  (mr.value.status === "Approved" || mr.value.status === "Partly Issued") && followOnNotes.value.length > 0);
+
+const readOnly = computed(() => (isNew.value && !canRaiseMR.value) ||
+  (!isNew.value && (mr.value.docstatus === 1 || mr.value.docstatus === 2 || mr.value.status === "Pending Approval")));
 const approval = ref({ can_approve: false, project_manager: "", reason: "" });
 const showSendBack = ref(false);
 const sendBackReason = ref("");
@@ -353,6 +412,7 @@ async function loadMR() {
   if (!mr.value.items) mr.value.items = [];
   if (mr.value.project) fetchProjects("", mr.value.project);
   await loadApproval();
+  loadLinkedDocs();
 }
 
 async function loadApproval() {
@@ -487,14 +547,19 @@ async function amendMR() {
 }
 
 async function createPurchaseOrder() {
+  if (!canCreatePO.value) { toast(PO_NOTE, "error"); return; }
+  if (linkedNote.value) { toast(linkedNote.value, "error"); return; }
   router.push(`/purchase-orders?new_from_mr=${mr.value.name}`);
 }
 
 function createRfq() {
+  if (!canCreateRFQ.value) { toast(RFQ_NOTE, "error"); return; }
+  if (linkedNote.value) { toast(linkedNote.value, "error"); return; }
   router.push(`/rfqs?new_from_mrn=${encodeURIComponent(mr.value.name)}`);
 }
 
 function issueFromStore() {
+  if (!canIssueStock.value) { toast(ISSUE_NOTE, "error"); return; }
   router.push(`/delivery-challans?new_from_mrn=${encodeURIComponent(mr.value.name)}`);
 }
 
@@ -615,6 +680,7 @@ select.bomx-fi {
 select.bomx-fi:disabled { background-image: none; padding-right: 9px; }
 .bomx-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:var(--bx-rsm); font-size:13px; font-weight:600; cursor:pointer; border:1px solid transparent; line-height:1; white-space:nowrap; }
 .bomx-btn:disabled { opacity:.6; cursor:not-allowed; }
+.bomx-who-note { font-size:11.5px; color:var(--bx-muted); background:#F8F9FC; border:1px solid #E4E8F0; border-radius:8px; padding:6px 10px; margin:8px 10px; line-height:1.4; }
 .bomx-btn-sm { padding:6px 10px; font-size:12px; }
 .bomx-btn-mfg { background:var(--bx-mfg); color:#fff; }
 .bomx-btn-mfg:hover:not(:disabled) { background:var(--bx-mfgB); }

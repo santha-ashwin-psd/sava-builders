@@ -40,7 +40,7 @@ def check_confirmation(doc, received_by_name, received_by_id, received_on, now):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def confirm_receipt(name, received_by_name=None, received_by_id=None, received_on=None):
-    require_module("invoices", write=True)
+    require_module("inventory", write=True)
     doc = frappe.get_doc("Delivery Note", name)
     rname, rid, when = check_confirmation(doc, received_by_name, received_by_id, received_on, now_datetime())
     doc.db_set({
@@ -55,7 +55,7 @@ def confirm_receipt(name, received_by_name=None, received_by_id=None, received_o
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def clear_receipt_confirmation(name):
-    require_module("invoices", write=True)
+    require_module("inventory", write=True)
     doc = frappe.get_doc("Delivery Note", name)
     if doc.docstatus != 1 or not doc.get("received_on"):
         frappe.throw(_("This Delivery Note has no receipt confirmation to clear."))

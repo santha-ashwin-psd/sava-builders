@@ -15,7 +15,8 @@
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
-      <button class="sales-btn-primary" :disabled="!$canCreate('invoices')" :title="!$canCreate('invoices') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Challan</button>
+      <button class="sales-btn-ghost" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : 'Move stock between two warehouses'" @click="openNewTransfer"><span v-html="icon('truck',13)"></span> Stock Transfer</button>
+      <button class="sales-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Challan</button>
     </div>
   </div>
 
@@ -72,16 +73,16 @@
           <button class="dc-mob-act" @click.stop="openView(r)" title="View">
             <span v-html="icon('eye', 15)"></span>
           </button>
-          <button v-if="canEdit(r) && $canEdit('invoices')" class="dc-mob-act" @click.stop="openEdit(r)" title="Edit">
+          <button v-if="canEdit(r) && $canEdit('inventory')" class="dc-mob-act" @click.stop="openEdit(r)" title="Edit">
             <span v-html="icon('edit', 15)"></span>
           </button>
           <button v-if="r._source==='dn' && r.docstatus===0" class="dc-mob-act" @click.stop="submitOne(r)" title="Submit">
             <span v-html="icon('check', 15)"></span>
           </button>
-          <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled' && r.status!=='Delivered' && r.status!=='Fully Delivered'" class="dc-mob-act dc-mob-act-cancel" :disabled="!$canDelete('invoices')" @click.stop="deleteTarget={row:r,mode:'cancel'}" :title="!$canDelete('invoices') ? 'Not permitted' : 'Cancel'">
+          <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled' && r.status!=='Delivered' && r.status!=='Fully Delivered' && !isReceived(r)" class="dc-mob-act dc-mob-act-cancel" :disabled="!$canDelete('inventory')" @click.stop="deleteTarget={row:r,mode:'cancel'}" :title="!$canDelete('inventory') ? 'Not permitted' : 'Cancel'">
             <span v-html="icon('x', 15)"></span>
           </button>
-          <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="dc-mob-act dc-mob-act-del" :disabled="!$canDelete('invoices')" @click.stop="deleteTarget={row:r,mode:'delete'}" :title="!$canDelete('invoices') ? 'Not permitted' : 'Delete'">
+          <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="dc-mob-act dc-mob-act-del" :disabled="!$canDelete('inventory')" @click.stop="deleteTarget={row:r,mode:'delete'}" :title="!$canDelete('inventory') ? 'Not permitted' : 'Delete'">
             <span v-html="icon('trash', 15)"></span>
           </button>
         </div>
@@ -95,9 +96,9 @@
   <!-- Bulk action bar -->
   <div v-if="selected.size" class="inv-bulk-bar">
     <span class="inv-bulk-count">{{ selected.size }} selected</span>
-    <button class="inv-bulk-btn" :disabled="bulkBusy || !$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''" @click="bulkSubmit">Submit Drafts</button>
-    <button class="inv-bulk-btn inv-bulk-danger" :disabled="bulkBusy || !$canDelete('invoices')" :title="!$canDelete('invoices') ? 'Not permitted' : ''" @click="bulkCancel">Cancel Submitted</button>
-    <button class="inv-bulk-btn inv-bulk-danger" :disabled="bulkBusy || !$canDelete('invoices')" :title="!$canDelete('invoices') ? 'Not permitted' : ''" @click="bulkDelete">Delete Drafts</button>
+    <button class="inv-bulk-btn" :disabled="bulkBusy || !$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="bulkSubmit">Submit Drafts</button>
+    <button class="inv-bulk-btn inv-bulk-danger" :disabled="bulkBusy || !$canDelete('inventory')" :title="!$canDelete('inventory') ? 'Not permitted' : ''" @click="bulkCancel">Cancel Submitted</button>
+    <button class="inv-bulk-btn inv-bulk-danger" :disabled="bulkBusy || !$canDelete('inventory')" :title="!$canDelete('inventory') ? 'Not permitted' : ''" @click="bulkDelete">Delete Drafts</button>
     <button class="inv-bulk-btn" @click="exportCSV" :disabled="bulkBusy">
       <span v-html="icon('download',13)"></span> Export CSV
     </button>
@@ -136,10 +137,10 @@
           <td @click.stop>
             <div class="dc-actions-row">
               <button class="inv-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>
-              <button v-if="canEdit(r) && $canEdit('invoices')" class="inv-act-btn" @click.stop="openEdit(r)" title="Edit"><span v-html="icon('edit',12)"></span></button>
+              <button v-if="canEdit(r) && $canEdit('inventory')" class="inv-act-btn" @click.stop="openEdit(r)" title="Edit"><span v-html="icon('edit',12)"></span></button>
               <button v-if="r._source==='dn' && r.docstatus===0" class="inv-act-btn" @click.stop="submitOne(r)" title="Submit"><span v-html="icon('check',12)"></span></button>
-              <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled' && r.status!=='Delivered' && r.status!=='Fully Delivered'" class="inv-act-btn dc-act-cancel" :disabled="!$canDelete('invoices')" @click.stop="deleteTarget={row:r,mode:'cancel'}" :title="!$canDelete('invoices') ? 'Not permitted' : 'Cancel'"><span v-html="icon('x',12)"></span></button>
-              <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="inv-act-btn dc-act-del" :disabled="!$canDelete('invoices')" @click.stop="deleteTarget={row:r,mode:'delete'}" :title="!$canDelete('invoices') ? 'Not permitted' : 'Delete'"><span v-html="icon('trash',12)"></span></button>
+              <button v-if="r._source==='dn' && r.docstatus===1 && r.status!=='Cancelled' && r.status!=='Delivered' && r.status!=='Fully Delivered' && !isReceived(r)" class="inv-act-btn dc-act-cancel" :disabled="!$canDelete('inventory')" @click.stop="deleteTarget={row:r,mode:'cancel'}" :title="!$canDelete('inventory') ? 'Not permitted' : 'Cancel'"><span v-html="icon('x',12)"></span></button>
+              <button v-if="r._source==='dn' && (r.docstatus===0 || r.docstatus===2 || r.status==='Cancelled')" class="inv-act-btn dc-act-del" :disabled="!$canDelete('inventory')" @click.stop="deleteTarget={row:r,mode:'delete'}" :title="!$canDelete('inventory') ? 'Not permitted' : 'Delete'"><span v-html="icon('trash',12)"></span></button>
             </div>
           </td>
         </tr>
@@ -173,18 +174,24 @@
 
           <!-- Action bar -->
           <div class="inv-action-bar">
-            <button v-if="canEdit(viewDoc) && $canEdit('invoices')" class="inv-ab-btn" @click="openEdit(viewDoc);viewOpen=false">
+            <button v-if="canEdit(viewDoc) && $canEdit('inventory')" class="inv-ab-btn" @click="openEdit(viewDoc);viewOpen=false">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
-            <button v-if="viewDoc.docstatus===0" class="inv-ab-btn inv-ab-primary" :disabled="submitting || !$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''" @click="submitChallan">
+            <button v-if="viewDoc.docstatus===0" class="inv-ab-btn inv-ab-primary" :disabled="submitting || !$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="submitChallan">
               <span v-html="icon('send',13)"></span> {{ submitting ? 'Submitting…' : 'Submit Challan' }}
             </button>
-            <button v-if="viewDoc._source==='dn' && viewDoc.docstatus===1 && viewDoc.status!=='Cancelled' && viewDoc.status!=='Delivered' && viewDoc.status!=='Fully Delivered'"
-              class="inv-ab-btn dc-act-cancel" :disabled="!$canDelete('invoices')" :title="!$canDelete('invoices') ? 'Not permitted' : ''" @click="deleteTarget={row:viewDoc,mode:'cancel'}">
+            <button v-if="canConfirmReceipt(viewDoc)" class="inv-ab-btn inv-ab-primary" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="openReceipt(viewDoc)">
+              <span v-html="icon('check',13)"></span> Confirm Receipt
+            </button>
+            <button v-if="isReceived(viewDoc)" class="inv-ab-btn" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="clearTarget=viewDoc">
+              <span v-html="icon('refresh',13)"></span> Clear Confirmation
+            </button>
+            <button v-if="viewDoc._source==='dn' && viewDoc.docstatus===1 && viewDoc.status!=='Cancelled' && viewDoc.status!=='Delivered' && viewDoc.status!=='Fully Delivered' && !isReceived(viewDoc)"
+              class="inv-ab-btn dc-act-cancel" :disabled="!$canDelete('inventory')" :title="!$canDelete('inventory') ? 'Not permitted' : ''" @click="deleteTarget={row:viewDoc,mode:'cancel'}">
               <span v-html="icon('x',13)"></span> Cancel
             </button>
             <button v-if="viewDoc._source==='dn' && (viewDoc.docstatus===0 || viewDoc.docstatus===2 || viewDoc.status==='Cancelled')"
-              class="inv-ab-btn dc-act-del" :disabled="!$canDelete('invoices')" :title="!$canDelete('invoices') ? 'Not permitted' : ''" @click="deleteTarget={row:viewDoc,mode:'delete'}">
+              class="inv-ab-btn dc-act-del" :disabled="!$canDelete('inventory')" :title="!$canDelete('inventory') ? 'Not permitted' : ''" @click="deleteTarget={row:viewDoc,mode:'delete'}">
               <span v-html="icon('trash',13)"></span> Delete
             </button>
           </div>
@@ -196,8 +203,8 @@
             <div class="dc-view-card">
               <div class="dc-view-card-hdr">Customer & Delivery Details</div>
               <div class="dc-info-grid">
-                <template v-if="viewDoc.material_request">
-                  <div class="dc-info-item dc-info-full">
+                <template v-if="viewDoc.material_request || viewDoc.is_stock_transfer">
+                  <div v-if="viewDoc.material_request" class="dc-info-item dc-info-full">
                     <div class="dc-info-lbl">Material Request (MRN)</div>
                     <div class="dc-info-val dc-info-link"><DocLink doctype="Material Request" :name="viewDoc.material_request" /></div>
                   </div>
@@ -222,7 +229,7 @@
                     <div class="dc-info-val">{{ viewDoc.truck_no||'—' }}</div>
                   </div>
                 </template>
-                <div v-if="!viewDoc.material_request" class="dc-info-item">
+                <div v-if="!viewDoc.material_request && !viewDoc.is_stock_transfer" class="dc-info-item">
                   <div class="dc-info-lbl">Customer</div>
                   <div class="dc-info-val dc-info-link">
                     <DocLink doctype="Customer" :name="viewDoc.customer" :mono-style="false">{{ viewDoc.customer_name||viewDoc.customer||'—' }}</DocLink>
@@ -287,6 +294,25 @@
                 <div v-if="viewDoc.remarks" class="dc-info-item dc-info-full">
                   <div class="dc-info-lbl">Remarks</div>
                   <div class="dc-info-val" style="color:#6b7280">{{ viewDoc.remarks }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Receipt confirmation (A12) -->
+            <div v-if="isReceived(viewDoc)" class="dc-view-card">
+              <div class="dc-view-card-hdr">Receipt Confirmation</div>
+              <div class="dc-info-grid">
+                <div class="dc-info-item">
+                  <div class="dc-info-lbl">Received By</div>
+                  <div class="dc-info-val">{{ viewDoc.received_by_name||'—' }}</div>
+                </div>
+                <div class="dc-info-item">
+                  <div class="dc-info-lbl">Receiver I.D.</div>
+                  <div class="dc-info-val">{{ viewDoc.received_by_id||'—' }}</div>
+                </div>
+                <div class="dc-info-item">
+                  <div class="dc-info-lbl">Received On</div>
+                  <div class="dc-info-val">{{ String(viewDoc.received_on).slice(0, 16) }}</div>
                 </div>
               </div>
             </div>
@@ -367,10 +393,10 @@
           <div class="inv-dfooter delivery-challan-footer">
             <span class="inv-hdr-badge" :class="statusClass(viewDoc)" style="margin-right:auto">{{ statusLabel(viewDoc) }}</span>
             <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-            <button v-if="canEdit(viewDoc) && $canEdit('invoices')" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
+            <button v-if="canEdit(viewDoc) && $canEdit('inventory')" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
-            <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" :disabled="submitting || !$canEdit('invoices')" :title="!$canEdit('invoices') ? 'Read-only access' : ''" @click="submitChallan">
+            <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" :disabled="submitting || !$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="submitChallan">
               {{ submitting ? 'Submitting…' : 'Submit Challan' }}
             </button>
           </div>
@@ -386,7 +412,7 @@
         <!-- Header -->
         <div class="inv-dh">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div class="inv-dh-title">{{ mrnMode ? (editingName ? 'Edit Store Issue' : 'Issue from Store') : (editingName ? 'Edit Challan' : 'New Delivery Challan') }}</div>
+            <div class="inv-dh-title">{{ mrnMode ? (editingName ? 'Edit Store Issue' : 'Issue from Store') : transferMode ? (editingName ? 'Edit Stock Transfer' : 'New Stock Transfer') : (editingName ? 'Edit Challan' : 'New Delivery Challan') }}</div>
             <span v-if="!editingName" class="add-status-badge">Draft</span>
             <span v-if="editingName" class="inv-dh-sub" style="margin-left:4px">{{ editingName }}</span>
           </div>
@@ -404,7 +430,7 @@
             <div class="add-card-header" @click="collapsed.details=!collapsed.details">
               <div class="add-card-title">
                 <span class="add-card-title-icon"><span v-html="icon('user',16)"></span></span>
-                {{ mrnMode ? 'Store Issue Details' : 'Customer & Date' }}
+                {{ mrnMode ? 'Store Issue Details' : transferMode ? 'Stock Transfer Details' : 'Customer & Date' }}
               </div>
               <span class="add-card-chevron" :class="{collapsed:collapsed.details}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -416,7 +442,7 @@
                   <label class="inv-lbl">Material Request (MRN)</label>
                   <input class="inv-fi" :value="form.material_request" readonly tabindex="-1" style="background:#f3f4f6;color:#6b7280"/>
                 </div>
-                <div v-if="!mrnMode" style="grid-column:1/-1">
+                <div v-if="!isMove" style="grid-column:1/-1">
                   <label class="inv-lbl">Customer <span class="inv-req">*</span></label>
                   <SearchableSelect
                     v-model="form.customer"
@@ -432,7 +458,7 @@
                   <label class="inv-lbl">Date <span class="inv-req">*</span></label>
                   <input class="inv-fi" type="date" v-model="form.posting_date"/>
                 </div>
-                <div v-if="!mrnMode">
+                <div v-if="!isMove">
                   <label class="inv-lbl">Sales Order (optional)</label>
                   <SearchableSelect
                     v-model="form.sales_order"
@@ -463,11 +489,11 @@
                   <label class="inv-lbl">Project</label>
                   <SearchableSelect v-model="form.project" :options="projects" :disabled="mrnMode" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" />
                 </div>
-                <div v-if="!mrnMode" style="grid-column:1/-1">
+                <div v-if="!isMove" style="grid-column:1/-1">
                   <label class="inv-lbl">Dispatch Warehouse</label>
                   <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Ship stock from…" @search="fetchWarehouses" />
                 </div>
-                <template v-if="mrnMode">
+                <template v-if="isMove">
                   <div>
                     <label class="inv-lbl">Source Warehouse <span class="inv-req">*</span></label>
                     <SearchableSelect v-model="form.from_warehouse" :options="warehouses" placeholder="Issue stock from…" @search="fetchWarehouses" />
@@ -489,16 +515,16 @@
                     <input class="inv-fi" v-model="form.truck_no" maxlength="140" placeholder="e.g. KDA 123A"/>
                   </div>
                 </template>
-                <div v-if="!mrnMode">
+                <div v-if="!isMove">
                   <label class="inv-lbl">LR / Tracking #</label>
                   <input class="inv-fi" v-model="form.lr_no" placeholder="e.g. LR12345"/>
                 </div>
-                <div v-if="!mrnMode">
+                <div v-if="!isMove">
                   <label class="inv-lbl">Transporter</label>
                   <input class="inv-fi" v-model="form.transporter_name" placeholder="e.g. BlueDart, VRL"/>
                 </div>
                 <!-- Billing Address -->
-                <div v-if="!mrnMode">
+                <div v-if="!isMove">
                   <label class="inv-lbl">Billing Address</label>
                   <SearchableSelect
                     v-model="form.billing_address_name"
@@ -515,7 +541,7 @@
                   </div>
                 </div>
                 <!-- Shipping / Delivery Address -->
-                <div v-if="!mrnMode">
+                <div v-if="!isMove">
                   <label class="inv-lbl">Delivery / Shipping Address</label>
                   <SearchableSelect
                     v-model="form.shipping_address_name"
@@ -551,7 +577,7 @@
                 </span>
               </div>
               <div style="display:flex;align-items:center;gap:8px" @click.stop>
-                <button v-if="!mrnMode" class="add-lines-add-btn" :disabled="!(editingName ? $canEdit('invoices') : $canCreate('invoices'))" @click="addItem">
+                <button v-if="!mrnMode" class="add-lines-add-btn" :disabled="!(editingName ? $canEdit('inventory') : $canCreate('inventory'))" @click="addItem">
                   <span v-html="icon('plus',13)"></span> Add Item
                 </button>
                 <span class="add-card-chevron" :class="{collapsed:collapsed.items}" @click="collapsed.items=!collapsed.items">
@@ -585,7 +611,7 @@
                           :options="items"
                           :disabled="mrnMode"
                           placeholder="Search item…"
-                          :createable="!mrnMode"
+                          :createable="!isMove"
                           createDoctype="Item"
                           @search="fetchItems"
                           @select="opt => onItemSelect(it, opt)"
@@ -619,7 +645,7 @@
 
               <div v-if="!form.items.length" class="dc-items-empty" style="padding:20px 0 8px">No items yet — click Add Item</div>
 
-              <button v-if="!mrnMode" class="inv-add-line-btn" style="margin-top:12px" :disabled="!(editingName ? $canEdit('invoices') : $canCreate('invoices'))" @click="addItem">
+              <button v-if="!mrnMode" class="inv-add-line-btn" style="margin-top:12px" :disabled="!(editingName ? $canEdit('inventory') : $canCreate('inventory'))" @click="addItem">
                 <span v-html="icon('plus',12)"></span> Add Item
               </button>
             </div>
@@ -633,10 +659,10 @@
           <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New challan — unsaved changes' }}</div>
           <div class="add-footer-actions">
             <button class="add-btn-cancel" @click="formOpen=false" :disabled="saving">Cancel</button>
-            <button class="add-btn-draft" :disabled="saving || !(editingName ? $canEdit('invoices') : $canCreate('invoices'))" :title="!(editingName ? $canEdit('invoices') : $canCreate('invoices')) ? 'Read-only access' : ''" @click="saveChallan(0)">
+            <button class="add-btn-draft" :disabled="saving || !(editingName ? $canEdit('inventory') : $canCreate('inventory'))" :title="!(editingName ? $canEdit('inventory') : $canCreate('inventory')) ? 'Read-only access' : ''" @click="saveChallan(0)">
               <span v-html="icon('save',13)"></span> {{ saving?'Saving…':'Save Draft' }}
             </button>
-            <button class="add-btn-more" :disabled="saving || !(editingName ? $canEdit('invoices') : $canCreate('invoices'))" :title="!(editingName ? $canEdit('invoices') : $canCreate('invoices')) ? 'Read-only access' : ''" @click="saveChallan(1)">
+            <button class="add-btn-more" :disabled="saving || !(editingName ? $canEdit('inventory') : $canCreate('inventory'))" :title="!(editingName ? $canEdit('inventory') : $canCreate('inventory')) ? 'Read-only access' : ''" @click="saveChallan(1)">
               <span v-html="icon('check',13)"></span> {{ saving?'Saving…':'Submit' }}
             </button>
           </div>
@@ -735,6 +761,53 @@
       </div>
     </div>
 
+    <!-- CONFIRM RECEIPT DIALOG (A12) -->
+    <div v-if="receiptModal.open" class="inv-drawer-bg" style="z-index:8050;background:rgba(15,23,42,.35)" @click.self="receiptModal.open=false"></div>
+    <div v-if="receiptModal.open" class="po-apply-dialog" style="z-index:8100;width:440px">
+      <div class="inv-dh" style="border-bottom:1px solid #e5e7eb;padding:16px 20px">
+        <div class="inv-dh-title" style="font-size:15px">Confirm Receipt · {{ receiptModal.dn }}</div>
+        <button class="inv-dclose" @click="receiptModal.open=false"><span v-html="icon('x',16)"></span></button>
+      </div>
+      <div class="inv-dbody" style="padding:20px;overflow-y:auto;flex:1">
+        <div class="inv-fg">
+          <div>
+            <label class="inv-lbl">Received By (name) <span class="inv-req">*</span></label>
+            <input class="inv-fi" v-model="receiptModal.name" placeholder="Receiver's full name" @keyup.enter="submitReceipt"/>
+          </div>
+          <div>
+            <label class="inv-lbl">Receiver I.D. No. <span class="inv-req">*</span></label>
+            <input class="inv-fi" v-model="receiptModal.rid" placeholder="National I.D. / staff I.D." @keyup.enter="submitReceipt"/>
+          </div>
+          <div>
+            <label class="inv-lbl">Received On</label>
+            <input class="inv-fi" type="datetime-local" v-model="receiptModal.on"/>
+            <div style="font-size:11px;color:#6b7280;margin-top:4px">Leave blank to use the current time.</div>
+          </div>
+        </div>
+      </div>
+      <div class="inv-dfooter" style="padding:14px 20px">
+        <button class="form-btn form-btn-outline" @click="receiptModal.open=false" :disabled="receiptModal.saving">Cancel</button>
+        <button class="form-btn form-btn-primary" :disabled="receiptModal.saving || !$canEdit('inventory')" @click="submitReceipt">
+          {{ receiptModal.saving ? 'Saving…' : 'Confirm Receipt' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- CLEAR CONFIRMATION DIALOG (A12) -->
+    <div v-if="clearTarget" class="inv-drawer-bg" style="z-index:60" @click.self="clearTarget=null"></div>
+    <div v-if="clearTarget" class="dc-confirm" style="z-index:61">
+      <div class="dc-confirm-icon warn"><span v-html="icon('refresh', 20)"></span></div>
+      <div class="dc-confirm-title">Clear Receipt Confirmation?</div>
+      <div class="dc-confirm-sub">
+        The receipt of <strong>{{ clearTarget.name }}</strong> by {{ clearTarget.received_by_name || 'the recorded receiver' }} will be removed.
+        The note goes back to Submitted and can then be cancelled.
+      </div>
+      <div class="dc-confirm-actions">
+        <button class="b-btn b-btn-ghost" @click="clearTarget=null" :disabled="clearing">Keep it</button>
+        <button class="b-btn dc-btn-warn" @click="confirmClear" :disabled="clearing">{{ clearing ? 'Clearing…' : 'Yes, Clear' }}</button>
+      </div>
+    </div>
+
   </Teleport>
 </div>
 </template>
@@ -783,6 +856,9 @@ const viewDoc     = ref(null);
 const submitting  = ref(false);
 const deleteTarget = ref(null);  // { row, mode: "delete"|"cancel" }
 const deleting     = ref(false);
+const receiptModal = reactive({ open: false, dn: "", name: "", rid: "", on: "", saving: false });
+const clearTarget  = ref(null);  // viewDoc of the received note whose confirmation is being cleared
+const clearing     = ref(false);
 
 const formOpen    = ref(false);
 const editingName = ref("");
@@ -805,6 +881,8 @@ const warehouses = ref([]);
 const { projects, fetchProjects } = useProjectOptions();
 const salesOrders = ref([]);
 const mrnMode     = ref(false);  // Sava A6.2: issue from store against an approved MRN
+const transferMode = ref(false); // Sava A12.3: plain stock transfer between two warehouses (no MRN, no customer)
+const isMove      = computed(() => mrnMode.value || transferMode.value);
 
 let _lineId = 1;
 const blankItem = () => ({ _id: _lineId++, item_code: "", item_name: "", description: "", qty: 1, uom: "Nos", collapsed: false });
@@ -858,8 +936,14 @@ const tabCounts = computed(() => ({
 }));
 
 // ── Status helpers ────────────────────────────────────────────────────────────
+// A12: receipt confirmation applies only to submitted stock transfers / MRN issues.
+// "Received" is derived from received_on (set by confirm_receipt, blanked by clear).
+const isReceived = (r) => r._source === "dn" && r.docstatus === 1 && !!r.received_on;
+const canConfirmReceipt = (r) =>
+  r._source === "dn" && r.docstatus === 1 && !r.received_on && !!(r.material_request || r.is_stock_transfer);
 function statusLabel(r) {
   if (r.docstatus === 2 || r.status === "Cancelled") return "Cancelled";
+  if (isReceived(r)) return "Received";
   if (r.status === "Delivered" || r.status === "Fully Delivered") return "Delivered";
   if (r.status === "Partially Delivered") return "Partial";
   // A real Delivery Note (_source==='dn') that is submitted IS the delivery —
@@ -872,6 +956,7 @@ function statusLabel(r) {
 }
 function statusClass(r) {
   if (r.docstatus === 2 || r.status === "Cancelled") return "b-badge-muted";
+  if (isReceived(r)) return "b-badge-purple";
   if (r.status === "Delivered" || r.status === "Fully Delivered") return "b-badge-green";
   if (r.status === "Partially Delivered") return "b-badge-yellow";
   if (r._source === "dn" && r.docstatus === 1) return "b-badge-green";
@@ -897,7 +982,8 @@ async function load() {
     // 1) Real Delivery Notes (submitted doctype)
     const dnRows = await apiList("Delivery Note", {
       fields: ["name", "customer", "customer_name", "posting_date", "delivery_date",
-               "sales_order", "status", "total_qty", "lr_no", "transporter_name", "docstatus"],
+               "sales_order", "status", "total_qty", "lr_no", "transporter_name", "docstatus",
+               "received_on", "material_request", "is_stock_transfer"],
       filters: [["company", "=", company]],
       limit: 100000,
       order: "posting_date desc, creation desc",
@@ -929,6 +1015,9 @@ async function load() {
       status:        r.status || (r.docstatus === 1 ? "To Deliver" : "Draft"),
       docstatus:     r.docstatus,
       total_qty:     flt(r.total_qty),
+      received_on:   r.received_on || "",
+      material_request: r.material_request || "",
+      is_stock_transfer: r.is_stock_transfer || 0,
     }));
 
     // Sales Orders — only include those that don't already have a matching DN
@@ -1018,6 +1107,10 @@ async function openView(r) {
         material_request:     doc?.material_request || "",
         from_warehouse:       doc?.from_warehouse || "",
         to_warehouse:         doc?.to_warehouse || "",
+        is_stock_transfer:    doc?.is_stock_transfer || 0,
+        received_by_name:     doc?.received_by_name || "",
+        received_by_id:       doc?.received_by_id || "",
+        received_on:          doc?.received_on || "",
         driver_name:          doc?.driver_name || "",
         driver_id:            doc?.driver_id || "",
         truck_no:             doc?.truck_no || "",
@@ -1037,6 +1130,48 @@ async function openView(r) {
   } catch (e) {
     console.warn("DC view load failed:", e.message);
   }
+}
+
+// ── Receipt confirmation (A12) ────────────────────────────────────────────────
+function openReceipt(r) {
+  // Receiver name and I.D. are typed each time (no default to the logged-in user).
+  Object.assign(receiptModal, { open: true, dn: r.name, name: "", rid: "", on: "", saving: false });
+}
+async function reloadView(name) {
+  await load();
+  const row = list.value.find(x => x.name === name);
+  if (row) await openView(row);
+}
+async function submitReceipt() {
+  const m = receiptModal;
+  if (!m.name.trim()) { toast.error("Receiver's name is required"); return; }
+  if (!m.rid.trim()) { toast.error("Receiver's I.D. is required"); return; }
+  m.saving = true;
+  try {
+    await apiPOST("psd_books.api.stock_transfer.confirm_receipt", {
+      name: m.dn,
+      received_by_name: m.name.trim(),
+      received_by_id: m.rid.trim(),
+      received_on: m.on ? m.on.replace("T", " ") : null,
+    }, { module: "inventory", action: "edit" });
+    toast.success(`Receipt of ${m.dn} confirmed`);
+    m.open = false;
+    await reloadView(m.dn);
+  } catch (e) { toast.error(e.message || "Could not confirm receipt"); }
+  finally { m.saving = false; }
+}
+async function confirmClear() {
+  if (!clearTarget.value) return;
+  const name = clearTarget.value.name;
+  clearing.value = true;
+  try {
+    await apiPOST("psd_books.api.stock_transfer.clear_receipt_confirmation", { name },
+      { module: "inventory", action: "edit" });
+    toast.success(`Receipt confirmation of ${name} cleared`);
+    clearTarget.value = null;
+    await reloadView(name);
+  } catch (e) { toast.error(e.message || "Could not clear confirmation"); }
+  finally { clearing.value = false; }
 }
 
 async function submitChallan() {
@@ -1090,7 +1225,7 @@ async function bulkSubmit() {
   await load();
 }
 async function bulkCancel() {
-  const rows = selectedRows().filter(r => r.docstatus === 1 && r.status !== "Cancelled" && r.status !== "Delivered" && r.status !== "Fully Delivered");
+  const rows = selectedRows().filter(r => r.docstatus === 1 && r.status !== "Cancelled" && r.status !== "Delivered" && r.status !== "Fully Delivered" && !isReceived(r));
   if (!rows.length) { toast.error("No submitted challans selected"); return; }
   bulkBusy.value = true;
   let ok = 0, fail = 0;
@@ -1166,6 +1301,7 @@ function resetForm() {
     items: [blankItem()],
   });
   mrnMode.value = false;
+  transferMode.value = false;
   customerAddresses.value = [];
 }
 
@@ -1176,6 +1312,17 @@ function openNew() {
   fetchItems("");
   fetchWarehouses("");
   fetchSalesOrders("");
+  fetchProjects("");
+  formOpen.value = true;
+}
+
+// Sava A12.3: start a plain stock transfer (Delivery Note with is_stock_transfer)
+function openNewTransfer() {
+  editingName.value = "";
+  resetForm();
+  transferMode.value = true;
+  fetchItems("");
+  fetchWarehouses("");
   fetchProjects("");
   formOpen.value = true;
 }
@@ -1277,6 +1424,19 @@ async function openEdit(r) {
           form.items.forEach(it => { if (it.mrn_item in pend) it.pending_qty = pend[it.mrn_item]; });
         } catch {}  // MRN no longer issuable: the server still checks on save
       }
+      if (doc?.is_stock_transfer && !doc?.material_request) {
+        transferMode.value = true;
+        Object.assign(form, {
+          from_warehouse:   doc.from_warehouse || "",
+          to_warehouse:     doc.to_warehouse || "",
+          driver_name:      doc.driver_name || "",
+          driver_id:        doc.driver_id || "",
+          truck_no:         doc.truck_no || "",
+        });
+        ensureWarehouseOption(form.from_warehouse);
+        ensureWarehouseOption(form.to_warehouse);
+        fetchItems("");   // transfers pick from stock items, not only sales items
+      }
       if (doc?.remarks)               form.remarks = doc.remarks;
       if (doc?.set_warehouse)         form.set_warehouse = doc.set_warehouse;
       if (doc?.project)               { form.project = doc.project; fetchProjects("", doc.project); }
@@ -1335,7 +1495,8 @@ async function fetchWarehouses(q = "") {
 
 async function fetchItems(q = "") {
   try {
-    const f = [["disabled", "=", 0], ["has_variants", "=", 0], ["is_sales_item", "=", 1]];
+    const f = [["disabled", "=", 0], ["has_variants", "=", 0],
+      transferMode.value ? ["is_stock_item", "=", 1] : ["is_sales_item", "=", 1]];
     if (q) f.push(["item_name", "like", "%" + q + "%"]);
     const r = await apiList("Item", {
       fields: ["name", "item_name", "stock_uom", "description"],
@@ -1515,12 +1676,14 @@ function removeItem(i) { if (form.items.length > 1) form.items.splice(i, 1); }
 // ── Save ──────────────────────────────────────────────────────────────────────
 async function saveChallan(submit) {
   const isMrn = mrnMode.value;
-  if (!isMrn && !form.customer) { toast.error("Customer is required"); return; }
+  const isTransfer = transferMode.value;
+  const move = isMrn || isTransfer;   // both move stock between warehouses, no customer
+  if (!move && !form.customer) { toast.error("Customer is required"); return; }
   const validItems = form.items.filter(it => it.item_code && flt(it.qty) > 0);
   if (!validItems.length) { toast.error("At least one item with qty > 0 is required"); return; }
   if (form.items.some(it => (it.description||'').length > 500)) { toast.error("Item description cannot exceed 500 characters"); return; }
   if ((form.remarks||'').length > 500) { toast.error("Remarks cannot exceed 500 characters"); return; }
-  if (isMrn) {
+  if (move) {
     const missing = [["from_warehouse", "Source Warehouse"], ["to_warehouse", "Destination Warehouse"],
       ["driver_name", "Driver Name"], ["driver_id", "Driver I.D."], ["truck_no", "Truck No."]]
       .filter(([k]) => !String(form[k] || "").trim()).map(([, l]) => l);
@@ -1536,18 +1699,18 @@ async function saveChallan(submit) {
     const doc = {
       doctype:               "Delivery Note",
       company,
-      customer:              isMrn ? undefined : form.customer,
-      customer_name:         isMrn ? undefined : (form.customer_name || form.customer),
+      customer:              move ? undefined : form.customer,
+      customer_name:         move ? undefined : (form.customer_name || form.customer),
       posting_date:          form.posting_date,
-      sales_order:           isMrn ? undefined : (form.sales_order || undefined),
-      set_warehouse:         isMrn ? "" : (form.set_warehouse || ""),
+      sales_order:           move ? undefined : (form.sales_order || undefined),
+      set_warehouse:         move ? "" : (form.set_warehouse || ""),
       project:               form.project || null,
-      lr_no:                 isMrn ? "" : (form.lr_no || ""),
-      transporter_name:      isMrn ? "" : (form.transporter_name || ""),
-      billing_address:       isMrn ? "" : (form.billing_address || ""),
-      billing_address_name:  isMrn ? "" : (form.billing_address_name || ""),
-      shipping_address:      isMrn ? "" : (form.shipping_address || ""),
-      shipping_address_name: isMrn ? "" : (form.shipping_address_name || ""),
+      lr_no:                 move ? "" : (form.lr_no || ""),
+      transporter_name:      move ? "" : (form.transporter_name || ""),
+      billing_address:       move ? "" : (form.billing_address || ""),
+      billing_address_name:  move ? "" : (form.billing_address_name || ""),
+      shipping_address:      move ? "" : (form.shipping_address || ""),
+      shipping_address_name: move ? "" : (form.shipping_address_name || ""),
       remarks:               form.remarks || "",
       items: validItems.map(it => ({
         doctype:    "Delivery Note Item",
@@ -1558,13 +1721,14 @@ async function saveChallan(submit) {
         uom:        it.uom || "Nos",
         stock_uom:  it.uom || "Nos",
         conversion_factor: 1,
-        warehouse:  isMrn ? form.from_warehouse : (it.warehouse || form.set_warehouse || ""),
+        warehouse:  move ? form.from_warehouse : (it.warehouse || form.set_warehouse || ""),
         ...(isMrn ? { mrn_item: it.mrn_item, intended_use: it.intended_use || "" } : {}),
       })),
     };
-    if (isMrn) {
+    if (move) {
+      if (isMrn) doc.material_request = form.material_request;
+      if (isTransfer) doc.is_stock_transfer = 1;
       Object.assign(doc, {
-        material_request: form.material_request,
         from_warehouse:   form.from_warehouse,
         to_warehouse:     form.to_warehouse,
         driver_name:      String(form.driver_name).trim(),

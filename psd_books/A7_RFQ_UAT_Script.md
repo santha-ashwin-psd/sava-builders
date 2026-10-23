@@ -1,7 +1,7 @@
 # A7 – Request for Quotation: UAT Script
 
 **Sava Builders – ERPNext Phase 1**
-**Scope item:** A7. RFQ to at least 3 suppliers by email from the approved MRN.
+**Scope item:** A7. RFQ to at least 2 suppliers by email from the approved MRN.
 **Pass rule:** RFQ emailed in UAT.
 
 ## Before you start
@@ -26,7 +26,7 @@ Record the result of each step as **Pass** or **Fail**, with the document number
 | 1.4 | Change one supplier's email on the row | The edited email is kept | |
 | 1.5 | Set Respond By to 7 days ahead and add a message. Save | Saved as **Draft** | |
 
-## Test 2 – Send to 3 suppliers (pass criterion)
+## Test 2 – Send to 3 suppliers (2 is the minimum)
 
 | # | Step | Expected result | Result |
 | --- | --- | --- | --- |
@@ -40,7 +40,7 @@ Record the result of each step as **Pass** or **Fail**, with the document number
 
 | # | Step | Expected result | Result |
 | --- | --- | --- | --- |
-| 3.1 | New RFQ with only 2 suppliers, click Send | Blocked: at least 3 suppliers needed. No email sent | |
+| 3.1 | New RFQ with only 1 supplier, click Send | Blocked: at least 2 suppliers needed. No email sent | |
 | 3.2 | Add a supplier with no email and Send | Blocked, naming the supplier. No email sent to anyone | |
 | 3.3 | Add the same supplier twice and save | Blocked: supplier listed more than once | |
 | 3.4 | Add the disabled supplier and save | Blocked: supplier is disabled | |
@@ -57,8 +57,8 @@ Ask the admin to make one supplier's email fail (for example a mistyped domain) 
 
 | # | Step | Expected result | Result |
 | --- | --- | --- | --- |
-| 4.1 | Send an RFQ with 3 suppliers where one will fail | The other two still receive their email. The failed row shows **Failed** with a short reason | |
-| 4.2 | Check the RFQ status | Still **Draft**, because fewer than 3 were delivered | |
+| 4.1 | Send an RFQ with 2 suppliers where one will fail | The other still receives its email. The failed row shows **Failed** with a short reason | |
+| 4.2 | Check the RFQ status | Still **Draft**, because fewer than 2 were delivered | |
 | 4.3 | Correct the failed supplier's email and click Send again | Only that supplier is emailed. Status becomes **Sent** | |
 | 4.4 | Click Send again | Message says it was already sent to every supplier. Nothing is emailed | |
 

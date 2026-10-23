@@ -14,7 +14,7 @@
     </div>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
-      <button class="sales-btn-primary" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New GRN</button>
+      <button class="sales-btn-primary" :disabled="!prCanCreate" :title="!prCanCreate ? prNoAccess : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New GRN</button>
     </div>
   </div>
 
@@ -60,8 +60,8 @@
 
   <!-- Bulk action bar -->
   <BulkActionBar :count="selectedRows.size" @clear="selectedRows=new Set()">
-    <button :disabled="!$canDelete('bills')" :title="!$canDelete('bills') ? 'Not permitted' : ''" @click="bulkCancel">Cancel Submitted</button>
-    <button class="bab-danger" :disabled="!$canDelete('bills')" :title="!$canDelete('bills') ? 'Not permitted' : ''" @click="bulkDelete">Delete Drafts</button>
+    <button :disabled="!$canDelete('inventory')" :title="!$canDelete('inventory') ? 'Not permitted' : ''" @click="bulkCancel">Cancel Submitted</button>
+    <button class="bab-danger" :disabled="!$canDelete('inventory')" :title="!$canDelete('inventory') ? 'Not permitted' : ''" @click="bulkDelete">Delete Drafts</button>
   </BulkActionBar>
 
   <!-- Table -->
@@ -94,7 +94,7 @@
                 <div class="bk-empty-illus"><svg width="80" height="96" viewBox="0 0 80 96" fill="none"><rect x="10" y="8" width="60" height="80" rx="6" fill="#e2e8f0"/><rect x="14" y="12" width="52" height="72" rx="4" fill="#fff"/><rect x="22" y="26" width="36" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="34" width="28" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="42" width="32" height="3" rx="2" fill="#e2e8f0"/><rect x="50" y="64" width="18" height="20" rx="3" fill="#16a34a" opacity=".7"/><rect x="36" y="70" width="12" height="14" rx="3" fill="#2563eb" opacity=".6"/></svg></div>
                 <p class="bk-empty-title">No purchase receipts yet</p>
                 <p class="bk-empty-sub">Create a GRN to record stock received from a supplier.</p>
-                <button class="bk-empty-btn" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New GRN</button>
+                <button class="bk-empty-btn" :disabled="!prCanCreate" :title="!prCanCreate ? prNoAccess : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New GRN</button>
               </template>
             </div>
           </td>
@@ -183,25 +183,28 @@
 
           <!-- Action bar -->
           <div class="inv-action-bar">
-            <button v-if="canEdit(viewDoc) && $canEdit('bills')" class="inv-ab-btn" @click="openEdit(viewDoc); viewOpen=false">
+            <button v-if="canEdit(viewDoc)" class="inv-ab-btn" :disabled="!prCanEdit" :title="!prCanEdit ? prNoAccess : ''" @click="openEdit(viewDoc); viewOpen=false">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
-            <button v-if="viewDoc.docstatus===0" class="inv-ab-btn inv-ab-primary" @click="submitGRN" :disabled="submitting || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
+            <button v-if="viewDoc.docstatus===0" class="inv-ab-btn inv-ab-primary" @click="submitGRN" :disabled="submitting || !prCanEdit" :title="!prCanEdit ? prNoAccess : ''">
               <span v-html="icon('send',13)"></span> {{ submitting ? 'Submitting…' : 'Submit GRN' }}
             </button>
             <button v-if="viewDoc.docstatus===1 && viewDoc.source==='real'" class="inv-ab-btn" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="goToLandedCost(viewDoc)">
               <span v-html="icon('purchase',13)"></span> Create Landed Cost Voucher
             </button>
-            <button v-if="viewDoc.docstatus===1 && viewDoc.source==='real'" class="inv-ab-btn pr-act-cancel" :disabled="!$canDelete('bills')" :title="!$canDelete('bills') ? 'Not permitted' : ''" @click="confirmTarget={row:viewDoc,mode:'cancel'}">
+            <button v-if="viewDoc.docstatus===1 && viewDoc.source==='real'" class="inv-ab-btn pr-act-cancel" :disabled="!$canDelete('inventory') || !prCanEdit" :title="!prCanEdit ? prNoAccess : (!$canDelete('inventory') ? 'Not permitted' : '')" @click="confirmTarget={row:viewDoc,mode:'cancel'}">
               <span v-html="icon('x',13)"></span> Cancel
             </button>
-            <button v-if="viewDoc.docstatus===0 && viewDoc.source==='real'" class="inv-ab-btn pr-act-del" :disabled="!$canDelete('bills')" :title="!$canDelete('bills') ? 'Not permitted' : ''" @click="confirmTarget={row:viewDoc,mode:'delete'}">
+            <button v-if="viewDoc.docstatus===0 && viewDoc.source==='real'" class="inv-ab-btn pr-act-del" :disabled="!$canDelete('inventory') || !prCanEdit" :title="!prCanEdit ? prNoAccess : (!$canDelete('inventory') ? 'Not permitted' : '')" @click="confirmTarget={row:viewDoc,mode:'delete'}">
               <span v-html="icon('trash',13)"></span> Delete
             </button>
           </div>
 
           <!-- Body -->
           <div class="inv-dbody">
+            <div v-if="viewDoc.docstatus===0 && !prCanEdit" style="padding:10px 14px;margin-bottom:12px;border-radius:8px;color:#b45309;font-size:12.5px;background:#fffbeb;border:1px solid #fde68a">
+              Read-only: only {{ prWho }} can edit or submit this receipt.
+            </div>
 
             <!-- Supplier & receipt details -->
             <div class="pr-view-card">
@@ -298,10 +301,10 @@
           <div class="inv-dfooter">
             <span class="inv-hdr-badge" :class="statusClass(viewDoc)" style="margin-right:auto">{{ statusLabel(viewDoc) }}</span>
             <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-            <button v-if="canEdit(viewDoc) && $canEdit('bills')" class="form-btn form-btn-outline" @click="openEdit(viewDoc); viewOpen=false">
+            <button v-if="canEdit(viewDoc)" class="form-btn form-btn-outline" :disabled="!prCanEdit" :title="!prCanEdit ? prNoAccess : ''" @click="openEdit(viewDoc); viewOpen=false">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
-            <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="submitGRN" :disabled="submitting || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
+            <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="submitGRN" :disabled="submitting || !prCanEdit" :title="!prCanEdit ? prNoAccess : ''">
               {{ submitting ? 'Submitting…' : 'Submit GRN' }}
             </button>
           </div>
@@ -327,6 +330,10 @@
         <!-- Body -->
         <div class="inv-content-row">
         <div class="inv-dbody">
+          <div v-if="!prCanSave" style="padding:10px 14px;margin-bottom:12px;border-radius:8px;color:#b45309;font-size:12.5px;background:#fffbeb;border:1px solid #fde68a">
+            Read-only: only {{ prWho }} can {{ editingName ? 'edit' : 'create' }} Purchase Receipts.
+          </div>
+          <div :inert="!prCanSave ? '' : null" :style="!prCanSave ? 'opacity:.7' : ''">
 
           <!-- Supplier & Date Card -->
           <div class="add-card">
@@ -415,7 +422,7 @@
                 </span>
               </div>
               <div style="display:flex;align-items:center;gap:8px" @click.stop>
-                <button class="add-lines-add-btn" :disabled="!(editingName ? $canEdit('bills') : $canCreate('bills'))" @click="addItem">
+                <button class="add-lines-add-btn" :disabled="!prCanSave" @click="addItem">
                   <span v-html="icon('plus',13)"></span> Add Item
                 </button>
                 <span class="add-card-chevron" :class="{collapsed:collapsed.items}" @click="collapsed.items=!collapsed.items">
@@ -489,12 +496,13 @@
 
               <div v-if="!form.items.length" class="pr-items-empty" style="padding:20px 0 8px">No items yet — click Add Item</div>
 
-              <button class="inv-add-line-btn" style="margin-top:12px" :disabled="!(editingName ? $canEdit('bills') : $canCreate('bills'))" @click="addItem">
+              <button class="inv-add-line-btn" style="margin-top:12px" :disabled="!prCanSave" @click="addItem">
                 <span v-html="icon('plus',12)"></span> Add Item
               </button>
             </div>
           </div>
 
+          </div><!-- /read-only wrapper -->
         </div><!-- /inv-dbody -->
         </div><!-- /inv-content-row -->
 
@@ -503,10 +511,10 @@
           <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New GRN — unsaved changes' }}</div>
           <div class="add-footer-actions">
             <button class="add-btn-cancel" @click="formOpen=false" :disabled="saving">Cancel</button>
-            <button class="add-btn-draft" @click="saveGRN(false)" :disabled="saving || !(editingName ? $canEdit('bills') : $canCreate('bills'))" :title="!(editingName ? $canEdit('bills') : $canCreate('bills')) ? 'Read-only access' : ''">
+            <button class="add-btn-draft" @click="saveGRN(false)" :disabled="saving || !prCanSave" :title="!prCanSave ? prNoAccess : ''">
               <span v-html="icon('save',13)"></span> {{ saving?'Saving…':(editingName?'Save Changes':'Save Draft') }}
             </button>
-            <button class="add-btn-more" @click="saveGRN(true)" :disabled="saving || !(editingName ? $canEdit('bills') : $canCreate('bills'))" :title="!(editingName ? $canEdit('bills') : $canCreate('bills')) ? 'Read-only access' : ''">
+            <button class="add-btn-more" @click="saveGRN(true)" :disabled="saving || !prCanSave" :title="!prCanSave ? prNoAccess : ''">
               <span v-html="icon('check',13)"></span> {{ saving?'Saving…':'Save & Submit' }}
             </button>
           </div>
@@ -533,7 +541,7 @@
       <div class="pr-confirm-actions">
         <button class="b-btn b-btn-ghost" @click="confirmTarget=null" :disabled="deleting||cancelling">Keep it</button>
         <button class="b-btn" :class="confirmTarget.mode==='delete'?'pr-btn-danger':'pr-btn-warn'"
-          @click="confirmAction" :disabled="deleting||cancelling||!$canDelete('bills')" :title="!$canDelete('bills') ? 'Not permitted' : ''">
+          @click="confirmAction" :disabled="deleting||cancelling||!$canDelete('inventory')" :title="!$canDelete('inventory') ? 'Not permitted' : ''">
           {{ (deleting||cancelling) ? (confirmTarget.mode==='delete'?'Deleting…':'Cancelling…') : (confirmTarget.mode==='delete'?'Yes, Delete':'Yes, Cancel') }}
         </button>
       </div>
@@ -553,6 +561,7 @@ import { useProjectOptions } from "../composables/useProjectOptions.js";
 import DocLink from "../components/DocLink.vue";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { flt } from "../utils/format.js";
 import { fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
@@ -581,6 +590,17 @@ const submitting = ref(false);
 const deleting  = ref(false);
 const cancelling = ref(false);
 const editingName = ref("");
+// Rights come from the server (module level + Sava job role), the same rules the API enforces.
+// These only grey out the screen; the server still checks every call.
+const { isAdmin: prIsAdmin, flags: prFlags } = usePermissions();
+const prCanCreate = computed(() => prIsAdmin.value || !!prFlags.value.doc_access?.["Purchase Receipt"]?.create);
+const prCanEdit = computed(() => prIsAdmin.value || !!prFlags.value.doc_access?.["Purchase Receipt"]?.edit);
+const prCanSave = computed(() => (editingName.value ? prCanEdit.value : prCanCreate.value));
+const prWho = computed(() => {
+  const r = prFlags.value.doc_access?.["Purchase Receipt"]?.write_roles || [];
+  return r.length ? r.join(" or ") + " (or an admin)" : "an admin";
+});
+const prNoAccess = computed(() => `Read-only access. Only ${prWho.value} can do this.`);
 const confirmTarget = ref(null); // { row, mode: "delete"|"cancel" }
 const selectedRows = ref(new Set());
 const sortKey = ref("posting_date");

@@ -16,6 +16,10 @@
         <label class="sv-fld-lbl">Warehouse</label>
         <SearchableSelect v-model="filters.warehouse" :options="warehouses" placeholder="All warehouses" @search="fetchWarehouses" />
       </div>
+      <div class="sv-fld sv-fld-wh">
+        <label class="sv-fld-lbl">Project</label>
+        <SearchableSelect v-model="filters.project" :options="projects" placeholder="All projects" @search="fetchProjects" />
+      </div>
       <div class="sv-fld sv-fld-grp">
         <label class="sv-fld-lbl">Item Group</label>
         <SearchableSelect v-model="filters.item_group" :options="itemGroups" placeholder="All item groups" @search="fetchItemGroups" />
@@ -113,6 +117,7 @@ import { icon } from "../utils/icons.js";
 import { flt } from "../utils/format.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import SummaryStrip from "../components/SummaryStrip.vue";
+import { useProjectOptions } from "../composables/useProjectOptions.js";
 const { toast } = useToast();
 const router = useRouter();
 const list=ref([]),loading=ref(false),search=ref("");
@@ -136,7 +141,8 @@ async function loadLandedBreakdown(rows){
 }
 const warehouses=ref([]),itemGroups=ref([]),items=ref([]);
 const sortCol=ref("stock_value"),sortDir=ref("desc");
-const filters=reactive({warehouse:"",item_group:"",item:""});
+const filters=reactive({warehouse:"",item_group:"",item:"",project:""});
+const { projects, fetchProjects } = useProjectOptions();
 async function load(){
   loading.value=true;
   try{
@@ -146,6 +152,7 @@ async function load(){
     const params={show_zero_stock:1};
     if(filters.warehouse)params.warehouse=filters.warehouse;
     if(filters.item_group)params.item_group=filters.item_group;
+    if(filters.project)params.project=filters.project;
     const r=await apiGET("psd_books.api.inventory.get_stock_summary",params);
     const rows=Array.isArray(r)?r:(r?.message||[]);
     list.value=rows.map(x=>({...x,stock_uom:x.uom||x.stock_uom||""}));
@@ -186,7 +193,7 @@ function exportCSV(){
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 async function fetchItemGroups(q=""){try{const r=await apiLinkValues("Item Group",q);itemGroups.value=r.map(x=>({label:x.name,value:x.name}));}catch{itemGroups.value=[];}}
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
-onMounted(()=>{load();fetchWarehouses("");fetchItemGroups("");fetchItems("");});
+onMounted(()=>{load();fetchWarehouses("");fetchItemGroups("");fetchItems("");fetchProjects("");});
 </script>
 <style scoped>
 .sv-page{display:flex;flex-direction:column;gap:16px;padding:24px;}

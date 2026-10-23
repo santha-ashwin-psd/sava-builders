@@ -14,7 +14,7 @@
     </div>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
-      <button class="sales-btn-primary" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''" @click="openNew('')"><span v-html="icon('plus',13)"></span> New RFQ</button>
+      <button class="sales-btn-primary" :disabled="!canCreateRfq" :title="!canCreateRfq ? 'Read-only access' : ''" @click="openNew('')"><span v-html="icon('plus',13)"></span> New RFQ</button>
     </div>
   </div>
 
@@ -50,7 +50,7 @@
           <td class="c-muted">{{ r.project || '—' }}</td>
           <td class="c-muted mono-sm">{{ r.posting_date || '—' }}</td>
           <td class="c-muted mono-sm">{{ r.respond_by || '—' }}</td>
-          <td><span class="inv-status-badge" :class="statusClass(r.status)">{{ r.status }}</span></td>
+          <td><span class="inv-status-badge" :class="statusClass(displayStatus(r))">{{ displayStatus(r) }}</span></td>
           <td @click.stop>
             <div class="pr-actions-row">
               <button class="inv-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>
@@ -77,7 +77,7 @@
               <div class="inv-view-subtitle">Request for Quotation · {{ viewDoc.posting_date }}</div>
             </div>
             <div style="display:flex;align-items:center;gap:8px">
-              <span class="inv-hdr-badge" :class="statusClass(viewDoc.status)">{{ viewDoc.status }}</span>
+              <span class="inv-hdr-badge" :class="statusClass(displayStatus(viewDoc))">{{ displayStatus(viewDoc) }}</span>
               <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
             </div>
           </div>
@@ -89,12 +89,25 @@
             <button v-if="canCompare(viewDoc)" class="inv-ab-btn" :disabled="!hasQuotes(viewDoc)" :title="!hasQuotes(viewDoc) ? 'Enter at least one quotation first' : ''" @click="cmp.open=true">
               <span v-html="icon('grid',13)"></span> Compare Quotations
             </button>
+            <button v-if="cmpInfo && cmpInfo.status==='Approved' && viewDoc.status!=='Cancelled'" class="inv-ab-btn inv-ab-primary" :disabled="creatingLpos || !canMakeLpo" :title="!canMakeLpo ? 'Read-only access' : ''" @click="createLpos">
+              <span v-html="icon('plus',13)"></span> {{ creatingLpos ? 'Creating…' : 'Create LPOs' }}
+            </button>
             <button v-if="viewDoc.status!=='Cancelled' && $canEdit('bills')" class="inv-ab-btn" @click="openEdit(viewDoc); viewOpen=false">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
             <button v-if="viewDoc.status!=='Cancelled'" class="inv-ab-btn pr-act-cancel" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="cancelRfq">
               <span v-html="icon('x',13)"></span> Cancel RFQ
             </button>
+          </div>
+
+          <div v-if="approverInfo" class="pr-info-val" style="padding:10px 20px;color:#b45309;font-size:12.5px;background:#fffbeb;border-bottom:1px solid #fde68a">
+            Waiting for approval from <strong>{{ approverInfo.role }}</strong> (level {{ approverInfo.level }}).
+            <span v-if="!approverInfo.can_act && approverInfo.reason" style="display:block;color:#6b7280;margin-top:2px">{{ approverInfo.reason }}</span>
+            <div v-if="approverInfo.can_act" style="display:flex;gap:8px;align-items:center;margin-top:8px">
+              <input class="inv-fi" v-model="approveRemarks" maxlength="300" placeholder="Remarks (required to reject)" style="flex:1;background:#fff" />
+              <button class="inv-ab-btn pr-act-cancel" :disabled="approving" @click="rejectComparison">Reject</button>
+              <button class="inv-ab-btn inv-ab-primary" :disabled="approving" @click="approveComparison">{{ approving ? 'Working…' : 'Approve' }}</button>
+            </div>
           </div>
 
           <div class="inv-dbody">
@@ -147,8 +160,8 @@
                   <tr v-if="!(viewDoc.suppliers||[]).length"><td :colspan="canQuote(viewDoc) && $canEdit('bills') ? 7 : 6" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">No suppliers added</td></tr>
                 </tbody>
               </table>
-              <div v-if="(viewDoc.suppliers||[]).length < 3 && viewDoc.status!=='Cancelled'" class="pr-info-val" style="padding:10px 14px;color:#b45309;font-size:12.5px">
-                At least 3 suppliers are needed before this can be sent.
+              <div v-if="(viewDoc.suppliers||[]).length < 2 && viewDoc.status!=='Cancelled'" class="pr-info-val" style="padding:10px 14px;color:#b45309;font-size:12.5px">
+                At least 2 suppliers are needed before this can be sent.
               </div>
             </div>
 
@@ -182,7 +195,7 @@
       @close="qd.open=false" @saved="onQuoteSaved" />
 
     <!-- QUOTATION COMPARISON (Sava A9.6) -->
-    <QuotationComparison :open="cmp.open" :rfq="viewDoc ? viewDoc.name : ''" :can-edit="$canEdit('bills')" @close="cmp.open=false" />
+    <QuotationComparison :open="cmp.open" :rfq="viewDoc ? viewDoc.name : ''" :can-edit="$canEdit('bills')" @close="cmp.open=false; load().then(loadApprover)" @changed="load()" />
 
     <!-- FORM DRAWER -->
     <div v-if="formOpen" class="inv-drawer-bg" @click.self="editingName ? formOpen=false : null">
@@ -264,7 +277,7 @@
                         <div class="po-item-num-row">
                           <div class="po-item-field">
                             <label>Qty <span class="inv-req">*</span></label>
-                            <input class="inv-fi" type="number" v-model.number="it.qty" min="0.01" :max="it.pending_qty ?? undefined" step="0.01" :disabled="itemsLocked"/>
+                            <input class="inv-fi" type="number" v-model.number="it.qty" min="0.01" :max="it.pending_qty ?? undefined" step="0.01" disabled title="Quantity comes from the material request and can't be changed here"/>
                             <div v-if="it.pending_qty != null" class="exp-field-hint">Pending on MRN: {{ it.pending_qty }} {{ it.uom }}</div>
                           </div>
                           <div class="po-item-field">
@@ -285,7 +298,7 @@
               <div class="add-card-header" @click="collapsed.suppliers=!collapsed.suppliers">
                 <div class="add-card-title">
                   <span class="add-card-title-icon"><span v-html="icon('truck',16)"></span></span> Suppliers <span class="inv-req">*</span>
-                  <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· {{ form.suppliers.length }} of at least 3</span>
+                  <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· {{ form.suppliers.length }} of at least 2</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:8px" @click.stop>
                   <button class="add-lines-add-btn" @click="addSupplier"><span v-html="icon('plus',13)"></span> Add Supplier</button>
@@ -327,10 +340,10 @@
           <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New RFQ — unsaved changes' }}</div>
           <div class="add-footer-actions">
             <button class="add-btn-cancel" @click="formOpen=false" :disabled="saving">Cancel</button>
-            <button class="add-btn-draft" @click="save(false)" :disabled="saving || !(editingName ? $canEdit('bills') : $canCreate('bills'))">
+            <button class="add-btn-draft" @click="save(false)" :disabled="saving || !(editingName ? $canEdit('bills') : canCreateRfq)">
               <span v-html="icon('save',13)"></span> {{ saving ? 'Saving…' : 'Save' }}
             </button>
-            <button class="add-btn-more" @click="save(true)" :disabled="saving || !(editingName ? $canEdit('bills') : $canCreate('bills'))" title="Save, then email every supplier">
+            <button class="add-btn-more" @click="save(true)" :disabled="saving || !(editingName ? $canEdit('bills') : canCreateRfq)" title="Save, then email every supplier">
               <span v-html="icon('send',13)"></span> {{ saving ? 'Saving…' : 'Save & Send' }}
             </button>
           </div>
@@ -356,6 +369,7 @@ import { usePagination } from "../composables/usePagination.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { flt, fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 
@@ -366,6 +380,13 @@ const router = useRouter();
 
 const API = "psd_books.api.rfq.";
 const HINT = { module: "bills", action: "write" };
+
+// Rights come from the server (module level + Sava job role), the same rules the API enforces.
+// These only grey out buttons; the server still checks every call.
+const { isAdmin, flags } = usePermissions();
+const canCreateRfq = computed(() => isAdmin.value || !!flags.value.doc_access?.["Request for Quotation"]?.create);
+const canMakeLpo = computed(() => isAdmin.value || (flags.value.sava_roles || []).includes("Purchase Manager")
+  || !!flags.value.doc_access?.["Purchase Order"]?.create);
 
 const TABS = [{k:"all",l:"All"},{k:"Draft",l:"Draft"},{k:"Sent",l:"Sent"},{k:"Cancelled",l:"Cancelled"}];
 const list     = ref([]);
@@ -405,6 +426,59 @@ const filtered = computed(() => {
 });
 const { page, pageSize, paged } = usePagination(filtered, { storageKey: "rfqs" });
 
+const waitingRfqs = ref(new Set());
+const approverInfo = ref(null);
+const approveRemarks = ref("");
+const approving = ref(false);
+const cmpInfo = ref(null);
+const creatingLpos = ref(false);
+const CMP_API = "psd_books.api.quotation_comparison.";
+async function actOnComparison(method, args, okMsg) {
+  approving.value = true;
+  try {
+    await apiPOST(CMP_API + method, { name: approverInfo.value.name, ...args }, HINT);
+    toast.success(okMsg);
+    approveRemarks.value = "";
+    await load();
+    await loadApprover();
+  } catch (e) { toast.error(e.message || "Action failed"); }
+  approving.value = false;
+}
+function approveComparison() {
+  return actOnComparison("approve_comparison", { remarks: approveRemarks.value.trim() }, "Comparison approved");
+}
+function rejectComparison() {
+  if (!approveRemarks.value.trim()) return toast.error("Enter the rejection reason in the remarks box");
+  return actOnComparison("reject_comparison", { reason: approveRemarks.value.trim() }, "Comparison rejected");
+}
+async function loadApprover() {
+  approverInfo.value = null;
+  cmpInfo.value = null;
+  const d = viewDoc.value;
+  if (!d || d.status === "Cancelled") return;
+  try {
+    const r = await apiGET("psd_books.api.quotation_comparison.get_comparison_data", { request_for_quotation: d.name });
+    const c = r && r.comparison;
+    if (!c) return;
+    cmpInfo.value = { name: c.name, status: c.status };
+    const a = c.action;
+    if (c.status === "Pending Approval" && a && a.role) approverInfo.value = { level: a.level, role: a.role, can_act: !!a.can_act, reason: a.reason || "", name: c.name };
+  } catch { approverInfo.value = null; cmpInfo.value = null; }
+}
+async function createLpos() {
+  if (!cmpInfo.value) return;
+  creatingLpos.value = true;
+  try {
+    const r = await apiPOST(CMP_API + "create_lpos", { name: cmpInfo.value.name });   // no write hint: the Purchase Manager may be read-only on Bills
+    toast.success(`${(r.lpos || []).length} LPO(s) created: ${(r.lpos || []).map(p => p.name).join(", ")}`);
+    await load();
+    await loadApprover();
+  } catch (e) { toast.error(e.message || "Could not create the LPOs"); }
+  creatingLpos.value = false;
+}
+function displayStatus(r) {
+  return r && r.status === "Sent" && waitingRfqs.value.has(r.name) ? "Waiting for Approval" : (r ? r.status : "");
+}
 function statusClass(s) {
   if (s === "Cancelled") return "b-badge-muted";
   if (s === "Sent") return "b-badge-green";
@@ -432,14 +506,22 @@ async function load() {
     toast.error(e.message || "Could not load Requests for Quotation");
     list.value = [];
   }
+  try {
+    const waiting = await apiList("Quotation Comparison", {
+      fields: ["request_for_quotation"], filters: [["status", "=", "Pending Approval"]], limit: 100000,
+    }) || [];
+    waitingRfqs.value = new Set(waiting.map(c => c.request_for_quotation));
+  } catch { waitingRfqs.value = new Set(); }
   loading.value = false;
 }
 
 async function openView(r) {
   viewOpen.value = true;
   viewDoc.value = null;
+  approverInfo.value = null;
   try { viewDoc.value = await apiGet("Request for Quotation", r.name); }
   catch (e) { toast.error(e.message || "Failed to load"); viewOpen.value = false; }
+  loadApprover();
 }
 
 async function refreshView() {
@@ -573,7 +655,7 @@ async function save(andSend) {
   const err = validateForm();
   if (err) return toast.error(err);
   if (andSend) {
-    if (form.suppliers.length < 3) return toast.error("Add at least 3 suppliers before sending");
+    if (form.suppliers.length < 2) return toast.error("Add at least 2 suppliers before sending");
     const noEmail = form.suppliers.filter(s => !(s.email_id || "").trim()).map(s => s.supplier_name || s.supplier);
     if (noEmail.length) return toast.error("No email address for: " + noEmail.join(", "));
   }

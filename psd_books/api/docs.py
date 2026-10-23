@@ -4030,16 +4030,20 @@ def mark_po_received(purchase_order, line_qtys=None):
     return {"purchase_order": purchase_order, "lines_updated": updated, "status": new_status}
 
 
+def _purchase_receipt_required() -> bool:
+    """Books Settings > Purchase Receipt Required (default on): goods can only be billed once received on a GRN."""
+    v = frappe.db.get_single_value("Books Settings", "purchase_receipt_required")
+    return True if v is None else bool(int(v))
+
+
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def convert_purchase_order_to_bill(purchase_order, line_qtys=None, bill_no="",
                                    bill_date="", due_date="", batch_nos=None):
     """Create a Bill (Purchase Invoice) from a PO (partial or full).
 
-    batch_nos: optional {po_item_name: batch_no} map for batch-tracked items.
-    Bill creation sets update_stock=1 (this is the actual stock-in point for
-    goods on a PO — see stock_link.on_purchase_invoice_submit), so batch-
-    tracked items must carry a batch_no or the auto-generated Stock Entry
-    fails StockEntry.validate()'s "Batch No is required" check.
+    A bill never moves stock (update_stock=0): stock comes in only when the
+    Purchase Receipt (GRN) is submitted. batch_nos is accepted for backward
+    compatibility and ignored; the Batch No is captured on the GRN.
     """
     from psd_books.utils.access import require_module
     require_module("bills", write=True)
@@ -4069,6 +4073,8 @@ def convert_purchase_order_to_bill(purchase_order, line_qtys=None, bill_no="",
     pi_items = []
     line_updates = []
     three_way_warnings = []
+    _pr_required = _purchase_receipt_required()
+    _is_goods_po = (getattr(po, "purchase_type", None) or "Goods") == "Goods"
     for it in (po.items or []):
         remaining_to_bill = max(0.0, flt(it.qty) - flt(it.billed_qty))
         if remaining_to_bill <= 0:
@@ -4079,44 +4085,23 @@ def convert_purchase_order_to_bill(purchase_order, line_qtys=None, bill_no="",
             qty_bill = remaining_to_bill
         if qty_bill <= 0:
             continue
-        # Three-way match check: warn if billing more than has been received
+        # Stock moves only on the Purchase Receipt (GRN), never on the bill. With "Purchase Receipt
+        # Required" on (Books Settings, default on), goods can only be billed up to what a submitted GRN
+        # received; with it off, billing ahead of receipt is only warned about (three-way match).
+        _unreceived = flt(it.received_qty) - flt(it.billed_qty)
         if (flt(it.billed_qty) + qty_bill) > flt(it.received_qty):
+            if _pr_required and _is_goods_po and frappe.db.get_value("Item", it.item_code, "is_stock_item"):
+                frappe.throw(_(
+                    "{0}: only {1} received and not yet billed. Submit a Purchase Receipt (GRN) before billing "
+                    "{2}."
+                ).format(it.item_name or it.item_code, max(0.0, _unreceived), qty_bill))
             three_way_warnings.append(
                 f"{it.item_name or it.item_code}: billing {qty_bill} "
-                f"but only {flt(it.received_qty) - flt(it.billed_qty)} received"
+                f"but only {_unreceived} received"
             )
 
-        # Batch-tracked items must carry a Batch No — this Bill's
-        # update_stock=1 is what actually creates the incoming Stock Entry
-        # (via stock_link.on_purchase_invoice_submit), and StockEntry.validate()
-        # rejects batch-tracked rows with no batch_no.
-        has_batch_no = frappe.db.get_value("Item", it.item_code, "has_batch_no")
-        batch_no = (batch_nos or {}).get(str(it.name)) if has_batch_no else None
-        if has_batch_no:
-            if not batch_no:
-                frappe.throw(_(
-                    "Item {0} is batch-tracked — select or create a Batch No before billing."
-                ).format(it.item_name or it.item_code))
-            existing = frappe.db.get_value("Batch", batch_no, ["item", "disabled"], as_dict=True)
-            if existing:
-                if existing.disabled:
-                    frappe.throw(_("Batch {0} is disabled and cannot be used.").format(batch_no))
-                if existing.item and existing.item != it.item_code:
-                    frappe.throw(_(
-                        "Batch {0} belongs to item {1}, not {2}."
-                    ).format(batch_no, existing.item, it.item_code))
-            else:
-                # Pre-create the Batch record so the auto-generated Stock
-                # Entry can resolve batch_no as a valid Link on submit —
-                # mirrors the Purchase Receipt flow.
-                b = frappe.get_doc({
-                    "doctype": "Batch",
-                    "batch_no": batch_no,
-                    "item": it.item_code,
-                    "batch_qty": 0,
-                })
-                b.flags.ignore_permissions = True
-                b.insert()
+        # A bill never moves stock, so no Batch No is needed here: it is captured on the Purchase Receipt.
+        batch_no = None
 
         pi_items.append({
             "doctype": "Purchase Invoice Item",
@@ -4161,13 +4146,14 @@ def convert_purchase_order_to_bill(purchase_order, line_qtys=None, bill_no="",
         "purchase_order":  po.name,
         "project":         getattr(po, "project", None) or None,
         "remark":          f"From Purchase Order {po.name}",
-        "update_stock":    1,
+        "update_stock":    0,   # stock moves only on the Purchase Receipt (GRN), never on the bill
         "set_warehouse":   getattr(po, "set_warehouse", "") or "",
         "items":           pi_items,
         "taxes": pi_taxes,
     })
     pi.flags.ignore_permissions = True
     pi.flags.ignore_mandatory = True
+    pi.flags.skip_three_way_warning = True  # this API returns the warning itself (one toast in the UI)
     pi.insert()
     pi.submit()
     # Update billed_qty on PO lines
@@ -5888,8 +5874,12 @@ def create_delivery_note_from_so(sales_order, line_qtys=None, batch_nos=None, lr
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
-def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_delivery_note="", remarks=""):
-    """Create + submit a Purchase Receipt from a Purchase Order."""
+def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_delivery_note="", remarks="", save_draft=0):
+    """Create a Purchase Receipt (GRN) from a Purchase Order.
+
+    save_draft=1 saves it as a Draft only. Submitting it is what runs the QC
+    gate, so stock is accepted only after the QC inspection passes.
+    Otherwise it is submitted straight away."""
     from psd_books.utils.access import require_module
     require_module("bills", write=True)
     if frappe.session.user == "Guest":
@@ -5902,9 +5892,20 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
 
     po = frappe.get_doc("Purchase Order", purchase_order)
     _default_wh = frappe.db.get_single_value("Books Settings", "default_warehouse") or None
+    # received_qty only moves when a Purchase Receipt is submitted, so qty already sitting on a Draft
+    # receipt for this PO (with its QC inspection open) must be counted too -- otherwise every click
+    # creates another Draft receipt and another QC inspection for the same goods.
+    _draft_rows = frappe.db.sql(
+        """SELECT pri.po_item, SUM(pri.qty) AS qty, GROUP_CONCAT(DISTINCT pr.name) AS receipts
+           FROM `tabPurchase Receipt Item` pri
+           JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
+           WHERE pr.purchase_order = %s AND pr.docstatus = 0
+           GROUP BY pri.po_item""", (po.name,), as_dict=True)
+    _in_draft = {str(r.po_item): flt(r.qty) for r in _draft_rows}
+    _draft_names = sorted({n for r in _draft_rows for n in (r.receipts or "").split(",") if n})
     pr_items = []
     for it in (po.items or []):
-        remaining = max(0.0, flt(it.qty) - flt(it.received_qty))
+        remaining = max(0.0, flt(it.qty) - flt(it.received_qty) - _in_draft.get(str(it.name), 0.0))
         if remaining <= 0: continue
         if line_qtys:
             q = min(flt(line_qtys.get(str(it.name), 0)), remaining)
@@ -5925,6 +5926,10 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
             "warehouse":   item_wh or "",
         })
     if not pr_items:
+        if _draft_names:
+            frappe.throw("Draft Purchase Receipt {0} already covers the remaining quantity of {1}. "
+                         "Complete its QC readings and submit it instead of receiving again."
+                         .format(", ".join(_draft_names), po.name))
         frappe.throw("Nothing left to receive on this Purchase Order")
 
     pr = frappe.get_doc({
@@ -5942,10 +5947,11 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
     pr.flags.ignore_permissions = True
     pr.flags.ignore_mandatory = True
     pr.insert()
-    pr.submit()
+    if not int(save_draft or 0):
+        pr.submit()
     frappe.db.commit()
     return {"purchase_receipt": pr.name, "purchase_order": purchase_order,
-            "total_qty": pr.total_qty}
+            "total_qty": pr.total_qty, "docstatus": pr.docstatus}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

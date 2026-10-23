@@ -73,6 +73,61 @@
     </div>
 
     <!-- P&L -->
+    <div v-if="['mrn_lpo','lpo_grn','proj_summary','supp_analysis'].includes(activeReport)" class="books-card report-card bs-card">
+      <div class="bs-page-head">
+        <div class="bs-page-head-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        </div>
+        <div class="bs-page-head-text">
+          <div class="bs-page-head-title">{{ procTitle }}</div>
+          <div class="bs-page-head-sub">{{ procSubtitle }}</div>
+        </div>
+        <div class="bs-page-head-actions">
+          <select v-model="procProject" class="dr-input">
+            <option value="">All projects</option>
+            <option v-for="p in procProjects" :key="p" :value="p">{{ p }}</option>
+          </select>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="procExportOpen = !procExportOpen" :disabled="!procRows.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="procExportOpen">
+              <div class="iws-menu-backdrop" @click="procExportOpen = false"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="procExportOpen = false; exportProcCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="procExportOpen = false; exportProcXlsx()">Download Excel</button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <template v-if="!procRan && !procLoading"><div class="empty-msg">Run the report to see results.</div></template>
+      <template v-else-if="procLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
+      <template v-else-if="procError"><div class="empty-msg">{{ procError }}</div></template>
+      <template v-else-if="procRows.length">
+        <div class="iws-body">
+          <div class="iws-table-wrap">
+            <table class="iws-table">
+              <thead>
+                <tr>
+                  <th v-for="c in procColumns" :key="c" :class="{ 'ta-r': procIsNumber(c) }">{{ procLabel(c) }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(row, i) in procRows" :key="i">
+                  <td v-for="c in procColumns" :key="c" :class="{ 'ta-r': procIsNumber(c) }">{{ procCell(row[c], c) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+      <div v-else class="empty-msg">No rows for this report.</div>
+    </div>
+
     <div v-if="activeReport === 'pl'" class="pl-dash">
       <div class="pl-dash-header">
         <div class="pl-dash-title">
@@ -191,10 +246,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportBsCSV" :disabled="!bs">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportBsCSV')" :disabled="!bs">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportBsCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportBsCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportBsCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
       <template v-if="bsLoading"><div class="loading-shimmer" style="height:120px;border-radius:8px"></div></template>
@@ -279,10 +344,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportCfCSV" :disabled="!cf">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportCfCSV')" :disabled="!cf">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportCfCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportCfCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportCfCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
       <template v-if="cfLoading"><div class="loading-shimmer" style="height:120px;border-radius:8px"></div></template>
@@ -395,10 +470,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportGstCSV" :disabled="!gst?.length">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportGstCSV')" :disabled="!gst?.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportGstCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportGstCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportGstCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
       <template v-if="gstLoading"><div class="loading-shimmer" style="height:80px;border-radius:8px"></div></template>
@@ -469,6 +554,7 @@
               <div class="iws-menu-backdrop" @click="arExportOpen = false"></div>
               <div class="iws-menu">
                 <button class="iws-menu-item" @click="arExportOpen = false; exportAgingCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="arExportOpen = false; exportExcel(exportAgingCSV)">Download Excel</button>
                 <button class="iws-menu-item" @click="arExportOpen = false; copyArAgingToClipboard()">Copy to clipboard</button>
               </div>
             </template>
@@ -589,6 +675,7 @@
               <div class="iws-menu-backdrop" @click="apExportOpen = false"></div>
               <div class="iws-menu">
                 <button class="iws-menu-item" @click="apExportOpen = false; exportAgingCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="apExportOpen = false; exportExcel(exportAgingCSV)">Download Excel</button>
                 <button class="iws-menu-item" @click="apExportOpen = false; copyApAgingToClipboard()">Copy to clipboard</button>
               </div>
             </template>
@@ -709,6 +796,7 @@
               <div class="iws-menu-backdrop" @click="iwsExportOpen = false"></div>
               <div class="iws-menu">
                 <button class="iws-menu-item" @click="iwsExportOpen = false; exportItemSalesCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="iwsExportOpen = false; exportExcel(exportItemSalesCSV)">Download Excel</button>
                 <button class="iws-menu-item" @click="iwsExportOpen = false; copyItemSalesToClipboard()">Copy to clipboard</button>
               </div>
             </template>
@@ -827,6 +915,7 @@
               <div class="iws-menu-backdrop" @click="cwsExportOpen = false"></div>
               <div class="iws-menu">
                 <button class="iws-menu-item" @click="cwsExportOpen = false; exportCustomerSalesCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="cwsExportOpen = false; exportExcel(exportCustomerSalesCSV)">Download Excel</button>
                 <button class="iws-menu-item" @click="cwsExportOpen = false; copyCustomerSalesToClipboard()">Copy to clipboard</button>
               </div>
             </template>
@@ -954,6 +1043,7 @@
               <div class="iws-menu-backdrop" @click="pwExportOpen = false"></div>
               <div class="iws-menu">
                 <button class="iws-menu-item" @click="pwExportOpen = false; exportProfitCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="pwExportOpen = false; exportExcel(exportProfitCSV)">Download Excel</button>
                 <button class="iws-menu-item" @click="pwExportOpen = false; copyProfitToClipboard()">Copy to clipboard</button>
               </div>
             </template>
@@ -1082,6 +1172,7 @@
               <div class="iws-menu-backdrop" @click="ipExportOpen = false"></div>
               <div class="iws-menu">
                 <button class="iws-menu-item" @click="ipExportOpen = false; exportInvoiceProfitCSV()">Download CSV{{ selectedInvoices.size ? ' (selected)' : '' }}</button>
+                <button class="iws-menu-item" @click="ipExportOpen = false; exportExcel(exportInvoiceProfitCSV)">Download Excel</button>
                 <button class="iws-menu-item" @click="ipExportOpen = false; copyInvoiceProfitToClipboard()">Copy to clipboard</button>
               </div>
             </template>
@@ -1263,6 +1354,7 @@
               <div class="iws-menu-backdrop" @click="tbExportOpen = false"></div>
               <div class="iws-menu">
                 <button class="iws-menu-item" @click="tbExportOpen = false; exportTbCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="tbExportOpen = false; exportExcel(exportTbCSV)">Download Excel</button>
                 <button class="iws-menu-item" @click="tbExportOpen = false; copyTbToClipboard()">Copy to clipboard</button>
               </div>
             </template>
@@ -1566,10 +1658,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportStockValCSV" :disabled="!stockVal?.by_warehouse?.length">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportStockValCSV')" :disabled="!stockVal?.by_warehouse?.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportStockValCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportStockValCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportStockValCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -1634,9 +1736,20 @@
           <div class="bs-page-head-sub">Item-wise selling price and MRP per warehouse, from the Item master. Where MRP is not set on an item, the selling price is shown as MRP.</div>
         </div>
         <div class="bs-page-head-actions">
-          <button class="bs-export-btn" @click="exportPriceMrpCSV" :disabled="!priceMrpFiltered.length">
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportPriceMrpCSV')" :disabled="!priceMrpFiltered.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportPriceMrpCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportPriceMrpCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportPriceMrpCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -1690,10 +1803,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportDailyMisCSV" :disabled="!dailyMis?.days?.length">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportDailyMisCSV')" :disabled="!dailyMis?.days?.length">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportDailyMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportDailyMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportDailyMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -1800,10 +1923,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportSalesMisCSV" :disabled="!salesMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportSalesMisCSV')" :disabled="!salesMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportSalesMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportSalesMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportSalesMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -2015,10 +2148,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportReceivablesCSV" :disabled="!receivablesMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportReceivablesCSV')" :disabled="!receivablesMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportReceivablesCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportReceivablesCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportReceivablesCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -2199,10 +2342,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportPurchaseMisCSV" :disabled="!purchaseMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportPurchaseMisCSV')" :disabled="!purchaseMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportPurchaseMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportPurchaseMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportPurchaseMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -2384,10 +2537,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportInventoryMisCSV" :disabled="!inventoryMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportInventoryMisCSV')" :disabled="!inventoryMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportInventoryMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportInventoryMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportInventoryMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -2645,10 +2808,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportProductionMisCSV" :disabled="!productionMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportProductionMisCSV')" :disabled="!productionMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportProductionMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportProductionMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportProductionMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -2910,10 +3083,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportProductMisCSV" :disabled="!productMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportProductMisCSV')" :disabled="!productMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportProductMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportProductMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportProductMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -3115,10 +3298,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportDispatchMisCSV" :disabled="!dispatchMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportDispatchMisCSV')" :disabled="!dispatchMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportDispatchMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportDispatchMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportDispatchMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -3280,10 +3473,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportOrderMisCSV" :disabled="!orderMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportOrderMisCSV')" :disabled="!orderMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportOrderMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportOrderMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportOrderMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -3511,10 +3714,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportProfitabilityMisCSV" :disabled="!profitabilityMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportProfitabilityMisCSV')" :disabled="!profitabilityMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportProfitabilityMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportProfitabilityMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportProfitabilityMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -3667,10 +3880,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportExpenseMisCSV" :disabled="!expenseMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportExpenseMisCSV')" :disabled="!expenseMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportExpenseMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExpenseMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportExpenseMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -3842,10 +4065,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">As of {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportPayablesMisCSV" :disabled="!payablesMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportPayablesMisCSV')" :disabled="!payablesMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportPayablesMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportPayablesMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportPayablesMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -3986,10 +4219,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportCashBankMisCSV" :disabled="!cashBankMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportCashBankMisCSV')" :disabled="!cashBankMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportCashBankMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportCashBankMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportCashBankMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -4184,10 +4427,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportCustomerMisCSV" :disabled="!customerMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportCustomerMisCSV')" :disabled="!customerMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportCustomerMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportCustomerMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportCustomerMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -4410,10 +4663,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportSupplierMisCSV" :disabled="!supplierMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportSupplierMisCSV')" :disabled="!supplierMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportSupplierMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportSupplierMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportSupplierMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -4623,10 +4886,20 @@
         </div>
         <div class="bs-page-head-actions">
           <div class="bs-asof">{{ fmtDate(fromDate) }} - {{ fmtDate(toDate) }}</div>
-          <button class="bs-export-btn" @click="exportEmployeeMisCSV" :disabled="!employeeMis">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export
-          </button>
+          <div class="iws-export-wrap">
+            <button class="bs-export-btn" @click="toggleExportMenu('exportEmployeeMisCSV')" :disabled="!employeeMis">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <template v-if="openExportMenu === 'exportEmployeeMisCSV'">
+              <div class="iws-menu-backdrop" @click="openExportMenu = ''"></div>
+              <div class="iws-menu">
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportEmployeeMisCSV()">Download CSV</button>
+                <button class="iws-menu-item" @click="openExportMenu = ''; exportExcel(exportEmployeeMisCSV)">Download Excel</button>
+              </div>
+            </template>
+          </div>
         </div>
       </div>
 
@@ -4827,10 +5100,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { useFrappeCall, formatCurrency } from "../composables/useFrappe.js";
 import { apiGET, resolveCompany } from "../api/client.js";
 import Modal from "../components/Modal.vue";
+import { downloadXlsx, csvToRows } from "../composables/xlsxExport.js";
 
 const fmt    = formatCurrency;
 const fmtAmt = (v) => v != null ? "KES " + Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—";
@@ -4853,7 +5127,121 @@ function resetDateRange() {
   fromDate.value = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
   toDate.value = today.toISOString().slice(0,10);
 }
-const activeReport = ref("pl");
+const activeReport = ref("bs");
+
+// Sava procurement reports (A15): loaded from psd_books.api.procurement_reports
+const PROC_METHODS = {
+  mrn_lpo: "mrn_vs_lpo", lpo_grn: "lpo_vs_grn", proj_summary: "project_summary", supp_analysis: "supplier_analysis",
+};
+const procProject = ref("");
+const procProjects = ref([]);
+const procRows = ref([]);
+const procCache = ref({});
+const procRan = computed(() => !!procCache.value[activeReport.value]);
+const procLoading = ref(false);
+const procError = ref("");
+async function loadProcurement() {
+  const method = PROC_METHODS[activeReport.value];
+  if (!method) return;
+  procLoading.value = true;
+  procError.value = "";
+  try {
+    const params = procProject.value ? { project: procProject.value } : {};
+    const r = await apiGET("psd_books.api.procurement_reports." + method, params);
+    procRows.value = Array.isArray(r) ? r : (r?.message || []);
+    procCache.value = { ...procCache.value, [activeReport.value]: { rows: procRows.value, project: procProject.value } };
+    if (!procProjects.value.length) {
+      const all = await apiGET("psd_books.api.procurement_reports.project_summary", {});
+      procProjects.value = (Array.isArray(all) ? all : (all?.message || [])).map(x => x.project);
+    }
+  } catch (e) {
+    procError.value = e.message || "Failed to load report";
+    procRows.value = [];
+    procCache.value = { ...procCache.value, [activeReport.value]: { rows: [], project: procProject.value } };
+  } finally {
+    procLoading.value = false;
+  }
+}
+const procColumns = computed(() => {
+  const first = procRows.value[0];
+  return first ? Object.keys(first) : [];
+});
+const PROC_TITLES = {
+  mrn_lpo: ["MRN vs LPO", "How much of each material requisition has been ordered on LPOs"],
+  lpo_grn: ["LPO vs GRN", "How much of each LPO has been received on goods receipts"],
+  proj_summary: ["Project Summary", "Requisitions, LPOs, value received and billed for each project"],
+  supp_analysis: ["Supplier Analysis", "LPOs, value and receipts for each supplier"],
+};
+const procTitle = computed(() => (PROC_TITLES[activeReport.value] || [""])[0]);
+const procSubtitle = computed(() => (PROC_TITLES[activeReport.value] || ["", ""])[1]);
+const PROC_LABELS = { mrn: "MRN", lpo: "LPO", grn: "GRN", uom: "UOM" };
+function procLabel(col) {
+  return col.split("_").map(w => PROC_LABELS[w] || (w.charAt(0).toUpperCase() + w.slice(1))).join(" ");
+}
+function procIsNumber(col) {
+  const first = procRows.value[0];
+  return !!first && typeof first[col] === "number";
+}
+function procCell(v, col) {
+  if (typeof v !== "number") return v ?? "";
+  const money = /_value$/.test(col);
+  return v.toLocaleString("en-US", money
+    ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+    : { maximumFractionDigits: 2 });
+}
+const openExportMenu = ref("");
+function toggleExportMenu(key) { openExportMenu.value = openExportMenu.value === key ? "" : key; }
+let excelMode = false;
+function exportExcel(fn) {
+  excelMode = true;
+  try { fn(); } finally { excelMode = false; }
+}
+function saveCsvText(csv, filename) {
+  if (excelMode) {
+    const rows = csvToRows(csv);
+    downloadXlsx(filename.replace(/\.csv$/i, "") + ".xlsx", rows[0] || [], rows.slice(1));
+    return;
+  }
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+const procExportOpen = ref(false);
+function exportProcXlsx() {
+  if (!procRows.value.length) return;
+  const cols = procColumns.value;
+  const header = cols.map(c => procLabel(c));
+  const rows = procRows.value.map(r => cols.map(c => r[c]));
+  downloadXlsx(PROC_METHODS[activeReport.value] + "_" + new Date().toISOString().slice(0, 10) + ".xlsx", header, rows);
+}
+function exportProcCSV() {
+  if (!procRows.value.length) return;
+  const cols = procColumns.value;
+  const esc = v => { const t = v == null ? "" : String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+  const lines = [cols.map(c => esc(procLabel(c))).join(",")];
+  for (const row of procRows.value) lines.push(cols.map(c => esc(row[c])).join(","));
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = PROC_METHODS[activeReport.value] + "_" + new Date().toISOString().slice(0, 10) + ".csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+watch(activeReport, (k) => {
+  const c = procCache.value[k];
+  procError.value = "";
+  procRows.value = c ? c.rows : [];
+  if (c) procProject.value = c.project;
+});
+watch(procProject, () => {
+  const c = procCache.value[activeReport.value];
+  if (PROC_METHODS[activeReport.value] && c && c.project !== procProject.value) loadProcurement();
+});
 
 const { data: pl,  loading: plLoading,  execute: loadPl  } = useFrappeCall("psd_books.db.queries.get_profit_and_loss");
 const { data: bs,  loading: bsLoading,  execute: loadBs  } = useFrappeCall("psd_books.db.queries.get_balance_sheet_totals");
@@ -5096,13 +5484,7 @@ function exportCfCSV() {
     ["Closing Cash & Bank", cf.value.closing_cash].join(","),
   ];
   const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "cash_flow_" + toDate.value + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  saveCsvText(csv, "cash_flow_" + toDate.value + ".csv");
 }
 
 const gstTaxDesc = { CGST: "Central Goods and Services Tax", SGST: "State Goods and Services Tax", IGST: "Integrated Goods and Services Tax", UTGST: "Union Territory Goods and Services Tax" };
@@ -5120,13 +5502,7 @@ function exportGstCSV() {
   const lines = gst.value.map(g => [g.tax_type, g.invoice_count, g.total_tax].join(","));
   lines.push(["Total", gstTotalInvoices.value, gstTotalTax.value].join(","));
   const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "gst_summary_" + toDate.value + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  saveCsvText(csv, "gst_summary_" + toDate.value + ".csv");
 }
 const arLoading = ref(false);
 const apLoading = ref(false);
@@ -5544,13 +5920,7 @@ function exportBsCSV() {
     g.items.forEach(it => lines.push([g.label, it.label, it.value].join(",")));
   });
   const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "balance_sheet_" + toDate.value + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  saveCsvText(csv, "balance_sheet_" + toDate.value + ".csv");
 }
 
 const bsBalanced = computed(() => {
@@ -5799,6 +6169,10 @@ function exportInvoiceProfitRowCSV(row) {
 }
 
 async function runReport() {
+  if (PROC_METHODS[activeReport.value]) {
+    await loadProcurement();
+    return;
+  }
   const needsRange = !['ar','ap','stockval','price_mrp','payables_mis'].includes(activeReport.value);
   if (needsRange && fromDate.value && toDate.value && fromDate.value > toDate.value) {
     alert("From date cannot be after To date.");
@@ -6027,13 +6401,7 @@ function iwsRowValues(r) {
   return [r.item_name || r.item_code, r.uom || "", r.invoice_count, r.qty_sold, r.avg_rate, r.total_discount || 0, r.total_amount];
 }
 function iwsDownload(csv, name) {
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  a.click();
-  URL.revokeObjectURL(url);
+  saveCsvText(csv, name);
 }
 function copyItemSalesToClipboard() {
   const rows = itemSalesSorted.value.map(r => iwsRowValues(r).join("\t"));
@@ -6130,13 +6498,7 @@ function exportCustomerSalesCSV() {
   const t = custTotals.value;
   lines.push(["Total", t.invoices, t.net, t.discount, t.tax, "", t.outstanding, t.amount].join(","));
   const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "customer_wise_sales_" + fromDate.value + "_to_" + toDate.value + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  saveCsvText(csv, "customer_wise_sales_" + fromDate.value + "_to_" + toDate.value + ".csv");
 }
 
 function exportProfitCSV() {
@@ -6161,13 +6523,7 @@ function exportStockValCSV() {
     [r.warehouse, r.stock_value, total ? ((r.stock_value / total) * 100).toFixed(1) : "0"].join(",")
   );
   const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "stock_valuation_summary_" + toDate.value + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  saveCsvText(csv, "stock_valuation_summary_" + toDate.value + ".csv");
 }
 
 function exportPriceMrpCSV() {
@@ -6183,24 +6539,12 @@ function exportDailyMisCSV() {
     [r.date, r.sales_amount, r.collection_amount, r.purchase_amount, r.expense_amount, r.dispatch_qty, r.production_qty, r.stock_inward_qty, r.stock_outward_qty, r.outstanding].join(",")
   );
   const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "daily_business_mis_" + fromDate.value + "_to_" + toDate.value + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  saveCsvText(csv, "daily_business_mis_" + fromDate.value + "_to_" + toDate.value + ".csv");
 }
 
 function downloadCSV(header, lines, filename) {
   const csv = [header.join(","), ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  saveCsvText(csv, filename);
 }
 
 function exportSalesMisCSV() {
@@ -6793,46 +7137,25 @@ function exportAgingCSV() {
       .join(",")
   );
   const csv = [header, ...lines].join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = (isAR ? "ar_aging" : "ap_aging") + "_" + toDate.value + ".csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  saveCsvText(csv, (isAR ? "ar_aging" : "ap_aging") + "_" + toDate.value + ".csv");
 }
 
 const reports = [
-  { key: "pl",  label: "Profit & Loss",  icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg>` },
   { key: "bs",  label: "Balance Sheet",  icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="3" x2="8" y2="21"/></svg>` },
   { key: "cf",  label: "Cash Flow",      icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>` },
   { key: "gst", label: "GST Summary",    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>` },
-  { key: "items", label: "Item-wise Sales", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>` },
-  { key: "customers", label: "Customer-wise Sales", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>` },
-  { key: "profit", label: "Profit-wise", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>` },
-  { key: "invoice_profit", label: "Invoice Profitability", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="9" y1="13" x2="12" y2="13"/></svg>` },
   { key: "ar",  label: "AR Aging",       icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
   { key: "ap",  label: "AP Aging",       icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 8 14"/></svg>` },
   { key: "tb",  label: "Trial Balance",  icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>` },
   { key: "stockgl", label: "Stock vs GL", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>` },
   { key: "stockval", label: "Stock Valuation", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>` },
-  { key: "price_mrp", label: "Selling Price & MRP", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>` },
-  { key: "mis", label: "Daily Business MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>` },
-  { key: "sales_mis", label: "Sales MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.1-2.8-2.8L7 14"/></svg>` },
-  { key: "receivables", label: "Collection & Receivables MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>` },
   { key: "purchase_mis", label: "Purchase MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18.7 16l-5.1-5.1-2.8 2.8L7 10"/></svg>` },
   { key: "inventory_mis", label: "Inventory MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>` },
-  { key: "production_mis", label: "Production MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>` },
-  { key: "product_mis", label: "Product MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>` },
-  { key: "dispatch_mis", label: "Dispatch & Delivery MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>` },
-  { key: "order_mis", label: "Order MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>` },
-  { key: "profitability_mis", label: "Profitability MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>` },
-  { key: "expense_mis", label: "Expense MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>` },
   { key: "payables_mis", label: "Payables MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>` },
-  { key: "cash_bank_mis", label: "Cash & Bank MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>` },
-  { key: "customer_mis", label: "Customer MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>` },
-  { key: "supplier_mis", label: "Supplier MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>` },
-  { key: "employee_mis", label: "Employee / Performance MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>` },
+  { key: "supplier_mis", label: "Supplier MIS", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>` },  { key: "mrn_lpo", label: "MRN vs LPO", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
+  { key: "lpo_grn", label: "LPO vs GRN", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
+  { key: "proj_summary", label: "Project Summary", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
+  { key: "supp_analysis", label: "Supplier Analysis", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
 ];
 
 const tabPalette = ["c-blue","c-slate","c-cyan","c-amber","c-pink","c-slate","c-emerald","c-violet","c-blue","c-blue"];

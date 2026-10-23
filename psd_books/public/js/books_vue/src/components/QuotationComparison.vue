@@ -7,7 +7,7 @@
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <div class="inv-dh-title">Quotation Comparison</div>
           <span class="inv-dh-sub" style="margin-left:4px">{{ rfq }}<template v-if="cmp"> · {{ cmp.name }}</template></span>
-          <span v-if="cmp" class="inv-status-badge" :class="statusClass(cmp.status)">{{ cmp.status }}</span>
+          <span v-if="cmp" class="inv-status-badge" :class="statusClass(cmp.status)">{{ statusLabel(cmp.status) }}</span>
         </div>
         <button class="inv-dclose" @click="close" :disabled="saving"><span v-html="icon('x',16)"></span></button>
       </div>
@@ -22,7 +22,7 @@
             <div v-if="(data.comparisons||[]).length && (data.comparisons.length > 1 || !cmp)" class="pr-actions-row" style="margin-bottom:10px;flex-wrap:wrap">
               <span class="exp-field-hint" style="margin:0">Comparisons on this RFQ:</span>
               <button v-for="h in data.comparisons" :key="h.name" class="inv-ab-btn" :class="{'inv-ab-primary': cmp && cmp.name===h.name}" @click="load(h.name)">
-                {{ h.name }} · {{ h.status }}
+                {{ h.name }} · {{ statusLabel(h.status) }}
               </button>
               <button v-if="data.can_create && cmp" class="inv-ab-btn" @click="load()">New comparison</button>
             </div>
@@ -191,7 +191,7 @@
         <div class="add-footer-actions">
           <button class="add-btn-cancel" @click="close" :disabled="saving">Close</button>
           <button v-if="editable && !cmp && suppliers.length" class="add-btn-draft" @click="create" :disabled="saving || loading">
-            <span v-html="icon('save',13)"></span> {{ saving ? 'Creating…' : 'Create Comparison' }}
+            <span v-html="icon('save',13)"></span> {{ saving ? 'Saving…' : 'Save' }}
           </button>
           <button v-if="editable && cmp && suppliers.length" class="add-btn-draft" @click="saveSelection" :disabled="saving || loading">
             <span v-html="icon('save',13)"></span> {{ saving ? 'Saving…' : 'Save Selection' }}
@@ -307,10 +307,14 @@ const totals = computed(() => useServer.value
 const footerStatus = computed(() => {
   if (!data.value) return "";
   if (!cmp.value) return "New comparison — not saved";
-  return editable.value ? "Draft — selection not final until saved" : cmp.value.status;
+  return editable.value ? "Draft — selection not final until saved" : statusLabel(cmp.value.status);
 });
 
 const dirty = computed(() => !!cmp.value && editable.value && !!data.value && JSON.stringify(rowsToSend()) !== snapshot.value);
+
+function statusLabel(s) {
+  return s === "Pending Approval" ? "Waiting for Approval" : s;
+}
 
 function statusClass(s) {
   if (s === "Approved" || s === "LPOs Created") return "b-badge-green";

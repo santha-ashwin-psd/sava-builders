@@ -159,10 +159,10 @@ def run():
     print("\n-- Test 3: checks that must block --")
 
     with mock.patch.object(rfq, "_sender", fake_sender):
-        # 3.1 only 2 suppliers
-        d = new_rfq(good_mrn, sup[:2])
+        # 3.1 only 1 supplier
+        d = new_rfq(good_mrn, sup[:1])
         sent_log.clear()
-        expect_block("3.1 send with 2 suppliers", lambda: rfq.send_rfq(d.name), "at least 3")
+        expect_block("3.1 send with 1 supplier", lambda: rfq.send_rfq(d.name), "at least 2")
         check("3.1 no email left the system", not sent_log, str(sent_log))
 
         # 3.2 a supplier with no email
@@ -238,17 +238,17 @@ def run():
         log4.append(to)
         return "mock"
 
-    d4 = new_rfq(good_mrn, sup)
+    d4 = new_rfq(good_mrn, sup[:2])  # 2 suppliers: one delivered is below the minimum of 2
     with mock.patch.object(rfq, "_sender", flaky_sender):
         res = rfq.send_rfq(d4.name)
     d4.reload()
     rows = {r.supplier: r for r in d4.suppliers}
-    check("4.1 the other two suppliers still got their email", len(res["sent"]) == 2 and len(log4) == 2,
+    check("4.1 the other supplier still got its email", len(res["sent"]) == 1 and len(log4) == 1,
           "sent=%s log=%s" % (res["sent"], log4))
     check("4.1 failed row shows Failed with a reason",
           rows[sup[1]].send_status == "Failed" and bool(rows[sup[1]].send_error),
           "%s / %s" % (rows[sup[1]].send_status, rows[sup[1]].send_error))
-    check("4.2 RFQ still Draft (fewer than 3 delivered)", d4.status == "Draft", d4.status)
+    check("4.2 RFQ still Draft (fewer than 2 delivered)", d4.status == "Draft", d4.status)
 
     rows[sup[1]].email_id = fixed_email
     d4.save(ignore_permissions=True)

@@ -63,7 +63,7 @@ doc_events = {
     # Goods documents own the physical stock movement (Delivery Note out / Purchase Receipt in)
     # Phase 2: validate hook added so central_validator period/lock checks run on these too.
     "Delivery Note":    {"validate": [f"{_CV}.on_validate", _PG], "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_delivery_note", "on_submit": [f"{_QC}.check_qc_before_stock_link", f"{_SL}.on_delivery_note_submit"],    "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_delivery_note_cancel"], "before_delete": f"{_CV}.before_delete"},
-    "Purchase Receipt": {"validate": [f"{_CV}.on_validate", _PG], "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_purchase_receipt", "on_submit": [f"{_QC}.check_qc_before_stock_link", f"{_SL}.on_purchase_receipt_submit"], "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_purchase_receipt_cancel"], "before_delete": f"{_CV}.before_delete"},
+    "Purchase Receipt": {"validate": [f"{_CV}.on_validate", _PG], "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_purchase_receipt", "on_update": f"{_QC}.auto_create_qc_for_purchase_receipt", "on_submit": [f"{_QC}.check_qc_before_stock_link", f"{_SL}.on_purchase_receipt_submit"], "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_purchase_receipt_cancel"], "before_delete": f"{_CV}.before_delete"},
     # Purchase Order — wired so fiscal/period lock checks run on save and submit.
     "Purchase Order":   {"validate": [f"{_CV}.on_validate", _PG], "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
     # Phase 2: Stock Entry and Bank Transaction wired to central_validator for period/lock checks.
@@ -97,6 +97,8 @@ doc_events = {
     "Asset":            {"before_insert": f"{_TN}.auto_stamp_company"},
     # Project — company-scoped master (Sava)
     "Project":          {"before_insert": f"{_TN}.auto_stamp_company"},
+    # Employee (Sava A17.3b) — company-scoped staff record
+    "Employee":         {"before_insert": f"{_TN}.auto_stamp_company"},
     # Request for Quotation (Sava A7) — company-scoped, blocked on a Closed project
     "Request for Quotation": {"before_insert": f"{_TN}.auto_stamp_company", "validate": _PG},
     # Supplier Quotation (Sava A8) — company-scoped, blocked on a Closed project
@@ -218,6 +220,7 @@ permission_query_conditions = {
     "Material Request":  f"{_TN}.qc_material_request",
     "Packing Slip":      f"{_TN}.qc_packing_slip",
     "Project":           f"{_TN}.qc_project",
+    "Employee":          f"{_TN}.qc_employee",
     "Request for Quotation": f"{_TN}.qc_request_for_quotation",
     "Supplier Quotation": f"{_TN}.qc_supplier_quotation",
     "Quotation Comparison": f"{_TN}.qc_quotation_comparison",
@@ -265,6 +268,7 @@ has_permission = {
     "Material Request":  f"{_TN}.hp_material_request",
     "Packing Slip":      f"{_TN}.hp_packing_slip",
     "Project":           f"{_TN}.hp_project",
+    "Employee":          f"{_TN}.hp_employee",
     "Request for Quotation": f"{_TN}.hp_request_for_quotation",
     "Supplier Quotation": f"{_TN}.hp_supplier_quotation",
     "Quotation Comparison": f"{_TN}.hp_quotation_comparison",

@@ -15,62 +15,65 @@ export const NAV = [
   { section: "Projects" },
   { path: "/projects",                      label: "Projects",         icon: "folder",     module: "inventory"  },
 
-  { section: "Sales" },
-  { path: "/quotes",                        label: "Quotes",       icon: "quote",      module: "invoices"   },
-  { path: "/sales-orders",                  label: "Sales Orders",     icon: "order",      module: "invoices"   },
-  { path: "/invoices",                      label: "Invoices",         icon: "file",       module: "invoices"   },
-  { path: "/recurring",                     label: "Recurring",        icon: "recurring",  module: "invoices"   },
-  { path: "/delivery-challans",             label: "Delivery Challans",icon: "truck",      module: "invoices"   },
-  { path: "/payments-received",             label: "Payments Received",icon: "rupee",      module: "payments"   },
-  { path: "/credit-notes",                  label: "Credit Notes",     icon: "creditnote", module: "invoices"   },
+  // { section: "Delivery" },  // hidden for Sava
+  // Sales items hidden for Sava (Phase 1 is inventory and purchase only).
+  // To show again, uncomment the line.
+  // { path: "/quotes",                        label: "Quotes",       icon: "quote",      module: "invoices"   },
+  // { path: "/sales-orders",                  label: "Sales Orders",     icon: "order",      module: "invoices"   },
+  // { path: "/invoices",                      label: "Invoices",         icon: "file",       module: "invoices"   },
+  // { path: "/recurring",                     label: "Recurring",        icon: "recurring",  module: "invoices"   },
+  // { path: "/delivery-challans",             label: "Delivery Challans",icon: "truck",      module: "inventory"  },  // moved to Purchases
+  // { path: "/payments-received",             label: "Payments Received",icon: "rupee",      module: "payments"   },
+  // { path: "/credit-notes",                  label: "Credit Notes",     icon: "creditnote", module: "invoices"   },
   // { path: "/proforma-invoices",             label: "Proforma Invoices",icon: "file",       module: "invoices"   },
   // { path: "/eway-bills",                    label: "E-Way Bills",      icon: "truck",      module: "invoices"   },  // hidden for Sava
 
   { section: "Purchases" },
-  { path: "/expenses",                      label: "Expenses",         icon: "expense",    module: "bills"      },
-  { path: "/expenses/categories",           label: "Expense Categories", icon: "folder",   module: "bills"      },
+  // { path: "/expenses",                      label: "Expenses",         icon: "expense",    module: "bills"      },  // hidden for Sava (Purchases)
+  // { path: "/expenses/categories",           label: "Expense Categories", icon: "folder",   module: "bills"      },  // hidden for Sava (Purchases)
   { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },
   { path: "/rfqs",                          label: "Request for Quotation", icon: "purchase", module: "bills"    },
   { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills"      },
+  { path: "/delivery-challans",             label: "Delivery Challans", icon: "truck",      module: "inventory"  },
   { path: "/purchases",                     label: "Bills",            icon: "fileplus",   module: "bills"      },
   { path: "/recurring-bills",               label: "Recurring Bills",  icon: "recurring",  module: "bills"      },
-  { path: "/purchase-receipts",             label: "Purchase Receipts",icon: "purchase",   module: "bills"      },
-  { path: "/purchasing/landed-cost-vouchers", label: "Landed Costs",   icon: "balance",    module: "bills"      },
-  { path: "/payments",                      label: "Payments Made",    icon: "payment",    module: "payments"   },
-  { path: "/debit-notes",                   label: "Debit Notes",      icon: "creditnote", module: "bills"      },
+  { path: "/purchase-receipts",             label: "Purchase Receipts",icon: "purchase",   module: "inventory"  },
+  // { path: "/purchasing/landed-cost-vouchers", label: "Landed Costs",   icon: "balance",    module: "bills"      },  // hidden for Sava (Purchases)
+  // { path: "/payments",                      label: "Payments Made",    icon: "payment",    module: "payments"   },  // hidden for Sava (Purchases)
+  // { path: "/debit-notes",                   label: "Debit Notes",      icon: "creditnote", module: "bills"      },  // hidden for Sava (Purchases)
 
   { section: "Contacts" },
-  { path: "/customers",                     label: "Customers",        icon: "users",      module: "customers"  },
+  // { path: "/customers",                     label: "Customers",        icon: "users",      module: "customers"  },  // hidden for Sava (Contacts)
   { path: "/vendors",                       label: "Vendors",          icon: "vendors",    module: "customers"  },
-  { path: "/sales-persons",                 label: "Sales Persons",    icon: "badge",      module: "customers"  },
+  // { path: "/sales-persons",                 label: "Sales Persons",    icon: "badge",      module: "customers"  },  // hidden for Sava (Contacts)
 
-  { section: "Banking" },
-  { path: "/banking/accounts",              label: "Bank Accounts",    icon: "bank",       module: "banking"    },
-  { path: "/banking/transactions",          label: "Transactions",     icon: "ledger",     module: "banking"    },
-  { path: "/banking/reconciliation",        label: "Reconciliation",   icon: "balance",    module: "banking"    },
-  { path: "/banking/transfers",             label: "Transfers",        icon: "share",      module: "banking"    },
-  { path: "/banking/cheques",               label: "Cheques",          icon: "file",       module: "banking"    },
-  { path: "/banking/cash",                  label: "Cash",             icon: "cash",       module: "banking"    },
+  // { section: "Banking" },  // hidden for Sava (Banking)
+  // { path: "/banking/accounts",              label: "Bank Accounts",    icon: "bank",       module: "banking"    },  // hidden for Sava (Banking)
+  // { path: "/banking/transactions",          label: "Transactions",     icon: "ledger",     module: "banking"    },  // hidden for Sava (Banking)
+  // { path: "/banking/reconciliation",        label: "Reconciliation",   icon: "balance",    module: "banking"    },  // hidden for Sava (Banking)
+  // { path: "/banking/transfers",             label: "Transfers",        icon: "share",      module: "banking"    },  // hidden for Sava (Banking)
+  // { path: "/banking/cheques",               label: "Cheques",          icon: "file",       module: "banking"    },  // hidden for Sava (Banking)
+  // { path: "/banking/cash",                  label: "Cash",             icon: "cash",       module: "banking"    },  // hidden for Sava (Banking)
 
-  { section: "Accounting" },
-  { path: "/accounting/chart-of-accounts",  label: "Chart of Accounts",icon: "coa",        module: "accounts"   },
-  { path: "/accounting/journal-entries",    label: "Journal Entries",  icon: "journal",    module: "accounts"   },
-  { path: "/accounting/opening-balances",   label: "Opening Balances", icon: "opening",    module: "accounts"   },
-  { path: "/accounting/cost-centers",       label: "Cost Centers",     icon: "costcenter", module: "accounts"   },
-  { path: "/accounting/fiscal-years",       label: "Fiscal Years",     icon: "fiscal",     module: "accounts"   },
+  // { section: "Accounting" },  // hidden for Sava (Accounting)
+  // { path: "/accounting/chart-of-accounts",  label: "Chart of Accounts",icon: "coa",        module: "accounts"   },  // hidden for Sava (Accounting)
+  // { path: "/accounting/journal-entries",    label: "Journal Entries",  icon: "journal",    module: "accounts"   },  // hidden for Sava (Accounting)
+  // { path: "/accounting/opening-balances",   label: "Opening Balances", icon: "opening",    module: "accounts"   },  // hidden for Sava (Accounting)
+  // { path: "/accounting/cost-centers",       label: "Cost Centers",     icon: "costcenter", module: "accounts"   },  // hidden for Sava (Accounting)
+  // { path: "/accounting/fiscal-years",       label: "Fiscal Years",     icon: "fiscal",     module: "accounts"   },  // hidden for Sava (Accounting)
 
   { section: "Inventory" },
   { path: "/inventory/items",               label: "Items",            icon: "box",        module: "inventory"  },
   { path: "/inventory/item-groups",         label: "Item Groups",      icon: "folder",     module: "inventory"  },
   { path: "/inventory/warehouses",          label: "Warehouses",       icon: "warehouse",  module: "inventory"  },
   // { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },  // moved to Purchases for Sava
-  { path: "/inventory/opening-stock",       label: "Opening Stock",    icon: "opening",    module: "inventory"  },
+  // { path: "/inventory/opening-stock",       label: "Opening Stock",    icon: "opening",    module: "inventory"  },  // hidden for Sava (Inventory)
   { path: "/inventory/stock-entries",       label: "Stock Entries",    icon: "stack",      module: "inventory"  },
-  { path: "/inventory/adjustments",         label: "Stock Adjustments", icon: "repeat",    module: "inventory"  },
+  // { path: "/inventory/adjustments",         label: "Stock Adjustments", icon: "repeat",    module: "inventory"  },  // hidden for Sava (Inventory)
   { path: "/inventory/stock-ledger",        label: "Stock Ledger",     icon: "ledger",     module: "inventory"  },
   { path: "/inventory/valuation",           label: "Valuation",        icon: "chart",      module: "inventory"  },
   { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },
-  { path: "/inventory/price-lists",         label: "Price Lists",      icon: "rupee",      module: "inventory"  },
+  // { path: "/inventory/price-lists",         label: "Price Lists",      icon: "rupee",      module: "inventory"  },  // hidden for Sava (Inventory)
   { path: "/inventory/batches",             label: "Batch Tracking",   icon: "qr",         module: "inventory"  },
   { path: "/inventory/settings",            label: "Settings",         icon: "gear",       module: "inventory"  },
 
@@ -127,6 +130,7 @@ export const NAV = [
 
   { section: "Settings" },
   { path: "/settings/users",                label: "Users",            icon: "users",      module: "admin"      },
+  { path: "/employees",                     label: "Employees",        icon: "user",       module: "admin"      },
   { path: "/settings/profile",              label: "My Profile",       icon: "user",       module: null         },
   { path: "/settings/company",              label: "Company",          icon: "building",   module: "admin"      },
   { path: "/settings/email",                label: "Email & SMTP",     icon: "mail",       module: "admin"      },

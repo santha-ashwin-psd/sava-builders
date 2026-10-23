@@ -63,6 +63,16 @@
    "label": "Supplier Invoice No"
   },
   {
+   "fieldname": "etims_cu_invoice_no",
+   "fieldtype": "Data",
+   "in_list_view": 0,
+   "label": "KRA eTIMS CU Invoice No",
+   "insert_after": "bill_no",
+   "reqd": 0,
+   "unique": 0,
+   "search_index": 0
+  },
+  {
    "fieldname": "bill_date",
    "fieldtype": "Date",
    "label": "Supplier Invoice Date"
@@ -374,6 +384,39 @@
    "select": 1,
    "share": 1,
    "write": 1
+  },
+  {
+   "role": "Purchase Officer",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Accounts Officer",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Purchase Manager",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Finance",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Director",
+   "read": 1,
+   "report": 1,
+   "print": 1
   }
  ],
  "row_format": "Dynamic",

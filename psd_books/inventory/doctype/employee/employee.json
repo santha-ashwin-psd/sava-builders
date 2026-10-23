@@ -1,0 +1,165 @@
+{
+ "name": "Employee",
+ "module": "Inventory",
+ "doctype": "DocType",
+ "creation": "2026-10-21 00:00:00.000000",
+ "modified": "2026-10-21 00:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "docstatus": 0,
+ "idx": 0,
+ "naming_rule": "Expression (old style)",
+ "autoname": "EMP-.YYYY.-.#####",
+ "title_field": "employee_name",
+ "search_fields": "employee_name,designation,department",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1,
+ "allow_rename": 0,
+ "allow_import": 1,
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "istable": 0,
+ "issingle": 0,
+ "is_submittable": 0,
+ "custom": 0,
+ "fields": [
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "reqd": 1,
+   "bold": 1,
+   "in_list_view": 1,
+   "in_global_search": 1
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Active\nInactive",
+   "default": "Active",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "col1",
+   "fieldtype": "Column Break",
+   "label": ""
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "label": "Company"
+  },
+  {
+   "fieldname": "sec_job",
+   "fieldtype": "Section Break",
+   "label": "Job"
+  },
+  {
+   "fieldname": "designation",
+   "fieldtype": "Data",
+   "label": "Designation",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "department",
+   "fieldtype": "Data",
+   "label": "Department",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "col2",
+   "fieldtype": "Column Break",
+   "label": ""
+  },
+  {
+   "fieldname": "project",
+   "fieldtype": "Link",
+   "label": "Project",
+   "options": "Project",
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "user",
+   "fieldtype": "Link",
+   "label": "User",
+   "options": "User",
+   "unique": 1,
+   "description": "Login user of this employee. One employee per user."
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Books Admin",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Store Keeper",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Site Engineer",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Purchase Officer",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Accounts Officer",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Purchase Manager",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Finance",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Director",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  }
+ ],
+ "links": [],
+ "actions": [],
+ "states": []
+}

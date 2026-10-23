@@ -28,6 +28,7 @@ import AssetValueAdjustment from "./pages/AssetValueAdjustment.vue";
 import AssetQuantityAdjustment from "./pages/AssetQuantityAdjustment.vue";
 import Department           from "./pages/Department.vue";
 import Projects             from "./pages/Projects.vue";
+import Employees            from "./pages/Employees.vue";
 import DepreciationSchedule from "./pages/DepreciationSchedule.vue";
 import MaintenanceLog       from "./pages/MaintenanceLog.vue";
 import OpeningStockBatchEntry from "./pages/OpeningStockBatchEntry.vue";
@@ -270,6 +271,12 @@ const routes = [
     meta: { module: "inventory" },
   },
   {
+    path: "/employees",
+    name: "employees",
+    component: Employees,
+    meta: { module: "admin" },
+  },
+  {
     path: "/settings/profile",
     name: "settings-profile",
     component: SettingsProfile,
@@ -358,9 +365,9 @@ const routes = [
   { path: "/gst/tax-templates", name: "tax-templates", component: TaxTemplates, meta: { module: "taxes" } },
   { path: "/reports",      name: "reports",  component: Reports,     meta: { module: null       } },
   { path: "/bulk-import",        name: "bulk-import",       component: BulkImport,       meta: { module: "admin"    } },
-  { path: "/delivery-challans",   name: "delivery-challans",   component: DeliveryChallans,   meta: { module: "invoices" } },
+  { path: "/delivery-challans",   name: "delivery-challans",   component: DeliveryChallans,   meta: { module: "inventory" } },
   { path: "/proforma-invoices",   name: "proforma-invoices",   component: ProformaInvoices,   meta: { module: "invoices" } },
-  { path: "/purchase-receipts",   name: "purchase-receipts",   component: PurchaseReceipts,   meta: { module: "bills"    } },
+  { path: "/purchase-receipts",   name: "purchase-receipts",   component: PurchaseReceipts,   meta: { module: "inventory"} },
   { path: "/rfqs",               name: "rfqs",               component: RequestForQuotation, meta: { module: "bills"    } },
   { path: "/purchasing/landed-cost-vouchers",       name: "landed-cost-vouchers",       component: LandedCostVoucher, meta: { module: "bills" } },
   { path: "/purchasing/landed-cost-vouchers/:name", name: "landed-cost-vouchers-view",  component: LandedCostVoucher, meta: { module: "bills" } },

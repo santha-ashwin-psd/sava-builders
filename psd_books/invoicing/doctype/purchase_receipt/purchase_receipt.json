@@ -616,6 +616,51 @@
    "export": 1,
    "report": 1,
    "share": 1
+  },
+  {
+   "role": "Site Engineer",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Store Keeper",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "submit": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Purchase Officer",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Accounts Officer",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Purchase Manager",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Finance",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Director",
+   "read": 1,
+   "report": 1,
+   "print": 1
   }
  ]
 }

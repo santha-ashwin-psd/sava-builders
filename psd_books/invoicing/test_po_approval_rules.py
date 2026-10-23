@@ -147,12 +147,40 @@ class Acting(unittest.TestCase):
 		d = pending(100000)
 		self.assertTrue(rules.approve(d, "pm@x.com", [PM], None, "t1"))
 
-	def test_sender_cannot_approve_or_send_back(self):
+	def test_sender_with_the_role_can_approve(self):
 		d = pending(100000, raised_by="pm@x.com")
+		self.assertTrue(rules.approve(d, "pm@x.com", [PM], "", "t"))
+		self.assertEqual(d.approval_steps[0].approver, "pm@x.com")
+
+	def test_sender_with_the_role_can_send_back(self):
+		d = pending(100000, raised_by="pm@x.com")
+		rules.send_back(d, "pm@x.com", [PM], "no", "t")
+		self.assertEqual(d.status, "Sent Back")
+
+	def test_sender_without_the_role_still_cannot_approve(self):
+		d = pending(100000, raised_by="officer@x.com")
 		with self.assertRaises(ThrowError):
-			rules.approve(d, "pm@x.com", [PM], "", "t")
-		with self.assertRaises(ThrowError):
-			rules.send_back(d, "pm@x.com", [PM], "no", "t")
+			rules.approve(d, "officer@x.com", [], "", "t")
+
+	def test_admin_can_approve_any_level_without_the_role_or_as_sender(self):
+		d = pending(600000, raised_by="admin@x.com")
+		self.assertFalse(rules.approve(d, "admin@x.com", [], "", "t1", is_admin=True))
+		self.assertFalse(rules.approve(d, "admin@x.com", [], "", "t2", is_admin=True))
+		self.assertTrue(rules.approve(d, "admin@x.com", [], "", "t3", is_admin=True))
+		self.assertEqual([s.status for s in d.approval_steps], ["Approved"] * 3)
+
+	def test_admin_can_send_back_and_cancel(self):
+		d = pending(250000)
+		rules.send_back(d, "admin@x.com", [], "Budget", "t", is_admin=True)
+		self.assertEqual(d.status, "Sent Back")
+		d = pending(250000)
+		rules.cancel_pending(d, "admin@x.com", [], "Duplicate", "t", is_admin=True)
+		self.assertEqual(d.status, "Cancelled")
+
+	def test_non_admin_unrelated_user_cannot_cancel(self):
+		d = pending(100000)
+		self.assertFalse(rules.can_cancel_pending(d.status, d.raised_by, d.approval_steps, "x@x.com", []))
+		self.assertTrue(rules.can_cancel_pending(d.status, d.raised_by, d.approval_steps, "x@x.com", [], is_admin=True))
 
 	def test_wrong_role_and_out_of_order_blocked(self):
 		d = pending(600000)
@@ -255,7 +283,17 @@ class ActionState(unittest.TestCase):
 		self.assertTrue(out["can_act"])
 		self.assertEqual((out["level"], out["role"]), (1, PM))
 
-	def test_sender_wrong_role_and_repeat_approver_cannot(self):
+	def test_sender_with_the_role_can_act(self):
+		out = rules.action_state("Pending Approval", "pm@x.com", self.steps((PM, "Pending", None)), "pm@x.com", [PM])
+		self.assertTrue(out["can_act"])
+
+	def test_admin_can_always_act(self):
+		s = self.steps((PM, "Approved", "admin@x.com"), (FIN, "Pending", None))
+		out = rules.action_state("Pending Approval", "admin@x.com", s, "admin@x.com", [], True)
+		self.assertTrue(out["can_act"])
+		self.assertEqual((out["level"], out["role"]), (2, FIN))
+
+	def test_wrong_role_and_repeat_approver_cannot(self):
 		s = self.steps((PM, "Approved", "pm@x.com"), (FIN, "Pending", None))
 		self.assertFalse(rules.action_state("Pending Approval", "pm@x.com", s, "pm@x.com", [PM, FIN])["can_act"])
 		self.assertFalse(rules.action_state("Pending Approval", "r@x.com", s, "pm@x.com", [PM, FIN])["can_act"])

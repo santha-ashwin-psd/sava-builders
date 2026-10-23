@@ -96,7 +96,7 @@
   {
    "fieldname": "sec_rfq_suppliers",
    "fieldtype": "Section Break",
-   "label": "Suppliers (at least 3)"
+   "label": "Suppliers (at least 2)"
   },
   {
    "fieldname": "suppliers",
@@ -163,6 +163,32 @@
    "print": 1,
    "report": 1,
    "share": 0
+  },
+  {
+   "role": "Purchase Officer",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Purchase Manager",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Finance",
+   "read": 1,
+   "report": 1,
+   "print": 1
+  },
+  {
+   "role": "Director",
+   "read": 1,
+   "report": 1,
+   "print": 1
   }
  ]
 }

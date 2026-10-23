@@ -201,8 +201,25 @@ def get_warehouse_batches(warehouse):
     return out
 
 
+def _restrict_to_project(filters, project):
+	"""Sava A13: limit a Bin query to the warehouses that list this project (Warehouse Project rows).
+	Returns False when the project has no warehouses or none of them match the existing warehouse filter."""
+	if not project:
+		return True
+	pw = frappe.get_all("Warehouse Project",
+		filters={"project": project, "parenttype": "Warehouse", "parentfield": "projects"}, pluck="parent")
+	cur = filters.get("warehouse")
+	if cur:
+		allowed = set(cur[1]) if isinstance(cur, list) else {cur}
+		pw = [w for w in pw if w in allowed]
+	if not pw:
+		return False
+	filters["warehouse"] = ["in", pw]
+	return True
+
+
 @frappe.whitelist(allow_guest=False)
-def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
+def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0, project=None):
     """
     Return current stock levels (from Bin) with item details.
     If warehouse is a group (is_group=1), aggregates all children recursively.
@@ -220,6 +237,8 @@ def get_stock_summary(warehouse=None, item_group=None, show_zero_stock=0):
                 return []  # Group with no children yet
         else:
             filters["warehouse"] = warehouse
+    if not _restrict_to_project(filters, project):
+        return []
     if not int(show_zero_stock):
         filters["actual_qty"] = [">", 0]
 
@@ -1378,13 +1397,16 @@ def save_item_reorder_config(item_code, supplier="", warehouse_override="",
 # ── Valuation Report ─────────────────────────────────────────────────────────
 
 @frappe.whitelist(allow_guest=False)
-def get_stock_valuation_report(warehouse=None, as_of_date=None):
+def get_stock_valuation_report(warehouse=None, as_of_date=None, project=None):
     """
     Stock valuation summary — total value per warehouse, and grand total.
+    project: limit to the warehouses assigned to that project (Sava A13).
     """
     filters = {"actual_qty": [">", 0]}
     if warehouse:
         filters["warehouse"] = warehouse
+    if not _restrict_to_project(filters, project):
+        return {"as_of_date": as_of_date or today(), "by_warehouse": [], "grand_total": 0.0}
 
     bins = frappe.get_all(
         "Bin",
@@ -1847,3 +1869,15 @@ def create_po_from_mr(material_request):
         "items":            po_items,
     }
     return po
+
+
+@frappe.whitelist(allow_guest=False)
+def get_warehouse_projects():
+    """Sava A13: {warehouse name: [project, ...]} from the Warehouse Project rows, in order."""
+    rows = frappe.get_all("Warehouse Project",
+        filters={"parenttype": "Warehouse", "parentfield": "projects"},
+        fields=["parent", "project"], order_by="idx asc")
+    out = {}
+    for r in rows:
+        out.setdefault(r.parent, []).append(r.project)
+    return out

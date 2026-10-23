@@ -16,7 +16,7 @@
     <div class="sales-actions">
       <button class="sales-btn-ghost" @click="load" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
       <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV" :disabled="!filtered.length"><span v-html="icon('download',14)"></span> CSV</button>
-      <button class="sales-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Project</button>
+      <button class="sales-btn-primary" :disabled="!canCreateProject" :title="!canCreateProject ? 'Only a Project Manager, Books Admin or Director can create projects' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Project</button>
     </div>
   </div>
 
@@ -41,7 +41,7 @@
           <template v-else>
             <p class="bk-empty-title">No projects yet</p>
             <p class="bk-empty-sub">Create your first project to get started.</p>
-            <button class="bk-empty-btn" :disabled="!$canCreate('inventory')" @click="openNew"><span v-html="icon('plus',13)"></span> New Project</button>
+            <button class="bk-empty-btn" :disabled="!canCreateProject" @click="openNew"><span v-html="icon('plus',13)"></span> New Project</button>
           </template>
         </div></td></tr>
         <tr v-else v-for="row in paged" :key="row.name" class="inv-row">
@@ -52,7 +52,7 @@
           <td @click="openEdit(row)" data-label="Project Manager">{{ row.project_manager ? (members[row.project_manager] || row.project_manager) : '—' }}</td>
           <td @click="openEdit(row)" data-label="Status"><span class="inv-status-badge" :class="row.status === 'Closed' ? 'status-draft' : 'status-active'">{{ row.status || 'Open' }}</span></td>
           <td style="text-align:center;white-space:nowrap" @click.stop>
-            <button class="inv-act-btn" @click="openEdit(row)" :disabled="!$canEdit('inventory')" title="Edit"><span v-html="icon('edit',13)"></span></button>
+            <button class="inv-act-btn" @click="openEdit(row)" :disabled="!canEditProject" title="Edit"><span v-html="icon('edit',13)"></span></button>
           </td>
         </tr>
       </tbody>
@@ -77,25 +77,35 @@
         </div>
         <div class="pj-group">
           <label>Project Name <span class="nim-req">*</span></label>
-          <input v-model="form.project_name" required maxlength="140" :disabled="isClosed" />
+          <input v-model="form.project_name" required maxlength="140" :disabled="formLocked" />
         </div>
         <div class="pj-row">
           <div class="pj-group">
             <label>Start Date <span class="nim-req">*</span></label>
-            <input type="date" v-model="form.start_date" required :disabled="isClosed" />
+            <input type="date" v-model="form.start_date" required :disabled="formLocked" />
           </div>
           <div class="pj-group">
             <label>Expected End Date</label>
-            <input type="date" v-model="form.expected_end_date" :min="form.start_date || null" :disabled="isClosed" />
+            <input type="date" v-model="form.expected_end_date" :min="form.start_date || null" :disabled="formLocked" />
           </div>
         </div>
         <div class="pj-group">
-          <label>Project Manager</label>
-          <select v-model="form.project_manager" :disabled="isClosed">
-            <option value="">— None —</option>
-            <option v-for="m in memberOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+          <label>Project Manager <span v-if="isAdmin && !isEdit" style="color:#e03131">*</span></label>
+          <select v-if="isAdmin" v-model="form.project_manager" :disabled="formLocked" :required="!isEdit">
+            <option value="" :disabled="!isEdit">{{ isEdit ? '— None —' : '— Select Project Manager —' }}</option>
+            <option v-for="m in managerOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
           </select>
-          <div class="pj-hint">Approves this project's material requests. Must be a company member and not a Books Viewer.</div>
+          <input v-else :value="managerLabel" disabled />
+          <div v-if="isAdmin" class="pj-hint">
+            Approves this project's material requests. Only users with the Project Manager role are listed.
+            <span v-if="!managerOptions.length"> No Project Manager exists yet: add one under Settings &gt; Users.</span>
+          </div>
+          <div v-else class="pj-hint">
+            {{ isEdit ? 'Only a Books Admin or Director can change the Project Manager.' : 'You will be the Project Manager of this project.' }}
+          </div>
+        </div>
+        <div v-if="noProjectRights" class="pj-hint" style="margin-bottom:8px">
+          You can view this project, but only a Project Manager, Books Admin or Director can edit it.
         </div>
         <div v-if="isEdit" class="pj-group">
           <label>Status</label>
@@ -114,11 +124,11 @@
         </div>
         <div class="pj-actions">
           <button v-if="isEdit && !isClosed" type="button" class="pj-btn-warn" style="margin-right:auto"
-            :disabled="closing || !$canEdit('inventory')" @click="closeProject">{{ closing ? 'Checking…' : 'Close Project' }}</button>
+            :disabled="closing || !canEditProject" @click="closeProject">{{ closing ? 'Checking…' : 'Close Project' }}</button>
           <button v-if="isEdit && isClosed && isAdmin" type="button" class="pj-btn-sec" style="margin-right:auto"
             :disabled="closing" @click="reopenProject">{{ closing ? 'Reopening…' : 'Reopen Project' }}</button>
           <button type="button" class="pj-btn-sec" @click="closeForm">Cancel</button>
-          <button type="submit" class="pj-btn-pri" :disabled="saving || isClosed || !(isEdit ? $canEdit('inventory') : $canCreate('inventory'))">{{ saving ? 'Saving…' : 'Save' }}</button>
+          <button type="submit" class="pj-btn-pri" :disabled="saving || isClosed || !(isEdit ? canEditProject : canCreateProject)">{{ saving ? 'Saving…' : 'Save' }}</button>
         </div>
       </form>
     </div>
@@ -135,11 +145,17 @@ import { useConfirm } from "../composables/useConfirm.js";
 import { usePermissions } from "../composables/usePermissions.js";
 import { fmtDate } from "../utils/format.js";
 import { icon } from "../utils/icons.js";
+import { session } from "../api/session.js";
 import Pagination from "../components/Pagination.vue";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
-const { isAdmin } = usePermissions();
+const { isAdmin, flags } = usePermissions();
+
+// Only a Project Manager, Books Admin or Director can create or edit a project (the server
+// enforces this too; these flags only hide / disable the buttons).
+const canCreateProject = computed(() => isAdmin.value || !!flags.value.doc_access?.Project?.create);
+const canEditProject = computed(() => isAdmin.value || !!flags.value.doc_access?.Project?.edit);
 
 const list = ref([]);
 const loading = ref(false);
@@ -156,10 +172,25 @@ const closing = ref(false);
 const blockers = ref([]);
 const form = ref(blankForm());
 const members = ref({});
-const memberOptions = computed(() => Object.entries(members.value)
-  .map(([value, label]) => ({ value, label: label || value }))
-  .sort((a, b) => a.label.localeCompare(b.label)));
+const pmList = ref([]);  // users who hold the Project Manager role
+const managerOptions = computed(() => {
+  const opts = pmList.value.map(u => ({ value: u.name, label: u.label || u.name }));
+  const cur = form.value.project_manager;
+  // An older project may have a manager who has no Project Manager role: keep it visible.
+  if (cur && !opts.some(o => o.value === cur)) {
+    opts.unshift({ value: cur, label: (members.value[cur] || cur) + " (no Project Manager role)" });
+  }
+  return opts.sort((a, b) => a.label.localeCompare(b.label));
+});
+const managerLabel = computed(() => {
+  const u = form.value.project_manager;
+  if (!u) return "—";
+  return members.value[u] || (u === session.user ? session.fullname : "") || u;
+});
 const isClosed = computed(() => isEdit.value && form.value.status === "Closed");
+// Read-only when the project is Closed, or the user may not edit (create) projects.
+const noProjectRights = computed(() => isEdit.value ? !canEditProject.value : !canCreateProject.value);
+const formLocked = computed(() => isClosed.value || noProjectRights.value);
 
 const tabs = [
   { key: "all", label: "All" },
@@ -229,6 +260,8 @@ function openNew() {
   isEdit.value = false;
   blockers.value = [];
   form.value = blankForm();
+  // A Project Manager who creates a project becomes its manager; a Books Admin / Director picks one.
+  if (!isAdmin.value) form.value.project_manager = session.user;
   showForm.value = true;
 }
 function openEdit(row) {
@@ -243,6 +276,10 @@ async function save() {
   const f = form.value;
   if (f.expected_end_date && f.start_date && f.expected_end_date < f.start_date) {
     toast.error("Expected End Date cannot be before Start Date");
+    return;
+  }
+  if (!isEdit.value && isAdmin.value && !f.project_manager) {
+    toast.error("Select a Project Manager for this project");
     return;
   }
   saving.value = true;
@@ -335,6 +372,11 @@ async function loadMembers() {
     members.value = (await apiGET("psd_books.api.admin.get_company_user_names")) || {};
   } catch (e) {
     members.value = {};
+  }
+  try {
+    pmList.value = (await apiGET("psd_books.api.admin.get_project_manager_options")) || [];
+  } catch (e) {
+    pmList.value = [];
   }
 }
 

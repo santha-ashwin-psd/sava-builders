@@ -34,6 +34,8 @@ class PurchaseInvoice(Document):
                 self.fiscal_year = validate_fiscal_year(self.posting_date, self.company)
             except Exception:
                 self.fiscal_year = ""
+        _warn_three_way_match(self)
+
     def before_update_after_submit(self):
         # Recalculate item amounts and invoice totals when a submitted
         # Purchase Invoice is edited.
@@ -103,7 +105,10 @@ class PurchaseInvoice(Document):
         )
 
     def set_outstanding_amount(self):
-       self.outstanding_amount = self.grand_total
+        # Only a draft resets the balance. On a submitted bill, outstanding reflects payments already made.
+        if flt(getattr(self, "docstatus", 0)) != 0:
+            return
+        self.outstanding_amount = self.grand_total
 
     def validate_accounts(self):
         if self.credit_to:
@@ -372,3 +377,35 @@ class PurchaseInvoice(Document):
             title=_("Linked Asset Not Adjusted"),
             indicator="orange",
         )
+
+
+def _warn_three_way_match(self):
+    """Warn (never block) when a bill is for more than the LPO has received and not yet billed.
+    Covers bills entered directly as well as bills created from the LPO."""
+    if getattr(self, "is_return", 0) or not getattr(self, "purchase_order", None):
+        return
+    # Once only: on submit (validate also runs on every draft save), and never when the caller
+    # (Convert PO to Bill) reports the warning itself.
+    if self.docstatus != 1 or self.flags.get("skip_three_way_warning"):
+        return
+    qty_by_item = {}
+    for it in self.items:
+        qty_by_item[it.item_code] = qty_by_item.get(it.item_code, 0) + flt(it.qty)
+    warnings = []
+    for code, qty in qty_by_item.items():
+        lines = frappe.get_all("Purchase Order Item",
+            filters={"parent": self.purchase_order, "item_code": code},
+            fields=["received_qty", "billed_qty"])
+        if not lines:
+            warnings.append(_("{0}: not on LPO {1}").format(code, self.purchase_order))
+            continue
+        received = sum(flt(r.received_qty) for r in lines)
+        billed = sum(flt(r.billed_qty) for r in lines)
+        if billed + qty > received:
+            warnings.append(_("{0}: billing {1} but only {2} received and not yet billed")
+                .format(code, qty, max(0.0, received - billed)))
+    if warnings:
+        frappe.msgprint(
+            _("Three-way match warning against LPO {0}:<br>{1}").format(
+                self.purchase_order, "<br>".join(warnings)),
+            indicator="orange", title=_("Check against GRN"), alert=True)

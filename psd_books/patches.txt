@@ -129,3 +129,12 @@ psd_books.patches.v1_20.delete_gst_tax_templates
 psd_books.patches.v1_21.create_approval_roles
 # Sava KES step 3: KES base currency on the company, accounts and default price lists. Safe to re-run.
 psd_books.patches.v1_22.set_company_currency_kes
+
+# Sava A17.1: create the job roles Store Keeper, Site Engineer, Purchase Officer, Accounts Officer. Safe to re-run.
+psd_books.patches.v1_23.create_job_roles
+
+# Sava A13 (shared stores): copy Warehouse.project into the new Warehouse Project table. Safe to re-run.
+psd_books.patches.v1_24.migrate_warehouse_projects
+
+# Project Manager role: only a Project Manager, Books Admin or Director can create a project. Safe to re-run.
+psd_books.patches.v1_25.create_project_manager_role

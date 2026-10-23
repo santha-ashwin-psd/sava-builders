@@ -113,7 +113,56 @@ DOCTYPE_MODULE = {
     # Admin / settings
     "Books Company": "admin", "Books Company Member": "admin",
     "Books Settings": "admin", "Books Number Series": "admin",
+    "Employee": "admin",
 }
+
+# Sava: stores documents (Delivery Note, GRN) are gated by the Inventory module, with
+# Material Request, so a Store Keeper or Site Engineer needs no Sales or Bills access.
+DOCTYPE_MODULE["Delivery Note"] = "inventory"
+DOCTYPE_MODULE["Purchase Receipt"] = "inventory"
+
+# Sava A17: who may read / raise each document, by Sava job role (same as the plan and the
+# doctype permission rows). For a user holding at least one Sava role this REPLACES the module
+# check for the listed doctypes and keys. "write" covers create, edit, submit and cancel.
+# A key that is left out falls back to the module check. Users with no Sava role, company admins
+# and bypass users are not affected. Approvals (LPO, comparison, MRN) have their own role checks.
+_ALL_SAVA = frozenset({"Store Keeper", "Site Engineer", "Purchase Officer", "Accounts Officer",
+                       "Purchase Manager", "Finance", "Director", "Project Manager"})
+_APPROVERS = frozenset({"Purchase Manager", "Finance", "Director"})
+SAVA_ACCESS = {
+    "Project": {"read": _ALL_SAVA},
+    "Warehouse": {"read": _ALL_SAVA},
+    "Item": {"read": _ALL_SAVA},
+    # tax templates feed the purchase order tax dropdown, so every Sava role must see them (read only)
+    "Tax Template": {"read": _ALL_SAVA},
+    "Material Request": {
+        "read": frozenset({"Site Engineer", "Store Keeper", "Purchase Officer", "Project Manager"}) | _APPROVERS,
+        "write": frozenset({"Site Engineer"})},
+    "Delivery Note": {
+        "read": frozenset({"Site Engineer", "Store Keeper", "Purchase Manager"}),
+        "write": frozenset({"Store Keeper"})},
+    "Purchase Receipt": {"read": _ALL_SAVA, "write": frozenset({"Store Keeper"})},
+    "Purchase Order": {
+        "read": _ALL_SAVA - {"Site Engineer", "Project Manager"},
+        "write": frozenset({"Purchase Officer"})},
+    "Request for Quotation": {
+        "read": frozenset({"Purchase Officer"}) | _APPROVERS, "write": frozenset({"Purchase Officer"})},
+    "Supplier Quotation": {
+        "read": frozenset({"Purchase Officer"}) | _APPROVERS, "write": frozenset({"Purchase Officer"})},
+    "Quotation Comparison": {
+        "read": frozenset({"Purchase Officer"}) | _APPROVERS, "write": frozenset({"Purchase Officer"})},
+    "Purchase Invoice": {
+        "read": frozenset({"Purchase Officer", "Accounts Officer"}) | _APPROVERS,
+        "write": frozenset({"Accounts Officer"})},
+    "Payment Entry": {
+        "read": frozenset({"Accounts Officer"}) | _APPROVERS,
+        "write": frozenset({"Accounts Officer", "Finance"})},
+}
+
+
+def _user_sava_roles(user: str) -> frozenset:
+    """The Sava job roles this user holds (empty when none)."""
+    return _ALL_SAVA & set(frappe.get_roles(user))
 
 
 def module_for(doctype: str) -> str | None:
@@ -167,8 +216,10 @@ def _membership(user: str) -> dict:
                 "role": "", "mods": {m: False for m in MODULES},
                 "levels": {m: "None" for m in MODULES}}
 
-    admin = bool(row.get("is_company_admin")) or (row.get("books_role") == "Books Admin")
-    readonly = (row.get("books_role") == "Books Viewer")
+    # A Director has admin access, whatever Books role is stored on the member row.
+    admin = (bool(row.get("is_company_admin")) or (row.get("books_role") == "Books Admin")
+             or "Director" in set(frappe.get_roles(user)))
+    readonly = (row.get("books_role") == "Books Viewer") and not admin
     mods = {m: (admin or bool(row.get(f"mod_{m}"))) for m in MODULES}
     customized = bool(row.get("levels_customized"))
 
@@ -230,9 +281,24 @@ def _can_at_level(doctype: str, threshold: str, user: str | None = None) -> bool
     the legacy behavior -- allowed for View, allowed for anything else
     unless the caller is read-only/unmapped -- so lookups and non-sensitive
     doctypes keep working exactly as before."""
-    m = _membership(user or frappe.session.user)
+    user = user or frappe.session.user
+    m = _membership(user)
     if m["admin"]:
         return True
+    # Projects: only a Books Admin / Director (admin, handled above) or a Project Manager
+    # may create or edit one, whatever module level or other Sava role the user holds.
+    if doctype == "Project" and threshold in ("Create", "Edit"):
+        return (not m["no_member"] and not m["readonly"]
+                and "Project Manager" in set(frappe.get_roles(user)))
+    rule = SAVA_ACCESS.get(doctype)
+    if rule and not m["no_member"]:
+        sava = _user_sava_roles(user)
+        if sava:
+            if threshold == "View":
+                if "read" in rule:
+                    return bool(sava & rule["read"])
+            elif "write" in rule:
+                return bool(sava & rule["write"]) and not m["readonly"]
     mod = module_for(doctype)
     if mod is None:
         if threshold == "View":

@@ -16,9 +16,14 @@ export function usePermissions() {
   const isAdmin    = computed(() => !!session.permissions?.is_company_admin);
   // Read-only everywhere (mirrors the backend). Prefer the server-provided
   // read_only flag; fall back to the role name for older sessions.
-  const isReadonly = computed(() =>
-    session.permissions?.read_only === true ||
-    session.permissions?.books_role === "Books Viewer");
+  // The server flag is the truth (it already treats a Director / company admin as not
+  // read-only even when their stored Books role is Books Viewer); the role-name fallback is
+  // only for older sessions that don't send read_only at all.
+  const isReadonly = computed(() => {
+    const p = session.permissions || {};
+    if (typeof p.read_only === "boolean") return p.read_only;
+    return p.books_role === "Books Viewer" && !p.is_company_admin;
+  });
 
   function can(module) {
     if (!module) return true;       // routes without a module gate (e.g. dashboard) pass through.

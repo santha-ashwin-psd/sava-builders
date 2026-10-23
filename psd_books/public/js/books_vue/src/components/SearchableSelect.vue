@@ -24,7 +24,7 @@
             class="ss-search-input"
             placeholder="Type to search…"
             @keydown.escape="open = false"
-            @keydown.enter.prevent="filtered.length ? pick(filtered[0]) : (showCreate && onClickCreate())"
+            @keydown.enter.prevent="(q.trim() && filtered.length) ? pick(filtered[0]) : (showCreate && onClickCreate())"
           />
         </div>
         <div class="ss-opts">

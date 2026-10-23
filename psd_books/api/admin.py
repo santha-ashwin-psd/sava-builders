@@ -13,6 +13,13 @@ from frappe.utils.password import update_password, check_password
 
 
 BOOKS_ROLES = ("Books Admin", "Books Manager", "Accountant", "Books Viewer")
+# Sava job / approval roles (A17). Real Frappe Roles held on the User, on top of
+# the one Books role stored in Books Company Member.books_role. Approval code and
+# the doctype permissions check these through frappe.get_roles().
+SAVA_ROLES = (
+    "Store Keeper", "Site Engineer", "Purchase Officer", "Accounts Officer",
+    "Purchase Manager", "Finance", "Director", "Project Manager",
+)
 MODULE_FIELDS = (
     "mod_invoices", "mod_bills", "mod_payments", "mod_banking",
     "mod_inventory", "mod_accounts", "mod_reports", "mod_customers",
@@ -98,6 +105,30 @@ def _require_company_admin() -> str:
     return row.company
 
 
+def _clean_sava_roles(roles) -> list:
+    """Parse and validate a list of Sava roles (list, JSON string or None).
+    Returns the roles de-duplicated, in SAVA_ROLES order. Throws on unknown roles."""
+    if isinstance(roles, str):
+        import json
+        try:
+            roles = json.loads(roles) if roles.strip() else []
+        except Exception:
+            frappe.throw(_("Invalid Sava roles"))
+    roles = list(roles or [])
+    bad = [r for r in roles if r not in SAVA_ROLES]
+    if bad:
+        frappe.throw(_("Invalid Sava role: {0}").format(", ".join(str(b) for b in bad)))
+    return [r for r in SAVA_ROLES if r in roles]
+
+
+def _apply_sava_roles(user_doc, roles: list) -> None:
+    """Replace the Sava roles on a User doc. Every other role (Books roles,
+    System Manager, ...) is left exactly as it is. Does not save."""
+    user_doc.roles = [r for r in user_doc.roles if r.role not in SAVA_ROLES]
+    for role in roles:
+        user_doc.append("roles", {"role": role})
+
+
 def _gen_temp_password(n: int = 12) -> str:
     alphabet = string.ascii_letters + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(n))
@@ -157,6 +188,35 @@ def get_company_employees():
 
 
 @frappe.whitelist()
+def get_project_manager_options():
+    """Users who can be picked as a project's Project Manager: active members of the
+    caller's company who hold the Project Manager role. Not admin-gated, so the
+    project form can fill its dropdown for any user who may open it."""
+    company = _resolve_company_for()
+    if not company:
+        return []
+    members = frappe.get_all(
+        "Books Company Member", filters={"company": company}, fields=["user"],
+        ignore_permissions=True, limit=500,
+    )
+    names = [m["user"] for m in members]
+    if not names:
+        return []
+    holders = set(frappe.get_all(
+        "Has Role",
+        filters={"parenttype": "User", "parent": ["in", names], "role": "Project Manager"},
+        pluck="parent", ignore_permissions=True, limit=5000,
+    ))
+    if not holders:
+        return []
+    users = frappe.get_all(
+        "User", filters=[["name", "in", list(holders)], ["enabled", "=", 1]],
+        fields=["name", "full_name"], order_by="full_name asc", ignore_permissions=True,
+    )
+    return [{"name": u["name"], "label": u.get("full_name") or u["name"]} for u in users]
+
+
+@frappe.whitelist()
 def get_users_list():
     """Return users that belong to the current admin's company."""
     from psd_books.utils.access import _LVL_FIELDS
@@ -192,6 +252,16 @@ def get_users_list():
         )
     }
 
+    sava_by_user = {}
+    for r in frappe.get_all(
+        "Has Role",
+        filters={"parenttype": "User", "parent": ["in", user_names], "role": ["in", list(SAVA_ROLES)]},
+        fields=["parent", "role"],
+        ignore_permissions=True,
+        limit=5000,
+    ):
+        sava_by_user.setdefault(r["parent"], set()).add(r["role"])
+
     out = []
     for m in members:
         u = user_rows.get(m["user"], {})
@@ -204,6 +274,7 @@ def get_users_list():
             "last_login": u.get("last_login"),
             "creation": u.get("creation"),
             "books_role": m["books_role"],
+            "sava_roles": [r for r in SAVA_ROLES if r in sava_by_user.get(m["user"], set())],
             "is_company_admin": bool(m["is_company_admin"]),
             "is_owner": m["user"] in owner_users,
             "modules": {f.removeprefix("mod_"): bool(m[f]) for f in MODULE_FIELDS},
@@ -216,9 +287,10 @@ def get_users_list():
 
 
 @frappe.whitelist(methods=["POST"])
-def invite_user(email, first_name, last_name="", role="Books Viewer", modules=None, password=None):
+def invite_user(email, first_name, last_name="", role="Books Viewer", modules=None, password=None, sava_roles=None):
     """Create a new user, link them to the admin's company, and set their login credentials.
     `modules` is an optional dict like {"invoices": 1, "banking": 0, ...}.
+    `sava_roles` is an optional list of Sava roles (SAVA_ROLES) added on top of `role`.
     If `password` is given, it is set directly as the user's password and no
     credentials email is sent. Otherwise a temp password is generated and emailed."""
     company = _require_company_admin()
@@ -256,6 +328,7 @@ def invite_user(email, first_name, last_name="", role="Books Viewer", modules=No
 
     if role not in BOOKS_ROLES:
         frappe.throw(_("Invalid role: {0}").format(role))
+    sava_roles = _clean_sava_roles(sava_roles)
 
     if isinstance(modules, str):
         try:
@@ -283,6 +356,7 @@ def invite_user(email, first_name, last_name="", role="Books Viewer", modules=No
         # membership -- those no longer apply here.
         user.roles = []
         user.append("roles", {"role": role})
+        _apply_sava_roles(user, sava_roles)
         user.save(ignore_permissions=True)
     else:
         # ── Create User
@@ -295,6 +369,7 @@ def invite_user(email, first_name, last_name="", role="Books Viewer", modules=No
         user.enabled = 1
         user.new_password = temp_password
         user.append("roles", {"role": role})
+        _apply_sava_roles(user, sava_roles)
         user.insert(ignore_permissions=True)
 
     # ── Link to company
@@ -331,7 +406,7 @@ def invite_user(email, first_name, last_name="", role="Books Viewer", modules=No
     if use_temp_password:
         _send_invite_email(email, user.first_name, company, temp_password, role)
 
-    return {"success": True, "user": email, "company": company, "role": role, "reactivated": reactivating, "emailed": use_temp_password}
+    return {"success": True, "user": email, "company": company, "role": role, "sava_roles": sava_roles, "reactivated": reactivating, "emailed": use_temp_password}
 
 
 def _send_invite_email(email: str, first_name: str, company: str, temp_password: str, role: str):
@@ -384,6 +459,23 @@ def update_user_role(user, role):
     member.save(ignore_permissions=True)
     frappe.db.commit()
     return {"success": True}
+
+
+@frappe.whitelist(methods=["POST"])
+def set_user_sava_roles(user, roles):
+    """Set the Sava roles (SAVA_ROLES) of a user in the admin's company.
+    Replaces only the Sava roles; the Books role and any other role stay."""
+    company = _require_company_admin()
+    roles = _clean_sava_roles(roles)
+
+    if not frappe.db.exists("Books Company Member", {"user": user, "company": company}):
+        frappe.throw(_("User {0} is not part of your company.").format(user))
+
+    user_doc = frappe.get_doc("User", user)
+    _apply_sava_roles(user_doc, roles)
+    user_doc.save(ignore_permissions=True)
+    frappe.db.commit()
+    return {"success": True, "sava_roles": roles}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -580,11 +672,11 @@ def get_company_user_names():
 
 
 @frappe.whitelist(methods=["POST"])
-def invite_member(email, first_name, last_name="", role="Books Viewer", password=None, modules=None):
+def invite_member(email, first_name, last_name="", role="Books Viewer", password=None, modules=None, sava_roles=None):
     """Alias for invite_user. If `password` is supplied, it's set directly on the
     new member's account instead of generating/emailing a temp password."""
     return invite_user(email=email, first_name=first_name, last_name=last_name,
-                       role=role, modules=modules, password=password)
+                       role=role, modules=modules, password=password, sava_roles=sava_roles)
 
 
 @frappe.whitelist(methods=["POST"])

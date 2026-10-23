@@ -1,6 +1,6 @@
 """Request for Quotation rules (Sava A7.1).
 
-An RFQ is raised from an approved Purchase MRN and emailed to at least three
+An RFQ is raised from an approved Purchase MRN and emailed to at least two
 suppliers, each in a separate email so no supplier sees the others.
 
 - validate_draft(doc): MRN, item, supplier and date checks on every draft save
@@ -15,7 +15,7 @@ from frappe import _
 from frappe.utils import add_days, flt, getdate, nowdate
 
 MRN_STATUSES = ("Approved", "Partly Issued")
-MIN_SUPPLIERS = 3
+MIN_SUPPLIERS = 2
 EPS = 0.0001
 ERROR_LEN = 140
 

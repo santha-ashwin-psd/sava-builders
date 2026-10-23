@@ -3,11 +3,12 @@
 - a Draft or Sent Back PO is sent for approval: Pending Approval, with one level per role
   (same value rules as the quotation comparison: Purchase Manager always; Finance above KES 200,000;
   Director above KES 500,000, on the total incl. VAT; levels run in order)
-- the person who sent it can't approve or send it back; one person can't approve two levels
+- whoever holds the level's role may approve it, including the person who sent it; one person can't approve two levels
+- a Books Admin can approve, send back or cancel at any level, whoever sent it and whatever roles they hold
 - the last approval submits the PO (done by api/purchase_order_approval.py)
 - sending back needs a reason; the PO goes to Sent Back, is editable again and can be sent again
-- a PO pending approval can be cancelled (reason required) by the person who sent it or by an approver of
-  the pending level; its open levels become Cancelled. A Pending Approval PO can't be deleted
+- a PO pending approval can be cancelled (reason required) by the person who sent it, by an approver of
+  the pending level or by a Books Admin; its open levels become Cancelled. A Pending Approval PO can't be deleted
 - while Pending Approval the PO can't be edited or submitted by any other route
 - Pending Approval and Sent Back can only be set through this flow (doc.flags.po_workflow)
 """
@@ -65,16 +66,16 @@ def send_for_approval(doc, user):
 	doc.flags.po_workflow = True
 
 
-def check_can_act(doc, user, roles):
-	"""The step that user may act on now, or a refusal."""
+def check_can_act(doc, user, roles, is_admin=False):
+	"""The step that user may act on now, or a refusal. A Books Admin (is_admin) may act on any pending level."""
 	if doc.status != PENDING_APPROVAL:
 		frappe.throw(_("{0} is {1}. Only a Purchase Order pending approval can be approved or sent back.")
 			.format(doc.name, doc.status))
-	if user == doc.raised_by:
-		frappe.throw(_("The person who sent this Purchase Order for approval can't approve or send it back."))
 	step = current_step(doc)
 	if step is None:
 		frappe.throw(_("No approval level is pending on {0}.").format(doc.name))
+	if is_admin:
+		return step
 	if any(s.status == STEP_APPROVED and s.approver == user for s in doc.get("approval_steps") or []):
 		frappe.throw(_("You already approved a level of this Purchase Order. Another person must approve the next level."))
 	if step.role not in roles:
@@ -82,9 +83,9 @@ def check_can_act(doc, user, roles):
 	return step
 
 
-def approve(doc, user, roles, remarks, now):
+def approve(doc, user, roles, remarks, now, is_admin=False):
 	"""Approve the pending level. Returns True when that was the last level (the caller submits the PO)."""
-	step = check_can_act(doc, user, roles)
+	step = check_can_act(doc, user, roles, is_admin)
 	step.status = STEP_APPROVED
 	step.approver = user
 	step.approved_on = now
@@ -93,11 +94,11 @@ def approve(doc, user, roles, remarks, now):
 	return current_step(doc) is None
 
 
-def send_back(doc, user, roles, reason, now):
+def send_back(doc, user, roles, reason, now, is_admin=False):
 	reason = (reason or "").strip()
 	if not reason:
 		frappe.throw(_("Give a reason for sending the Purchase Order back."))
-	step = check_can_act(doc, user, roles)
+	step = check_can_act(doc, user, roles, is_admin)
 	step.status = STEP_REJECTED
 	step.approver = user
 	step.approved_on = now
@@ -138,10 +139,12 @@ def _val(row, key):
 	return row.get(key) if isinstance(row, dict) else getattr(row, key, None)
 
 
-def can_cancel_pending(status, raised_by, steps, user, roles):
-	"""True when user may cancel a PO pending approval: the person who sent it, or an approver (role) of the pending level."""
+def can_cancel_pending(status, raised_by, steps, user, roles, is_admin=False):
+	"""True when user may cancel a PO pending approval: the person who sent it, an approver (role) of the pending level, or a Books Admin."""
 	if status != PENDING_APPROVAL:
 		return False
+	if is_admin:
+		return True
 	if user and user == raised_by:
 		return True
 	step = next((s for s in steps or [] if _val(s, "status") == STEP_PENDING), None)
@@ -158,7 +161,7 @@ def cancel_open_steps(doc):
 	return changed
 
 
-def cancel_pending(doc, user, roles, reason, now):
+def cancel_pending(doc, user, roles, reason, now, is_admin=False):
 	"""Cancel a PO pending approval. Returns the changed step rows; the caller writes them and the status."""
 	reason = (reason or "").strip()
 	if doc.status != PENDING_APPROVAL:
@@ -166,7 +169,7 @@ def cancel_pending(doc, user, roles, reason, now):
 			.format(doc.name, doc.status))
 	if not reason:
 		frappe.throw(_("Give a reason for cancelling the Purchase Order."))
-	if not can_cancel_pending(doc.status, doc.get("raised_by"), doc.get("approval_steps"), user, roles):
+	if not can_cancel_pending(doc.status, doc.get("raised_by"), doc.get("approval_steps"), user, roles, is_admin):
 		frappe.throw(_("Only the person who sent {0} for approval, or an approver of the pending level, can cancel it.")
 			.format(doc.name))
 	first = current_step(doc)
@@ -186,7 +189,7 @@ def assert_deletable(status):
 		frappe.throw(_("A Purchase Order pending approval can't be deleted. Cancel it, or ask an approver to send it back."))
 
 
-def action_state(status, raised_by, steps, user, roles):
+def action_state(status, raised_by, steps, user, roles, is_admin=False):
 	"""What user may do on the pending level, as data (no exception). Mirrors check_can_act.
 	-> {level, role, can_act, reason}"""
 	out = {"level": None, "role": None, "can_act": False, "reason": None}
@@ -197,8 +200,8 @@ def action_state(status, raised_by, steps, user, roles):
 		out["reason"] = _("No approval level is pending.")
 		return out
 	out["level"], out["role"] = step.get("level"), step.get("role")
-	if user == raised_by:
-		out["reason"] = _("You sent this Purchase Order for approval, so another person must approve it.")
+	if is_admin:
+		out["can_act"] = True
 	elif any(s.get("status") == STEP_APPROVED and s.get("approver") == user for s in steps or []):
 		out["reason"] = _("You already approved a level. Another person must approve the next level.")
 	elif step.get("role") not in (roles or []):

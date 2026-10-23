@@ -382,7 +382,8 @@
                 </label>
               </div>
 
-              <div class="ad-toggle-row" style="margin-top:8px">
+              <!-- Hidden for now: Outgoing QC toggle (values still load/save unchanged) -->
+              <div v-if="false" class="ad-toggle-row" style="margin-top:8px">
                 <div class="ad-toggle-left">
                   <div class="ad-toggle-title">Before Delivery (Outgoing)</div>
                   <div class="ad-toggle-sub">Require QC Inspection before this item leaves (e.g. Delivery Note).</div>
@@ -393,7 +394,8 @@
                 </label>
               </div>
 
-              <div class="ad-toggle-row" style="margin-top:8px">
+              <!-- Hidden for now: In Process QC toggle (values still load/save unchanged) -->
+              <div v-if="false" class="ad-toggle-row" style="margin-top:8px">
                 <div class="ad-toggle-left">
                   <div class="ad-toggle-title">Before Manufacture (In Process)</div>
                   <div class="ad-toggle-sub">Require QC Inspection when this item is produced via a manufacturing/stock entry.</div>

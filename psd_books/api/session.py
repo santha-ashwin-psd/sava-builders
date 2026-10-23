@@ -4,7 +4,16 @@ import frappe.sessions
 # Import MODULES (not the private _MOD_FIELDS) so this stays the single
 # source of truth shared with utils/access.py rather than a second list
 # that could drift out of sync with it.
-from psd_books.utils.access import MODULES, _membership as _access_membership
+from psd_books.utils.access import (
+    DOCTYPE_MODULE,
+    MODULES,
+    SAVA_ACCESS,
+    _membership as _access_membership,
+    _user_sava_roles,
+    can_create,
+    can_edit,
+    can_read,
+)
 
 _SYSTEM_USERS = {"Administrator", "Guest"}
 _MODULE_FIELDS = tuple(f"mod_{m}" for m in MODULES)
@@ -53,6 +62,28 @@ def _is_new_user(user: str) -> bool:
         return False
 
 
+def _doc_access(user: str) -> dict:
+    """Per-document rights for the SPA: {doctype: {"read", "create", "edit"}}.
+
+    Combines the module level (Books Company Member) with the Sava role rules
+    (utils.access.SAVA_ACCESS), using the same functions the server uses to
+    enforce them, so the screen can hide what the user cannot do. The server
+    check still runs on every save/submit; this is for display only.
+    Covers every doctype the app gates (DOCTYPE_MODULE or SAVA_ACCESS).
+    """
+    out = {}
+    for doctype in sorted(set(DOCTYPE_MODULE) | set(SAVA_ACCESS)):
+        out[doctype] = {
+            "read":   bool(can_read(doctype, user)),
+            "create": bool(can_create(doctype, user)),
+            "edit":   bool(can_edit(doctype, user)),
+            # Job roles the server lets write this doctype (empty = no role rule), so the
+            # screen can say who to ask when a button is greyed out. Display only.
+            "write_roles": sorted((SAVA_ACCESS.get(doctype) or {}).get("write") or []),
+        }
+    return out
+
+
 def _get_membership(user: str) -> dict:
     """Return the user's Books Company Member fields needed for SPA permission gating.
 
@@ -74,6 +105,8 @@ def _get_membership(user: str) -> dict:
         "read_only":        read_only,
         **{f"mod_{mod}": bool(m["mods"].get(mod)) for mod in MODULES},
         "levels":           dict(m["levels"]),
+        "sava_roles":       sorted(_user_sava_roles(user)),
+        "doc_access":       _doc_access(user),
     }
 
 

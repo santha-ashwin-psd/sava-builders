@@ -19,7 +19,7 @@
         <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-        <button class="sales-btn-primary" @click="openNew" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''">
+        <button class="sales-btn-primary" @click="openNew" :disabled="!poCanCreate" :title="!poCanCreate ? 'Read-only access' : ''">
           <span v-html="icon('plus',13)"></span> New Purchase Order
         </button>
       </div>
@@ -78,7 +78,7 @@
               <td class="td-amount ta-r mono-sm" @click="openView(o)">{{ fmtCur(o.grand_total) }}</td>
               <td class="td-actions po-act-cell">
                 <button class="inv-act-btn" @click="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button v-if="canEdit(o) && $canEdit('bills')" class="inv-act-btn" @click="openEdit(o)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="canEdit(o)" class="inv-act-btn" :disabled="!poCanEdit" @click="openEdit(o)" :title="poCanEdit ? 'Edit' : poNoAccess"><span v-html="icon('edit',13)"></span></button>
                 <button class="inv-act-btn po-act-conv" v-if="canBill(o) && $canCreate('bills')" @click="openBillModal(o)" title="Bill"><span v-html="icon('arrow-right',13)"></span></button>
                 <button v-if="canDelete(o) && $canDelete('bills')" class="inv-act-btn po-act-del" @click="deletePO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
@@ -135,7 +135,7 @@
           <div v-else-if="!sorted.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
             <div style="font-size:32px;margin-bottom:8px">🛒</div>
             <div>{{ search ? 'No purchase orders match your filters' : 'No purchase orders yet' }}</div>
-            <button v-if="!search" class="nim-btn nim-btn-primary" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''" style="margin-top:14px" @click="openNew"><span v-html="icon('plus',13)"></span> New Purchase Order</button>
+            <button v-if="!search" class="nim-btn nim-btn-primary" :disabled="!poCanCreate" :title="!poCanCreate ? 'Read-only access' : ''" style="margin-top:14px" @click="openNew"><span v-html="icon('plus',13)"></span> New Purchase Order</button>
           </div>
           <template v-else>
             <div v-for="o in paged" :key="o.name"
@@ -183,6 +183,10 @@
       </div>
 
       <div class="inv-dbody">
+        <div v-if="!poCanSave" class="pr-info-val" style="padding:10px 14px;margin-bottom:12px;border-radius:8px;color:#b45309;font-size:12.5px;background:#fffbeb;border:1px solid #fde68a">
+          Read-only: your role can't {{ editingName ? 'edit' : 'create' }} Purchase Orders. Only {{ poWho }} can.
+        </div>
+        <div :inert="!poCanSave ? '' : null" :style="!poCanSave ? 'opacity:.7' : ''">
 
         <!-- ══ CARD 1: Order Details ══ -->
         <div class="add-card">
@@ -379,7 +383,7 @@
                 </div>
               </div>
             </div>
-            <button class="inv-add-line-btn" style="margin-top:10px" :disabled="!(editingName ? $canEdit('bills') : $canCreate('bills'))" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+            <button class="inv-add-line-btn" style="margin-top:10px" :disabled="!poCanSave" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
 
             <!-- Totals -->
             <div class="po-totals" style="margin-top:16px">
@@ -415,6 +419,7 @@
           </div>
         </div>
 
+        </div><!-- /read-only wrapper -->
       </div><!-- /inv-dbody -->
 
       <!-- Footer -->
@@ -422,10 +427,10 @@
         <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New purchase order — unsaved' }}</div>
         <div class="add-footer-actions">
           <button class="add-btn-cancel" @click="drawerOpen=false">Cancel</button>
-          <button class="add-btn-draft" :disabled="drawerSaving || !(editingName ? $canEdit('bills') : $canCreate('bills'))" :title="!(editingName ? $canEdit('bills') : $canCreate('bills')) ? 'Read-only access' : ''" @click="savePO('Draft')">
+          <button class="add-btn-draft" :disabled="drawerSaving || !poCanSave" :title="!poCanSave ? 'Read-only access' : ''" @click="savePO('Draft')">
             <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save Draft' }}
           </button>
-          <button class="add-btn-more" :disabled="drawerSaving || !(editingName ? $canEdit('bills') : $canCreate('bills'))" :title="!(editingName ? $canEdit('bills') : $canCreate('bills')) ? 'Read-only access' : ''"
+          <button class="add-btn-more" :disabled="drawerSaving || !poCanSave" :title="!poCanSave ? 'Read-only access' : ''"
             @click="savePO('Draft', true)">
             <span v-html="icon('check',13)"></span>
             {{ drawerSaving ? 'Saving…' : 'Send for approval' }}
@@ -476,10 +481,10 @@
 
           <!-- Action buttons bar -->
           <div class="inv-action-bar">
-            <button v-if="canEdit(viewDoc) && $canEdit('bills')" class="inv-ab-btn" @click="openEdit(viewDoc);viewOpen=false">
+            <button v-if="canEdit(viewDoc)" class="inv-ab-btn" :disabled="!poCanEdit" :title="!poCanEdit ? poNoAccess : ''" @click="openEdit(viewDoc);viewOpen=false">
               <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
             </button>
-            <button v-if="canEdit(viewDoc) && $canEdit('bills')" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" @click="submitPO(viewDoc)">
+            <button v-if="canEdit(viewDoc)" class="inv-ab-btn" :style="poCanEdit ? 'color:#16a34a;border-color:rgba(22,163,106,.3)' : ''" :disabled="!poCanEdit" :title="!poCanEdit ? poNoAccess : ''" @click="submitPO(viewDoc)">
               <span v-html="icon('check',13)"></span> <span class="ab-label">Send for approval</span>
             </button>
             <button class="inv-ab-btn" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="emailPO(viewDoc)">
@@ -993,6 +998,7 @@ import { useConfirm } from "../composables/useConfirm.js";
 import { usePrompt } from "../composables/usePrompt.js";
 import { useLivePreview, PO_PRINT_CONFIG, preparePOPrint } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { flt, fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 import { templateHeadlineRate } from "../composables/useTaxCalc.js";
@@ -1073,6 +1079,17 @@ const tabs = [
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
 const viewMode = ref("table"); // "table" | "grid"
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref(""), editingStatus = ref("");
+// Rights come from the server (module level + Sava job role), the same rules the API enforces.
+// These only grey out the form and buttons; the server still checks every call.
+const { isAdmin: poIsAdmin, flags: poFlags } = usePermissions();
+const poCanCreate = computed(() => poIsAdmin.value || !!poFlags.value.doc_access?.["Purchase Order"]?.create);
+const poCanEdit = computed(() => poIsAdmin.value || !!poFlags.value.doc_access?.["Purchase Order"]?.edit);
+const poCanSave = computed(() => (editingName.value ? poCanEdit.value : poCanCreate.value));
+const poWho = computed(() => {
+  const r = poFlags.value.doc_access?.["Purchase Order"]?.write_roles || [];
+  return r.length ? r.join(" or ") + " (or an admin)" : "an admin";
+});
+const poNoAccess = computed(() => `Read-only access. Only ${poWho.value} can do this.`);
 // A10.3: approval state of the PO open in the view drawer (null until loaded)
 const approval = ref(null), approvalRemarks = ref(""), approvalBusy = ref(false);
 const viewPrint = ref(null);
@@ -1674,17 +1691,7 @@ function openBillModal(o) {
       const lines = ful.filter(l => l.remaining_to_bill > 0)
                   .map(l => ({ ...l, toBill: Math.min(l.remaining_to_bill, Math.max(0, l.received_qty - l.billed_qty)) || l.remaining_to_bill,
                                has_batch_no: 0, batch_no: "", batchOptions: [] }));
-      // Resolve has_batch_no per item so the Batch No field shows up for
-      // batch-tracked items when converting a PO to a Bill (the Bill's
-      // update_stock=1 is what actually creates the incoming Stock Entry).
-      const codes = [...new Set(lines.map(l => l.item_code).filter(Boolean))];
-      if (codes.length) {
-        try {
-          const itemRows = await apiList("Item", { fields: ["name", "has_batch_no"], filters: [["name", "in", codes]], limit: codes.length });
-          const flagMap = Object.fromEntries(itemRows.map(r => [r.name, r.has_batch_no ? 1 : 0]));
-          lines.forEach(l => { l.has_batch_no = flagMap[l.item_code] || 0; if (l.has_batch_no) fetchBillBatches(l, ""); });
-        } catch {}
-      }
+      // A bill never moves stock (it only records the payable); the Batch No is captured on the GRN.
       Object.assign(billModal, {
         open: true, saving: false, poName: o.name,
         lines,
@@ -1764,7 +1771,7 @@ async function submitBill() {
     });
     toast.success(`Bill created: ${r?.bill}`);
     if (r?.three_way_warnings?.length) {
-      toast.warn?.("3-way match: " + r.three_way_warnings.join("; ")) || toast.info("3-way mismatch — check fulfillment");
+      toast.warn("Billed ahead of receipt: " + r.three_way_warnings.join("; "));
     }
     billModal.open = false;
     await load();
@@ -1773,18 +1780,23 @@ async function submitBill() {
   billModal.saving = false;
 }
 
+// Receiving goes through a Purchase Receipt (GRN), so the QC gate applies.
+// This creates the receipt as a Draft; it is submitted after QC readings pass.
 async function markAllReceived() {
   actionRunning.value = true;
   try {
-    const r = await apiPOST("psd_books.api.docs.mark_po_received", { purchase_order: viewDoc.value.name });
-    toast.success(`Marked ${r?.lines_updated || 0} line(s) received`);
+    const r = await apiPOST("psd_books.api.docs.create_purchase_receipt_from_po", {
+      purchase_order: viewDoc.value.name, save_draft: 1,
+    });
+    toast.success(`Draft Purchase Receipt ${r?.purchase_receipt || ""} created. Submit it after QC readings are complete.`);
     await load();
     if (viewDoc.value) await openView(viewDoc.value);
-  } catch (e) { toast.error(e.message || "Mark received failed"); }
+  } catch (e) { toast.error(e.message || "Could not create the Purchase Receipt"); }
   actionRunning.value = false;
 }
 
 async function submitPO(o) {
+  if (!poCanEdit.value) { toast.error(poNoAccess.value); return; }
   if (!await confirm({ title: "Send for approval", body: `Send ${o.name} for approval? It can't be edited while it waits for approval.`, okLabel: "Send for approval" })) return;
   try {
     await apiPOST("psd_books.api.purchase_order_approval.send_for_approval", { name: o.name });
