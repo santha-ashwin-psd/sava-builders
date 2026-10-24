@@ -9,7 +9,8 @@ Endpoints
 - submit_for_approval(name): Draft -> Pending Approval (A9.4)
 - approve_comparison(name, remarks=None): approves the pending level if the user has its role (A9.4)
 - reject_comparison(name, reason): rejects the pending level; a reason is required (A9.4)
-- create_lpos(name): Approved comparison -> one Draft Purchase Order per selected supplier (A9.5)
+- create_lpos(name, quantities=None): Approved comparison -> one Draft Purchase Order per selected supplier (A9.5);
+  later rounds order the balance: quantities = {mrn_item: qty}, each up to the balance still allowed
 
 Approvers may not have doctype permissions, so the approval endpoints check the approval role
 and company membership themselves and save with ignore_permissions.
@@ -34,6 +35,12 @@ def _assert_company(company):
 	assert_company(company)
 
 
+def _is_admin():
+	"""Books Admin, Director or the Administrator user: may act on any approval level."""
+	from psd_books.utils.access import _membership
+	return bool(_membership(frappe.session.user).get("admin"))
+
+
 def _check_read(doc):
 	if frappe.has_permission(DOCTYPE, "read", doc=doc):
 		return
@@ -55,7 +62,7 @@ def get_comparison_data(request_for_quotation, name=None):
 		_check_read(doc)
 		if doc.request_for_quotation != rfq["name"]:
 			frappe.throw(_("Comparison {0} belongs to another Request for Quotation.").format(name))
-	return rules.comparison_data(rfq, name, frappe.session.user, frappe.get_roles())
+	return rules.comparison_data(rfq, name, frappe.session.user, frappe.get_roles(), _is_admin())
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
@@ -88,7 +95,7 @@ def save_selection(name, data):
 		frappe.throw(frappe._("A {0} comparison can't be edited.").format(doc.status.lower()))
 	rows = rules.parse_items(data)
 	doc.set("items", [{"mrn_item": r.get("mrn_item"), "selected_quotation": r.get("selected_quotation") or None,
-		"reason": r.get("reason") or ""} for r in rows])
+		"reason": r.get("reason") or "", "order_qty": r.get("order_qty")} for r in rows])
 	doc.save()
 	return rules.summary(doc)
 
@@ -112,7 +119,7 @@ def submit_for_approval(name):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def approve_comparison(name, remarks=None):
 	doc = _load_for_approval(name)
-	rules.approve(doc, frappe.session.user, frappe.get_roles(), remarks, now_datetime())
+	rules.approve(doc, frappe.session.user, frappe.get_roles(), remarks, now_datetime(), _is_admin())
 	doc.save(ignore_permissions=True)
 	return rules.summary(doc)
 
@@ -120,18 +127,30 @@ def approve_comparison(name, remarks=None):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def reject_comparison(name, reason):
 	doc = _load_for_approval(name)
-	rules.reject(doc, frappe.session.user, frappe.get_roles(), reason, now_datetime())
+	rules.reject(doc, frappe.session.user, frappe.get_roles(), reason, now_datetime(), _is_admin())
 	doc.save(ignore_permissions=True)
 	return rules.summary(doc)
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
-def create_lpos(name):
+def create_lpos(name, quantities=None):
 	doc = _load_for_approval(name)
 	if "Purchase Manager" not in frappe.get_roles():
 		_assert_can_po("create")
-	made = lpo.create_lpos(doc)
+	made = lpo.create_lpos(doc, _parse_quantities(quantities))
 	return {"comparison": doc.name, "status": doc.status, "lpos": made}
+
+
+def _parse_quantities(quantities):
+	"""{mrn_item: qty}; the client sends a JSON string or an object. Blank means none given."""
+	import json
+	if quantities in (None, "", "null"):
+		return None
+	if isinstance(quantities, str):
+		quantities = json.loads(quantities)
+	if not isinstance(quantities, dict):
+		frappe.throw(_("Quantities must be a list of line and quantity pairs."))
+	return quantities
 
 
 def _assert_can_po(action):

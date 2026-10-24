@@ -19,10 +19,14 @@
         <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-        <button class="sales-btn-primary" @click="openNew" :disabled="!poCanCreate" :title="!poCanCreate ? 'Read-only access' : ''">
-          <span v-html="icon('plus',13)"></span> New Purchase Order
-        </button>
+        <!-- New Purchase Order hidden: POs are raised only via Material Request -->
       </div>
+    </div>
+
+    <div class="po-rfq-note">
+      <span v-html="icon('file',14)"></span>
+      <span>Purchase Orders can only be created through a <b>Material Request</b>. </span>
+      <router-link to="/manufacturing/material-request" class="po-rfq-link">Go to Material Requests &rarr;</router-link>
     </div>
 
     <!-- ── KPI Cards ── -->
@@ -135,7 +139,7 @@
           <div v-else-if="!sorted.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
             <div style="font-size:32px;margin-bottom:8px">🛒</div>
             <div>{{ search ? 'No purchase orders match your filters' : 'No purchase orders yet' }}</div>
-            <button v-if="!search" class="nim-btn nim-btn-primary" :disabled="!poCanCreate" :title="!poCanCreate ? 'Read-only access' : ''" style="margin-top:14px" @click="openNew"><span v-html="icon('plus',13)"></span> New Purchase Order</button>
+            <div v-if="!search" style="margin-top:10px;font-size:12px">Create purchase orders from a <router-link to="/manufacturing/material-request" class="po-rfq-link">Material Request</router-link>.</div>
           </div>
           <template v-else>
             <div v-for="o in paged" :key="o.name"
@@ -2006,6 +2010,9 @@ watch(() => form.supplier, (val) => {
 </style>
 
 <style scoped>
+.po-rfq-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:10px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;font-size:13px}
+.po-rfq-link{color:#1d4ed8;font-weight:600;text-decoration:none}
+.po-rfq-link:hover{text-decoration:underline}
 /* ── Edit/Create drawer slide animation ── */
 .inv-drawer-panel {
   position: fixed;

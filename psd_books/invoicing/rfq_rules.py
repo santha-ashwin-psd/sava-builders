@@ -226,3 +226,40 @@ def status_after_send(current, rows):
 	if current in ("Draft", "Sent") and sum(1 for r in rows if r.get("send_status") == "Sent") >= MIN_SUPPLIERS:
 		return "Sent"
 	return current
+
+
+# --- progress shown in the RFQ list (which step the RFQ has reached) -------------
+# The stored status stays Draft / Sent / Cancelled (it gates sending, quoting and comparing).
+# This label is only for display.
+COMPARISON_LABELS = {"LPOs Created": "LPOs Created", "Partially Ordered": "Partially Ordered",
+	"Approved": "Approved", "Pending Approval": "Waiting for Approval", "Draft": "Compared"}
+
+
+def progress_label(status, quoted, total, comparison_status=None):
+	"""First match wins: Cancelled, Draft, the live comparison's step, 'x of y quoted', then the stored status."""
+	if status in ("Cancelled", "Draft"):
+		return status
+	if comparison_status in COMPARISON_LABELS:
+		return COMPARISON_LABELS[comparison_status]
+	if quoted:
+		return "%d of %d quoted" % (quoted, max(total, quoted))
+	return status or ""
+
+
+def progress_map(rfqs, supplier_rows, comparisons):
+	"""{rfq name: {label, quoted, total, comparison}}.
+	rfqs: dicts with name, status. supplier_rows: dicts with parent, quotation (one per supplier row).
+	comparisons: live comparisons only (dicts with request_for_quotation, status)."""
+	total, quoted = {}, {}
+	for r in supplier_rows or []:
+		p = r.get("parent")
+		total[p] = total.get(p, 0) + 1
+		if r.get("quotation"):
+			quoted[p] = quoted.get(p, 0) + 1
+	live = {c.get("request_for_quotation"): c.get("status") for c in comparisons or []}
+	out = {}
+	for r in rfqs or []:
+		n = r.get("name")
+		out[n] = {"label": progress_label(r.get("status"), quoted.get(n, 0), total.get(n, 0), live.get(n)),
+			"quoted": quoted.get(n, 0), "total": total.get(n, 0), "comparison": live.get(n)}
+	return out

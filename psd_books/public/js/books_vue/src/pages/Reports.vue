@@ -5127,7 +5127,7 @@ function resetDateRange() {
   fromDate.value = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0,10);
   toDate.value = today.toISOString().slice(0,10);
 }
-const activeReport = ref("bs");
+const activeReport = ref("mrn_lpo");
 
 // Sava procurement reports (A15): loaded from psd_books.api.procurement_reports
 const PROC_METHODS = {
@@ -7140,7 +7140,7 @@ function exportAgingCSV() {
   saveCsvText(csv, (isAR ? "ar_aging" : "ap_aging") + "_" + toDate.value + ".csv");
 }
 
-const reports = [
+const allReports = [
   { key: "bs",  label: "Balance Sheet",  icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><line x1="8" y1="3" x2="8" y2="21"/></svg>` },
   { key: "cf",  label: "Cash Flow",      icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>` },
   { key: "gst", label: "GST Summary",    icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>` },
@@ -7157,6 +7157,9 @@ const reports = [
   { key: "proj_summary", label: "Project Summary", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
   { key: "supp_analysis", label: "Supplier Analysis", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
 ];
+// Sava: only the procurement reports are shown; the others stay defined but hidden
+const SAVA_REPORT_KEYS = ["mrn_lpo", "lpo_grn", "proj_summary", "supp_analysis"];
+const reports = allReports.filter(r => SAVA_REPORT_KEYS.includes(r.key));
 
 const tabPalette = ["c-blue","c-slate","c-cyan","c-amber","c-pink","c-slate","c-emerald","c-violet","c-blue","c-blue"];
 function tabColor(i) {

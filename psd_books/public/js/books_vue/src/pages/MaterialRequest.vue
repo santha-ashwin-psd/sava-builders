@@ -72,7 +72,7 @@
                 <button v-if="!isNew && mr.docstatus===1" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="cancelMR" :disabled="submitting || !$canDelete('inventory')">
                   {{ submitting ? 'Cancelling…' : 'Cancel' }}
                 </button>
-                <button v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status !== 'Ordered'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !canCreatePO || !!linkedNote" :title="!canCreatePO ? PO_NOTE : linkedNote">
+                <button v-if="SHOW_CREATE_PO && !isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status !== 'Ordered'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !canCreatePO || !!linkedNote" :title="!canCreatePO ? PO_NOTE : linkedNote">
                   {{ actionLoading === 'po' ? 'Creating…' : 'Create Purchase Order' }}
                 </button>
                 <span v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status === 'Ordered'" class="bomx-badge badge-active" style="align-self:center">Purchase Order Created</span>
@@ -137,7 +137,7 @@
             </div>
             <div>
               <div class="bomx-hf-label">Project <span v-if="!mr.production_plan" style="color:var(--bx-red)">*</span></div>
-              <SearchableSelect v-model="mr.project" :options="projects" :disabled="readOnly" placeholder="Select project" @search="q => fetchProjects(q, mr.project)" />
+              <SearchableSelect v-model="mr.project" :options="projects" :disabled="readOnly" placeholder="Select project" @update:modelValue="onProjectPicked" @search="q => fetchProjects(q, mr.project)" />
             </div>
             <div>
               <div class="bomx-hf-label">Delivery Warehouse <span v-if="!mr.production_plan" style="color:var(--bx-red)">*</span></div>
@@ -222,6 +222,9 @@ import DocLink from "../components/DocLink.vue";
 import { useToast } from "../composables/useToast.js";
 import { usePermissions } from "../composables/usePermissions.js";
 import { useConfirm } from "../composables/useConfirm.js";
+
+// Purchase Orders are made only from an RFQ comparison (Sava). Set to true to show "Create Purchase Order" on a Material Request again.
+const SHOW_CREATE_PO = false;
 
 const route = useRoute();
 const router = useRouter();
@@ -405,6 +408,19 @@ watch(() => route.params.name, async (name) => {
   }
   loading.value = false;
 });
+
+// Picking a project fills Delivery Warehouse from the project's own store (if it has one).
+// A project with no store leaves the field as it is; the user can still change it by hand.
+async function onProjectPicked(proj) {
+  if (!proj || readOnly.value) return;
+  try {
+    const rows = await apiList("Project", { fields: ["warehouse"], filters: [["name", "=", proj]], limit: 1 });
+    const wh = rows && rows[0] && rows[0].warehouse;
+    if (!wh || mr.value.project !== proj) return;
+    if (!warehouseList.value.some(w => w.name === wh)) warehouseList.value.push({ name: wh });
+    mr.value.delivery_warehouse = wh;
+  } catch (e) { /* leave the warehouse as it is */ }
+}
 
 async function loadMR() {
   const data = await apiGet("Material Request", route.params.name);

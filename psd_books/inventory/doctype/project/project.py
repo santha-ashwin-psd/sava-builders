@@ -21,6 +21,25 @@ def project_manager_problem(user, member):
 	return None
 
 
+PROJECT_STORE_ROLES = ("Project Main Store", "Site Store")
+
+
+def _edit_warehouse_projects(warehouse, add=None, remove=None):
+	"""Add / remove one project row on a warehouse's Projects table. The warehouse is saved
+	with ignore_project_sync so it does not write back to the project."""
+	wh = frappe.get_doc("Warehouse", warehouse)
+	rows = [r.project for r in (wh.get("projects") or [])]
+	if add and add not in rows:
+		wh.append("projects", {"project": add})
+	elif remove and remove in rows:
+		wh.set("projects", [r for r in wh.get("projects") if r.project != remove])
+	else:
+		return
+	wh.flags.ignore_project_sync = True
+	wh.flags.ignore_permissions = True
+	wh.save()
+
+
 PM_ROLE = "Project Manager"
 
 
@@ -64,6 +83,7 @@ class Project(Document):
 				frappe.throw(_("Expected End Date cannot be before Start Date"))
 
 		self._validate_project_manager()
+		self._validate_warehouse()
 
 		# Status only changes through api/projects.py close_project / reopen_project,
 		# which set flags.allow_status_change after their own checks. A plain save
@@ -83,6 +103,42 @@ class Project(Document):
 					frappe.throw(_("Project {0} is Closed. Reopen it to make changes.").format(self.name))
 				self.closed_by = before.closed_by
 				self.closed_on = before.closed_on
+
+	def _validate_warehouse(self):
+		"""Optional project warehouse, kept in step with the warehouse's own Projects table
+		(see on_update). It must be a project store (Project Main Store / Site Store) of the
+		same company. Only checked when new or changed, so existing projects stay editable."""
+		warehouse = (self.warehouse or "").strip() or None
+		self.warehouse = warehouse
+		old = None if self.is_new() else (frappe.db.get_value("Project", self.name, "warehouse") or None)
+		if warehouse == old:
+			return
+		if warehouse:
+			wh = frappe.db.get_value("Warehouse", warehouse, ["company", "is_group", "disabled", "store_role"], as_dict=True)
+			if not wh:
+				frappe.throw(_("Warehouse {0} not found").format(warehouse))
+			if wh.is_group:
+				frappe.throw(_("{0} is a group warehouse. Choose a store, not a group.").format(warehouse))
+			if wh.disabled:
+				frappe.throw(_("Warehouse {0} is disabled.").format(warehouse))
+			if self.company and wh.company and wh.company != self.company:
+				frappe.throw(_("Warehouse {0} belongs to another company.").format(warehouse))
+			if wh.store_role not in PROJECT_STORE_ROLES:
+				frappe.throw(_("{0} is not a project store. Choose a Project Main Store or Site Store.").format(warehouse))
+
+	def on_update(self):
+		"""Keep the warehouse's Projects table in step with this project's warehouse."""
+		if self.flags.get("ignore_warehouse_sync"):
+			return
+		before = self.get_doc_before_save()
+		old = (before.get("warehouse") if before else None) or None
+		new = (self.warehouse or None)
+		if old == new:
+			return
+		if old:
+			_edit_warehouse_projects(old, remove=self.name)
+		if new:
+			_edit_warehouse_projects(new, add=self.name)
 
 	def _validate_project_manager(self):
 		manager = (self.project_manager or "").strip() or None

@@ -43,6 +43,13 @@
    "in_list_view": 1
   },
   {
+   "fieldname": "order_qty",
+   "fieldtype": "Float",
+   "label": "Order Qty",
+   "in_list_view": 1,
+   "description": "Quantity to order now (0 to the RFQ qty). Amount, VAT and approval levels are worked out on this."
+  },
+  {
    "fieldname": "uom",
    "fieldtype": "Link",
    "label": "UOM",

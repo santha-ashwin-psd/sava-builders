@@ -179,7 +179,7 @@ def lpo_checks(name):
             (po.grand_total, cmp_total))
         check("PO has a VAT line and an expected delivery date",
             len(po.taxes) >= 1 and bool(po.expected_delivery_date), (len(po.taxes), po.expected_delivery_date))
-    expect_block("creating the LPOs twice", lambda: as_user(PM, lambda: qc.create_lpos(name)), "Approved comparison")
+    expect_block("creating the LPOs twice", lambda: as_user(PM, lambda: qc.create_lpos(name)), "Nothing left", "Enter the quantity")
 
 
 def scenario_a():
@@ -223,8 +223,8 @@ def scenario_a():
 		[s[1] for s in steps(name)] == ["Purchase Manager", "Finance", "Director"], steps(name))
     expect_block("raiser approving", lambda: as_user(RAISER, lambda: qc.approve_comparison(name)), "raised")
     expect_block("raiser rejecting", lambda: as_user(RAISER, lambda: qc.reject_comparison(name, "no")), "raised")
-    expect_block("Director approving level 1 (out of order)",
-		lambda: as_user(DIR, lambda: qc.approve_comparison(name)), "needs the")
+    expect_block("Finance approving level 1 (out of order)",
+		lambda: as_user(FIN, lambda: qc.approve_comparison(name)), "needs the")
     expect_block("edit while Pending Approval", lambda: as_user(RAISER, lambda: qc.save_selection(
         name, {"items": [{"mrn_item": row.mrn_item, "selected_quotation": l1, "reason": ""}]})), "can't be edited")
 

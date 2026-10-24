@@ -138,3 +138,6 @@ psd_books.patches.v1_24.migrate_warehouse_projects
 
 # Project Manager role: only a Project Manager, Books Admin or Director can create a project. Safe to re-run.
 psd_books.patches.v1_25.create_project_manager_role
+
+# Project warehouse (kept in step with Warehouse > Projects): fill in for existing projects. Safe to re-run.
+psd_books.patches.v1_26.backfill_project_warehouse

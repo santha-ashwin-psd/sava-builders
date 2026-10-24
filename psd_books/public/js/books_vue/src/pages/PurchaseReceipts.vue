@@ -14,7 +14,7 @@
     </div>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
-      <button class="sales-btn-primary" :disabled="!prCanCreate" :title="!prCanCreate ? prNoAccess : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New GRN</button>
+      <!-- New GRN hidden for Sava -->
     </div>
   </div>
 
@@ -94,7 +94,7 @@
                 <div class="bk-empty-illus"><svg width="80" height="96" viewBox="0 0 80 96" fill="none"><rect x="10" y="8" width="60" height="80" rx="6" fill="#e2e8f0"/><rect x="14" y="12" width="52" height="72" rx="4" fill="#fff"/><rect x="22" y="26" width="36" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="34" width="28" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="42" width="32" height="3" rx="2" fill="#e2e8f0"/><rect x="50" y="64" width="18" height="20" rx="3" fill="#16a34a" opacity=".7"/><rect x="36" y="70" width="12" height="14" rx="3" fill="#2563eb" opacity=".6"/></svg></div>
                 <p class="bk-empty-title">No purchase receipts yet</p>
                 <p class="bk-empty-sub">Create a GRN to record stock received from a supplier.</p>
-                <button class="bk-empty-btn" :disabled="!prCanCreate" :title="!prCanCreate ? prNoAccess : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New GRN</button>
+                <!-- New GRN hidden for Sava -->
               </template>
             </div>
           </td>

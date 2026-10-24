@@ -19,9 +19,7 @@
         <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-        <button class="sales-btn-primary" @click="openNew" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''">
-          <span v-html="icon('plus',13)"></span> New Bill
-        </button>
+        <!-- New Bill hidden for Sava -->
       </div>
     </div>
 
@@ -95,7 +93,7 @@
                 <button v-if="b.docstatus===0 || b.docstatus===2" class="inv-act-btn bill-act-del" :disabled="!$canDelete('bills')" @click="deleteBill(b)" :title="!$canDelete('bills') ? 'Not permitted' : 'Delete'"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="10" class="bk-empty-state"><div class="bk-empty-inner"><template v-if="search||filterVendor"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p class="bk-empty-title">No bills match your filters</p></template><template v-else><div class="bk-empty-illus"><svg width="80" height="96" viewBox="0 0 80 96" fill="none"><rect x="10" y="8" width="60" height="80" rx="6" fill="#e2e8f0"/><rect x="14" y="12" width="52" height="72" rx="4" fill="#fff"/><rect x="22" y="26" width="36" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="34" width="28" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="42" width="32" height="3" rx="2" fill="#e2e8f0"/><rect x="50" y="64" width="18" height="20" rx="3" fill="#f59e0b" opacity=".7"/><rect x="36" y="70" width="12" height="14" rx="3" fill="#2563eb" opacity=".6"/></svg></div><p class="bk-empty-title">No bills created yet</p><p class="bk-empty-sub">Add your first vendor bill to start tracking payables.</p><button class="bk-empty-btn" @click="openNew"><span v-html="icon('plus',13)"></span> New Bill</button></template></div></td></tr>
+            <tr v-if="!sorted.length"><td colspan="10" class="bk-empty-state"><div class="bk-empty-inner"><template v-if="search||filterVendor"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p class="bk-empty-title">No bills match your filters</p></template><template v-else><div class="bk-empty-illus"><svg width="80" height="96" viewBox="0 0 80 96" fill="none"><rect x="10" y="8" width="60" height="80" rx="6" fill="#e2e8f0"/><rect x="14" y="12" width="52" height="72" rx="4" fill="#fff"/><rect x="22" y="26" width="36" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="34" width="28" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="42" width="32" height="3" rx="2" fill="#e2e8f0"/><rect x="50" y="64" width="18" height="20" rx="3" fill="#f59e0b" opacity=".7"/><rect x="36" y="70" width="12" height="14" rx="3" fill="#2563eb" opacity=".6"/></svg></div><p class="bk-empty-title">No bills created yet</p><p class="bk-empty-sub">Add your first vendor bill to start tracking payables.</p><!-- New Bill hidden for Sava --></template></div></td></tr>
           </template>
         </tbody>
       </table>
@@ -157,7 +155,7 @@
           <div v-else-if="!sorted.length" style="grid-column:1/-1;text-align:center;padding:40px 16px;color:#9ca3af;font-size:13px">
             <div style="font-size:32px;margin-bottom:8px">🧾</div>
             <div>{{ search || filterVendor ? 'No bills match your filters' : 'No bills yet' }}</div>
-            <button v-if="!search && !filterVendor" class="nim-btn nim-btn-primary" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''" style="margin-top:14px" @click="openNew"><span v-html="icon('plus',13)"></span> New Bill</button>
+            <!-- New Bill hidden for Sava -->
           </div>
           <template v-else>
             <div v-for="b in paged" :key="b.name"

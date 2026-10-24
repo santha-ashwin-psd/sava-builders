@@ -104,6 +104,15 @@
             {{ isEdit ? 'Only a Books Admin or Director can change the Project Manager.' : 'You will be the Project Manager of this project.' }}
           </div>
         </div>
+        <div class="pj-group">
+          <label>Warehouse</label>
+          <select v-model="form.warehouse" :disabled="formLocked">
+            <option value="">— None —</option>
+            <option v-for="w in warehouseOptions" :key="w" :value="w">{{ w }}</option>
+            <option v-if="form.warehouse && !warehouseOptions.includes(form.warehouse)" :value="form.warehouse">{{ form.warehouse }}</option>
+          </select>
+          <div class="pj-hint">Project store for this project (optional). Linked both ways with the warehouse's Projects list. Create a new store under Inventory &gt; Warehouses.</div>
+        </div>
         <div v-if="noProjectRights" class="pj-hint" style="margin-bottom:8px">
           You can view this project, but only a Project Manager, Books Admin or Director can edit it.
         </div>
@@ -199,7 +208,7 @@ const tabs = [
 ];
 
 function blankForm() {
-  return { project_code: "", project_name: "", start_date: "", expected_end_date: "", project_manager: "" };
+  return { project_code: "", project_name: "", start_date: "", expected_end_date: "", project_manager: "", warehouse: "" };
 }
 
 const counts = computed(() => {
@@ -243,7 +252,7 @@ async function load() {
   try {
     const company = await resolveCompany();
     list.value = await apiList("Project", {
-      fields: ["name", "project_code", "project_name", "start_date", "expected_end_date", "project_manager", "status", "closed_by", "closed_on", "company"],
+      fields: ["name", "project_code", "project_name", "start_date", "expected_end_date", "project_manager", "warehouse", "status", "closed_by", "closed_on", "company"],
       filters: company ? [["company", "=", company]] : [],
       order: "project_code asc",
       limit: 500,
@@ -267,7 +276,7 @@ function openNew() {
 function openEdit(row) {
   isEdit.value = true;
   blockers.value = [];
-  form.value = { ...row };
+  form.value = { ...row, warehouse: row.warehouse || "" };
   showForm.value = true;
 }
 function closeForm() { showForm.value = false; }
@@ -291,6 +300,7 @@ async function save() {
       start_date: f.start_date,
       expected_end_date: f.expected_end_date || null,
       project_manager: f.project_manager || null,
+      warehouse: f.warehouse || null,
     };
     if (isEdit.value) {
       doc.name = f.name;
@@ -367,6 +377,22 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
+const warehouseOptions = ref([]);
+async function loadWarehouses() {
+  try {
+    const company = await resolveCompany();
+    const r = await apiList("Warehouse", {
+      fields: ["name"],
+      filters: [...(company ? [["company", "=", company]] : []), ["is_group", "=", 0], ["disabled", "=", 0], ["store_role", "in", ["Project Main Store", "Site Store"]]],
+      order: "name asc",
+      limit: 500,
+    }) || [];
+    warehouseOptions.value = r.map(x => x.name);
+  } catch (e) {
+    warehouseOptions.value = [];
+  }
+}
+
 async function loadMembers() {
   try {
     members.value = (await apiGET("psd_books.api.admin.get_company_user_names")) || {};
@@ -380,7 +406,7 @@ async function loadMembers() {
   }
 }
 
-onMounted(() => { load(); loadMembers(); });
+onMounted(() => { load(); loadMembers(); loadWarehouses(); });
 </script>
 
 <style scoped>

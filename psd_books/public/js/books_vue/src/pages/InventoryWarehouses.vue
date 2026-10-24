@@ -1740,9 +1740,6 @@ async function saveWarehouse() {
   const storeRole = form.is_group ? "" : (form.store_role || "");
   const storeProjects = needsProject(storeRole)
     ? [...new Set(form.projects.map((r) => (r.project || "").trim()).filter(Boolean))] : [];
-  if (needsProject(storeRole) && !storeProjects.length) {
-    toast(`Add at least one Project for the ${storeRole}`, "error"); return;
-  }
   saving.value = true;
   try {
     const company = await resolveCompany();

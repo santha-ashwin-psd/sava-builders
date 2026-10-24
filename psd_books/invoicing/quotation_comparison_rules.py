@@ -1,7 +1,7 @@
 """Quotation Comparison rules (Sava A9.3).
 
 - a comparison is made against a Sent RFQ, in the RFQ's company
-- one live comparison per RFQ (Draft, Pending Approval, Approved, LPOs Created); only a Rejected
+- one live comparison per RFQ (Draft, Pending Approval, Approved, Partially Ordered, LPOs Created); only a Rejected
   (or Cancelled) one allows a new comparison
 - the chosen supplier must have an Active quotation that quoted the line
 - a reason is required only when the chosen net rate is above L1
@@ -22,10 +22,11 @@ from psd_books.invoicing import quotation_comparison_calc as calc
 
 RFQ_OPEN_STATUS = "Sent"
 OPEN_STATUSES = ("Draft", "Pending Approval", "Approved")
+PARTIAL_STATUS = "Partially Ordered"
 AWARDED_STATUS = "LPOs Created"
-LIVE_STATUSES = OPEN_STATUSES + (AWARDED_STATUS,)
+LIVE_STATUSES = OPEN_STATUSES + (PARTIAL_STATUS, AWARDED_STATUS)
 EDITABLE_STATUS = "Draft"
-ITEM_FIELDS = ["mrn_item", "selected_quotation", "selected_supplier", "supplier_name", "selected_rank",
+ITEM_FIELDS = ["mrn_item", "qty", "order_qty", "selected_quotation", "selected_supplier", "supplier_name", "selected_rank",
 	"lowest_quotation", "lowest_rate", "net_rate", "vat_percent", "amount", "tax_amount", "reason"]
 
 
@@ -94,7 +95,7 @@ def build(rfq_name):
 
 
 def open_comparison(rfq_name, exclude=None):
-	"""The live comparison of this RFQ: Draft, Pending Approval, Approved or LPOs Created (else None)."""
+	"""The live comparison of this RFQ: Draft, Pending Approval, Approved, Partially Ordered or LPOs Created (else None)."""
 	filters = {"request_for_quotation": rfq_name, "status": ["in", list(LIVE_STATUSES)]}
 	if exclude:
 		filters["name"] = ["!=", exclude]
@@ -105,7 +106,7 @@ def check_no_open(rfq_name, exclude=None):
 	other = open_comparison(rfq_name, exclude)
 	if not other:
 		return
-	if frappe.db.get_value("Quotation Comparison", other, "status") == AWARDED_STATUS:
+	if frappe.db.get_value("Quotation Comparison", other, "status") in (PARTIAL_STATUS, AWARDED_STATUS):
 		frappe.throw(_("Request for Quotation {0} already has LPOs created from comparison {1}. "
 			"A new comparison can't be made.").format(rfq_name, other))
 	frappe.throw(_("Request for Quotation {0} already has an open comparison ({1}). Open that one instead.")
@@ -143,7 +144,37 @@ def parse_items(data):
 
 def selections_from_rows(rows):
 	return parse_selections([{"mrn_item": r.get("mrn_item"), "selected_quotation": r.get("selected_quotation"),
-		"reason": r.get("reason")} for r in rows])
+		"reason": r.get("reason"), "order_qty": r.get("order_qty")} for r in rows])
+
+
+def resolve_order_qty(requested, qty, label=""):
+	"""Order Qty for a line: blank means the full RFQ qty; otherwise 0 <= order qty <= RFQ qty."""
+	qty = float(qty or 0)
+	if requested is None or requested == "":
+		return qty
+	try:
+		value = float(requested)
+	except (TypeError, ValueError):
+		frappe.throw(_("Order Qty for item {0} must be a number.").format(label))
+	if value < 0:
+		frappe.throw(_("Order Qty for item {0} can't be negative.").format(label))
+	if value > qty + 1e-9:
+		frappe.throw(_("Order Qty for item {0} is {1}, more than the requested {2}.").format(label, value, qty))
+	return value
+
+
+def scale_offer(amount, tax_amount, order_qty, qty):
+	"""Quotation amount and VAT for the full RFQ qty -> the same for order_qty (rate unchanged)."""
+	qty = float(qty or 0)
+	if qty <= 0:
+		return 0.0, 0.0
+	ratio = float(order_qty) / qty
+	return round(float(amount or 0) * ratio, 2), round(float(tax_amount or 0) * ratio, 2)
+
+
+def check_something_ordered(rows):
+	if rows and not any(float(r.get("order_qty") or 0) > 0 for r in rows):
+		frappe.throw(_("Every Order Qty is 0. Order at least one item."))
 
 
 def check_rows_complete(lines, rows):
@@ -187,7 +218,9 @@ def apply_selections(ranking, selections=None, default_missing=False):
 			"uom": line.get("uom"), "qty": line.get("qty"), "selected_quotation": None, "selected_supplier": None,
 			"supplier_name": None, "selected_rank": None, "lowest_quotation": None, "lowest_rate": None,
 			"net_rate": None, "vat_percent": None, "amount": 0, "tax_amount": 0, "reason": ""}
+		row["order_qty"] = resolve_order_qty((selections.get(key) or {}).get("order_qty"), line.get("qty"), label)
 		if not entry["offers"]:
+			row["order_qty"] = float(line.get("qty") or 0)
 			rows.append(row)
 			continue
 		if not chosen:
@@ -201,12 +234,13 @@ def apply_selections(ranking, selections=None, default_missing=False):
 			frappe.throw(_("Give a reason for choosing {0} for item {1}: the rate is above the lowest (L1).")
 				.format(offer["supplier_name"], label))
 		lowest = entry["lowest"]
+		amount, tax_amount = scale_offer(offer["amount"], offer["tax_amount"], row["order_qty"], line.get("qty"))
 		row.update({
 			"selected_quotation": offer["quotation"], "selected_supplier": offer["supplier"],
 			"supplier_name": offer["supplier_name"], "selected_rank": offer["rank"],
 			"lowest_quotation": lowest["quotation"], "lowest_rate": lowest["net_rate"],
 			"net_rate": offer["net_rate"], "vat_percent": offer["vat_percent"],
-			"amount": offer["amount"], "tax_amount": offer["tax_amount"], "reason": reason,
+			"amount": amount, "tax_amount": tax_amount, "reason": reason,
 		})
 		rows.append(row)
 	return rows
@@ -260,6 +294,7 @@ def validate_comparison(doc):
 		frappe.throw(_("Add the RFQ items to compare."))
 	check_rows_complete(ctx["lines"], rows)
 	chosen = apply_selections(ctx["ranking"], selections_from_rows(rows))
+	check_something_ordered(chosen)
 	doc.set("items", chosen)
 	apply_totals(doc, chosen)
 
@@ -270,8 +305,9 @@ COMPARISON_FIELDS = ["name", "status", "comparison_date", "net_total", "total_ta
 STEP_FIELDS = ["level", "role", "status", "approver", "approved_on", "remarks"]
 
 
-def action_state(status, raised_by, steps, user, roles):
+def action_state(status, raised_by, steps, user, roles, is_admin=False):
 	"""What user may do on the pending level, as data (no exception). Mirrors check_can_act (A9.4).
+	A Books Admin / Director (is_admin) may act on any pending level, including one they raised.
 	steps: list of dicts with level, role, status, approver. -> {level, role, can_act, reason}"""
 	out = {"level": None, "role": None, "can_act": False, "reason": None}
 	if status != PENDING_APPROVAL:
@@ -281,7 +317,9 @@ def action_state(status, raised_by, steps, user, roles):
 		out["reason"] = _("No approval level is pending.")
 		return out
 	out["level"], out["role"] = step.get("level"), step.get("role")
-	if user == raised_by:
+	if is_admin:
+		out["can_act"] = True
+	elif user == raised_by:
 		out["reason"] = _("You raised this comparison, so another person must approve it.")
 	elif any(s.get("status") == STEP_APPROVED and s.get("approver") == user for s in steps or []):
 		out["reason"] = _("You already approved a level. Another person must approve the next level.")
@@ -294,9 +332,10 @@ def action_state(status, raised_by, steps, user, roles):
 
 def supplier_summary(items):
 	"""Awarded lines grouped by supplier -> list of {supplier, supplier_name, line_count, net_total, total_tax,
-	grand_total}. One LPO is made per entry (A9.5). Lines with no supplier are left out."""
+	grand_total}. One LPO is made per entry (A9.5). Lines with no supplier, or an Order Qty of 0, are left out."""
 	lines = [{"supplier": i.get("selected_supplier"), "supplier_name": i.get("supplier_name"),
-		"amount": i.get("amount"), "tax_amount": i.get("tax_amount")} for i in items if i.get("selected_supplier")]
+		"amount": i.get("amount"), "tax_amount": i.get("tax_amount")} for i in items
+		if i.get("selected_supplier") and float(i.get("order_qty", 1) or 0) > 0]
 	out = []
 	for key, g in calc.supplier_totals(lines).items():
 		out.append({"supplier": key, "supplier_name": g["supplier_name"], "line_count": len(g["lines"]),
@@ -304,7 +343,7 @@ def supplier_summary(items):
 	return out
 
 
-def comparison_detail(name, user, roles):
+def comparison_detail(name, user, roles, is_admin=False):
 	"""The comparison itself for the screen: header, approval steps, supplier totals, LPOs, and what user may do."""
 	head = frappe.db.get_value("Quotation Comparison", name, COMPARISON_FIELDS, as_dict=True)
 	if not head:
@@ -318,24 +357,31 @@ def comparison_detail(name, user, roles):
 	lpos = frappe.get_all(
 		"Purchase Order", filters={"quotation_comparison": name},
 		fields=["name", "supplier", "supplier_name", "status", "grand_total"], order_by="name asc")
+	from psd_books.invoicing import quotation_comparison_lpo as lpo_rules
+	ordered = lpo_rules.ordered_by_line(items, lpo_rules.live_po_lines(name)) if head.get("status") in lpo_rules.ORDERABLE else {}
+	items = [dict(i) for i in items]
+	for i in items:
+		i["ordered_qty"] = ordered.get(i.get("mrn_item"), 0.0)
+		i["balance_qty"] = lpo_rules.balance_of(i, i["ordered_qty"]) if ordered else 0.0  # only for orderable statuses
 	detail = dict(head)
 	detail.update({
+		"balance_open": head.get("status") != "Approved" and any(i["balance_qty"] > 0 for i in items),
 		"editable": head.get("status") == EDITABLE_STATUS,
 		"approval_steps": [dict(s) for s in steps], "supplier_totals": supplier_summary(items),
 		"lpos": [dict(p) for p in lpos],
-		"action": action_state(head.get("status"), head.get("raised_by"), steps, user, roles),
+		"action": action_state(head.get("status"), head.get("raised_by"), steps, user, roles, is_admin),
 	})
-	return detail, [dict(i) for i in items]
+	return detail, items
 
 
-def comparison_data(rfq, comparison_name=None, user=None, roles=None):
+def comparison_data(rfq, comparison_name=None, user=None, roles=None, is_admin=False):
 	user = user or frappe.session.user
 	roles = roles if roles is not None else frappe.get_roles()
 	ctx = build(rfq["name"])
 	open_name = comparison_name or open_comparison(rfq["name"])
 	detail, items = (None, [])
 	if open_name:
-		detail, items = comparison_detail(open_name, user, roles)
+		detail, items = comparison_detail(open_name, user, roles, is_admin)
 	history = frappe.get_all(
 		"Quotation Comparison", filters={"request_for_quotation": rfq["name"]},
 		fields=["name", "status", "comparison_date", "grand_total"], order_by="creation desc")
@@ -387,16 +433,18 @@ def current_step(doc):
 	return next((s for s in (doc.get("approval_steps") or []) if s.status == STEP_PENDING), None)
 
 
-def check_can_act(doc, user, roles):
-	"""The step that user may act on now, or a refusal."""
+def check_can_act(doc, user, roles, is_admin=False):
+	"""The step that user may act on now, or a refusal. A Books Admin / Director (is_admin) may act on any pending level."""
 	if doc.status != PENDING_APPROVAL:
 		frappe.throw(_("{0} is {1}. Only a comparison pending approval can be approved or rejected.")
 			.format(doc.name, doc.status))
-	if user == doc.raised_by:
-		frappe.throw(_("The person who raised the comparison can't approve or reject it."))
 	step = current_step(doc)
 	if step is None:
 		frappe.throw(_("No approval level is pending on {0}.").format(doc.name))
+	if is_admin:
+		return step
+	if user == doc.raised_by:
+		frappe.throw(_("The person who raised the comparison can't approve or reject it."))
 	if any(s.status == STEP_APPROVED and s.approver == user for s in doc.get("approval_steps") or []):
 		frappe.throw(_("You already approved a level of this comparison. Another person must approve the next level."))
 	if step.role not in roles:
@@ -417,8 +465,8 @@ def submit_for_approval(doc, user):
 	doc.flags.qc_workflow = True
 
 
-def approve(doc, user, roles, remarks, now):
-	step = check_can_act(doc, user, roles)
+def approve(doc, user, roles, remarks, now, is_admin=False):
+	step = check_can_act(doc, user, roles, is_admin)
 	step.status = STEP_APPROVED
 	step.approver = user
 	step.approved_on = now
@@ -428,11 +476,11 @@ def approve(doc, user, roles, remarks, now):
 	doc.flags.qc_workflow = True
 
 
-def reject(doc, user, roles, reason, now):
+def reject(doc, user, roles, reason, now, is_admin=False):
 	reason = (reason or "").strip()
 	if not reason:
 		frappe.throw(_("Give a reason for rejecting the comparison."))
-	step = check_can_act(doc, user, roles)
+	step = check_can_act(doc, user, roles, is_admin)
 	step.status = STEP_REJECTED
 	step.approver = user
 	step.approved_on = now

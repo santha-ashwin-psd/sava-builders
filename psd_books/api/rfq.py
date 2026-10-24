@@ -5,6 +5,7 @@ Endpoints
 - send_rfq(name): one separate email per supplier; a failure for one doesn't stop the rest.
   Calling it again sends only to suppliers still Pending or Failed.
 - cancel_rfq(name): Draft or Sent -> Cancelled
+- get_rfq_progress(): read-only, the step each visible RFQ has reached (for the Status column)
 """
 import frappe
 from frappe import _
@@ -59,3 +60,23 @@ def cancel_rfq(name):
 	doc.status = "Cancelled"
 	doc.save()
 	return {"name": doc.name, "status": doc.status}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def get_rfq_progress():
+	"""Which step each RFQ the user can see has reached: quotations in, comparison, approval, LPOs.
+	Read-only; the stored RFQ status is not changed."""
+	assert_can("Request for Quotation", "read")
+	from psd_books.api.docs import get_list  # same company filtering as the list screen
+	rfqs = get_list("Request for Quotation", fields=["name", "status"], limit_page_length=100000)
+	names = [r["name"] for r in rfqs]
+	if not names:
+		return {"progress": {}}
+	rows = frappe.get_all("Request for Quotation Supplier",
+		filters={"parent": ["in", names], "parenttype": "Request for Quotation"},
+		fields=["parent", "quotation"], limit_page_length=0)
+	from psd_books.invoicing.quotation_comparison_rules import LIVE_STATUSES
+	comparisons = frappe.get_all("Quotation Comparison",
+		filters={"request_for_quotation": ["in", names], "status": ["in", list(LIVE_STATUSES)]},
+		fields=["request_for_quotation", "status"], limit_page_length=0)
+	return {"progress": rfq_rules.progress_map(rfqs, rows, comparisons)}

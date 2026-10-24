@@ -30,6 +30,8 @@ _QC = "psd_books.quality.qc_engine"
 _QH = "psd_books.quality.qc_hold_manager"
 # Project guard (Sava A1) — a Closed project can't be used on new documents
 _PG = "psd_books.utils.project_guard.validate_project_open"
+# Quotation Comparison status follows the real LPO balance when a PO is deleted or cancelled (Sava A9)
+_QCL_SYNC = "psd_books.invoicing.quotation_comparison_lpo.on_po_removed"
 doc_events = {
     "Sales Invoice": {
         "validate":  f"{_CV}.on_validate",
@@ -65,7 +67,7 @@ doc_events = {
     "Delivery Note":    {"validate": [f"{_CV}.on_validate", _PG], "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_delivery_note", "on_submit": [f"{_QC}.check_qc_before_stock_link", f"{_SL}.on_delivery_note_submit"],    "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_delivery_note_cancel"], "before_delete": f"{_CV}.before_delete"},
     "Purchase Receipt": {"validate": [f"{_CV}.on_validate", _PG], "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_purchase_receipt", "on_update": f"{_QC}.auto_create_qc_for_purchase_receipt", "on_submit": [f"{_QC}.check_qc_before_stock_link", f"{_SL}.on_purchase_receipt_submit"], "on_cancel": [f"{_CV}.on_cancel", f"{_SL}.on_purchase_receipt_cancel"], "before_delete": f"{_CV}.before_delete"},
     # Purchase Order — wired so fiscal/period lock checks run on save and submit.
-    "Purchase Order":   {"validate": [f"{_CV}.on_validate", _PG], "on_submit": f"{_CV}.on_submit", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},
+    "Purchase Order":   {"validate": [f"{_CV}.on_validate", _PG], "on_submit": f"{_CV}.on_submit", "on_cancel": [f"{_CV}.on_cancel", _QCL_SYNC], "on_trash": _QCL_SYNC, "before_delete": f"{_CV}.before_delete"},
     # Phase 2: Stock Entry and Bank Transaction wired to central_validator for period/lock checks.
     # Stock Entry also gets QC gate for Manufacture type entries.
     "Stock Entry":      {"validate": [f"{_CV}.on_validate", f"{_QH}.validate_quarantine_movement", _PG], "before_save": f"{_QC}.reconcile_row_identity", "before_submit": f"{_QC}.auto_create_qc_for_stock_entry", "on_submit": f"{_QC}.check_qc_before_stock_link", "on_cancel": f"{_CV}.on_cancel", "before_delete": f"{_CV}.before_delete"},

@@ -511,12 +511,17 @@ const TYPES = [
   ]},
 ];
 
-const CATEGORIES = [
+const ALL_CATEGORIES = [
   { key: "contacts",  label: "Contacts",  icon: "users" },
   { key: "sales",     label: "Sales",     icon: "fileplus" },
   { key: "purchases", label: "Purchases", icon: "purchase" },
   { key: "assets",    label: "Assets",    icon: "box" },
 ];
+
+// Sava: Sales category and Customers import are hidden
+const HIDDEN_CATEGORIES = ["sales"];
+const HIDDEN_TYPES = ["Customer", "Expense"];
+const CATEGORIES = ALL_CATEGORIES.filter(c => !HIDDEN_CATEGORIES.includes(c.key));
 
 const CATEGORY_MAP = {
   contacts:  ["Customer", "Supplier"],
@@ -528,18 +533,18 @@ const CATEGORY_MAP = {
 const category = ref("contacts");
 
 const filteredTypes = computed(() =>
-  TYPES.filter(t => CATEGORY_MAP[category.value]?.includes(t.key))
+  TYPES.filter(t => CATEGORY_MAP[category.value]?.includes(t.key) && !HIDDEN_TYPES.includes(t.key))
 );
 
 function switchCategory(cat) {
   category.value = cat;
   // Auto-select first type in this category if current selection not in it
   if (!CATEGORY_MAP[cat].includes(dtype.value)) {
-    switchType(CATEGORY_MAP[cat][0]);
+    switchType(CATEGORY_MAP[cat].find(k => !HIDDEN_TYPES.includes(k)));
   }
 }
 
-const dtype = ref("Customer");
+const dtype = ref("Supplier");
 const step  = ref(1);
 
 // Step 1 — upload

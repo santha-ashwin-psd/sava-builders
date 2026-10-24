@@ -183,5 +183,29 @@ class Rejection(unittest.TestCase):
 			rules.approve(d, "pm@x.com", [PM], None, "t1")
 
 
+class AdminBypass(unittest.TestCase):
+	def test_admin_can_approve_own_comparison_at_any_level(self):
+		d = pending_doc(600000)  # raised_by is the raiser from pending_doc
+		rules.approve(d, d.raised_by, [], None, "t1", is_admin=True)
+		rules.approve(d, d.raised_by, [], None, "t2", is_admin=True)
+		rules.approve(d, d.raised_by, [], None, "t3", is_admin=True)
+		self.assertEqual(d.status, "Approved")
+
+	def test_admin_can_reject(self):
+		d = pending_doc(300000)
+		rules.reject(d, "boss@x.com", [], "no", "t1", is_admin=True)
+		self.assertEqual(d.status, "Rejected")
+
+	def test_non_admin_rules_unchanged(self):
+		d = pending_doc(100000)
+		with self.assertRaises(ThrowError):
+			rules.approve(d, d.raised_by, [PM], None, "t1")
+
+	def test_action_state_admin(self):
+		steps = [{"level": 1, "role": PM, "status": "Pending", "approver": None}]
+		self.assertTrue(rules.action_state("Pending Approval", "me@x.com", steps, "me@x.com", [], True)["can_act"])
+		self.assertFalse(rules.action_state("Pending Approval", "me@x.com", steps, "me@x.com", [PM])["can_act"])
+
+
 if __name__ == "__main__":
 	unittest.main(verbosity=2)

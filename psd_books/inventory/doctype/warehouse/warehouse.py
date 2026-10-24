@@ -63,8 +63,7 @@ class Warehouse(Document):
             self._validate_single_company_store(role)
             return
 
-        if not projects:
-            frappe.throw(_("{0} needs at least one Project").format(role))
+        # A project store may be created without projects; add them later.
 
     def _validate_single_company_store(self, role):
         """Sava A2: one active Central Store and one active Rejected Store per
@@ -83,6 +82,23 @@ class Warehouse(Document):
             frappe.throw(_("Company {0} already has a {1} ({2})").format(
                 self.company, role, existing))
 
+    def on_update(self):
+        """Keep each project's own warehouse in step with this warehouse's Projects table:
+        a project added here gets this warehouse if it has none yet (a project that already has
+        another warehouse keeps it; this one is an extra store); a project removed here loses
+        this warehouse if it was its warehouse."""
+        if self.flags.get("ignore_project_sync"):
+            return
+        before_doc = self.get_doc_before_save()
+        before = {(r.project or "").strip() for r in (before_doc.get("projects") if before_doc else []) or []}
+        after = set(self._project_names())
+        for proj in after - before:
+            if not frappe.db.get_value("Project", proj, "warehouse"):
+                frappe.db.set_value("Project", proj, "warehouse", self.name, update_modified=False)
+        for proj in before - after:
+            if frappe.db.get_value("Project", proj, "warehouse") == self.name:
+                frappe.db.set_value("Project", proj, "warehouse", None, update_modified=False)
+
     def before_save(self):
         # Ensure a Bin record exists for any items already associated with this warehouse
         pass
@@ -93,6 +109,8 @@ class Warehouse(Document):
             frappe.throw(
                 _("Cannot delete Warehouse '{0}' — it has stock. Clear all stock first.").format(self.name)
             )
+        # a deleted warehouse can no longer be a project's warehouse
+        frappe.db.sql("update `tabProject` set warehouse = null where warehouse = %s", (self.name,))
 
     @frappe.whitelist()
     def get_stock_summary(self):

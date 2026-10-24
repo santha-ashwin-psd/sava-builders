@@ -46,7 +46,7 @@
       <!-- Action buttons -->
       <button class="qc-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
       <button class="qc-btn-ghost" @click="exportCSV" :disabled="!sorted.length"><span v-html="icon('download',14)"></span> Export</button>
-      <button class="qc-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Inspection</button>
+      <!-- New Inspection hidden for Sava -->
     </div>
 
     <!-- ── Filter bar ── -->
@@ -126,7 +126,7 @@
                 <div style="font-size:32px;margin-bottom:8px">🔬</div>
                 <div style="font-weight:600;margin-bottom:4px">No QC Inspections found</div>
                 <div style="font-size:13px;color:#9ca3af;margin-bottom:12px">Create an inspection from a Purchase Receipt, Invoice, or Delivery Note</div>
-                <button class="qc-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Inspection</button>
+                <!-- New Inspection hidden for Sava -->
               </td>
             </tr>
           </template>
@@ -145,7 +145,7 @@
         <div style="font-size:30px;margin-bottom:8px">🔬</div>
         <div style="font-weight:600;margin-bottom:4px;font-size:14px">No QC Inspections found</div>
         <div style="font-size:12px;color:#9ca3af;margin-bottom:12px">Create an inspection from a Purchase Receipt, Invoice, or Delivery Note</div>
-        <button class="qc-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Inspection</button>
+        <!-- New Inspection hidden for Sava -->
       </div>
       <!-- cards -->
       <div v-else v-for="r in paginated" :key="r.name" class="qc-mob-card" :style="'border-left-color:'+typeAccent(r.inspection_type)" @click="openView(r)">

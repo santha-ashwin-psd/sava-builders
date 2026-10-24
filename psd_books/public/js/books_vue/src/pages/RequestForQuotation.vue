@@ -14,8 +14,14 @@
     </div>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
-      <button class="sales-btn-primary" :disabled="!canCreateRfq" :title="!canCreateRfq ? 'Read-only access' : ''" @click="openNew('')"><span v-html="icon('plus',13)"></span> New RFQ</button>
+      <!-- New RFQ hidden: RFQs are raised only via Material Request -->
     </div>
+  </div>
+
+  <div class="rfq-mr-note">
+    <span v-html="icon('file',14)"></span>
+    <span>Requests for Quotation can only be created through a <b>Material Request</b>. </span>
+    <router-link to="/manufacturing/material-request" class="rfq-mr-link">Go to Material Requests &rarr;</router-link>
   </div>
 
   <!-- List -->
@@ -91,6 +97,9 @@
             </button>
             <button v-if="cmpInfo && cmpInfo.status==='Approved' && viewDoc.status!=='Cancelled'" class="inv-ab-btn inv-ab-primary" :disabled="creatingLpos || !canMakeLpo" :title="!canMakeLpo ? 'Read-only access' : ''" @click="createLpos">
               <span v-html="icon('plus',13)"></span> {{ creatingLpos ? 'Creating…' : 'Create LPOs' }}
+            </button>
+            <button v-if="cmpInfo && cmpInfo.balance_open && viewDoc.status!=='Cancelled'" class="inv-ab-btn inv-ab-primary" :disabled="!canMakeLpo" :title="!canMakeLpo ? 'Read-only access' : 'Open the comparison to order the balance'" @click="cmp.open=true">
+              <span v-html="icon('plus',13)"></span> Order balance
             </button>
             <button v-if="viewDoc.status!=='Cancelled' && $canEdit('bills')" class="inv-ab-btn" @click="openEdit(viewDoc); viewOpen=false">
               <span v-html="icon('edit',13)"></span> Edit
@@ -427,6 +436,7 @@ const filtered = computed(() => {
 const { page, pageSize, paged } = usePagination(filtered, { storageKey: "rfqs" });
 
 const waitingRfqs = ref(new Set());
+const progress = ref({});   // { rfq name: { label, quoted, total, comparison } } from get_rfq_progress
 const approverInfo = ref(null);
 const approveRemarks = ref("");
 const approving = ref(false);
@@ -460,7 +470,7 @@ async function loadApprover() {
     const r = await apiGET("psd_books.api.quotation_comparison.get_comparison_data", { request_for_quotation: d.name });
     const c = r && r.comparison;
     if (!c) return;
-    cmpInfo.value = { name: c.name, status: c.status };
+    cmpInfo.value = { name: c.name, status: c.status, balance_open: !!c.balance_open };
     const a = c.action;
     if (c.status === "Pending Approval" && a && a.role) approverInfo.value = { level: a.level, role: a.role, can_act: !!a.can_act, reason: a.reason || "", name: c.name };
   } catch { approverInfo.value = null; cmpInfo.value = null; }
@@ -477,11 +487,17 @@ async function createLpos() {
   creatingLpos.value = false;
 }
 function displayStatus(r) {
-  return r && r.status === "Sent" && waitingRfqs.value.has(r.name) ? "Waiting for Approval" : (r ? r.status : "");
+  if (!r) return "";
+  const p = progress.value[r.name];
+  if (p && p.label) return p.label;   // step the RFQ has reached; the stored status is only Draft / Sent / Cancelled
+  return r.status === "Sent" && waitingRfqs.value.has(r.name) ? "Waiting for Approval" : r.status;
 }
 function statusClass(s) {
   if (s === "Cancelled") return "b-badge-muted";
-  if (s === "Sent") return "b-badge-green";
+  if (s === "Approved" || s === "LPOs Created") return "b-badge-green";
+  if (s === "Partially Ordered") return "b-badge-purple";
+  if (s === "Waiting for Approval") return "b-badge-amber";
+  if (s === "Compared" || s === "Sent" || / quoted$/.test(s || "")) return "b-badge-blue";
   return "b-badge-orange";
 }
 function sendClass(s) {
@@ -512,6 +528,10 @@ async function load() {
     }) || [];
     waitingRfqs.value = new Set(waiting.map(c => c.request_for_quotation));
   } catch { waitingRfqs.value = new Set(); }
+  try {
+    const pr = await apiGET("psd_books.api.rfq.get_rfq_progress");
+    progress.value = (pr && pr.progress) || {};
+  } catch { progress.value = {}; }
   loading.value = false;
 }
 
@@ -779,6 +799,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.rfq-mr-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:10px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;font-size:13px}
+.rfq-mr-link{color:#1d4ed8;font-weight:600;text-decoration:none}
+.rfq-mr-link:hover{text-decoration:underline}
 /* RFQ view drawer: same look as the GRN / PO view drawers.
    list.css, view.css, edit.css and add.css are already global (main.js);
    only the page-scoped pr-* rules were missing here. */

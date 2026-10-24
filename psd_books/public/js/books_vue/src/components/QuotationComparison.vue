@@ -45,7 +45,7 @@
               <div class="add-card-header">
                 <div class="add-card-title">
                   Items by supplier
-                  <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· net rate after discount, before VAT; L1 is the lowest rate</span>
+                  <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· net rate after discount, before VAT; L1 is the lowest rate; "incl. VAT" is for the full requested qty</span>
                 </div>
               </div>
               <div class="add-card-body" style="padding:0;overflow-x:auto">
@@ -55,6 +55,7 @@
                       <th style="width:32px">#</th>
                       <th style="min-width:180px">Item</th>
                       <th class="ta-r" style="width:90px">Qty</th>
+                      <th class="ta-r" style="width:130px">Order Qty</th>
                       <th v-for="q in suppliers" :key="q.quotation" style="min-width:150px">
                         <div>{{ q.supplier_name }}</div>
                         <div class="c-muted mono-sm" style="font-weight:400">{{ q.quotation }}<template v-if="q.delivery_days != null"> · {{ q.delivery_days }} d</template></div>
@@ -67,6 +68,14 @@
                         <td class="pr-row-num">{{ i+1 }}</td>
                         <td style="font-weight:500;color:#111827">{{ e.line.item_name || e.line.item_code }}</td>
                         <td class="ta-r mono">{{ e.line.qty }} <span class="c-muted">{{ e.line.uom || '' }}</span></td>
+                        <td class="ta-r">
+                          <input v-if="editable && e.offers.length" class="inv-fi mono" type="number" min="0" :max="e.line.qty" step="any"
+                            v-model="choices[e.line.mrn_item].order_qty" style="width:96px;text-align:right" />
+                          <span v-else class="mono">{{ orderQtyOf(e) }}</span>
+                          <div v-if="e.offers.length && balanceOf(e) > 0" class="c-muted mono-sm" style="white-space:nowrap">
+                            {{ orderQtyOf(e) > 0 ? 'Balance ' + balanceOf(e) + ' not ordered now' : 'Not ordered now' }}
+                          </div>
+                        </td>
                         <td v-for="q in suppliers" :key="q.quotation">
                           <template v-if="offerFor(e, q.quotation)">
                             <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
@@ -84,7 +93,7 @@
                       </tr>
                       <tr v-if="needsReason(e) || savedReason(e)" class="inv-row">
                         <td></td>
-                        <td :colspan="suppliers.length + 2">
+                        <td :colspan="suppliers.length + 3">
                           <template v-if="editable">
                             <label class="inv-lbl" style="margin-bottom:2px">Reason for choosing {{ chosenOffer(e).supplier_name }} (rate is above L1) <span class="inv-req">*</span></label>
                             <input class="inv-fi" v-model="choices[e.line.mrn_item].reason" maxlength="300" placeholder="Why not the lowest quotation?"/>
@@ -94,7 +103,7 @@
                       </tr>
                       <tr v-if="!e.offers.length" class="inv-row">
                         <td></td>
-                        <td :colspan="suppliers.length + 2" class="exp-field-hint" style="color:#b45309;margin:0">Not quoted by any supplier</td>
+                        <td :colspan="suppliers.length + 3" class="exp-field-hint" style="color:#b45309;margin:0">Not quoted by any supplier</td>
                       </tr>
                     </template>
                   </tbody>
@@ -164,6 +173,40 @@
               </div>
             </div>
 
+            <!-- Balance still to order (partial buying): shown once some LPOs exist and part of the qty is left -->
+            <div v-if="cmp && cmp.balance_open" class="add-card">
+              <div class="add-card-header">
+                <div class="add-card-title">
+                  Balance to order
+                  <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· same supplier and approved rate; each new LPO still goes through LPO approval</span>
+                </div>
+                <button class="inv-ab-btn" @click="fillBalance" :disabled="saving">Fill full balance</button>
+              </div>
+              <div class="add-card-body" style="padding:0;overflow-x:auto">
+                <table class="inv-table pr-items-tbl">
+                  <thead><tr>
+                    <th style="min-width:180px">Item</th><th>Supplier</th>
+                    <th class="ta-r" style="width:90px">Requested</th><th class="ta-r" style="width:90px">Ordered</th>
+                    <th class="ta-r" style="width:90px">Balance</th><th class="ta-r" style="width:150px">Order now</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr v-for="b in balanceLines" :key="b.mrn_item" class="inv-row">
+                      <td style="font-weight:500;color:#111827">{{ b.label }}</td>
+                      <td>{{ b.supplier_name || '—' }}</td>
+                      <td class="ta-r mono">{{ b.qty }} <span class="c-muted">{{ b.uom }}</span></td>
+                      <td class="ta-r mono">{{ b.ordered_qty }}</td>
+                      <td class="ta-r mono">{{ b.balance_qty }}</td>
+                      <td class="ta-r">
+                        <input class="inv-fi mono" type="number" min="0" :max="b.balance_qty" step="any" :placeholder="'0 – ' + b.balance_qty"
+                          v-model="balanceQty[b.mrn_item]" style="width:110px;text-align:right" />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div v-if="!balanceLines.length" class="exp-field-hint" style="padding:12px 14px;margin:0">Nothing left to order.</div>
+              </div>
+            </div>
+
             <!-- LPOs -->
             <div v-if="cmp && (cmp.lpos||[]).length" class="add-card">
               <div class="add-card-header"><div class="add-card-title">LPOs created</div></div>
@@ -208,6 +251,10 @@
           <button v-if="cmp && cmp.status==='Approved'" class="add-btn-draft" @click="doCreateLpos" :disabled="saving">
             {{ saving ? 'Creating…' : 'Create LPOs' }}
           </button>
+          <button v-if="cmp && cmp.balance_open" class="add-btn-draft" @click="doCreateBalance" :disabled="saving || !(balanceTotal > 0)"
+            :title="!(balanceTotal > 0) ? 'Enter the quantity to order now' : ''">
+            {{ saving ? 'Creating…' : 'Create LPO for balance' }}
+          </button>
         </div>
       </div>
     </div>
@@ -240,6 +287,7 @@ const choices = ref({});   // { mrn_item: { quotation, reason } }
 const remarks = ref("");
 const showReject = ref(false);
 const rejectReason = ref("");
+const balanceQty = ref({});  // { mrn_item: qty to order now } for the balance card
 const snapshot = ref("");  // selection as last loaded or saved, to spot unsaved changes
 
 const cmp = computed(() => (data.value && data.value.comparison) || null);
@@ -266,6 +314,23 @@ const suppliers = computed(() => {
   return [...seen.values()].sort((a, b) => String(a.supplier_name).localeCompare(String(b.supplier_name)));
 });
 
+// Order Qty: what is ordered now (blank or invalid -> the full requested qty); balance = requested - ordered now.
+function orderQtyOf(entry) {
+  const full = Number(entry.line.qty || 0);
+  const c = choices.value[entry.line.mrn_item];
+  const raw = c ? c.order_qty : null;
+  if (raw === null || raw === undefined || raw === "") return full;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : full;
+}
+function balanceOf(entry) { return r2(Math.max(0, Number(entry.line.qty || 0) - orderQtyOf(entry))); }
+// the offer's amount and VAT (worked out for the full qty) scaled to the order qty, like the server does
+function scaled(entry, o) {
+  const full = Number(entry.line.qty || 0);
+  const ratio = full > 0 ? orderQtyOf(entry) / full : 0;
+  return { amount: r2(o.amount * ratio), tax: r2(o.tax_amount * ratio) };
+}
+
 function offerFor(entry, quotation) { return entry.offers.find(o => o.quotation === quotation) || null; }
 function chosenOffer(entry) {
   const c = choices.value[entry.line.mrn_item];
@@ -290,14 +355,31 @@ const preview = computed(() => {
   for (const e of (data.value?.ranking || [])) {
     const o = chosenOffer(e);
     if (!o) continue;
-    net += o.amount; tax += o.tax_amount;
+    if (!(orderQtyOf(e) > 0)) continue;
+    const sc = scaled(e, o);
+    net += sc.amount; tax += sc.tax;
     const g = groups.get(o.supplier) || { supplier: o.supplier, supplier_name: o.supplier_name, line_count: 0, net_total: 0, total_tax: 0 };
-    g.line_count += 1; g.net_total += o.amount; g.total_tax += o.tax_amount;
+    g.line_count += 1; g.net_total += sc.amount; g.total_tax += sc.tax;
     groups.set(o.supplier, g);
   }
   const rows = [...groups.values()].map(g => ({ ...g, net_total: r2(g.net_total), total_tax: r2(g.total_tax), grand_total: r2(g.net_total + g.total_tax) }));
   return { rows, net: r2(net), tax: r2(tax), grand: r2(net + tax) };
 });
+// Partial buying: lines with a balance left (the server sends ordered_qty and balance_qty per line)
+const balanceLines = computed(() => {
+  const names = {};
+  for (const e of (data.value?.ranking || [])) names[e.line.mrn_item] = e.line;
+  return (data.value?.items || []).filter(i => Number(i.balance_qty || 0) > 0).map(i => {
+    const line = names[i.mrn_item] || {};
+    return { ...i, label: line.item_name || line.item_code || i.mrn_item, uom: line.uom || "" };
+  });
+});
+const balanceTotal = computed(() => balanceLines.value.reduce((t, b) => t + (Number(balanceQty.value[b.mrn_item]) > 0 ? Number(balanceQty.value[b.mrn_item]) : 0), 0));
+function fillBalance() {
+  const out = {};
+  for (const b of balanceLines.value) out[b.mrn_item] = b.balance_qty;
+  balanceQty.value = out;
+}
 const useServer = computed(() => !!cmp.value && !editable.value);
 const supplierRows = computed(() => (useServer.value ? (cmp.value.supplier_totals || []) : preview.value.rows));
 const totals = computed(() => useServer.value
@@ -331,10 +413,11 @@ function initChoices() {
   for (const e of data.value.ranking) {
     const key = e.line.mrn_item;
     out[key] = cmp.value
-      ? { quotation: saved[key]?.selected_quotation || null, reason: saved[key]?.reason || "" }
-      : { quotation: e.default_quotation || null, reason: "" };
+      ? { quotation: saved[key]?.selected_quotation || null, reason: saved[key]?.reason || "", order_qty: saved[key]?.order_qty ?? e.line.qty }
+      : { quotation: e.default_quotation || null, reason: "", order_qty: e.line.qty };
   }
   choices.value = out;
+  balanceQty.value = {};
   remarks.value = ""; rejectReason.value = ""; showReject.value = false;
   snapshot.value = JSON.stringify(rowsToSend());
 }
@@ -356,21 +439,28 @@ async function load(name) {
 watch(() => props.open, (v) => { if (v) load(); }, { immediate: true });
 
 function validate() {
+  let anyOrdered = false;
   for (const e of data.value.ranking) {
     if (!e.offers.length) continue;
     const label = e.line.item_name || e.line.item_code;
+    const raw = choices.value[e.line.mrn_item].order_qty;
+    const oq = (raw === "" || raw === null || raw === undefined) ? Number(e.line.qty || 0) : Number(raw);
+    if (!Number.isFinite(oq) || oq < 0) return `Order Qty for ${label} must be 0 or more`;
+    if (oq > Number(e.line.qty || 0)) return `Order Qty for ${label} can't be more than the requested ${e.line.qty}`;
+    if (oq > 0) anyOrdered = true;
     if (!chosenOffer(e)) return `Choose a supplier for ${label}`;
     if (needsReason(e) && !String(choices.value[e.line.mrn_item].reason || "").trim()) {
       return `Give a reason for ${label}: the chosen rate is above the lowest (L1)`;
     }
   }
+  if (data.value.ranking.some(e => e.offers.length) && !anyOrdered) return "Every Order Qty is 0. Order at least one item.";
   return "";
 }
 
 function rowsToSend() {
   return data.value.ranking.map(e => {
     const c = choices.value[e.line.mrn_item];
-    return { mrn_item: e.line.mrn_item, selected_quotation: e.offers.length ? (c.quotation || null) : null, reason: needsReason(e) ? String(c.reason || "").trim() : "" };
+    return { mrn_item: e.line.mrn_item, selected_quotation: e.offers.length ? (c.quotation || null) : null, reason: needsReason(e) ? String(c.reason || "").trim() : "", order_qty: e.offers.length ? orderQtyOf(e) : null };
   });
 }
 
@@ -381,7 +471,7 @@ async function create() {
   try {
     const selections = {};
     for (const r of rowsToSend()) {
-      if (r.selected_quotation) selections[r.mrn_item] = { selected_quotation: r.selected_quotation, reason: r.reason };
+      if (r.selected_quotation) selections[r.mrn_item] = { selected_quotation: r.selected_quotation, reason: r.reason, order_qty: r.order_qty };
     }
     const res = await apiPOST(API + "create_comparison", { request_for_quotation: props.rfq, selections }, HINT);
     toast.success(`Comparison ${res.name} created`);
@@ -435,6 +525,20 @@ function doReject() {
 }
 function doCreateLpos() {
   return runAction("create_lpos", { name: cmp.value.name }, (r) => `${(r.lpos || []).length} LPO(s) created`, "Could not create the LPOs");
+}
+
+function doCreateBalance() {
+  const quantities = {};
+  for (const b of balanceLines.value) {
+    const raw = balanceQty.value[b.mrn_item];
+    if (raw === "" || raw === null || raw === undefined) continue;
+    const q = Number(raw);
+    if (!Number.isFinite(q) || q < 0) return toast.error(`Quantity for ${b.label} must be 0 or more`);
+    if (q > Number(b.balance_qty)) return toast.error(`${b.label}: only ${b.balance_qty} is left to order`);
+    if (q > 0) quantities[b.mrn_item] = q;
+  }
+  if (!Object.keys(quantities).length) return toast.error("Enter the quantity to order now");
+  return runAction("create_lpos", { name: cmp.value.name, quantities }, (r) => `${(r.lpos || []).length} LPO(s) created for the balance`, "Could not create the LPOs for the balance");
 }
 
 function close() { if (!saving.value) emit("close"); }

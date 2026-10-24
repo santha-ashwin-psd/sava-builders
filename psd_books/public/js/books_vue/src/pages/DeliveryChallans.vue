@@ -15,8 +15,8 @@
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',13)"></span> CSV</button>
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
-      <button class="sales-btn-ghost" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : 'Move stock between two warehouses'" @click="openNewTransfer"><span v-html="icon('truck',13)"></span> Stock Transfer</button>
-      <button class="sales-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Challan</button>
+      <!-- Stock Transfer button hidden for Sava -->
+      <!-- New Challan hidden for Sava (issue from an approved MRN or use Stock Transfer) -->
     </div>
   </div>
 
