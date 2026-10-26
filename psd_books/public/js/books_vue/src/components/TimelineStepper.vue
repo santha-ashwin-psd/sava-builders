@@ -12,7 +12,8 @@
           @touchstart.passive="show(step, $event)"
           @touchend.passive="hide"
         >
-          <span v-if="step.danger">!</span>
+          <span v-if="step.cross">✕</span>
+          <span v-else-if="step.danger">!</span>
           <span v-else-if="step.done">✓</span>
           <span v-else>{{ i + 1 }}</span>
         </div>

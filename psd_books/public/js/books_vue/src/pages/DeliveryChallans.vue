@@ -4,7 +4,7 @@
   <div class="sales-toolbar">
     <div class="sales-search" style="min-width:220px">
       <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
-      <input v-model="search" placeholder="Search challans, customers…" class="sales-search-input"/>
+      <input v-model="search" placeholder="Search delivery notes, customers…" class="sales-search-input"/>
     </div>
     <div class="sales-pills">
       <button v-for="t in TABS" :key="t.k" class="sales-pill" :class="{active:tab===t.k}" @click="tab=t.k">
@@ -22,7 +22,7 @@
 
   <!-- ── KPI Cards ── -->
   <div class="bk-kpi-grid bk-kpi-grid-4">
-    <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Challans</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="dcTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ dcTrends.total.up?'↑':'↓' }} {{ dcTrends.total.pct }}% vs last month</div></div></div></div>
+    <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Delivery Notes</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="dcTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ dcTrends.total.up?'↑':'↓' }} {{ dcTrends.total.pct }}% vs last month</div></div></div></div>
     <div class="bk-kpi-card clickable" @click="activeTab='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#f1f5f9"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Draft</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.draft }}</div><div class="bk-kpi-trend bk-trend-neutral">pending</div></div></div></div>
     <div class="bk-kpi-card bk-kpi-info clickable" @click="activeTab='toDeliver'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">To Deliver</div><div class="bk-kpi-value bk-kpi-blue">{{ counts.toDeliver }}</div><div class="bk-kpi-trend" :class="dcTrends.deliver.up?'bk-trend-up':'bk-trend-down'">{{ dcTrends.deliver.up?'↑':'↓' }} {{ dcTrends.deliver.pct }}% vs last month</div></div></div></div>
     <div class="bk-kpi-card bk-kpi-success clickable" @click="activeTab='delivered'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Delivered</div><div class="bk-kpi-value bk-kpi-green">{{ counts.delivered }}</div><div class="bk-kpi-trend" :class="dcTrends.delivered.up?'bk-trend-up':'bk-trend-down'">{{ dcTrends.delivered.up?'↑':'↓' }} {{ dcTrends.delivered.pct }}% vs last month</div></div></div></div>
@@ -30,7 +30,7 @@
   <!-- ── Mobile KPI Summary Strip (≤480px) ── -->
   <div class="dc-mob-summary">
     <div class="dc-mob-kpi dc-mob-kpi-green">
-      <div class="dc-mob-kpi-label">THIS MONTH CHALLANS</div>
+      <div class="dc-mob-kpi-label">THIS MONTH DELIVERY NOTES</div>
       <div class="dc-mob-kpi-val">{{ dcThisMonth }}</div>
     </div>
     <div class="dc-mob-kpi dc-mob-kpi-amber">
@@ -52,7 +52,7 @@
         <div class="shimmer" style="height:11px;width:48%;border-radius:6px"></div>
       </div>
     </div>
-    <div v-else-if="!sorted.length" class="dc-mob-empty">No challans match your filters</div>
+    <div v-else-if="!sorted.length" class="dc-mob-empty">No delivery notes match your filters</div>
     <template v-else>
       <div v-for="r in paged" :key="r.name" class="dc-mob-card" @click="openView(r)">
         <!-- Card body: left info + right status -->
@@ -110,7 +110,7 @@
       <thead>
         <tr>
           <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
-          <th @click="sort('name')" class="sortable">Challan / SO # <span v-html="sa('name')"></span></th>
+          <th @click="sort('name')" class="sortable">Delivery Note / SO # <span v-html="sa('name')"></span></th>
           <th @click="sort('customer_name')" class="sortable">Customer <span v-html="sa('customer_name')"></span></th>
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sa('posting_date')"></span></th>
           <th>Sales Order</th>
@@ -124,7 +124,7 @@
           <tr v-for="n in 6" :key="n"><td colspan="8" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
         </template>
         <tr v-else-if="!sorted.length">
-          <td colspan="8" class="b-empty">{{search?'No challans match your search':'No delivery challans yet'}}</td>
+          <td colspan="8" class="b-empty">{{search?'No delivery notes match your search':'No delivery notes yet'}}</td>
         </tr>
         <tr v-else v-for="r in paged" :key="r.name" class="inv-row" :class="{selected: selected.has(r.name)}" @click="openView(r)">
           <td @click.stop><input v-if="r._source==='dn'" type="checkbox" :checked="selected.has(r.name)" @change="toggle(r.name)" /></td>
@@ -167,7 +167,7 @@
                 <div class="inv-view-number">{{ viewDoc.name }}</div>
                 <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
               </div>
-              <div class="inv-view-subtitle">Delivery Challan · {{ viewDoc.posting_date }}</div>
+              <div class="inv-view-subtitle">Delivery Note · {{ viewDoc.posting_date }}</div>
             </div>
             <button class="inv-dclose dc-vhead-close" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
           </div>
@@ -178,9 +178,9 @@
               <span v-html="icon('edit',13)"></span> Edit
             </button>
             <button v-if="viewDoc.docstatus===0" class="inv-ab-btn inv-ab-primary" :disabled="submitting || !$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="submitChallan">
-              <span v-html="icon('send',13)"></span> {{ submitting ? 'Submitting…' : 'Submit Challan' }}
+              <span v-html="icon('send',13)"></span> {{ submitting ? 'Submitting…' : 'Submit Delivery Note' }}
             </button>
-            <button v-if="canConfirmReceipt(viewDoc)" class="inv-ab-btn inv-ab-primary" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="openReceipt(viewDoc)">
+            <button v-if="false && canConfirmReceipt(viewDoc)" class="inv-ab-btn inv-ab-primary" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="openReceipt(viewDoc)">
               <span v-html="icon('check',13)"></span> Confirm Receipt
             </button>
             <button v-if="isReceived(viewDoc)" class="inv-ab-btn" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="clearTarget=viewDoc">
@@ -397,7 +397,7 @@
               <span v-html="icon('edit',13)"></span> Edit
             </button>
             <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" :disabled="submitting || !$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="submitChallan">
-              {{ submitting ? 'Submitting…' : 'Submit Challan' }}
+              {{ submitting ? 'Submitting…' : 'Submit Delivery Note' }}
             </button>
           </div>
 
@@ -412,7 +412,7 @@
         <!-- Header -->
         <div class="inv-dh">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <div class="inv-dh-title">{{ mrnMode ? (editingName ? 'Edit Store Issue' : 'Issue from Store') : transferMode ? (editingName ? 'Edit Stock Transfer' : 'New Stock Transfer') : (editingName ? 'Edit Challan' : 'New Delivery Challan') }}</div>
+            <div class="inv-dh-title">{{ mrnMode ? (editingName ? 'Edit Store Issue' : 'Issue from Store') : transferMode ? (editingName ? 'Edit Stock Transfer' : 'New Stock Transfer') : (editingName ? 'Edit Delivery Note' : 'New Delivery Note') }}</div>
             <span v-if="!editingName" class="add-status-badge">Draft</span>
             <span v-if="editingName" class="inv-dh-sub" style="margin-left:4px">{{ editingName }}</span>
           </div>
@@ -656,7 +656,7 @@
 
         <!-- Footer -->
         <div class="inv-dfooter">
-          <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New challan — unsaved changes' }}</div>
+          <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New delivery note — unsaved changes' }}</div>
           <div class="add-footer-actions">
             <button class="add-btn-cancel" @click="formOpen=false" :disabled="saving">Cancel</button>
             <button class="add-btn-draft" :disabled="saving || !(editingName ? $canEdit('inventory') : $canCreate('inventory'))" :title="!(editingName ? $canEdit('inventory') : $canCreate('inventory')) ? 'Read-only access' : ''" @click="saveChallan(0)">
@@ -742,7 +742,7 @@
         <span v-html="icon(deleteTarget.mode==='delete'?'trash':'x', 20)"></span>
       </div>
       <div class="dc-confirm-title">
-        {{ deleteTarget.mode === 'delete' ? 'Delete Challan?' : 'Cancel Challan?' }}
+        {{ deleteTarget.mode === 'delete' ? 'Delete Delivery Note?' : 'Cancel Delivery Note?' }}
       </div>
       <div class="dc-confirm-sub">
         <template v-if="deleteTarget.mode==='delete'">
@@ -1179,7 +1179,7 @@ async function submitChallan() {
   submitting.value = true;
   try {
     await apiSubmit("Delivery Note", viewDoc.value.name);
-    toast.success("Challan submitted");
+    toast.success("Delivery Note submitted");
     viewOpen.value = false;
     await load();
   } catch (e) { toast.error(e.message || "Submit failed"); }
@@ -1213,7 +1213,7 @@ async function submitOne(r) {
 }
 async function bulkSubmit() {
   const rows = selectedRows().filter(r => r.docstatus === 0);
-  if (!rows.length) { toast.error("No draft challans selected"); return; }
+  if (!rows.length) { toast.error("No draft delivery notes selected"); return; }
   bulkBusy.value = true;
   let ok = 0, fail = 0;
   for (const r of rows) {
@@ -1226,7 +1226,7 @@ async function bulkSubmit() {
 }
 async function bulkCancel() {
   const rows = selectedRows().filter(r => r.docstatus === 1 && r.status !== "Cancelled" && r.status !== "Delivered" && r.status !== "Fully Delivered" && !isReceived(r));
-  if (!rows.length) { toast.error("No submitted challans selected"); return; }
+  if (!rows.length) { toast.error("No submitted delivery notes selected"); return; }
   bulkBusy.value = true;
   let ok = 0, fail = 0;
   for (const r of rows) {
@@ -1258,7 +1258,7 @@ function exportCSV() {
     ? sorted.value.filter(r => r._source === "dn" && selected.value.has(r.name))
     : sorted.value.filter(r => r._source === "dn");
   if (!source.length) { toast.error("Nothing to export"); return; }
-  const headers = ["Challan #","Customer","Date","Sales Order","Status","Qty","LR / Tracking","Transporter"];
+  const headers = ["Delivery Note #","Customer","Date","Sales Order","Status","Qty","LR / Tracking","Transporter"];
   const lines = source.map(r => [
     r.name, r.customer_name || r.customer || "", r.posting_date || "",
     r.sales_order || "", statusLabel(r), r.total_qty || "",
@@ -1270,7 +1270,7 @@ function exportCSV() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `delivery-challans-${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `delivery-notes-${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
   URL.revokeObjectURL(url);
   toast.success(`${source.length} row(s) exported`);
@@ -1741,7 +1741,7 @@ async function saveChallan(submit) {
     const saved = await apiSave(doc);
     if (submit && saved?.name) await apiSubmit("Delivery Note", saved.name);
 
-    toast.success(`Challan ${saved?.name || ""} ${submit ? "submitted" : "saved"}`);
+    toast.success(`Delivery Note ${saved?.name || ""} ${submit ? "submitted" : "saved"}`);
     formOpen.value = false;
     await load();
   } catch (e) { toast.error(e.message || "Failed to save"); }
@@ -1756,10 +1756,10 @@ async function confirmDeleteAction() {
   try {
     if (mode === "delete") {
       await apiDelete("Delivery Note", row.name);
-      toast.success(`Challan ${row.name} deleted`);
+      toast.success(`Delivery Note ${row.name} deleted`);
     } else {
       await apiCancel("Delivery Note", row.name);
-      toast.success(`Challan ${row.name} cancelled`);
+      toast.success(`Delivery Note ${row.name} cancelled`);
     }
     deleteTarget.value = null;
     viewOpen.value = false;

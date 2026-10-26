@@ -1342,13 +1342,15 @@ const timelineSteps = computed(() => {
   const received = s === "received" || s === "billed" || s === "closed";
   const billed   = s === "billed"   || s === "closed";
   const closed   = s === "closed";
+  // Billed/closed while goods are still not (fully) received -> show a red cross on "Received".
+  const billedBeforeReceipt = billed && (o.purchase_type || "Goods") === "Goods" && fulfill.lines.length > 0 && hasUnreceived.value;
   const pendingA = s === "pending approval", sentBack = s === "sent back";
   const issuedUp = s !== "draft" && s !== "" && !pendingA && !sentBack;
   return [
     { key:"draft",    label:"Draft",    done:true },
     { key:"approval", label:sentBack ? "Sent back" : "Approval", done:issuedUp, current:pendingA || sentBack, danger:sentBack },
     { key:"issued",   label:"Issued",   done:issuedUp, current:s==="to receive"||s==="sent"||s==="confirmed" },
-    { key:"received", label:"Received", done:received, current:s==="received" && !billed },
+    { key:"received", label:"Received", done:received && !billedBeforeReceipt, cross:billedBeforeReceipt, danger:billedBeforeReceipt, current:s==="received" && !billed },
     { key:"billed",   label:"Billed",   done:billed, current:billed && !closed },
     { key:"closed",   label:"Closed",   done:closed, current:closed },
   ];

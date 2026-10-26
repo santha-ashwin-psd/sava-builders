@@ -112,7 +112,6 @@
               <button class="inv-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>
               <button v-if="canEdit(r)" class="inv-act-btn" @click.stop="openEdit(r)" title="Edit"><span v-html="icon('edit',12)"></span></button>
               <button v-if="r.source==='real' && r.docstatus===1" class="inv-act-btn pr-act-cancel" @click.stop="confirmTarget={row:r,mode:'cancel'}" title="Cancel"><span v-html="icon('x',12)"></span></button>
-              <button v-if="r.source==='real' && r.docstatus===0" class="inv-act-btn pr-act-del" @click.stop="confirmTarget={row:r,mode:'delete'}" title="Delete"><span v-html="icon('trash',12)"></span></button>
             </div>
           </td>
         </tr>
@@ -150,7 +149,6 @@
             <button class="pr-mc-btn" @click.stop="openView(r)">View</button>
             <button v-if="canEdit(r)" class="pr-mc-btn" @click.stop="openEdit(r)">Edit</button>
             <button v-if="r.source==='real' && r.docstatus===1" class="pr-mc-btn pr-mc-warn" @click.stop="confirmTarget={row:r,mode:'cancel'}">Cancel</button>
-            <button v-if="r.source==='real' && r.docstatus===0" class="pr-mc-btn pr-mc-danger" @click.stop="confirmTarget={row:r,mode:'delete'}">Delete</button>
           </div>
         </div>
       </template>

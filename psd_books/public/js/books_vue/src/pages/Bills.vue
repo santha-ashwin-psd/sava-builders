@@ -81,7 +81,7 @@
               <td class="td-actions bill-act-cell">
                 <button class="inv-act-btn" @click="openView(b)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button
-  v-if="b.docstatus===0 || (b.docstatus===1 && flt(b.outstanding_amount)>0)"
+  v-if="b.docstatus===0"
   class="inv-act-btn"
   :disabled="!$canEdit('bills')"
   @click="openEdit(b)"
@@ -89,7 +89,6 @@
 >
   <span v-html="icon('edit',13)"></span>
 </button>
-                <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="inv-act-btn inv-act-pay" :disabled="!$canCreate('payments')" @click="payBill(b)" :title="!$canCreate('payments') ? 'Read-only access' : 'Record Payment'">Pay</button>
                 <button v-if="b.docstatus===0 || b.docstatus===2" class="inv-act-btn bill-act-del" :disabled="!$canDelete('bills')" @click="deleteBill(b)" :title="!$canDelete('bills') ? 'Not permitted' : 'Delete'"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
@@ -128,14 +127,13 @@
             <div class="bil-mc-footer">
               <button class="bil-mc-btn" @click.stop="openView(b)">View</button>
               <button
-  v-if="b.docstatus===0 || (b.docstatus===1 && flt(b.outstanding_amount)>0)"
+  v-if="b.docstatus===0"
   class="bil-mc-btn"
   :disabled="!$canEdit('bills')"
   @click.stop="openEdit(b)"
 >
   Edit
 </button>
-              <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="bil-mc-btn bil-mc-pay" :disabled="!$canCreate('payments')" @click.stop="payBill(b)">Pay</button>
               <button v-if="b.docstatus===0||b.docstatus===2" class="bil-mc-btn bil-mc-danger" :disabled="!$canDelete('bills')" @click.stop="deleteBill(b)">Delete</button>
             </div>
           </div>
@@ -177,7 +175,7 @@
               <div style="display:flex;gap:6px;border-top:1px solid #f3f4f6;padding-top:10px">
                 <button class="inv-act-btn" @click.stop="openView(b)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button
-  v-if="b.docstatus===0 || (b.docstatus===1 && flt(b.outstanding_amount)>0)"
+  v-if="b.docstatus===0"
   class="inv-act-btn"
   :disabled="!$canEdit('bills')"
   @click.stop="openEdit(b)"
@@ -185,7 +183,6 @@
 >
   <span v-html="icon('edit',13)"></span>
 </button>
-                <button v-if="b.docstatus===1 && flt(b.outstanding_amount)>0" class="inv-act-btn inv-act-pay" :disabled="!$canCreate('payments')" @click.stop="payBill(b)" :title="!$canCreate('payments') ? 'Read-only access' : 'Record Payment'">Pay</button>
                 <button v-if="b.docstatus===0||b.docstatus===2" class="inv-act-btn" style="color:#dc2626" :disabled="!$canDelete('bills')" @click.stop="deleteBill(b)" :title="!$canDelete('bills') ? 'Not permitted' : 'Delete'"><span v-html="icon('trash',13)"></span></button>
               </div>
             </div>
@@ -563,18 +560,9 @@
               </div>
               <div class="inv-view-subtitle">
                 {{ viewDoc.supplier_name || viewDoc.supplier }}
-                <span v-if="viewDoc.due_date"> · Due {{ fmtDate(viewDoc.due_date) }}
-                  <span v-if="isOverdue(viewDoc)" style="color:#dc2626">(overdue)</span>
-                </span>
               </div>
             </div>
             <div class="bill-view-cta-wrap">
-              <button v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1"
-                      class="inv-view-cta"
-                      :disabled="!$canCreate('payments')" :title="!$canCreate('payments') ? 'Read-only access' : ''"
-                      @click="payBill(viewDoc)">
-                <span v-html="icon('indianrupee',15)"></span> Record Payment
-              </button>
               <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px" @click="viewOpen=false">
                 <span v-html="icon('x',14)"></span> <span class="ab-label">Close</span>
               </button>
@@ -592,9 +580,6 @@
 
           <!-- Action buttons bar -->
           <div class="inv-action-bar">
-            <button v-if="viewDoc.docstatus===0 || (viewDoc.docstatus===1 && flt(viewDoc.outstanding_amount)>0)" class="inv-ab-btn" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="openEdit(viewDoc, true)">
-              <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
-            </button>
             <button v-if="viewDoc.docstatus===0" class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="submitBill(viewDoc)">
               <span v-html="icon('check',13)"></span> <span class="ab-label">Submit</span>
             </button>
@@ -624,10 +609,10 @@
             <button v-if="viewDoc.docstatus===1" class="inv-ab-btn" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="emailBill(viewDoc)">
               <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
             </button>
-            <button v-if="viewDoc.docstatus===1 && flt(viewDoc.outstanding_amount) > 0" class="inv-ab-btn" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''" @click="issueDebitNote(viewDoc)">
+            <button v-if="viewDoc.docstatus===1 && flt(viewDoc.outstanding_amount) > 0" style="display: none;" class="inv-ab-btn" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''" @click="issueDebitNote(viewDoc)">
               <span v-html="icon('arrow-left',13)"></span> <span class="ab-label">Debit Note</span>
             </button>
-            <button v-if="viewDoc.docstatus===1" class="inv-ab-btn" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''" @click="makeRecurringBill(viewDoc)">
+            <button v-if="viewDoc.docstatus===1" style="display: none;" class="inv-ab-btn" :disabled="!$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''" @click="makeRecurringBill(viewDoc)">
               <span v-html="icon('repeat',13)"></span> <span class="ab-label">Make Recurring</span>
             </button>
             <button v-if="viewDoc.docstatus===1" class="inv-ab-btn inv-ab-danger" :disabled="!$canDelete('bills')" :title="!$canDelete('bills') ? 'Not permitted' : ''" @click="cancelBill(viewDoc)">
@@ -641,10 +626,6 @@
           <!-- Tabs -->
           <div class="inv-view-tabs">
             <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
-            <button class="inv-vtab" :class="{active:viewTab==='payments'}" @click="viewTab='payments'">
-              Payments<span v-if="viewPayments.length || viewDebitApps.length" class="inv-vtab-count">{{ viewPayments.length + viewDebitApps.length }}</span>
-            </button>
-            <button v-if="viewDoc.docstatus===1" class="inv-vtab" :class="{active:viewTab==='journal'}" @click="viewTab='journal'">Journal</button>
           </div>
 
           <!-- ── Details tab ── -->
@@ -652,7 +633,7 @@
             <div class="inv-tab-body">
 
               <!-- Meta row -->
-              <div class="inv-details-meta" style="grid-template-columns:repeat(4,1fr)">
+              <div class="inv-details-meta" style="grid-template-columns:repeat(3,1fr)">
                 <div class="inv-details-meta-col">
                   <div class="inv-dmeta-icon-row">
                     <span class="inv-dmeta-icon" v-html="icon('user',13)"></span>
@@ -669,16 +650,6 @@
                   <div class="inv-dmeta-date-val">{{ fmtDate(viewDoc.posting_date) }}</div>
                   <div v-if="viewDoc.posting_time" class="inv-dmeta-date-sub">{{ String(viewDoc.posting_time).slice(0, 8) }}</div>
                 </div>
-                <div class="inv-details-meta-col">
-                  <div class="inv-dmeta-icon-row">
-                    <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
-                    <span class="inv-dmeta-lbl">Due Date</span>
-                  </div>
-                  <div class="inv-dmeta-date-val" :class="{ 'is-overdue': isOverdue(viewDoc) }">
-                    {{ fmtDate(viewDoc.due_date) || '—' }}
-                  </div>
-                  <div v-if="isOverdue(viewDoc)" class="inv-dmeta-date-sub" style="color:#dc2626">Overdue</div>
-                </div>
                 <div class="inv-details-meta-col col-balance">
                   <div class="inv-dmeta-icon-row">
                     <span class="inv-dmeta-icon" v-html="icon('indianrupee',13)"></span>
@@ -689,6 +660,7 @@
                     {{ fmtCur(viewDoc.outstanding_amount) }}
                   </div>
                   <button v-if="flt(viewDoc.outstanding_amount)>0 && viewDoc.docstatus===1"
+                         style="display: none;"
                           class="inv-rec-pay-btn"
                           :disabled="!$canCreate('payments')" :title="!$canCreate('payments') ? 'Read-only access' : ''"
                           @click="payBill(viewDoc)">
@@ -1103,12 +1075,15 @@ const { confirmCascade } = useConfirmCascade();
 const { openReturnNote } = useReturnNote();
 
 // Status helpers tuned for Purchase Invoice
-const { statusLabel, statusCls, statusBg, isOverdue } = useDocStatus({
+const { statusLabel: _baseStatusLabel, statusCls: _baseStatusCls, statusBg, isOverdue } = useDocStatus({
   dueDateField: "due_date",
   outstandingField: "outstanding_amount",
   fallbackDraftLabel: "Draft",
   fallbackSubmittedLabel: "Unpaid",
 });
+// A submitted bill has one status only: "Submitted" (no Overdue / Unpaid / Paid).
+const statusLabel = (d) => d?.docstatus === 1 ? "SUBMITTED" : _baseStatusLabel(d);
+const statusCls   = (d) => d?.docstatus === 1 ? "status-unpaid" : _baseStatusCls(d);
 
 const activeTab = ref("all");
 const tabs = [
@@ -1363,8 +1338,7 @@ const timelineSteps = computed(() => {
   const overdue = isOverdue(b);
   return [
     { key: "draft",     label: "Draft", done: true },
-    { key: "submitted", label: "Submitted", done: b.docstatus >= 1, current: b.docstatus === 1 && !paid },
-    { key: "paid",      label: overdue ? "Overdue" : "Paid", done: paid, danger: overdue && !paid, current: paid },
+    { key: "submitted", label: "Submitted", done: b.docstatus >= 1, current: b.docstatus === 1 },
   ];
 });
 

@@ -22,7 +22,7 @@ export const NAV = [
   // { path: "/sales-orders",                  label: "Sales Orders",     icon: "order",      module: "invoices"   },
   // { path: "/invoices",                      label: "Invoices",         icon: "file",       module: "invoices"   },
   // { path: "/recurring",                     label: "Recurring",        icon: "recurring",  module: "invoices"   },
-  // { path: "/delivery-challans",             label: "Delivery Challans",icon: "truck",      module: "inventory"  },  // moved to Purchases
+  // { path: "/delivery-challans",             label: "Delivery Notes",    icon: "truck",      module: "inventory"  },  // moved to Purchases
   // { path: "/payments-received",             label: "Payments Received",icon: "rupee",      module: "payments"   },
   // { path: "/credit-notes",                  label: "Credit Notes",     icon: "creditnote", module: "invoices"   },
   // { path: "/proforma-invoices",             label: "Proforma Invoices",icon: "file",       module: "invoices"   },
@@ -34,10 +34,10 @@ export const NAV = [
   { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },
   { path: "/rfqs",                          label: "Request for Quotation", icon: "purchase", module: "bills"    },
   { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills"      },
-  { path: "/delivery-challans",             label: "Delivery Challans", icon: "truck",      module: "inventory"  },
+  { path: "/delivery-challans",             label: "Delivery Notes",    icon: "truck",      module: "inventory"  },
   { path: "/purchases",                     label: "Bills",            icon: "fileplus",   module: "bills"      },
-  { path: "/recurring-bills",               label: "Recurring Bills",  icon: "recurring",  module: "bills"      },
-  { path: "/purchase-receipts",             label: "Purchase Receipts",icon: "purchase",   module: "inventory"  },
+  // { path: "/recurring-bills",               label: "Recurring Bills",  icon: "recurring",  module: "bills"      },  // hidden (sidebar)
+  { path: "/purchase-receipts",             label: "GRN",              icon: "purchase",   module: "inventory"  },
   // { path: "/purchasing/landed-cost-vouchers", label: "Landed Costs",   icon: "balance",    module: "bills"      },  // hidden for Sava (Purchases)
   // { path: "/payments",                      label: "Payments Made",    icon: "payment",    module: "payments"   },  // hidden for Sava (Purchases)
   // { path: "/debit-notes",                   label: "Debit Notes",      icon: "creditnote", module: "bills"      },  // hidden for Sava (Purchases)
