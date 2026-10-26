@@ -137,7 +137,9 @@ SAVA_ACCESS = {
     "Tax Template": {"read": _ALL_SAVA},
     "Material Request": {
         "read": frozenset({"Site Engineer", "Store Keeper", "Purchase Officer", "Project Manager"}) | _APPROVERS,
-        "write": frozenset({"Site Engineer"})},
+        "write": frozenset({"Site Engineer"}),
+        # who may cancel or delete one (a Books Admin always may); raising and editing stay with "write"
+        "cancel_delete": frozenset({"Site Engineer", "Purchase Officer", "Purchase Manager", "Director"})},
     "Delivery Note": {
         "read": frozenset({"Site Engineer", "Store Keeper", "Purchase Manager"}),
         "write": frozenset({"Store Keeper"})},
@@ -307,6 +309,33 @@ def _can_at_level(doctype: str, threshold: str, user: str | None = None) -> bool
     return _level_at_least(m["levels"].get(mod, "None"), threshold)
 
 
+def _cancel_delete_rule(doctype: str, user: str):
+    """Sava job-role rule for cancelling / deleting a document ("cancel_delete" in SAVA_ACCESS).
+    True / False when the rule decides; None when it does not apply (no rule for the doctype, or the
+    user is not a company member or holds no Sava role) so the normal module check runs instead."""
+    roles = (SAVA_ACCESS.get(doctype) or {}).get("cancel_delete")
+    if not roles:
+        return None
+    m = _membership(user)
+    if m["admin"]:
+        return True
+    if m["no_member"]:
+        return None
+    sava = _user_sava_roles(user)
+    if not sava:
+        return None
+    return bool(sava & roles) and not m["readonly"]
+
+
+def can_cancel_delete(doctype: str, action: str, user: str | None = None) -> bool:
+    """Display-side twin of assert_can for "cancel" / "delete" (used by the session payload)."""
+    user = user or frappe.session.user
+    decided = _cancel_delete_rule(doctype, user)
+    if decided is not None:
+        return decided
+    return _can_at_level(doctype, _ACTION_LEVEL.get(action, "Edit"), user)
+
+
 def can_create(doctype: str, user: str | None = None) -> bool:
     return _can_at_level(doctype, "Create", user)
 
@@ -351,6 +380,14 @@ def assert_can(doctype: str, action: str = "read", user: str | None = None):
     user = user or frappe.session.user
     if user == "Guest":
         frappe.throw(_("Not permitted"), frappe.PermissionError)
+    if action in ("cancel", "delete"):
+        decided = _cancel_delete_rule(doctype, user)
+        if decided is True:
+            return
+        if decided is False:
+            roles = ", ".join(sorted(SAVA_ACCESS[doctype]["cancel_delete"]))
+            frappe.throw(_("Only {0} or a Books Admin can {1} a {2}.").format(roles, action, doctype),
+                         frappe.PermissionError)
     threshold = _ACTION_LEVEL.get(action, "Edit")
     if not _can_at_level(doctype, threshold, user):
         _deny(doctype, action, threshold, user)

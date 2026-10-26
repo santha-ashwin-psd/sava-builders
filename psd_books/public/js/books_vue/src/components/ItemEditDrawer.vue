@@ -76,6 +76,7 @@
 
           <div class="ad-section">
             <div class="ad-section-title">Applicability <span class="ad-hint" style="font-size:11px;font-weight:400">(where this item shows up)</span></div>
+            <!-- Sales Item toggle hidden for Sava (is_sales_item keeps its default of 1)
             <div class="ad-toggle-row" style="margin-bottom:12px">
               <div class="ad-toggle-left">
                 <div class="ad-toggle-title">Sales Item</div>
@@ -86,6 +87,7 @@
                 <span class="ad-switch-track ad-switch-track--green"></span>
               </label>
             </div>
+            -->
             <div class="ad-toggle-row">
               <div class="ad-toggle-left">
                 <div class="ad-toggle-title">Purchase Item</div>
@@ -191,6 +193,7 @@
           <div class="ad-section">
             <div class="ad-section-title">Rates</div>
             <div class="ad-grid-2">
+              <!-- Selling Rate hidden for Sava
               <div class="ad-field">
                 <label class="ad-label">Selling Rate (KES)</label>
                 <div class="ad-input-prefix-wrap">
@@ -198,6 +201,7 @@
                   <input type="number" class="ad-input ad-input--prefixed" v-model="form.standard_rate" min="0" placeholder="0.00"/>
                 </div>
               </div>
+              -->
               <div class="ad-field">
                 <label class="ad-label">Buying Rate (KES)</label>
                 <div class="ad-input-prefix-wrap">
@@ -218,6 +222,7 @@
 
           <div class="ad-section">
             <div class="ad-section-title">Tax</div>
+            <!-- Default Sales Tax Template hidden for Sava (tax_code still auto-fills from the sales template)
             <div class="ad-field">
               <label class="ad-label">Default Sales Tax Template <span class="ad-required">*</span></label>
               <select class="ad-input" v-model="form.tax_code">
@@ -226,6 +231,7 @@
               </select>
               <div class="ad-hint" style="margin-top:6px">Auto-filled on Invoices, Credit Notes, Quotes &amp; Sales Orders.</div>
             </div>
+            -->
             <div class="ad-field" style="margin-top:12px">
               <label class="ad-label">Default Purchase Tax Template</label>
               <select class="ad-input" v-model="form.default_purchase_tax_template">
@@ -240,6 +246,7 @@
             </div>
           </div>
 
+          <!-- Accounts section hidden for Sava
           <div class="ad-section">
             <div class="ad-section-title">Accounts</div>
             <div class="ad-field">
@@ -251,6 +258,7 @@
               <SearchableSelect v-model="form.expense_account" :options="expenseAccounts" placeholder="Select expense account…" :createable="true" createDoctype="Account" @create="reloadAccounts"/>
             </div>
           </div>
+          -->
         </template>
 
         <!-- ── Inventory ── -->
@@ -269,6 +277,7 @@
             ⚠ Is Fixed Asset is also on for this item (Basic tab). A fixed asset shouldn't also be tracked as stock — the purchase would get double-booked (once to Fixed Asset, once to Stock/Inventory) and sit in a warehouse it'll never actually move from. Turn off Is Fixed Asset, or uncheck Track Inventory.
           </div>
 
+          <!-- Track by Batch toggle hidden for Sava (has_batch_no stays 0, so Shelf Life stays hidden too)
           <div class="ad-toggle-row" style="margin-bottom:20px" v-if="form.is_stock_item">
             <div class="ad-toggle-left">
               <div class="ad-toggle-title">Track by Batch</div>
@@ -279,6 +288,7 @@
               <span class="ad-switch-track ad-switch-track--green"></span>
             </label>
           </div>
+          -->
 
           <div class="ad-section" v-if="form.is_stock_item && form.has_batch_no">
             <div class="ad-section-title">Shelf Life</div>
@@ -939,9 +949,11 @@ function validateItem() {
   const checks = [
     [!form.item_name.trim(),                         "Item name is required",        "basic"],
     [!form.stock_uom,                                "Default UOM is required",      "basic"],
-    [!form.tax_code,                                 "Default Sales Tax Template is required",     "pricing"],
-    [!form.income_account,                           "Income account is required",   "pricing"],
-    [!form.expense_account,                          "Expense account is required",  "pricing"],
+    // Sales tax template field hidden for Sava, so its required check is off too
+    // [!form.tax_code,                                 "Default Sales Tax Template is required",     "pricing"],
+    // Accounts section hidden for Sava, so these required checks are off too (else save is blocked)
+    // [!form.income_account,                           "Income account is required",   "pricing"],
+    // [!form.expense_account,                          "Expense account is required",  "pricing"],
     [!!form.is_stock_item && !form.default_warehouse, "Default Warehouse is required when Track Inventory is on", "inventory"],
     [!!form.is_fixed_asset && !!form.is_stock_item,
       "An item can't be both Is Fixed Asset and Track Inventory — a fixed asset is capitalized, not stocked. Turn one off.", "basic"],

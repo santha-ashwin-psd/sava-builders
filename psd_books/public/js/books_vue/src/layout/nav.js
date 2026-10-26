@@ -35,7 +35,7 @@ export const NAV = [
   { path: "/rfqs",                          label: "Request for Quotation", icon: "purchase", module: "bills"    },
   { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills"      },
   { path: "/delivery-challans",             label: "Delivery Notes",    icon: "truck",      module: "inventory"  },
-  { path: "/purchases",                     label: "Bills",            icon: "fileplus",   module: "bills"      },
+  // { path: "/purchases",                     label: "Bills",            icon: "fileplus",   module: "bills"      },  // hidden (sidebar)
   // { path: "/recurring-bills",               label: "Recurring Bills",  icon: "recurring",  module: "bills"      },  // hidden (sidebar)
   { path: "/purchase-receipts",             label: "GRN",              icon: "purchase",   module: "inventory"  },
   // { path: "/purchasing/landed-cost-vouchers", label: "Landed Costs",   icon: "balance",    module: "bills"      },  // hidden for Sava (Purchases)
@@ -72,9 +72,9 @@ export const NAV = [
   // { path: "/inventory/adjustments",         label: "Stock Adjustments", icon: "repeat",    module: "inventory"  },  // hidden for Sava (Inventory)
   { path: "/inventory/stock-ledger",        label: "Stock Ledger",     icon: "ledger",     module: "inventory"  },
   { path: "/inventory/valuation",           label: "Valuation",        icon: "chart",      module: "inventory"  },
-  { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },
+  // { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },  // hidden for Sava
   // { path: "/inventory/price-lists",         label: "Price Lists",      icon: "rupee",      module: "inventory"  },  // hidden for Sava (Inventory)
-  { path: "/inventory/batches",             label: "Batch Tracking",   icon: "qr",         module: "inventory"  },
+  // { path: "/inventory/batches",             label: "Batch Tracking",   icon: "qr",         module: "inventory"  },  // hidden for Sava
   { path: "/inventory/settings",            label: "Settings",         icon: "gear",       module: "inventory"  },
 
   // { section: "Assets" },  // hidden for Sava

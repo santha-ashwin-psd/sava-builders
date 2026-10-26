@@ -326,7 +326,8 @@ const typeCounts = computed(() => {
 });
 
 const filtered = computed(() => {
-  let r = list.value;
+  // Sales tax templates hidden for Sava
+  let r = list.value.filter((t) => t.applies_to !== "Sales");
   if (typeFilter.value !== "All") r = r.filter((t) => (t.tax_type || "GST") === typeFilter.value);
   const q = search.value.trim().toLowerCase();
   if (q) r = r.filter((t) => (t.template_name || "").toLowerCase().includes(q));

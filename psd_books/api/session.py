@@ -10,6 +10,7 @@ from psd_books.utils.access import (
     SAVA_ACCESS,
     _membership as _access_membership,
     _user_sava_roles,
+    can_cancel_delete,
     can_create,
     can_edit,
     can_read,
@@ -81,6 +82,10 @@ def _doc_access(user: str) -> dict:
             # screen can say who to ask when a button is greyed out. Display only.
             "write_roles": sorted((SAVA_ACCESS.get(doctype) or {}).get("write") or []),
         }
+        # Doctypes with a cancel / delete role rule (Material Request) also report those two rights.
+        if (SAVA_ACCESS.get(doctype) or {}).get("cancel_delete"):
+            out[doctype]["cancel"] = bool(can_cancel_delete(doctype, "cancel", user))
+            out[doctype]["delete"] = bool(can_cancel_delete(doctype, "delete", user))
     return out
 
 

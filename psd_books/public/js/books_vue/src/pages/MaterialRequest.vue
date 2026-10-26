@@ -66,10 +66,14 @@
               </div>
               <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
                 <button class="bomx-btn bomx-btn-ghost-inv" @click="goBackToList" :disabled="saving || submitting">Back</button>
+                <button v-if="!isNew" class="bomx-btn bomx-btn-light" @click="printMR"><span v-html="icon('printer',12)"></span> Print</button>
+                <button v-if="!isNew && (mr.docstatus===0 || mr.docstatus===2)" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="deleteMR" :disabled="submitting || saving || !canDeleteMR" :title="!canDeleteMR ? MR_CANCEL_NOTE : 'Delete this Material Request'">
+                  <span v-html="icon('trash',12)"></span> Delete
+                </button>
                 <button v-if="!isNew && mr.docstatus===2" class="bomx-btn bomx-btn-light" @click="amendMR" :disabled="submitting || !canRaiseMR">
                   {{ submitting ? 'Amending…' : 'Amend' }}
                 </button>
-                <button v-if="!isNew && mr.docstatus===1" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="cancelMR" :disabled="submitting || !$canDelete('inventory')">
+                <button v-if="!isNew && mr.docstatus===1" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="cancelMR" :disabled="submitting || !canCancelMR" :title="!canCancelMR ? MR_CANCEL_NOTE : ''">
                   {{ submitting ? 'Cancelling…' : 'Cancel' }}
                 </button>
                 <button v-if="SHOW_CREATE_PO && !isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status !== 'Ordered'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !canCreatePO || !!linkedNote" :title="!canCreatePO ? PO_NOTE : linkedNote">
@@ -216,8 +220,9 @@ import SearchableSelect from "../components/SearchableSelect.vue";
 import { useProjectOptions } from "../composables/useProjectOptions.js";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { apiGet, apiGET, apiPOST, apiSave, apiList, apiSubmit, apiCancel, apiAmend, resolveCompany } from "../api/client.js";
+import { apiGet, apiGET, apiPOST, apiSave, apiList, apiSubmit, apiCancel, apiAmend, apiDelete, resolveCompany } from "../api/client.js";
 import { ownerName } from "../utils/userNames.js";
+import { useLivePreview, MR_PRINT_CONFIG, prepareMRPrint } from "../composables/useLivePreview.js";
 import DocLink from "../components/DocLink.vue";
 import { useToast } from "../composables/useToast.js";
 import { usePermissions } from "../composables/usePermissions.js";
@@ -225,6 +230,12 @@ import { useConfirm } from "../composables/useConfirm.js";
 
 // Purchase Orders are made only from an RFQ comparison (Sava). Set to true to show "Create Purchase Order" on a Material Request again.
 const SHOW_CREATE_PO = false;
+
+const { printDoc } = useLivePreview();
+async function printMR() {
+  const d = await prepareMRPrint({ ...mr.value, requested_by_name: ownerName(mr.value.owner), approved_by_name: mr.value.approved_by ? ownerName(mr.value.approved_by) : "" });
+  printDoc(d, { ...MR_PRINT_CONFIG, companyName: mr.value.company || "" });
+}
 
 const route = useRoute();
 const router = useRouter();
@@ -311,6 +322,10 @@ const { isAdmin, flags } = usePermissions();
 const MR_CREATOR_NOTE = "Only a Site Engineer, Books Admin or Director can raise a material request.";
 const canRaiseMR = computed(() => isAdmin.value || !!flags.value.doc_access?.["Material Request"]?.create);
 const canEditMR = computed(() => isAdmin.value || !!flags.value.doc_access?.["Material Request"]?.edit);
+// Who may cancel or delete one is decided on the server (Site Engineer, Purchase Officer, Purchase Manager, Director, Books Admin).
+const MR_CANCEL_NOTE = "Only a Site Engineer, Purchase Officer, Purchase Manager, Director or Books Admin can cancel or delete a material request.";
+const canCancelMR = computed(() => isAdmin.value || !!flags.value.doc_access?.["Material Request"]?.cancel);
+const canDeleteMR = computed(() => isAdmin.value || !!flags.value.doc_access?.["Material Request"]?.delete);
 // Follow-on documents from an approved MRN: who may create each (the server enforces the same rules).
 const PO_NOTE = "Only a Purchase Officer, Books Admin or Director can create a purchase order.";
 const RFQ_NOTE = "Only a Purchase Officer, Books Admin or Director can create an RFQ.";
@@ -547,6 +562,44 @@ async function cancelMR() {
     toast(e.message, "error");
   }
   submitting.value = false;
+}
+
+// Delete a Material Request raised by mistake. Only a draft / pending / sent-back request or a cancelled one
+// can be deleted (a submitted one is cancelled first). Blocked while a live RFQ, Purchase Order or Delivery
+// Note / Store Issue still points at it, because the server delete skips Frappe's linked-document check.
+async function liveLinksOf(name) {
+  const first = async (dt, filters) => {
+    try { return ((await apiList(dt, { fields: ["name"], filters, limit: 1 })) || [])[0]?.name || ""; }
+    catch { return ""; }
+  };
+  const [rfq, po, dn] = await Promise.all([
+    first("Request for Quotation", [["material_request", "=", name], ["status", "!=", "Cancelled"]]),
+    first("Purchase Order", [["material_request", "=", name], ["docstatus", "!=", 2]]),
+    first("Delivery Note", [["material_request", "=", name], ["docstatus", "!=", 2]]),
+  ]);
+  return [rfq && `RFQ ${rfq}`, po && `Purchase Order ${po}`, dn && `Delivery Note ${dn}`].filter(Boolean);
+}
+
+async function deleteMR() {
+  const name = mr.value.name;
+  if (!name || ![0, 2].includes(mr.value.docstatus)) return;
+  submitting.value = true;
+  try {
+    const links = await liveLinksOf(name);
+    if (links.length) { toast(`Cannot delete ${name}: it is used by ${links.join(", ")}. Cancel or delete that first.`, "error"); return; }
+    submitting.value = false;
+    if (!(await confirm({ title: "Delete Material Request?", body: `Delete ${name} permanently? This cannot be undone.`, okLabel: "Delete", okStyle: "danger" }))) return;
+    submitting.value = true;
+    await apiDelete("Material Request", name);
+    toast(`${name} deleted`);
+    mr.value = emptyMR();
+    await loadList();
+    goBackToList();
+  } catch (e) {
+    toast(e.message || "Delete failed", "error");
+  } finally {
+    submitting.value = false;
+  }
 }
 
 async function amendMR() {

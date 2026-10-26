@@ -52,7 +52,7 @@
       <div style="display:flex;gap:8px;">
         <button class="se-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
         <button class="se-btn-ghost" @click="exportCSV" :disabled="!sorted.length"><span v-html="icon('download',14)"></span> Export</button>
-        <button class="se-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Entry</button>
+        <button v-if="false" class="se-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Entry</button>
       </div>
     </div>
 
@@ -127,7 +127,7 @@
                 <div style="font-size:32px;margin-bottom:8px">📦</div>
                 <div style="font-weight:600;margin-bottom:4px">No stock entries found</div>
                 <div style="font-size:13px;color:#9ca3af;margin-bottom:12px">Try changing the filter or date range</div>
-                <button class="se-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Entry</button>
+                <button v-if="false" class="se-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Entry</button>
               </td>
             </tr>
           </template>

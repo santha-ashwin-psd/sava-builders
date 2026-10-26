@@ -278,10 +278,7 @@
           <div class="qct-field" style="grid-column:1/-1">
             <label class="qct-label">Applicable Inspection Type</label>
             <select v-model="form.inspection_type" class="qct-select-full">
-              <option value="All">All — applicable for any inspection</option>
               <option value="Incoming">Incoming — purchasing goods</option>
-              <option value="Outgoing">Outgoing — dispatching goods</option>
-              <option value="In Process">In Process — manufacturing</option>
             </select>
           </div>
           <div class="qct-field" style="grid-column:1/-1">
@@ -502,10 +499,7 @@
           <div class="qct-field" style="grid-column:1/-1">
             <label class="qct-label">Applicable Inspection Type</label>
             <select v-model="editForm.inspection_type" class="qct-select-full">
-              <option value="All">All — applicable for any inspection</option>
               <option value="Incoming">Incoming — purchasing goods</option>
-              <option value="Outgoing">Outgoing — dispatching goods</option>
-              <option value="In Process">In Process — manufacturing</option>
             </select>
           </div>
           <div class="qct-field" style="grid-column:1/-1">
@@ -621,7 +615,7 @@ const form = reactive({
   template_name:  "",
   item:           "",
   item_group:     "",
-  inspection_type: "All",
+  inspection_type: "Incoming",
   description:    "",
   parameters:     [],
 });
@@ -631,7 +625,7 @@ const editForm = reactive({
   template_name:  "",
   item:           "",
   item_group:     "",
-  inspection_type: "All",
+  inspection_type: "Incoming",
   description:    "",
   parameters:     [],
 });
@@ -732,7 +726,7 @@ function openCreate() {
     template_name:  "",
     item:           "",
     item_group:     "",
-    inspection_type: "All",
+    inspection_type: "Incoming",
     description:    "",
     parameters:     [],
   });
@@ -859,7 +853,7 @@ async function openEdit(t) {
     template_name:   detail.template_name || "",
     item:            detail.item            || "",
     item_group:      detail.item_group      || "",
-    inspection_type: detail.inspection_type || "All",
+    inspection_type: "Incoming",
     description:     detail.description     || "",
     parameters: (detail.parameters || []).map(p => ({
       name:                      p.name || "",

@@ -19,7 +19,8 @@
         <button class="sales-btn-ghost view-toggle-btn" @click="viewMode=viewMode==='table'?'grid':'table'" :title="viewMode==='table'?'Grid View':'List View'"><span v-html="icon(viewMode==='table'?'grid':'file',14)"></span></button>
         <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',14)"></span></button>
         <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV"><span v-html="icon('download',14)"></span> CSV</button>
-        <!-- New Purchase Order hidden: POs are raised only via Material Request -->
+        <!-- New Purchase Order: only Purchase Officer, Director and Books Admin (poCanCreate = server rule) -->
+        <button v-if="poCanCreate" class="sales-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New Purchase Order</button>
       </div>
     </div>
 
@@ -240,7 +241,7 @@
               </div>
               <div style="grid-column:1/-1">
                 <label class="inv-lbl">Project</label>
-                <SearchableSelect v-model="form.project" :options="projects" placeholder="Select project (optional)…" @search="q => fetchProjects(q, form.project)" />
+                <SearchableSelect v-model="form.project" :options="projectChoices" placeholder="Select project (optional)…" @search="q => fetchProjects(q, form.project)" />
               </div>
               <!-- Warehouse: only shown and required for Goods -->
               <div v-if="form.purchase_type === 'Goods'" style="grid-column:1/-1">
@@ -466,7 +467,7 @@
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:nowrap">
-            <button v-if="canBill(viewDoc) && $canCreate('bills')" class="inv-view-cta" @click="openBillModal(viewDoc)">
+            <button v-if="false && canBill(viewDoc) && $canCreate('bills')" class="inv-view-cta" @click="openBillModal(viewDoc)">
               <span v-html="icon('arrow-right',15)"></span> Convert to Bill
             </button>
             <button class="inv-ab-btn" style="padding:7px 12px;font-size:13px;white-space:nowrap" @click="viewOpen=false">
@@ -845,7 +846,7 @@
                 </template>
                 <div v-if="!links.bills.length" style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">
                   No linked bills yet.
-                  <div v-if="canBill(viewDoc) && $canCreate('bills')" style="margin-top:12px">
+                  <div v-if="false && canBill(viewDoc) && $canCreate('bills')" style="margin-top:12px">
                     <button class="inv-view-cta" @click="openBillModal(viewDoc)">
                       <span v-html="icon('arrow-right',14)"></span> Convert to Bill
                     </button>
@@ -1122,6 +1123,8 @@ const form = reactive({
   set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "",
 });
 const { projects, fetchProjects } = useProjectOptions();
+// Project is optional: a leading "None" row lets the user clear a chosen project.
+const projectChoices = computed(() => [{ label: "— None —", value: "" }, ...projects.value]);
 const warehouses = ref([]);
 async function fetchWarehouses(q = "") {
   try {
@@ -1351,7 +1354,7 @@ const timelineSteps = computed(() => {
     { key:"approval", label:sentBack ? "Sent back" : "Approval", done:issuedUp, current:pendingA || sentBack, danger:sentBack },
     { key:"issued",   label:"Issued",   done:issuedUp, current:s==="to receive"||s==="sent"||s==="confirmed" },
     { key:"received", label:"Received", done:received && !billedBeforeReceipt, cross:billedBeforeReceipt, danger:billedBeforeReceipt, current:s==="received" && !billed },
-    { key:"billed",   label:"Billed",   done:billed, current:billed && !closed },
+    // { key:"billed",   label:"Billed",   done:billed, current:billed && !closed },   // hidden (Bills are not used for Sava)
     { key:"closed",   label:"Closed",   done:closed, current:closed },
   ];
 });

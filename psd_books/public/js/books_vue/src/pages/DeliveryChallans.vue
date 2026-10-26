@@ -111,7 +111,9 @@
         <tr>
           <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
           <th @click="sort('name')" class="sortable">Delivery Note / SO # <span v-html="sa('name')"></span></th>
+          <!-- Customer column hidden for Sava
           <th @click="sort('customer_name')" class="sortable">Customer <span v-html="sa('customer_name')"></span></th>
+          -->
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sa('posting_date')"></span></th>
           <th>Sales Order</th>
           <th>Status</th>
@@ -121,15 +123,17 @@
       </thead>
       <tbody>
         <template v-if="loading">
-          <tr v-for="n in 6" :key="n"><td colspan="8" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
+          <tr v-for="n in 6" :key="n"><td colspan="7" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
         </template>
         <tr v-else-if="!sorted.length">
-          <td colspan="8" class="b-empty">{{search?'No delivery notes match your search':'No delivery notes yet'}}</td>
+          <td colspan="7" class="b-empty">{{search?'No delivery notes match your search':'No delivery notes yet'}}</td>
         </tr>
         <tr v-else v-for="r in paged" :key="r.name" class="inv-row" :class="{selected: selected.has(r.name)}" @click="openView(r)">
           <td @click.stop><input v-if="r._source==='dn'" type="checkbox" :checked="selected.has(r.name)" @change="toggle(r.name)" /></td>
           <td><DocLink doctype="Delivery Note" :name="r.name" /></td>
+          <!-- Customer cell hidden for Sava
           <td class="fw-600">{{r.customer_name||r.customer||'—'}}</td>
+          -->
           <td class="c-muted" style="font-size:13px">{{r.posting_date||'—'}}</td>
           <td class="c-muted mono" style="font-size:13px">{{r.sales_order||r.name||'—'}}</td>
           <td><span class="inv-status-badge" :class="statusClass(r)">{{statusLabel(r)}}</span></td>
@@ -174,6 +178,9 @@
 
           <!-- Action bar -->
           <div class="inv-action-bar">
+            <button v-if="viewDoc._source==='dn'" class="inv-ab-btn" @click="printDN(viewDoc)">
+              <span v-html="icon('printer',13)"></span> Print
+            </button>
             <button v-if="canEdit(viewDoc) && $canEdit('inventory')" class="inv-ab-btn" @click="openEdit(viewDoc);viewOpen=false">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
@@ -828,6 +835,7 @@ import { flt, fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useProjectOptions } from "../composables/useProjectOptions.js";
+import { useLivePreview, DN_PRINT_CONFIG } from "../composables/useLivePreview.js";
 
 const { toast } = useToast();
 const route = useRoute();
@@ -853,6 +861,8 @@ const bulkBusy    = ref(false);
 
 const viewOpen    = ref(false);
 const viewDoc     = ref(null);
+const { printDoc } = useLivePreview();
+function printDN(d) { printDoc({ ...d, prepared_by_name: ownerName(d.owner) }, { ...DN_PRINT_CONFIG, companyName: d?.company || "" }); }
 const submitting  = ref(false);
 const deleteTarget = ref(null);  // { row, mode: "delete"|"cancel" }
 const deleting     = ref(false);

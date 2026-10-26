@@ -181,13 +181,16 @@
 
           <!-- Action bar -->
           <div class="inv-action-bar">
+            <button v-if="viewDoc.source==='real'" class="inv-ab-btn" @click="printGRN(viewDoc)">
+              <span v-html="icon('printer',13)"></span> Print
+            </button>
             <button v-if="canEdit(viewDoc)" class="inv-ab-btn" :disabled="!prCanEdit" :title="!prCanEdit ? prNoAccess : ''" @click="openEdit(viewDoc); viewOpen=false">
               <span v-html="icon('edit',13)"></span> Edit
             </button>
             <button v-if="viewDoc.docstatus===0" class="inv-ab-btn inv-ab-primary" @click="submitGRN" :disabled="submitting || !prCanEdit" :title="!prCanEdit ? prNoAccess : ''">
               <span v-html="icon('send',13)"></span> {{ submitting ? 'Submitting…' : 'Submit GRN' }}
             </button>
-            <button v-if="viewDoc.docstatus===1 && viewDoc.source==='real'" class="inv-ab-btn" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="goToLandedCost(viewDoc)">
+            <button v-if="false && viewDoc.docstatus===1 && viewDoc.source==='real'" class="inv-ab-btn" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="goToLandedCost(viewDoc)">
               <span v-html="icon('purchase',13)"></span> Create Landed Cost Voucher
             </button>
             <button v-if="viewDoc.docstatus===1 && viewDoc.source==='real'" class="inv-ab-btn pr-act-cancel" :disabled="!$canDelete('inventory') || !prCanEdit" :title="!prCanEdit ? prNoAccess : (!$canDelete('inventory') ? 'Not permitted' : '')" @click="confirmTarget={row:viewDoc,mode:'cancel'}">
@@ -420,7 +423,7 @@
                 </span>
               </div>
               <div style="display:flex;align-items:center;gap:8px" @click.stop>
-                <button class="add-lines-add-btn" :disabled="!prCanSave" @click="addItem">
+                <button v-if="false" class="add-lines-add-btn" :disabled="!prCanSave" @click="addItem">
                   <span v-html="icon('plus',13)"></span> Add Item
                 </button>
                 <span class="add-card-chevron" :class="{collapsed:collapsed.items}" @click="collapsed.items=!collapsed.items">
@@ -494,7 +497,7 @@
 
               <div v-if="!form.items.length" class="pr-items-empty" style="padding:20px 0 8px">No items yet — click Add Item</div>
 
-              <button class="inv-add-line-btn" style="margin-top:12px" :disabled="!prCanSave" @click="addItem">
+              <button v-if="false" class="inv-add-line-btn" style="margin-top:12px" :disabled="!prCanSave" @click="addItem">
                 <span v-html="icon('plus',12)"></span> Add Item
               </button>
             </div>
@@ -563,6 +566,7 @@ import { usePermissions } from "../composables/usePermissions.js";
 import { flt } from "../utils/format.js";
 import { fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
+import { useLivePreview, GRN_PRINT_CONFIG, preparePRPrint } from "../composables/useLivePreview.js";
 import Pagination from "../components/Pagination.vue";
 import BulkActionBar from "../components/BulkActionBar.vue";
 import { usePagination } from "../composables/usePagination.js";
@@ -582,6 +586,8 @@ const search    = ref("");
 const tab       = ref("all");
 const viewOpen  = ref(false);
 const viewDoc   = ref(null);
+const { printDoc } = useLivePreview();
+async function printGRN(d) { printDoc(await preparePRPrint({ ...d, prepared_by_name: ownerName(d.owner) }), { ...GRN_PRINT_CONFIG, companyName: d?.company || "" }); }
 const formOpen  = ref(false);
 const saving    = ref(false);
 const submitting = ref(false);
