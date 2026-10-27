@@ -542,7 +542,7 @@
             <button class="inv-vtab" :class="{active:viewTab==='details'}" @click="viewTab='details'">Details</button>
             <button v-if="(viewDoc.purchase_type || 'Goods') === 'Goods'" class="inv-vtab" :class="{active:viewTab==='fulfill'}" @click="viewTab='fulfill'">Fulfillment</button>
             <button class="inv-vtab" :class="{active:viewTab==='links'}" @click="viewTab='links'">
-              Linked <span v-if="links.bills.length>0" class="inv-vtab-count">{{ links.bills.length }}</span>
+              Linked <span v-if="linkedCount>0" class="inv-vtab-count">{{ linkedCount }}</span>
             </button>
           </div>
 
@@ -802,8 +802,60 @@
             <div class="inv-tab-body">
               <div v-if="viewLoading" style="text-align:center;padding:32px;color:#6b7280;font-size:13px">Loading…</div>
               <template v-else>
+                <template v-if="links.purchase_receipts.length">
+                  <div class="inv-sec-lbl">Goods Receipt Notes (GRN)</div>
+                  <div class="inv-items-wrap">
+                    <table class="inv-items-table">
+                      <thead>
+                        <tr>
+                          <th>GRN #</th>
+                          <th>Date</th>
+                          <th>Status</th>
+                          <th class="th-r">Qty</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="r in links.purchase_receipts" :key="r.name">
+                          <td><DocLink doctype="Purchase Receipt" :name="r.name" /></td>
+                          <td class="text-muted mono-sm">{{ fmtDate(r.posting_date) }}</td>
+                          <td class="mono-sm">{{ grnStatus(r) }}</td>
+                          <td class="td-r mono-sm" style="font-weight:600">{{ r.total_qty }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
+
+                <template v-if="links.qc_inspections.length">
+                  <div class="inv-sec-lbl" :style="links.purchase_receipts.length ? 'margin-top:16px' : ''">Quality Inspections</div>
+                  <div class="inv-items-wrap">
+                    <table class="inv-items-table">
+                      <thead>
+                        <tr>
+                          <th>Inspection #</th>
+                          <th>GRN</th>
+                          <th>Item</th>
+                          <th class="th-r">Accepted</th>
+                          <th class="th-r">Rejected</th>
+                          <th>Result</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="q in links.qc_inspections" :key="q.name">
+                          <td><DocLink doctype="QC Inspection" :name="q.name" /></td>
+                          <td><DocLink doctype="Purchase Receipt" :name="q.reference_name" /></td>
+                          <td class="mono-sm">{{ q.item_name || q.item }}</td>
+                          <td class="td-r mono-sm">{{ q.accepted_qty }}</td>
+                          <td class="td-r mono-sm">{{ q.rejected_qty }}</td>
+                          <td class="mono-sm" :style="{ color: qcColor(q.status), fontWeight: 600 }">{{ q.status }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
+
                 <template v-if="links.bills.length">
-                  <div class="inv-sec-lbl">Vendor Bills</div>
+                  <div class="inv-sec-lbl" :style="(links.purchase_receipts.length || links.qc_inspections.length) ? 'margin-top:16px' : ''">Vendor Bills</div>
 
                   <!-- Desktop table -->
                   <div class="inv-items-wrap po-bills-desktop">
@@ -844,8 +896,8 @@
                     </div>
                   </div>
                 </template>
-                <div v-if="!links.bills.length" style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">
-                  No linked bills yet.
+                <div v-if="!linkedCount" style="text-align:center;padding:48px;color:#9ca3af;font-size:13px">
+                  No linked GRNs, inspections or bills yet.
                   <div v-if="false && canBill(viewDoc) && $canCreate('bills')" style="margin-top:12px">
                     <button class="inv-view-cta" @click="openBillModal(viewDoc)">
                       <span v-html="icon('arrow-right',14)"></span> Convert to Bill
@@ -1133,7 +1185,10 @@ const poCollapsed = reactive({ details: false, address: true, lines: false, term
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const viewLoading = ref(false), viewItems = ref([]);
 const fulfill = reactive({ lines: [], computed_status: "" });
-const links = reactive({ bills: [], purchase_receipts: [] });
+const links = reactive({ bills: [], purchase_receipts: [], qc_inspections: [] });
+const linkedCount = computed(() => links.bills.length + links.purchase_receipts.length + links.qc_inspections.length);
+function grnStatus(r) { return r.docstatus === 0 ? "Draft" : r.docstatus === 2 ? "Cancelled" : (r.status || "Submitted"); }
+function qcColor(st) { return st === "Pass" ? "#059669" : st === "Fail" ? "#dc2626" : "#d97706"; }
 const vendors = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref("");
 const taxTemplates = ref([]);
 const sortCol = ref("transaction_date"), sortDir = ref("desc");
@@ -1457,7 +1512,7 @@ async function openView(o) {
   viewLoading.value = true;
   viewItems.value = [];
   fulfill.lines = []; fulfill.computed_status = "";
-  links.bills = []; links.purchase_receipts = [];
+  links.bills = []; links.purchase_receipts = []; links.qc_inspections = [];
   approval.value = null; approvalRemarks.value = "";
   try {
     const [doc, ful, lnk, apr] = await Promise.all([
@@ -1479,7 +1534,7 @@ async function openView(o) {
       }
     }
     if (ful) { fulfill.lines = ful.lines || []; fulfill.computed_status = ful.computed_status || ""; }
-    if (lnk) { links.bills = lnk.bills || []; }
+    if (lnk) { links.bills = lnk.bills || []; links.purchase_receipts = lnk.purchase_receipts || []; links.qc_inspections = lnk.qc_inspections || []; }
   } catch {}
   viewLoading.value = false;
 }

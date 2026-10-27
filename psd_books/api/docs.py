@@ -4194,7 +4194,18 @@ def get_purchase_order_links(purchase_order):
         filters={"purchase_order": purchase_order},
         fields=["name", "posting_date", "total_qty", "status", "docstatus"],
         order_by="posting_date desc")
-    return {"bills": bills or [], "purchase_receipts": prs or []}
+    qcs = []
+    if prs:
+        qcs = frappe.get_all("QC Inspection",
+            filters={
+                "reference_type": "Purchase Receipt",
+                "reference_name": ["in", [r.name for r in prs]],
+                "docstatus": ["<", 2],
+            },
+            fields=["name", "reference_name", "item", "item_name", "inspection_date",
+                "inspected_qty", "accepted_qty", "rejected_qty", "status", "docstatus"],
+            order_by="creation desc")
+    return {"bills": bills or [], "purchase_receipts": prs or [], "qc_inspections": qcs or []}
 
 
 
