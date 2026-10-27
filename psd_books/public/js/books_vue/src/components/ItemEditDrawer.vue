@@ -23,7 +23,7 @@
 
       <!-- Tab nav -->
       <div class="ad-tabs">
-        <button v-for="t in [{k:'basic',l:'Basic Info',icon:'📋'},{k:'pricing',l:'Pricing & Tax',icon:'💰'},{k:'inventory',l:'Inventory',icon:'📦'},{k:'variants',l:'Variants',icon:'🧩'}]"
+        <button v-for="t in [{k:'basic',l:'Basic Info',icon:'📋'},{k:'pricing',l:'Pricing & Tax',icon:'💰'},{k:'inventory',l:'Inventory',icon:'📦'}]"
           :key="t.k" class="ad-tab" :class="drawerTab===t.k ? 'ad-tab--active' : ''"
           @click="drawerTab=t.k">
           {{ t.l }}
@@ -111,7 +111,8 @@
             <div v-if="SHOW_PORTAL && form.portal_item && form.disabled" style="margin-top:10px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px">
               ⚠ This item is Disabled (Inventory tab), so it won't appear in the Customer Portal even with Portal Item on. Both need to be set for it to show up.
             </div>
-            <div class="ad-toggle-row" style="margin-top:12px">
+            <!-- Is Fixed Asset (toggle, warning, category) hidden. Remove "false &&" / v-if="false" to show again. -->
+            <div v-if="false" class="ad-toggle-row" style="margin-top:12px">
               <div class="ad-toggle-left">
                 <div class="ad-toggle-title">Is Fixed Asset</div>
                 <div class="ad-toggle-sub">Auto-create a Draft Asset in the Assets module whenever this item is purchased via a submitted Purchase Invoice</div>
@@ -121,10 +122,10 @@
                 <span class="ad-switch-track ad-switch-track--green"></span>
               </label>
             </div>
-            <div v-if="form.is_fixed_asset && form.is_stock_item" style="margin-top:10px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px">
+            <div v-if="false && form.is_fixed_asset && form.is_stock_item" style="margin-top:10px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px">
               ⚠ Track Inventory is also on for this item (Inventory tab). A fixed asset shouldn't also be tracked as stock — the purchase would get double-booked (once to Fixed Asset, once to Stock/Inventory) and sit in a warehouse it'll never actually move from. Turn off Track Inventory, or uncheck Is Fixed Asset.
             </div>
-            <div class="ad-field" v-if="form.is_fixed_asset" style="margin-top:12px">
+            <div class="ad-field" v-if="false && form.is_fixed_asset" style="margin-top:12px">
               <label class="ad-label">Default Asset Category</label>
               <select v-if="!addingNewAssetCategory" class="ad-input" v-model="form.asset_category"
                 @change="if (form.asset_category === '__new__') { addingNewAssetCategory = true; form.asset_category = ''; }">
@@ -190,7 +191,8 @@
 
         <!-- ── Pricing & Tax ── -->
         <template v-else-if="drawerTab==='pricing'">
-          <div class="ad-section">
+          <!-- Rates section hidden (Buying Rate / MRP). Remove v-if="false" to show again. -->
+          <div class="ad-section" v-if="false">
             <div class="ad-section-title">Rates</div>
             <div class="ad-grid-2">
               <!-- Selling Rate hidden for Sava
@@ -315,7 +317,8 @@
                 <SearchableSelect v-model="form.default_warehouse" :options="warehouses" value-key="name" label-key="label" placeholder="Select warehouse…"/>
               </div>
             </div>
-            <div class="ad-grid-2" style="margin-top:12px">
+            <!-- Reorder Level / Reorder Qty hidden. Remove v-if="false" to show again. -->
+            <div v-if="false" class="ad-grid-2" style="margin-top:12px">
               <div class="ad-field">
                 <label class="ad-label">Reorder Level</label>
                 <input type="number" class="ad-input" v-model="form.reorder_level" min="0"/>
@@ -352,9 +355,10 @@
           </div>
 
           <div class="ad-section" v-if="form.is_stock_item">
-            <div class="ad-section-title">Manufacturing</div>
+            <!-- Manufacturing fields (title, Default BOM, Min Order Qty, Lead Time) hidden; Quality Inspection stays. -->
+            <div v-if="false" class="ad-section-title">Manufacturing</div>
 
-            <div class="ad-field" v-if="form.item_type === 'Finished Good' || form.item_type === 'Work In Progress'">
+            <div class="ad-field" v-if="false && (form.item_type === 'Finished Good' || form.item_type === 'Work In Progress')">
               <label class="ad-label">Default BOM</label>
               <select class="ad-input" v-model="form.default_bom" :disabled="drawerMode !== 'edit'">
                 <option value="">— Select —</option>
@@ -365,7 +369,7 @@
               <div class="ad-toggle-sub" style="margin-top:4px" v-else>Auto-suggested when creating a Work Order for this item.</div>
             </div>
 
-            <div class="ad-grid-2" :style="(form.item_type === 'Finished Good' || form.item_type === 'Work In Progress') ? 'margin-top:12px' : ''">
+            <div v-if="false" class="ad-grid-2" :style="(form.item_type === 'Finished Good' || form.item_type === 'Work In Progress') ? 'margin-top:12px' : ''">
               <div class="ad-field">
                 <label class="ad-label">Minimum Order Qty</label>
                 <input type="number" class="ad-input" v-model="form.min_order_qty" min="0"/>
@@ -378,7 +382,7 @@
               </div>
             </div>
 
-            <div style="margin-top:16px">
+            <div>
               <div class="ad-toggle-title" style="margin-bottom:8px">Quality Inspection Required</div>
 
               <div class="ad-toggle-row">

@@ -25,7 +25,7 @@
 
   <!-- KPI cards -->
   <div class="pj-kpis">
-    <div v-for="k in kpis" :key="k.key" class="pj-kpi" :class="'pj-kpi-' + k.key">
+    <div v-for="k in kpis" :key="k.key" class="pj-kpi pj-kpi-click" :class="['pj-kpi-' + k.key, { 'pj-kpi-on': filterTab === k.tab }]" role="button" tabindex="0" :title="'Show ' + k.label.toLowerCase()" @click="filterTab = k.tab" @keydown.enter="filterTab = k.tab">
       <div class="pj-kpi-icon" v-html="icon(k.icon, 20)"></div>
       <div class="pj-kpi-body">
         <div class="pj-kpi-label">{{ k.label }}</div>
@@ -279,10 +279,10 @@ const counts = computed(() => {
 const kpis = computed(() => {
   const open = counts.value.Open, closed = counts.value.Closed, overdue = counts.value.Overdue;
   return [
-    { key: "total", label: "TOTAL PROJECTS", value: list.value.length, sub: "All projects", icon: "folder" },
-    { key: "active", label: "ACTIVE PROJECTS", value: open, sub: "Currently open", icon: "activity" },
-    { key: "done", label: "COMPLETED", value: closed, sub: "Closed projects", icon: "check" },
-    { key: "overdue", label: "OVERDUE", value: overdue, sub: overdue ? "Past expected end date" : "None overdue", icon: "alert" },
+    { key: "total", label: "TOTAL PROJECTS", value: list.value.length, sub: "All projects", icon: "folder", tab: "all" },
+    { key: "active", label: "ACTIVE PROJECTS", value: open, sub: "Currently open", icon: "activity", tab: "Open" },
+    { key: "done", label: "COMPLETED", value: closed, sub: "Closed projects", icon: "check", tab: "Closed" },
+    { key: "overdue", label: "OVERDUE", value: overdue, sub: overdue ? "Past expected end date" : "None overdue", icon: "alert", tab: "Overdue" },
   ];
 });
 
@@ -524,6 +524,9 @@ onMounted(() => { load(); loadMembers(); loadWarehouses(); });
 .pj-kpi-active { background: #fff; } .pj-kpi-active .pj-kpi-icon { background: #ede9fe; color: #7c3aed; }
 .pj-kpi-done { background: linear-gradient(135deg, #ecfdf5, #fff); border-color: #bbf7d0; } .pj-kpi-done .pj-kpi-icon { background: #d1fae5; color: #16a34a; } .pj-kpi-done .pj-kpi-value { color: #16a34a; }
 .pj-kpi-overdue { background: linear-gradient(135deg, #fef2f2, #fff); border-color: #fecaca; } .pj-kpi-overdue .pj-kpi-icon { background: #fee2e2; color: #dc2626; } .pj-kpi-overdue .pj-kpi-value { color: #dc2626; }
+.pj-kpi-click { cursor: pointer; transition: box-shadow .15s, transform .15s, border-color .15s; }
+.pj-kpi-click:hover { box-shadow: 0 4px 14px rgba(15,23,42,.08); transform: translateY(-1px); }
+.pj-kpi-on { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.25); }
 .pj-badge-overdue { background: #fee2e2; color: #b91c1c; }
 @media (max-width: 1024px) { .pj-kpis { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 768px) { .pj-tbl { min-width: 0; } .pj-row { grid-template-columns: 1fr; } }

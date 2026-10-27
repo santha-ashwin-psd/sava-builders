@@ -23,7 +23,7 @@
     </div>
 
     <div class="mrl-kpis">
-      <div v-for="k in kpis" :key="k.key" class="mrl-kpi" :class="'mrl-kpi-' + k.key">
+      <div v-for="k in kpis" :key="k.key" class="mrl-kpi mrl-kpi-click" :class="['mrl-kpi-' + k.key, { 'mrl-kpi-on': filterStatus === k.filter }]" role="button" tabindex="0" :title="'Show ' + k.label.toLowerCase()" @click="filterStatus = k.filter" @keydown.enter="filterStatus = k.filter">
         <div class="mrl-kpi-icon" v-html="icon(k.icon, 20)"></div>
         <div>
           <div class="mrl-kpi-label">{{ k.label }}</div>
@@ -307,7 +307,8 @@ function refLabel(row) {
 
 const sorted = computed(() => {
   let r = list.value;
-  if (filterStatus.value) r = r.filter(i => i.status === filterStatus.value);
+  if (filterStatus.value === ACTIVE_KEY) r = r.filter(i => ACTIVE_STATUSES.includes(i.status));
+  else if (filterStatus.value) r = r.filter(i => i.status === filterStatus.value);
   if (filterType.value) r = r.filter(i => i.material_request_type === filterType.value);
   const q = search.value.toLowerCase().trim();
   if (q) r = r.filter(i => [i.name, i.material_request_type, i.production_plan, refLabel(i), i.owner ? ownerName(i.owner) : ""].filter(Boolean).join(" ").toLowerCase().includes(q));
@@ -319,16 +320,18 @@ const paged = computed(() => {
 });
 watch([search, filterStatus, filterType], () => { page.value = 1; });
 
+const ACTIVE_KEY = "__active";
+const ACTIVE_STATUSES = ["Draft", "Pending Approval", "Sent Back", "Approved", "Partly Issued"];
 const statusTabs = ["", "Ordered", "Approved", "Pending Approval", "Partly Issued", "Issued", "Draft", "Sent Back", "Cancelled"];
 const kpis = computed(() => {
   const l = list.value;
   const n = st => l.filter(i => i.status === st).length;
-  const active = l.filter(i => ["Draft", "Pending Approval", "Sent Back", "Approved", "Partly Issued"].includes(i.status)).length;
+  const active = l.filter(i => ACTIVE_STATUSES.includes(i.status)).length;
   return [
-    { key: "total", label: "TOTAL MATERIAL REQUESTS", value: l.length, sub: "All material requests", icon: "file" },
-    { key: "active", label: "ACTIVE REQUESTS", value: active, sub: "Currently open", icon: "activity" },
-    { key: "ordered", label: "ORDERED", value: n("Ordered"), sub: "Material requests ordered", icon: "check" },
-    { key: "pending", label: "PENDING APPROVAL", value: n("Pending Approval"), sub: "Awaiting approval", icon: "alert" },
+    { key: "total", label: "TOTAL MATERIAL REQUESTS", value: l.length, sub: "All material requests", icon: "file", filter: "" },
+    { key: "active", label: "ACTIVE REQUESTS", value: active, sub: "Currently open", icon: "activity", filter: ACTIVE_KEY },
+    { key: "ordered", label: "ORDERED", value: n("Ordered"), sub: "Material requests ordered", icon: "check", filter: "Ordered" },
+    { key: "pending", label: "PENDING APPROVAL", value: n("Pending Approval"), sub: "Awaiting approval", icon: "alert", filter: "Pending Approval" },
   ];
 });
 function exportCSV() {
@@ -876,6 +879,9 @@ select.bomx-fi:disabled { background-image: none; padding-right: 9px; }
 .mrl-kpi-label { font-size:11.5px; font-weight:600; letter-spacing:.06em; color:#4b5563; }
 .mrl-kpi-value { font-size:28px; font-weight:800; color:#111827; line-height:1.15; }
 .mrl-kpi-sub { font-size:12px; color:#6b7280; margin-top:2px; }
+.mrl-kpi-click { cursor:pointer; transition:box-shadow .15s, transform .15s, border-color .15s; }
+.mrl-kpi-click:hover { box-shadow:0 4px 14px rgba(15,23,42,.08); transform:translateY(-1px); }
+.mrl-kpi-on { border-color:#2563eb !important; box-shadow:0 0 0 2px rgba(37,99,235,.25); }
 .mrl-kpi-total { background:linear-gradient(135deg,#eff6ff,#fff); border-color:#dbeafe; } .mrl-kpi-total .mrl-kpi-icon { background:#dbeafe; color:#2563eb; }
 .mrl-kpi-active .mrl-kpi-icon { background:#ede9fe; color:#7c3aed; }
 .mrl-kpi-ordered { background:linear-gradient(135deg,#ecfdf5,#fff); border-color:#bbf7d0; } .mrl-kpi-ordered .mrl-kpi-icon { background:#d1fae5; color:#16a34a; } .mrl-kpi-ordered .mrl-kpi-value { color:#16a34a; }

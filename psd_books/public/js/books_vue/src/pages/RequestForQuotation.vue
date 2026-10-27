@@ -23,7 +23,7 @@
   </div>
 
   <div class="rfq-kpis">
-    <div v-for="k in kpis" :key="k.key" class="rfq-kpi" :class="'rfq-kpi-' + k.key">
+    <div v-for="k in kpis" :key="k.key" class="rfq-kpi rfq-kpi-click" :class="['rfq-kpi-' + k.key, { 'rfq-kpi-on': tab === k.tab }]" role="button" tabindex="0" :title="'Show ' + k.label.toLowerCase()" @click="tab = k.tab" @keydown.enter="tab = k.tab">
       <div class="rfq-kpi-icon" v-html="icon(k.icon, 20)"></div>
       <div>
         <div class="rfq-kpi-label">{{ k.label }}</div>
@@ -456,10 +456,10 @@ const kpis = computed(() => {
   const l = list.value;
   const n = st => l.filter(r => r.status === st).length;
   return [
-    { key: "total", label: "TOTAL RFQs", value: l.length, sub: "All requests", icon: "file" },
-    { key: "active", label: "ACTIVE RFQs", value: l.length - n("Cancelled"), sub: "Draft, Sent & In Progress", icon: "activity" },
-    { key: "sent", label: "SENT", value: n("Sent"), sub: "RFQs sent to suppliers", icon: "check" },
-    { key: "cancelled", label: "CANCELLED", value: n("Cancelled"), sub: "Cancelled RFQs", icon: "cancel" },
+    { key: "total", label: "TOTAL RFQs", value: l.length, sub: "All requests", icon: "file", tab: "all" },
+    { key: "active", label: "ACTIVE RFQs", value: l.length - n("Cancelled"), sub: "Draft, Sent & In Progress", icon: "activity", tab: "active" },
+    { key: "sent", label: "SENT", value: n("Sent"), sub: "RFQs sent to suppliers", icon: "check", tab: "Sent" },
+    { key: "cancelled", label: "CANCELLED", value: n("Cancelled"), sub: "Cancelled RFQs", icon: "cancel", tab: "Cancelled" },
   ];
 });
 function exportCSV() {
@@ -474,7 +474,8 @@ function exportCSV() {
 
 const filtered = computed(() => {
   let rows = list.value;
-  if (tab.value !== "all") rows = rows.filter(r => r.status === tab.value);
+  if (tab.value === "active") rows = rows.filter(r => r.status !== "Cancelled");
+  else if (tab.value !== "all") rows = rows.filter(r => r.status === tab.value);
   if (dateRange.value !== "all") rows = rows.filter(inDateRange);
   const q = search.value.trim().toLowerCase();
   if (q) rows = rows.filter(r => [r.name, r.material_request, r.project].some(v => (v || "").toLowerCase().includes(q)));
@@ -852,6 +853,9 @@ onMounted(async () => {
 .rfq-kpi-label { font-size:11.5px; font-weight:600; letter-spacing:.06em; color:#4b5563; }
 .rfq-kpi-value { font-size:28px; font-weight:800; color:#111827; line-height:1.15; }
 .rfq-kpi-sub { font-size:12px; color:#6b7280; margin-top:2px; }
+.rfq-kpi-click { cursor:pointer; transition:box-shadow .15s, transform .15s, border-color .15s; }
+.rfq-kpi-click:hover { box-shadow:0 4px 14px rgba(15,23,42,.08); transform:translateY(-1px); }
+.rfq-kpi-on { border-color:#2563eb !important; box-shadow:0 0 0 2px rgba(37,99,235,.25); }
 .rfq-kpi-total { background:linear-gradient(135deg,#eff6ff,#fff); border-color:#dbeafe; } .rfq-kpi-total .rfq-kpi-icon { background:#dbeafe; color:#2563eb; }
 .rfq-kpi-active { background:linear-gradient(135deg,#f5f3ff,#fff); border-color:#ede9fe; } .rfq-kpi-active .rfq-kpi-icon { background:#ede9fe; color:#7c3aed; }
 .rfq-kpi-sent { background:linear-gradient(135deg,#ecfdf5,#fff); border-color:#bbf7d0; } .rfq-kpi-sent .rfq-kpi-icon { background:#d1fae5; color:#16a34a; }
