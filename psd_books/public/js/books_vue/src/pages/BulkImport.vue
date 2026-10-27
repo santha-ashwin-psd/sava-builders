@@ -520,7 +520,7 @@ const ALL_CATEGORIES = [
 
 // Sava: Sales category and Customers import are hidden
 const HIDDEN_CATEGORIES = ["sales"];
-const HIDDEN_TYPES = ["Customer", "Expense"];
+const HIDDEN_TYPES = ["Customer", "Expense", "Purchase Invoice"]; // Purchase Invoice = Bills
 const CATEGORIES = ALL_CATEGORIES.filter(c => !HIDDEN_CATEGORIES.includes(c.key));
 
 const CATEGORY_MAP = {
