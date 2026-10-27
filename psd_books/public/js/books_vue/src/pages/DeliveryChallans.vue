@@ -164,20 +164,14 @@
       <div class="inv-drawer-panel inv-view-page dc-view-drawer">
         <template v-if="viewDoc">
 
-          <!-- Header -->
-          <div class="inv-view-header dc-view-head">
-            <div class="dc-vhead-content">
-              <div class="dc-vhead-title-row">
-                <div class="inv-view-number">{{ viewDoc.name }}</div>
-                <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
-              </div>
-              <div class="inv-view-subtitle">Delivery Note · {{ viewDoc.posting_date }}</div>
+          <!-- Header (same look as the RFQ / Material Request view drawers) -->
+          <div class="inv-view-header">
+            <div>
+              <div class="inv-view-number">{{ viewDoc.name }}</div>
+              <div class="inv-view-subtitle">Delivery Note · {{ viewDoc.posting_date }} · <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span></div>
             </div>
-            <button class="inv-dclose dc-vhead-close" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
-          </div>
-
-          <!-- Action bar -->
-          <div class="inv-action-bar">
+            <div class="dc-hdr-right">
+              <div class="dc-hdr-actions">
             <button v-if="viewDoc._source==='dn'" class="inv-ab-btn" @click="printDN(viewDoc)">
               <span v-html="icon('printer',13)"></span> Print
             </button>
@@ -201,6 +195,9 @@
               class="inv-ab-btn dc-act-del" :disabled="!$canDelete('inventory')" :title="!$canDelete('inventory') ? 'Not permitted' : ''" @click="deleteTarget={row:viewDoc,mode:'delete'}">
               <span v-html="icon('trash',13)"></span> Delete
             </button>
+              </div>
+              <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+            </div>
           </div>
 
           <!-- Body -->
@@ -394,18 +391,6 @@
           <div class="inv-view-footer" v-if="viewDoc.owner">
             Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
             <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
-          </div>
-
-          <!-- Footer -->
-          <div class="inv-dfooter delivery-challan-footer">
-            <span class="inv-hdr-badge" :class="statusClass(viewDoc)" style="margin-right:auto">{{ statusLabel(viewDoc) }}</span>
-            <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-            <button v-if="canEdit(viewDoc) && $canEdit('inventory')" class="form-btn form-btn-outline" @click="openEdit(viewDoc);viewOpen=false">
-              <span v-html="icon('edit',13)"></span> Edit
-            </button>
-            <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" :disabled="submitting || !$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="submitChallan">
-              {{ submitting ? 'Submitting…' : 'Submit Delivery Note' }}
-            </button>
           </div>
 
         </template>
@@ -1853,7 +1838,23 @@ onMounted(async () => {
 .req { color:#dc2626; }
 .sortable { cursor:pointer;user-select:none; }
 .sortable:hover { color:#2563eb; }
-.dc-view-drawer { width: 625px; right: -625px; }
+/* View drawer: same look as the RFQ view drawer */
+.dc-view-drawer { width: min(960px, 100vw); max-width: 100vw; background: #f4f6f9; }
+.dc-view-drawer .inv-view-header { background: linear-gradient(135deg,#1a237e 0%,#1565c0 100%); padding: 14px 28px; border-bottom: none; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.dc-view-drawer .inv-view-number { color: #fff; font-size: 20px; }
+.dc-view-drawer .inv-view-subtitle { color: rgba(255,255,255,.65); font-size: 12px; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dc-hdr-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.dc-hdr-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.dc-view-drawer .dc-hdr-actions .inv-ab-btn { background: #fff; border-color: #fff; color: #1565c0; font-weight: 600; }
+.dc-view-drawer .dc-hdr-actions .inv-ab-btn:hover { background: #f1f5f9; border-color: #f1f5f9; color: #1565c0; }
+.dc-view-drawer .dc-hdr-actions .inv-ab-primary { background: #dbeafe; border-color: #dbeafe; color: #1d4ed8; }
+.dc-view-drawer .dc-hdr-actions .inv-ab-primary:hover { background: #bfdbfe; border-color: #bfdbfe; color: #1d4ed8; }
+.dc-view-drawer .dc-hdr-actions .dc-act-cancel,
+.dc-view-drawer .dc-hdr-actions .dc-act-del { background: #fee2e2 !important; border-color: #fee2e2 !important; color: #dc2626 !important; }
+.dc-view-drawer .dc-hdr-actions .dc-act-cancel:hover,
+.dc-view-drawer .dc-hdr-actions .dc-act-del:hover { background: #fecaca !important; border-color: #fecaca !important; color: #b91c1c !important; }
+.dc-view-drawer .inv-dclose { width: 30px; height: 30px; border: none; border-radius: 8px; background: #fff; color: #000; display: grid; place-items: center; flex-shrink: 0; }
+.dc-view-drawer .inv-dclose:hover { background: #f8fafc; }
 /* ══════════════════════════════════════════════
    MOBILE — Items → Card layout (375px & 425px)
    Matches reference screenshot exactly.

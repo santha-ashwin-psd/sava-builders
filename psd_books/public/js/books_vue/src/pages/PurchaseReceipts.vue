@@ -167,20 +167,14 @@
       <div class="inv-drawer-panel inv-view-page pr-view-drawer">
         <template v-if="viewDoc">
 
-          <!-- Header -->
+          <!-- Header (same look as the RFQ view drawer) -->
           <div class="inv-view-header">
             <div>
               <div class="inv-view-number">{{ viewDoc.name }}</div>
-              <div class="inv-view-subtitle">Purchase Receipt (GRN) · {{ viewDoc.posting_date }}</div>
+              <div class="inv-view-subtitle">Purchase Receipt (GRN) · {{ viewDoc.posting_date }} · <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span></div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span>
-              <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
-            </div>
-          </div>
-
-          <!-- Action bar -->
-          <div class="inv-action-bar">
+            <div class="pr-hdr-right">
+              <div class="pr-hdr-actions">
             <button v-if="viewDoc.source==='real'" class="inv-ab-btn" @click="printGRN(viewDoc)">
               <span v-html="icon('printer',13)"></span> Print
             </button>
@@ -199,6 +193,9 @@
             <button v-if="viewDoc.docstatus===0 && viewDoc.source==='real'" class="inv-ab-btn pr-act-del" :disabled="!$canDelete('inventory') || !prCanEdit" :title="!prCanEdit ? prNoAccess : (!$canDelete('inventory') ? 'Not permitted' : '')" @click="confirmTarget={row:viewDoc,mode:'delete'}">
               <span v-html="icon('trash',13)"></span> Delete
             </button>
+              </div>
+              <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
+            </div>
           </div>
 
           <!-- Body -->
@@ -296,18 +293,6 @@
           <div class="inv-view-footer" v-if="viewDoc.owner">
             Created by {{ ownerName(viewDoc.owner) }} on {{ fmtDate(viewDoc.creation) }}
             <template v-if="viewDoc.modified_by"> · Last modified by {{ ownerName(viewDoc.modified_by) }} on {{ fmtDate(viewDoc.modified) }}</template>
-          </div>
-
-          <!-- Footer -->
-          <div class="inv-dfooter">
-            <span class="inv-hdr-badge" :class="statusClass(viewDoc)" style="margin-right:auto">{{ statusLabel(viewDoc) }}</span>
-            <button class="form-btn form-btn-outline" @click="viewOpen=false">Close</button>
-            <button v-if="canEdit(viewDoc)" class="form-btn form-btn-outline" :disabled="!prCanEdit" :title="!prCanEdit ? prNoAccess : ''" @click="openEdit(viewDoc); viewOpen=false">
-              <span v-html="icon('edit',13)"></span> Edit
-            </button>
-            <button v-if="viewDoc.docstatus===0" class="form-btn form-btn-primary" @click="submitGRN" :disabled="submitting || !prCanEdit" :title="!prCanEdit ? prNoAccess : ''">
-              {{ submitting ? 'Submitting…' : 'Submit GRN' }}
-            </button>
           </div>
 
         </template>
@@ -1234,7 +1219,23 @@ onMounted(async () => {
 .fw-600 { font-weight:600; }
 .c-muted { color:#6b7280; }
 .mono { font-size:13px; }
-.pr-view-drawer { width: 600px; right: -600px; }
+/* View drawer: same look as the RFQ view drawer */
+.pr-view-drawer { width: min(960px, 100vw); max-width: 100vw; background: #f4f6f9; }
+.pr-view-drawer .inv-view-header { background: linear-gradient(135deg,#1a237e 0%,#1565c0 100%); padding: 14px 28px; border-bottom: none; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.pr-view-drawer .inv-view-number { color: #fff; font-size: 20px; }
+.pr-view-drawer .inv-view-subtitle { color: rgba(255,255,255,.65); font-size: 12px; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pr-hdr-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.pr-hdr-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.pr-view-drawer .pr-hdr-actions .inv-ab-btn { background: #fff; border-color: #fff; color: #1565c0; font-weight: 600; }
+.pr-view-drawer .pr-hdr-actions .inv-ab-btn:hover { background: #f1f5f9; border-color: #f1f5f9; color: #1565c0; }
+.pr-view-drawer .pr-hdr-actions .inv-ab-primary { background: #dbeafe; border-color: #dbeafe; color: #1d4ed8; }
+.pr-view-drawer .pr-hdr-actions .inv-ab-primary:hover { background: #bfdbfe; border-color: #bfdbfe; color: #1d4ed8; }
+.pr-view-drawer .pr-hdr-actions .pr-act-cancel,
+.pr-view-drawer .pr-hdr-actions .pr-act-del { background: #fee2e2 !important; border-color: #fee2e2 !important; color: #dc2626 !important; }
+.pr-view-drawer .pr-hdr-actions .pr-act-cancel:hover,
+.pr-view-drawer .pr-hdr-actions .pr-act-del:hover { background: #fecaca !important; border-color: #fecaca !important; color: #b91c1c !important; }
+.pr-view-drawer .inv-dclose { width: 30px; height: 30px; border: none; border-radius: 8px; background: #fff; color: #000; display: grid; place-items: center; flex-shrink: 0; }
+.pr-view-drawer .inv-dclose:hover { background: #f8fafc; }
 
 /* ── Mobile cards (hidden on desktop, base display:none must precede @media) ── */
 .pr-mobile-cards { display: none; }
