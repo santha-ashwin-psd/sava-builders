@@ -13,8 +13,23 @@
       </button>
     </div>
     <div style="margin-left:auto;display:flex;gap:6px">
+      <select v-model="dateRange" class="sales-select" title="Filter by date">
+        <option v-for="d in DATE_RANGES" :key="d.k" :value="d.k">{{ d.l }}</option>
+      </select>
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
+      <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV" :disabled="!filtered.length"><span v-html="icon('download',13)"></span> CSV</button>
       <!-- New RFQ hidden: RFQs are raised only via Material Request -->
+    </div>
+  </div>
+
+  <div class="rfq-kpis">
+    <div v-for="k in kpis" :key="k.key" class="rfq-kpi" :class="'rfq-kpi-' + k.key">
+      <div class="rfq-kpi-icon" v-html="icon(k.icon, 20)"></div>
+      <div>
+        <div class="rfq-kpi-label">{{ k.label }}</div>
+        <div class="rfq-kpi-value">{{ k.value }}</div>
+        <div class="rfq-kpi-sub">{{ k.sub }}</div>
+      </div>
     </div>
   </div>
 
@@ -45,7 +60,7 @@
         <tr v-else-if="!filtered.length">
           <td colspan="7" class="bk-empty-state">
             <div class="bk-empty-inner">
-              <p class="bk-empty-title">{{ search || tab!=='all' ? 'No results match your filters' : 'No quotation requests yet' }}</p>
+              <p class="bk-empty-title">{{ search || tab!=='all' || dateRange!=='all' ? 'No results match your filters' : 'No quotation requests yet' }}</p>
               <p v-if="!search && tab==='all'" class="bk-empty-sub">Open an Approved Material Request and click Create RFQ.</p>
             </div>
           </td>
@@ -54,8 +69,8 @@
           <td><DocLink doctype="Request for Quotation" :name="r.name" /></td>
           <td class="mono-sm">{{ r.material_request || '—' }}</td>
           <td class="c-muted">{{ r.project || '—' }}</td>
-          <td class="c-muted mono-sm">{{ r.posting_date || '—' }}</td>
-          <td class="c-muted mono-sm">{{ r.respond_by || '—' }}</td>
+          <td class="c-muted">{{ r.posting_date ? fmtDate(r.posting_date) : '—' }}</td>
+          <td class="c-muted">{{ r.respond_by ? fmtDate(r.respond_by) : '—' }}</td>
           <td><span class="inv-status-badge" :class="statusClass(displayStatus(r))">{{ displayStatus(r) }}</span></td>
           <td @click.stop>
             <div class="pr-actions-row">
@@ -80,33 +95,31 @@
           <div class="inv-view-header">
             <div>
               <div class="inv-view-number">{{ viewDoc.name }}</div>
-              <div class="inv-view-subtitle">Request for Quotation · {{ viewDoc.posting_date }}</div>
+              <div class="inv-view-subtitle">Request for Quotation · {{ viewDoc.posting_date }} · <span class="inv-hdr-badge" :class="statusClass(displayStatus(viewDoc))">{{ displayStatus(viewDoc) }}</span></div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <span class="inv-hdr-badge" :class="statusClass(displayStatus(viewDoc))">{{ displayStatus(viewDoc) }}</span>
+            <div class="rfq-hdr-right">
+              <div class="rfq-hdr-actions">
+                <button v-if="canSend(viewDoc)" class="inv-ab-btn inv-ab-primary" :disabled="sending || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="sendRfq">
+                  <span v-html="icon('send',13)"></span> {{ sending ? 'Sending…' : sendLabel(viewDoc) }}
+                </button>
+                <button v-if="canCompare(viewDoc)" class="inv-ab-btn" :disabled="!hasQuotes(viewDoc)" :title="!hasQuotes(viewDoc) ? 'Enter at least one quotation first' : ''" @click="cmp.open=true">
+                  <span v-html="icon('grid',13)"></span> Compare Quotations
+                </button>
+                <button v-if="cmpInfo && cmpInfo.status==='Approved' && viewDoc.status!=='Cancelled'" class="inv-ab-btn inv-ab-primary" :disabled="creatingLpos || !canMakeLpo" :title="!canMakeLpo ? 'Read-only access' : ''" @click="createLpos">
+                  <span v-html="icon('plus',13)"></span> {{ creatingLpos ? 'Creating…' : 'Create LPOs' }}
+                </button>
+                <button v-if="cmpInfo && cmpInfo.balance_open && viewDoc.status!=='Cancelled'" class="inv-ab-btn inv-ab-primary" :disabled="!canMakeLpo" :title="!canMakeLpo ? 'Read-only access' : 'Open the comparison to order the balance'" @click="cmp.open=true">
+                  <span v-html="icon('plus',13)"></span> Order balance
+                </button>
+                <button v-if="viewDoc.status!=='Cancelled' && $canEdit('bills')" class="inv-ab-btn" @click="openEdit(viewDoc); viewOpen=false">
+                  <span v-html="icon('edit',13)"></span> Edit
+                </button>
+                <button v-if="viewDoc.status!=='Cancelled'" class="inv-ab-btn pr-act-cancel" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="cancelRfq">
+                  <span v-html="icon('x',13)"></span> Cancel RFQ
+                </button>
+              </div>
               <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
             </div>
-          </div>
-
-          <div class="inv-action-bar">
-            <button v-if="canSend(viewDoc)" class="inv-ab-btn inv-ab-primary" :disabled="sending || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="sendRfq">
-              <span v-html="icon('send',13)"></span> {{ sending ? 'Sending…' : sendLabel(viewDoc) }}
-            </button>
-            <button v-if="canCompare(viewDoc)" class="inv-ab-btn" :disabled="!hasQuotes(viewDoc)" :title="!hasQuotes(viewDoc) ? 'Enter at least one quotation first' : ''" @click="cmp.open=true">
-              <span v-html="icon('grid',13)"></span> Compare Quotations
-            </button>
-            <button v-if="cmpInfo && cmpInfo.status==='Approved' && viewDoc.status!=='Cancelled'" class="inv-ab-btn inv-ab-primary" :disabled="creatingLpos || !canMakeLpo" :title="!canMakeLpo ? 'Read-only access' : ''" @click="createLpos">
-              <span v-html="icon('plus',13)"></span> {{ creatingLpos ? 'Creating…' : 'Create LPOs' }}
-            </button>
-            <button v-if="cmpInfo && cmpInfo.balance_open && viewDoc.status!=='Cancelled'" class="inv-ab-btn inv-ab-primary" :disabled="!canMakeLpo" :title="!canMakeLpo ? 'Read-only access' : 'Open the comparison to order the balance'" @click="cmp.open=true">
-              <span v-html="icon('plus',13)"></span> Order balance
-            </button>
-            <button v-if="viewDoc.status!=='Cancelled' && $canEdit('bills')" class="inv-ab-btn" @click="openEdit(viewDoc); viewOpen=false">
-              <span v-html="icon('edit',13)"></span> Edit
-            </button>
-            <button v-if="viewDoc.status!=='Cancelled'" class="inv-ab-btn pr-act-cancel" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="cancelRfq">
-              <span v-html="icon('x',13)"></span> Cancel RFQ
-            </button>
           </div>
 
           <div v-if="approverInfo" class="pr-info-val" style="padding:10px 20px;color:#b45309;font-size:12.5px;background:#fffbeb;border-bottom:1px solid #fde68a">
@@ -402,6 +415,19 @@ const list     = ref([]);
 const loading  = ref(false);
 const search   = ref("");
 const tab      = ref("all");
+const dateRange = ref("all");
+const DATE_RANGES = [{k:"all",l:"All Time"},{k:"month",l:"This Month"},{k:"quarter",l:"This Quarter"},{k:"year",l:"This Year"}];
+function inDateRange(r) {
+  if (dateRange.value === "all") return true;
+  const d = String(r.posting_date || "").slice(0, 10);
+  if (!d) return false;
+  const n = new Date(), y = String(n.getFullYear()), m = n.getMonth();
+  const dm = Number(d.slice(5, 7)) - 1;
+  if (dateRange.value === "year") return d.slice(0, 4) === y;
+  if (dateRange.value === "month") return d.slice(0, 4) === y && dm === m;
+  const q = Math.floor(m / 3) * 3;
+  return d.slice(0, 4) === y && dm >= q && dm < q + 3;
+}
 const viewOpen = ref(false);
 const viewDoc  = ref(null);
 const formOpen = ref(false);
@@ -426,9 +452,30 @@ const tabCounts = computed(() => ({
   Cancelled: list.value.filter(r => r.status === "Cancelled").length,
 }));
 
+const kpis = computed(() => {
+  const l = list.value;
+  const n = st => l.filter(r => r.status === st).length;
+  return [
+    { key: "total", label: "TOTAL RFQs", value: l.length, sub: "All requests", icon: "file" },
+    { key: "active", label: "ACTIVE RFQs", value: l.length - n("Cancelled"), sub: "Draft, Sent & In Progress", icon: "activity" },
+    { key: "sent", label: "SENT", value: n("Sent"), sub: "RFQs sent to suppliers", icon: "check" },
+    { key: "cancelled", label: "CANCELLED", value: n("Cancelled"), sub: "Cancelled RFQs", icon: "cancel" },
+  ];
+});
+function exportCSV() {
+  const headers = ["RFQ #", "Material Request", "Project", "Date", "Respond By", "Status"];
+  const rows = filtered.value.map(r => [r.name, r.material_request || "", r.project || "", r.posting_date || "", r.respond_by || "", displayStatus(r)]);
+  const csv = [headers, ...rows].map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = "requests_for_quotation.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
 const filtered = computed(() => {
   let rows = list.value;
   if (tab.value !== "all") rows = rows.filter(r => r.status === tab.value);
+  if (dateRange.value !== "all") rows = rows.filter(inDateRange);
   const q = search.value.trim().toLowerCase();
   if (q) rows = rows.filter(r => [r.name, r.material_request, r.project].some(v => (v || "").toLowerCase().includes(q)));
   return rows;
@@ -799,13 +846,37 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.rfq-kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin:0 0 18px; }
+.rfq-kpi { display:flex; align-items:center; gap:16px; padding:20px 22px; border:1px solid #e5e7eb; border-radius:14px; background:#fff; }
+.rfq-kpi-icon { width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.rfq-kpi-label { font-size:11.5px; font-weight:600; letter-spacing:.06em; color:#4b5563; }
+.rfq-kpi-value { font-size:28px; font-weight:800; color:#111827; line-height:1.15; }
+.rfq-kpi-sub { font-size:12px; color:#6b7280; margin-top:2px; }
+.rfq-kpi-total { background:linear-gradient(135deg,#eff6ff,#fff); border-color:#dbeafe; } .rfq-kpi-total .rfq-kpi-icon { background:#dbeafe; color:#2563eb; }
+.rfq-kpi-active { background:linear-gradient(135deg,#f5f3ff,#fff); border-color:#ede9fe; } .rfq-kpi-active .rfq-kpi-icon { background:#ede9fe; color:#7c3aed; }
+.rfq-kpi-sent { background:linear-gradient(135deg,#ecfdf5,#fff); border-color:#bbf7d0; } .rfq-kpi-sent .rfq-kpi-icon { background:#d1fae5; color:#16a34a; }
+.rfq-kpi-cancelled { background:linear-gradient(135deg,#fef2f2,#fff); border-color:#fecaca; } .rfq-kpi-cancelled .rfq-kpi-icon { background:#fee2e2; color:#dc2626; } .rfq-kpi-cancelled .rfq-kpi-value { color:#dc2626; }
+@media (max-width:1024px) { .rfq-kpis { grid-template-columns:repeat(2,1fr); } }
 .rfq-mr-note{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:10px 14px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;color:#1e40af;font-size:13px}
 .rfq-mr-link{color:#1d4ed8;font-weight:600;text-decoration:none}
 .rfq-mr-link:hover{text-decoration:underline}
 /* RFQ view drawer: same look as the GRN / PO view drawers.
    list.css, view.css, edit.css and add.css are already global (main.js);
    only the page-scoped pr-* rules were missing here. */
-.pr-view-drawer { width: 900px; max-width: 96vw; }
+.pr-view-drawer { width: min(960px, 100vw); max-width: 100vw; background: #f4f6f9; }
+.pr-view-drawer .inv-view-header { background: linear-gradient(135deg,#1a237e 0%,#1565c0 100%); padding: 14px 28px; border-bottom: none; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.pr-view-drawer .inv-view-number { color: #fff; font-size: 20px; }
+.pr-view-drawer .inv-view-subtitle { color: rgba(255,255,255,.65); font-size: 12px; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rfq-hdr-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.rfq-hdr-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.pr-view-drawer .rfq-hdr-actions .inv-ab-btn { background: #fff; border-color: #fff; color: #1565c0; font-weight: 600; }
+.pr-view-drawer .rfq-hdr-actions .inv-ab-btn:hover { background: #f1f5f9; border-color: #f1f5f9; color: #1565c0; }
+.pr-view-drawer .rfq-hdr-actions .inv-ab-primary { background: #dbeafe; border-color: #dbeafe; color: #1d4ed8; }
+.pr-view-drawer .rfq-hdr-actions .inv-ab-primary:hover { background: #bfdbfe; border-color: #bfdbfe; color: #1d4ed8; }
+.pr-view-drawer .rfq-hdr-actions .pr-act-cancel { background: #fee2e2 !important; border-color: #fee2e2 !important; color: #dc2626 !important; }
+.pr-view-drawer .rfq-hdr-actions .pr-act-cancel:hover { background: #fecaca !important; border-color: #fecaca !important; color: #b91c1c !important; }
+.pr-view-drawer .inv-dclose { width: 30px; height: 30px; border: none; border-radius: 8px; background: #fff; color: #000; display: grid; place-items: center; flex-shrink: 0; }
+.pr-view-drawer .inv-dclose:hover { background: #f8fafc; }
 
 /* -- Action bar primary button -- */
 .inv-ab-primary { background:#2563eb;border-color:#2563eb;color:#fff; }

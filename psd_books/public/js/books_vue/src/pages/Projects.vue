@@ -14,9 +14,24 @@
       </button>
     </div>
     <div class="sales-actions">
+      <select v-model="dateRange" class="sales-select" title="Filter by start date">
+        <option v-for="d in dateRanges" :key="d.key" :value="d.key">{{ d.label }}</option>
+      </select>
       <button class="sales-btn-ghost" @click="load" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
       <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV" :disabled="!filtered.length"><span v-html="icon('download',14)"></span> CSV</button>
       <button class="sales-btn-primary" :disabled="!canCreateProject" :title="!canCreateProject ? 'Only a Project Manager, Books Admin or Director can create projects' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Project</button>
+    </div>
+  </div>
+
+  <!-- KPI cards -->
+  <div class="pj-kpis">
+    <div v-for="k in kpis" :key="k.key" class="pj-kpi" :class="'pj-kpi-' + k.key">
+      <div class="pj-kpi-icon" v-html="icon(k.icon, 20)"></div>
+      <div class="pj-kpi-body">
+        <div class="pj-kpi-label">{{ k.label }}</div>
+        <div class="pj-kpi-value">{{ k.value }}</div>
+        <div class="pj-kpi-sub">{{ k.sub }}</div>
+      </div>
     </div>
   </div>
 
@@ -35,7 +50,7 @@
       <tbody>
         <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="7"><div class="shimmer"></div></td></tr></template>
         <tr v-else-if="!sorted.length"><td colspan="7" class="bk-empty-state"><div class="bk-empty-inner">
-          <template v-if="search || filterTab!=='all'">
+          <template v-if="search || filterTab!=='all' || dateRange!=='all'">
             <p class="bk-empty-title">No projects match your filters</p>
           </template>
           <template v-else>
@@ -50,7 +65,7 @@
           <td @click="openEdit(row)" data-label="Start Date">{{ row.start_date ? fmtDate(row.start_date) : '—' }}</td>
           <td @click="openEdit(row)" data-label="Expected End">{{ row.expected_end_date ? fmtDate(row.expected_end_date) : '—' }}</td>
           <td @click="openEdit(row)" data-label="Project Manager">{{ row.project_manager ? (members[row.project_manager] || row.project_manager) : '—' }}</td>
-          <td @click="openEdit(row)" data-label="Status"><span class="inv-status-badge" :class="row.status === 'Closed' ? 'status-draft' : 'status-active'">{{ row.status || 'Open' }}</span></td>
+          <td @click="openEdit(row)" data-label="Status"><span class="inv-status-badge" :class="isOverdue(row) ? 'pj-badge-overdue' : (row.status === 'Closed' ? 'status-draft' : 'status-active')">{{ isOverdue(row) ? 'Overdue' : (row.status || 'Open') }}</span></td>
           <td style="text-align:center;white-space:nowrap" @click.stop>
             <button class="inv-act-btn" @click="openEdit(row)" :disabled="!canEditProject" title="Edit"><span v-html="icon('edit',13)"></span></button>
           </td>
@@ -67,35 +82,42 @@
   <div v-if="showForm" class="pj-overlay" @click.self="closeForm">
     <div class="pj-card">
       <div class="pj-head">
-        <h3 class="pj-title">{{ isEdit ? 'Edit Project' : 'New Project' }}</h3>
-        <button class="pj-close" @click="closeForm">×</button>
+        <div class="pj-head-icon" v-html="icon('folder', 24)"></div>
+        <div class="pj-head-text">
+          <h3 class="pj-title">{{ isEdit ? 'Edit Project' : 'New Project' }}</h3>
+          <div class="pj-subtitle">{{ isEdit ? 'Update project details' : 'Create a new project and set project details' }}</div>
+        </div>
+        <button type="button" class="pj-close" @click="closeForm" title="Close"><span v-html="icon('x', 20)"></span></button>
       </div>
       <form class="pj-body" @submit.prevent="save">
         <div class="pj-group">
           <label>Project Code <span class="nim-req">*</span></label>
-          <input v-model="form.project_code" :disabled="isEdit" required maxlength="40" placeholder="e.g. SB-001" />
+          <div class="pj-ctl"><span class="pj-ico" v-html="icon('file', 16)"></span><input v-model="form.project_code" :disabled="isEdit" required maxlength="40" placeholder="e.g. SB-001" /></div>
         </div>
         <div class="pj-group">
           <label>Project Name <span class="nim-req">*</span></label>
-          <input v-model="form.project_name" required maxlength="140" :disabled="formLocked" />
+          <div class="pj-ctl"><span class="pj-ico" v-html="TEXT_ICON"></span><input v-model="form.project_name" required maxlength="140" :disabled="formLocked" placeholder="Enter project name" /></div>
         </div>
         <div class="pj-row">
           <div class="pj-group">
             <label>Start Date <span class="nim-req">*</span></label>
-            <input type="date" v-model="form.start_date" required :disabled="formLocked" />
+            <div class="pj-ctl"><span class="pj-ico" v-html="icon('calendar', 16)"></span><input type="date" v-model="form.start_date" required :disabled="formLocked" /></div>
           </div>
           <div class="pj-group">
             <label>Expected End Date</label>
-            <input type="date" v-model="form.expected_end_date" :min="form.start_date || null" :disabled="formLocked" />
+            <div class="pj-ctl"><span class="pj-ico" v-html="icon('calendar', 16)"></span><input type="date" v-model="form.expected_end_date" :min="form.start_date || null" :disabled="formLocked" /></div>
           </div>
         </div>
         <div class="pj-group">
           <label>Project Manager <span v-if="isAdmin && !isEdit" style="color:#e03131">*</span></label>
-          <select v-if="isAdmin" v-model="form.project_manager" :disabled="formLocked" :required="!isEdit">
-            <option value="" :disabled="!isEdit">{{ isEdit ? '— None —' : '— Select Project Manager —' }}</option>
-            <option v-for="m in managerOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
-          </select>
-          <input v-else :value="managerLabel" disabled />
+          <div class="pj-ctl">
+            <span class="pj-ico" v-html="icon('user', 16)"></span>
+            <select v-if="isAdmin" v-model="form.project_manager" :disabled="formLocked" :required="!isEdit">
+              <option value="" :disabled="!isEdit">{{ isEdit ? '— None —' : '— Select Project Manager —' }}</option>
+              <option v-for="m in managerOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+            </select>
+            <input v-else :value="managerLabel" disabled />
+          </div>
           <div v-if="isAdmin" class="pj-hint">
             Approves this project's material requests. Only users with the Project Manager role are listed.
             <span v-if="!managerOptions.length"> No Project Manager exists yet: add one under Settings &gt; Users.</span>
@@ -106,11 +128,14 @@
         </div>
         <div class="pj-group">
           <label>Warehouse</label>
-          <select v-model="form.warehouse" :disabled="formLocked">
-            <option value="">— None —</option>
-            <option v-for="w in warehouseOptions" :key="w" :value="w">{{ w }}</option>
-            <option v-if="form.warehouse && !warehouseOptions.includes(form.warehouse)" :value="form.warehouse">{{ form.warehouse }}</option>
-          </select>
+          <div class="pj-ctl">
+            <span class="pj-ico" v-html="icon('box', 16)"></span>
+            <select v-model="form.warehouse" :disabled="formLocked">
+              <option value="">— None —</option>
+              <option v-for="w in warehouseOptions" :key="w" :value="w">{{ w }}</option>
+              <option v-if="form.warehouse && !warehouseOptions.includes(form.warehouse)" :value="form.warehouse">{{ form.warehouse }}</option>
+            </select>
+          </div>
           <div class="pj-hint">Project store for this project (optional). Linked both ways with the warehouse's Projects list. Create a new store under Inventory &gt; Warehouses.</div>
         </div>
         <div v-if="noProjectRights" class="pj-hint" style="margin-bottom:8px">
@@ -118,7 +143,7 @@
         </div>
         <div v-if="isEdit" class="pj-group">
           <label>Status</label>
-          <input :value="form.status || 'Open'" disabled />
+          <div class="pj-ctl"><span class="pj-ico" v-html="icon('info', 16)"></span><input :value="form.status || 'Open'" disabled /></div>
           <div v-if="isClosed && form.closed_on" class="pj-hint">
             Closed by {{ form.closed_by || 'unknown' }} on {{ String(form.closed_on).slice(0, 16).replace('T', ' ') }}
           </div>
@@ -201,25 +226,71 @@ const isClosed = computed(() => isEdit.value && form.value.status === "Closed");
 const noProjectRights = computed(() => isEdit.value ? !canEditProject.value : !canCreateProject.value);
 const formLocked = computed(() => isClosed.value || noProjectRights.value);
 
+const TEXT_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>';
+
 const tabs = [
   { key: "all", label: "All" },
   { key: "Open", label: "Open" },
+  { key: "Overdue", label: "Overdue" },
   { key: "Closed", label: "Closed" },
 ];
+const dateRange = ref("all");
+const dateRanges = [
+  { key: "all", label: "All Time" },
+  { key: "month", label: "This Month" },
+  { key: "quarter", label: "This Quarter" },
+  { key: "year", label: "This Year" },
+];
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+// Open project whose expected end date has passed.
+function isOverdue(r) {
+  return r.status !== "Closed" && !!r.expected_end_date && String(r.expected_end_date).slice(0, 10) < todayStr();
+}
+function inDateRange(r) {
+  if (dateRange.value === "all") return true;
+  const sd = String(r.start_date || "").slice(0, 10);
+  if (!sd) return false;
+  const d = new Date();
+  const y = d.getFullYear(), m = d.getMonth();
+  const qStart = Math.floor(m / 3) * 3;
+  const fmt = (yy, mm) => yy + "-" + String(mm + 1).padStart(2, "0");
+  if (dateRange.value === "month") return sd.slice(0, 7) === fmt(y, m);
+  if (dateRange.value === "year") return sd.slice(0, 4) === String(y);
+  return sd.slice(0, 4) === String(y) && Number(sd.slice(5, 7)) - 1 >= qStart && Number(sd.slice(5, 7)) - 1 < qStart + 3;
+}
 
 function blankForm() {
   return { project_code: "", project_name: "", start_date: "", expected_end_date: "", project_manager: "", warehouse: "" };
 }
 
 const counts = computed(() => {
-  const c = { Open: 0, Closed: 0 };
-  for (const r of list.value) c[r.status === "Closed" ? "Closed" : "Open"]++;
+  const c = { Open: 0, Closed: 0, Overdue: 0 };
+  for (const r of list.value) {
+    c[r.status === "Closed" ? "Closed" : "Open"]++;
+    if (isOverdue(r)) c.Overdue++;
+  }
   return c;
+});
+
+const kpis = computed(() => {
+  const open = counts.value.Open, closed = counts.value.Closed, overdue = counts.value.Overdue;
+  return [
+    { key: "total", label: "TOTAL PROJECTS", value: list.value.length, sub: "All projects", icon: "folder" },
+    { key: "active", label: "ACTIVE PROJECTS", value: open, sub: "Currently open", icon: "activity" },
+    { key: "done", label: "COMPLETED", value: closed, sub: "Closed projects", icon: "check" },
+    { key: "overdue", label: "OVERDUE", value: overdue, sub: overdue ? "Past expected end date" : "None overdue", icon: "alert" },
+  ];
 });
 
 const filtered = computed(() => {
   let rows = list.value;
-  if (filterTab.value !== "all") rows = rows.filter(r => (r.status || "Open") === filterTab.value);
+  if (filterTab.value === "Overdue") rows = rows.filter(isOverdue);
+  else if (filterTab.value !== "all") rows = rows.filter(r => (r.status || "Open") === filterTab.value);
+  if (dateRange.value !== "all") rows = rows.filter(inDateRange);
   const s = search.value.trim().toLowerCase();
   if (s) rows = rows.filter(r =>
     (r.project_code || "").toLowerCase().includes(s) ||
@@ -413,14 +484,21 @@ onMounted(() => { load(); loadMembers(); loadWarehouses(); });
 .pj-tbl { min-width: 720px; }
 .pj-code { font-family: inherit; }
 .pj-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
-.pj-card { background: #fff; border-radius: 10px; width: 520px; max-width: 98%; }
-.pj-head { padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
-.pj-title { font-size: 17px; font-weight: 700; margin: 0; }
-.pj-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280; }
-.pj-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.pj-card { background: #fff; border-radius: 16px; width: 560px; max-width: 98%; max-height: 94vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(15,23,42,.25); }
+.pj-head { padding: 20px 24px; background: #eff6ff; display: flex; align-items: center; gap: 14px; }
+.pj-head-icon { width: 48px; height: 48px; border-radius: 12px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.pj-head-text { flex: 1; min-width: 0; }
+.pj-subtitle { font-size: 13px; color: #6b7280; margin-top: 2px; }
+.pj-title { font-size: 20px; font-weight: 700; margin: 0; color: #111827; }
+.pj-close { background: none; border: none; cursor: pointer; color: #374151; display: flex; align-items: center; padding: 4px; border-radius: 6px; align-self: flex-start; }
+.pj-close:hover { background: rgba(0,0,0,.05); }
+.pj-body { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
 .pj-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .pj-group { display: flex; flex-direction: column; gap: 5px; }
-.pj-group label { font-size: 12.5px; font-weight: 600; color: #374151; }
+.pj-group label { font-size: 13.5px; font-weight: 600; color: #374151; }
+.pj-ctl { position: relative; }
+.pj-ico { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #6b7280; display: flex; pointer-events: none; z-index: 1; }
+.pj-group .pj-ctl input, .pj-group .pj-ctl select { height: 42px; padding-left: 42px; border-radius: 10px; font-size: 14px; }
 .pj-group input { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; }
 .pj-group select { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; outline: none; box-sizing: border-box; background: #fff; }
 .pj-group select:disabled { background: #f3f4f6; color: #6b7280; }
@@ -432,9 +510,21 @@ onMounted(() => { load(); loadMembers(); loadWarehouses(); });
 .pj-blockers ul { margin: 0; padding-left: 18px; }
 .pj-btn-warn { padding: 8px 14px; border: 1px solid #fca5a5; background: #fff; color: #b91c1c; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .pj-btn-warn:disabled { opacity: .55; cursor: not-allowed; }
-.pj-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
-.pj-btn-sec { padding: 8px 14px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; font-size: 13px; cursor: pointer; }
-.pj-btn-pri { padding: 8px 16px; border: none; background: #1a6ef7; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pj-actions { display: flex; justify-content: flex-end; gap: 10px; margin: 8px -24px -24px; padding: 16px 24px; border-top: 1px solid #e5e7eb; }
+.pj-btn-sec { padding: 10px 20px; border: 1px solid #d1d5db; background: #fff; border-radius: 6px; font-size: 13px; cursor: pointer; }
+.pj-btn-pri { padding: 10px 26px; border: none; background: #1a6ef7; color: #fff; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .pj-btn-pri:disabled { opacity: .55; cursor: not-allowed; }
+.pj-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 0 0 18px; }
+.pj-kpi { display: flex; align-items: center; gap: 16px; padding: 20px 22px; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; }
+.pj-kpi-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.pj-kpi-label { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; color: #4b5563; }
+.pj-kpi-value { font-size: 28px; font-weight: 800; color: #111827; line-height: 1.15; }
+.pj-kpi-sub { font-size: 12px; font-weight: 500; color: #6b7280; margin-top: 2px; }
+.pj-kpi-total { background: linear-gradient(135deg, #eff6ff, #fff); border-color: #dbeafe; } .pj-kpi-total .pj-kpi-icon { background: #dbeafe; color: #2563eb; }
+.pj-kpi-active { background: #fff; } .pj-kpi-active .pj-kpi-icon { background: #ede9fe; color: #7c3aed; }
+.pj-kpi-done { background: linear-gradient(135deg, #ecfdf5, #fff); border-color: #bbf7d0; } .pj-kpi-done .pj-kpi-icon { background: #d1fae5; color: #16a34a; } .pj-kpi-done .pj-kpi-value { color: #16a34a; }
+.pj-kpi-overdue { background: linear-gradient(135deg, #fef2f2, #fff); border-color: #fecaca; } .pj-kpi-overdue .pj-kpi-icon { background: #fee2e2; color: #dc2626; } .pj-kpi-overdue .pj-kpi-value { color: #dc2626; }
+.pj-badge-overdue { background: #fee2e2; color: #b91c1c; }
+@media (max-width: 1024px) { .pj-kpis { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 768px) { .pj-tbl { min-width: 0; } .pj-row { grid-template-columns: 1fr; } }
 </style>

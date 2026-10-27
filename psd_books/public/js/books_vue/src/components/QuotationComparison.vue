@@ -2,12 +2,17 @@
   <!-- Sava A9.6: compare the Active supplier quotations of one RFQ, choose a supplier per line.
        Rendered inside RequestForQuotation.vue so it stacks above the RFQ drawer. -->
   <div v-if="open" class="inv-drawer-bg" @click.self="close">
-    <div class="inv-drawer-panel" style="width:min(1120px,96vw);max-width:96vw">
-      <div class="inv-dh">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <div class="inv-dh-title">Quotation Comparison</div>
-          <span class="inv-dh-sub" style="margin-left:4px">{{ rfq }}<template v-if="cmp"> · {{ cmp.name }}</template></span>
-          <span v-if="cmp" class="inv-status-badge" :class="statusClass(cmp.status)">{{ statusLabel(cmp.status) }}</span>
+    <div class="inv-drawer-panel qc-panel" style="width:min(1120px,96vw);max-width:96vw">
+      <div class="inv-dh qc-dh">
+        <div class="qc-dh-left">
+          <span class="qc-dh-ico" v-html="icon('file',20)"></span>
+          <div style="min-width:0">
+            <div class="inv-dh-title">Quotation Comparison</div>
+            <div class="qc-dh-sub">
+              <span>{{ rfq }}<template v-if="cmp"> · {{ cmp.name }}</template></span>
+              <span v-if="cmp" class="inv-status-badge" :class="statusClass(cmp.status)">{{ statusLabel(cmp.status) }}</span>
+            </div>
+          </div>
         </div>
         <button class="inv-dclose" @click="close" :disabled="saving"><span v-html="icon('x',16)"></span></button>
       </div>
@@ -42,13 +47,13 @@
 
             <!-- Grid: item x supplier -->
             <div v-else class="add-card">
-              <div class="add-card-header">
+              <div class="add-card-header qc-ch" :class="{'is-collapsed':collapsed.items}" @click="toggle('items')">
                 <div class="add-card-title">
-                  Items by supplier
+                  <span class="qc-tile" v-html="icon('box',15)"></span>Items by supplier
                   <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· net rate after discount, before VAT; L1 is the lowest rate; "incl. VAT" is for the full requested qty</span>
                 </div>
               </div>
-              <div class="add-card-body" style="padding:0;overflow-x:auto">
+              <div class="add-card-body" :class="{collapsed:collapsed.items}" style="padding:0;overflow-x:auto">
                 <table class="inv-table pr-items-tbl">
                   <thead>
                     <tr>
@@ -113,8 +118,8 @@
 
             <!-- Supplier totals -->
             <div v-if="suppliers.length" class="add-card">
-              <div class="add-card-header"><div class="add-card-title">Award by supplier <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· one LPO per supplier</span></div></div>
-              <div class="add-card-body" style="padding:0">
+              <div class="add-card-header qc-ch" :class="{'is-collapsed':collapsed.award}" @click="toggle('award')"><div class="add-card-title"><span class="qc-tile" v-html="icon('vendors',15)"></span>Award by supplier <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· one LPO per supplier</span></div></div>
+              <div class="add-card-body" :class="{collapsed:collapsed.award}" style="padding:0">
                 <table class="inv-table pr-items-tbl">
                   <thead><tr><th>Supplier</th><th class="ta-r" style="width:70px">Lines</th><th class="ta-r" style="width:130px">Net</th><th class="ta-r" style="width:130px">VAT</th><th class="ta-r" style="width:140px">Total</th></tr></thead>
                   <tbody>
@@ -139,8 +144,8 @@
 
             <!-- Approval steps -->
             <div v-if="cmp && (cmp.approval_steps||[]).length" class="add-card">
-              <div class="add-card-header"><div class="add-card-title">Approval</div></div>
-              <div class="add-card-body" style="padding:0">
+              <div class="add-card-header qc-ch" :class="{'is-collapsed':collapsed.approval}" @click="toggle('approval')"><div class="add-card-title"><span class="qc-tile" v-html="icon('shield',15)"></span>Approval</div></div>
+              <div class="add-card-body" :class="{collapsed:collapsed.approval}" style="padding:0">
                 <table class="inv-table pr-items-tbl">
                   <thead><tr><th style="width:60px">Level</th><th>Role</th><th style="width:100px">Status</th><th>Approver</th><th style="width:150px">On</th><th>Remarks</th></tr></thead>
                   <tbody>
@@ -175,14 +180,14 @@
 
             <!-- Balance still to order (partial buying): shown once some LPOs exist and part of the qty is left -->
             <div v-if="cmp && cmp.balance_open" class="add-card">
-              <div class="add-card-header">
+              <div class="add-card-header qc-ch" :class="{'is-collapsed':collapsed.balance}" @click="toggle('balance')">
                 <div class="add-card-title">
-                  Balance to order
+                  <span class="qc-tile" v-html="icon('balance',15)"></span>Balance to order
                   <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· same supplier and approved rate; each new LPO still goes through LPO approval</span>
                 </div>
-                <button class="inv-ab-btn" @click="fillBalance" :disabled="saving">Fill full balance</button>
+                <button class="inv-ab-btn" @click.stop="fillBalance" :disabled="saving">Fill full balance</button>
               </div>
-              <div class="add-card-body" style="padding:0;overflow-x:auto">
+              <div class="add-card-body" :class="{collapsed:collapsed.balance}" style="padding:0;overflow-x:auto">
                 <table class="inv-table pr-items-tbl">
                   <thead><tr>
                     <th style="min-width:180px">Item</th><th>Supplier</th>
@@ -209,8 +214,8 @@
 
             <!-- LPOs -->
             <div v-if="cmp && (cmp.lpos||[]).length" class="add-card">
-              <div class="add-card-header"><div class="add-card-title">LPOs created</div></div>
-              <div class="add-card-body" style="padding:0">
+              <div class="add-card-header qc-ch" :class="{'is-collapsed':collapsed.lpos}" @click="toggle('lpos')"><div class="add-card-title"><span class="qc-tile" v-html="icon('order',15)"></span>LPOs created</div></div>
+              <div class="add-card-body" :class="{collapsed:collapsed.lpos}" style="padding:0">
                 <table class="inv-table pr-items-tbl">
                   <thead><tr><th>Purchase Order</th><th>Supplier</th><th style="width:100px">Status</th><th class="ta-r" style="width:140px">Total</th></tr></thead>
                   <tbody>
@@ -267,6 +272,9 @@ import { apiGET, apiPOST } from "../api/client.js";
 import DocLink from "./DocLink.vue";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
+
+const collapsed = ref({});
+function toggle(k) { collapsed.value[k] = !collapsed.value[k]; }
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -543,3 +551,23 @@ function doCreateBalance() {
 
 function close() { if (!saving.value) emit("close"); }
 </script>
+
+<style scoped>
+.qc-panel { background:#f4f6f9; }
+.qc-dh { padding:14px 24px; }
+.qc-dh-left { display:flex; align-items:center; gap:12px; min-width:0; }
+.qc-dh-ico { width:38px; height:38px; border-radius:10px; background:#fff; color:#1a6ef7; display:grid; place-items:center; flex-shrink:0; }
+.qc-dh .inv-dh-title { font-size:18px; }
+.qc-dh-sub { display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:rgba(255,255,255,.8); font-size:12px; margin-top:3px; }
+.qc-panel .inv-dbody { padding:16px 20px 24px; background:#f4f6f9; }
+.qc-panel .add-card { border:1px solid #e3e8ef; border-radius:12px; margin-bottom:14px; overflow:hidden; box-shadow:0 1px 2px rgba(15,23,42,.04); }
+.qc-ch { padding:12px 16px; gap:10px; }
+.qc-ch .add-card-title { flex:1; min-width:0; flex-wrap:wrap; }
+.qc-tile { width:30px; height:30px; border-radius:8px; background:#e8f0fe; color:#1a6ef7; display:inline-grid; place-items:center; flex-shrink:0; margin-right:2px; }
+.qc-ch::after { content:""; width:7px; height:7px; border-right:2px solid #9ca3af; border-bottom:2px solid #9ca3af; transform:rotate(45deg); margin:-3px 4px 0 6px; transition:transform .2s; flex-shrink:0; }
+.qc-ch.is-collapsed::after { transform:rotate(-45deg); margin-top:0; }
+.qc-ch.is-collapsed { border-bottom-color:transparent; }
+.qc-panel .pr-items-tbl th { background:#f8fafc; color:#6b7280; font-size:12px; font-weight:600; text-transform:none; letter-spacing:0; padding:10px 16px; }
+.qc-panel .pr-items-tbl td { padding:10px 16px; }
+.qc-panel .inv-dfooter { background:#fff; padding:14px 24px; }
+</style>

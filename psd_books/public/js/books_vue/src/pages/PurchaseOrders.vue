@@ -486,6 +486,13 @@
 
           <!-- Action buttons bar -->
           <div class="inv-action-bar">
+            <template v-if="viewDoc.status==='Pending Approval' && approval && approval.action && approval.action.can_act">
+              <input class="inv-fi" v-model="approvalRemarks" maxlength="300" placeholder="Remarks (optional)" style="width:220px;max-width:100%"/>
+              <button class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" :disabled="approvalBusy" @click="approvePO(viewDoc)">
+                <span v-html="icon('check',13)"></span> <span class="ab-label">{{ approvalBusy ? 'Working…' : 'Approve' }}</span>
+              </button>
+              <button class="inv-ab-btn inv-ab-danger" :disabled="approvalBusy" @click="sendBackPO(viewDoc)"><span class="ab-label">Send back</span></button>
+            </template>
             <button v-if="canEdit(viewDoc)" class="inv-ab-btn" :disabled="!poCanEdit" :title="!poCanEdit ? poNoAccess : ''" @click="openEdit(viewDoc);viewOpen=false">
               <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
             </button>
@@ -518,7 +525,7 @@
                 </button>
               </div>
             </div>
-            <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods' && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled' && !isApprovalStage(viewDoc)" class="inv-ab-btn" @click="markAllReceived" :disabled="actionRunning || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
+            <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods' && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled' && !isApprovalStage(viewDoc)" class="inv-ab-btn" @click="openReceiveModal" :disabled="actionRunning || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
               <span v-html="icon('truck',13)"></span> <span class="ab-label">Mark Received</span>
             </button>
             <span class="inv-ab-spacer"></span>
@@ -710,14 +717,7 @@
                 <div v-if="approval.raised_by" class="exp-field-hint" style="margin:6px 0 0">Sent for approval by {{ ownerName(approval.raised_by) }}</div>
                 <div v-if="viewDoc.status==='Pending Approval'" style="margin-top:10px">
                   <template v-if="approval.action && approval.action.can_act">
-                    <div class="exp-field-hint" style="margin:0 0 8px">Level {{ approval.action.level }} ({{ approval.action.role }}) is waiting for you.</div>
-                    <input class="inv-fi" v-model="approvalRemarks" maxlength="300" placeholder="Remarks (optional)" style="width:100%;max-width:420px"/>
-                    <div style="display:flex;gap:8px;margin-top:8px">
-                      <button class="inv-ab-btn" style="color:#16a34a;border-color:rgba(22,163,106,.3)" :disabled="approvalBusy" @click="approvePO(viewDoc)">
-                        <span v-html="icon('check',13)"></span> <span class="ab-label">{{ approvalBusy ? 'Working…' : 'Approve' }}</span>
-                      </button>
-                      <button class="inv-ab-btn inv-ab-danger" :disabled="approvalBusy" @click="sendBackPO(viewDoc)"><span class="ab-label">Send back</span></button>
-                    </div>
+                    <div class="exp-field-hint" style="margin:0">Level {{ approval.action.level }} ({{ approval.action.role }}) is waiting for you. Approve or Send back from the action bar at the top.</div>
                   </template>
                   <div v-else class="exp-field-hint" style="margin:0">
                     <template v-if="approval.action && approval.action.level">Waiting for level {{ approval.action.level }} ({{ approval.action.role }}). </template>{{ (approval.action && approval.action.reason) || '' }}
@@ -788,7 +788,7 @@
                 </div>
 
                 <div v-if="hasUnreceived && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled' && !isApprovalStage(viewDoc)" style="display:flex;justify-content:flex-end;margin-top:12px">
-                  <button class="inv-view-cta" @click="markAllReceived" :disabled="actionRunning || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
+                  <button class="inv-view-cta" @click="openReceiveModal" :disabled="actionRunning || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
                     <span v-html="icon('truck',14)"></span> Mark All Received
                   </button>
                 </div>
@@ -929,6 +929,37 @@
         <button class="form-btn form-btn-outline" @click="addrModal.open=false" :disabled="addrModal.saving">Cancel</button>
         <button class="form-btn form-btn-primary" :disabled="addrModal.saving || !$canCreate('customers')" :title="!$canCreate('customers') ? 'Read-only access' : ''" @click="saveNewAddress">
           {{ addrModal.saving ? 'Saving…' : 'Save Address' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Mark Received modal: choose the quantity received per line ── -->
+    <div v-if="recvModal.open" class="inv-drawer-bg" @click.self="recvModal.open=false" style="z-index:60"></div>
+    <div v-if="recvModal.open" class="po-apply-dialog">
+      <div class="inv-dh" style="height:auto;padding:14px 18px">
+        <div class="inv-dh-title">Mark Received — {{ recvModal.poName }}</div>
+        <button class="inv-dclose" @click="recvModal.open=false"><span v-html="icon('x',16)"></span></button>
+      </div>
+      <div class="inv-dbody">
+        <div style="font-size:12.5px;color:#374151">Enter the quantity received for each line (defaults to remaining). A Draft Purchase Receipt and its QC inspection are created for these quantities.</div>
+        <div class="po-inv-tbl">
+          <div class="po-inv-head">
+            <span>Item</span><span class="ta-r">Ordered</span><span class="ta-r">Remaining</span><span class="ta-r">Receive</span>
+          </div>
+          <div v-for="l in recvModal.lines" :key="l.name" class="po-inv-row" :class="{warn: l.toReceive > l.remaining_to_receive || l.toReceive < 0}">
+            <span>{{ l.item_name||l.item_code }}</span>
+            <span class="ta-r mono-sm text-muted">{{ l.qty }}</span>
+            <span class="ta-r mono-sm text-muted">{{ l.remaining_to_receive }}</span>
+            <input v-model.number="l.toReceive" type="number" min="0" :max="l.remaining_to_receive" step="0.001" class="inv-fi ta-r" style="width:90px" />
+          </div>
+        </div>
+        <div v-if="recvModalInvalid" class="po-warn">⚠ A quantity is negative or more than the remaining quantity.</div>
+        <div style="text-align:right;font-size:13px;color:#6b7280">Total to receive: <strong style="color:#111827">{{ recvModalTotal }}</strong></div>
+      </div>
+      <div class="inv-dfooter">
+        <button class="form-btn form-btn-outline" @click="recvModal.open=false" :disabled="recvModal.saving">Cancel</button>
+        <button class="form-btn form-btn-primary" :disabled="recvModal.saving || recvModalInvalid || recvModalTotal<=0" @click="submitReceive">
+          {{ recvModal.saving ? 'Creating…' : 'Create Receipt' }}
         </button>
       </div>
     </div>
@@ -1136,6 +1167,7 @@ async function fetchWarehouses(q = "") {
   } catch { warehouses.value = []; }
 }
 
+const recvModal = reactive({ open: false, saving: false, poName: "", lines: [] });
 const billModal = reactive({ open: false, saving: false, poName: "", lines: [],
   billNo: "", billDate: "", dueDate: "" });
 
@@ -1791,16 +1823,33 @@ async function submitBill() {
 
 // Receiving goes through a Purchase Receipt (GRN), so the QC gate applies.
 // This creates the receipt as a Draft; it is submitted after QC readings pass.
-async function markAllReceived() {
+function openReceiveModal() {
+  if (!viewDoc.value) return;
+  recvModal.poName = viewDoc.value.name;
+  recvModal.lines = fulfill.lines
+    .filter(l => flt(l.remaining_to_receive) > 0)
+    .map(l => ({ ...l, toReceive: flt(l.remaining_to_receive) }));
+  recvModal.open = true;
+}
+const recvModalTotal = computed(() => (recvModal.lines || []).reduce((s, l) => s + flt(l.toReceive), 0));
+const recvModalInvalid = computed(() => (recvModal.lines || []).some(l => flt(l.toReceive) < 0 || flt(l.toReceive) > flt(l.remaining_to_receive)));
+
+async function submitReceive() {
+  if (recvModalInvalid.value || recvModalTotal.value <= 0) return;
+  const lineMap = {};
+  for (const l of recvModal.lines) { if (flt(l.toReceive) > 0) lineMap[l.name] = flt(l.toReceive); }
+  recvModal.saving = true;
   actionRunning.value = true;
   try {
     const r = await apiPOST("psd_books.api.docs.create_purchase_receipt_from_po", {
-      purchase_order: viewDoc.value.name, save_draft: 1,
+      purchase_order: recvModal.poName, line_qtys: JSON.stringify(lineMap), save_draft: 1,
     });
-    toast.success(`Draft Purchase Receipt ${r?.purchase_receipt || ""} created. Submit it after QC readings are complete.`);
+    toast.success(`Draft Purchase Receipt ${r?.purchase_receipt || ""} created for ${r?.total_qty ?? recvModalTotal.value} units. Submit it after QC readings are complete.`);
+    recvModal.open = false;
     await load();
     if (viewDoc.value) await openView(viewDoc.value);
   } catch (e) { toast.error(e.message || "Could not create the Purchase Receipt"); }
+  recvModal.saving = false;
   actionRunning.value = false;
 }
 
