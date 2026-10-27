@@ -1213,6 +1213,9 @@ export function useLivePreview() {
 
   function printDoc(doc, config) {
     const html = renderDocument(doc, config);
+    // Sava print sheets (MR / GRN / DN / LPO) have one fixed layout, so the
+    // Modern / Minimal switch does nothing for them: hide those two buttons.
+    const _fixedLayout = !!(config && (config.savaMR || config.savaGRN || config.savaDN || (config.po && config.savaPaper)));
     const safeHtml = html.replace(/"/g, "&quot;");
     const shell = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
 <title>Print — ${doc?.name || ""}</title>
@@ -1240,8 +1243,8 @@ export function useLivePreview() {
   <span class="tb-lbl">PRINT PREVIEW</span>
   <div class="sep"></div>
   <button class="tbtn ${_state.template === "classic" ? "active" : ""}" data-t="classic">Classic</button>
-  <button class="tbtn ${_state.template === "modern"  ? "active" : ""}" data-t="modern">Modern</button>
-  <button class="tbtn ${_state.template === "minimal" ? "active" : ""}" data-t="minimal">Minimal</button>
+  ${_fixedLayout ? "" : `<button class="tbtn ${_state.template === "modern"  ? "active" : ""}" data-t="modern">Modern</button>
+  <button class="tbtn ${_state.template === "minimal" ? "active" : ""}" data-t="minimal">Minimal</button>`}
   <div class="sep"></div>
   <select class="tbtn" id="copy-sel" style="padding-right:8px;appearance:auto;outline:none">
     <option value="" ${!config.copyText ? 'selected' : ''}>Original Copy</option>

@@ -71,7 +71,7 @@ export const NAV = [
   { path: "/inventory/stock-entries",       label: "Stock Entries",    icon: "stack",      module: "inventory"  },
   // { path: "/inventory/adjustments",         label: "Stock Adjustments", icon: "repeat",    module: "inventory"  },  // hidden for Sava (Inventory)
   { path: "/inventory/stock-ledger",        label: "Stock Ledger",     icon: "ledger",     module: "inventory"  },
-  { path: "/inventory/valuation",           label: "Valuation",        icon: "chart",      module: "inventory"  },
+  // { path: "/inventory/valuation",           label: "Valuation",        icon: "chart",      module: "inventory"  },  // hidden for Sava (Inventory)
   // { path: "/inventory/reorder-alerts",      label: "Reorder Alerts",   icon: "alert",      module: "inventory"  },  // hidden for Sava
   // { path: "/inventory/price-lists",         label: "Price Lists",      icon: "rupee",      module: "inventory"  },  // hidden for Sava (Inventory)
   // { path: "/inventory/batches",             label: "Batch Tracking",   icon: "qr",         module: "inventory"  },  // hidden for Sava
@@ -93,7 +93,7 @@ export const NAV = [
   { section: "Quality" },
   { path: "/quality/inspections",           label: "Inspections",      icon: "shield",     module: "inventory"  },
   { path: "/quality/templates",             label: "QC Templates",     icon: "file",       module: "inventory"  },
-  { path: "/quality/approvals",             label: "QC Approvals",     icon: "check",      module: "inventory"  },
+  // { path: "/quality/approvals",             label: "QC Approvals",     icon: "check",      module: "inventory"  },  // hidden for Sava (Quality)
 
   // { section: "Manufacturing" },  // hidden for Sava
   // { path: "/manufacturing",                    label: "Dashboard",        icon: "grid",       module: "inventory" },
