@@ -214,6 +214,10 @@ def handle_qc_result(doc, method=None):
     anywhere -- it's already sitting there) and just stamps the hold flags.
     """
     if doc.status == "Pass":
+        # Partial reject on a Pass: the rejected part goes to the Rejected
+        # Store; the accepted part is released as usual.
+        if flt(doc.get("rejected_qty")) > 0:
+            _move_rejected_to_rejected_store(doc)
         _release_quarantine_on_pass(doc)
         return
 
@@ -532,6 +536,7 @@ def handle_qc_cancel(doc, method=None):
     instead of blocking the cancel.
     """
     if doc.status == "Pass":
+        _reverse_rejected_store_move(doc)
         _reverse_release_on_pass_cancel(doc)
         return
 

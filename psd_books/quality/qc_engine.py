@@ -163,6 +163,16 @@ def check_qc_before_stock_link(doc, method=None):
     )
 
 
+def _row_inspect_qty(row):
+    """Qty to inspect for a document row. For a GRN line that is the part
+    accepted at receipt (that is what sits in quarantine); anything already
+    rejected at the gate is not inspected again."""
+    accepted = getattr(row, "accepted_qty", None)
+    if accepted not in (None, "") and flt(accepted) > 0:
+        return flt(accepted)
+    return getattr(row, "qty", None) or getattr(row, "received_qty", None)
+
+
 # --- Shared implementation behind every "auto-create QC" before_submit hook -
 
 def _auto_create_qc_for_rows(
@@ -220,7 +230,7 @@ def _auto_create_qc_for_rows(
                 doc, row, item_code, inspection_type,
                 create_if_missing=True,
                 batch_no=getattr(row, "batch_no", None),
-                inspected_qty=getattr(row, "qty", None) or getattr(row, "received_qty", None),
+                inspected_qty=_row_inspect_qty(row),
             )
         except Exception:
             frappe.log_error(
@@ -352,6 +362,46 @@ def get_or_create_coverage(
 
     if not create_if_missing:
         return {"qci": None, "status": "Missing", "created": False}
+
+    # Row identity can be lost when a page rebuilds items[] without forwarding
+    # each row's `name` (e.g. editing a GRN): the row then looks brand new, the
+    # coverage lookup above misses, and a SECOND inspection used to be created
+    # even though a submitted/draft one already covered this item+batch. Treat
+    # existing live inspections for the same reference/item/batch as coverage
+    # when they outnumber (or equal) the rows that need them.
+    batch_key = (batch_no or "")
+    same_rows = [
+        r for r in (getattr(doc, "items", []) or [])
+        if (getattr(r, "item_code", None) or getattr(r, "item", None)) == item_code
+        and ((getattr(r, "batch_no", None) or "") == batch_key)
+    ]
+    live_qcs = frappe.get_all(
+        "QC Inspection",
+        filters={
+            "reference_type": doc.doctype, "reference_name": doc.name,
+            "item": item_code, "docstatus": ["<", 2],
+        },
+        fields=["name", "docstatus", "status", "batch_no"],
+        order_by="docstatus desc, creation asc",
+    )
+    live_qcs = [q for q in live_qcs if (q.batch_no or "") == batch_key]
+    if live_qcs and len(live_qcs) >= max(len(same_rows), 1):
+        # Prefer a QC not already attached to another row of this doc.
+        taken = set(frappe.get_all(
+            "QC Coverage", filters={"qc_inspection": ["in", [q.name for q in live_qcs]]},
+            pluck="qc_inspection"))
+        pick = next((q for q in live_qcs if q.name not in taken), live_qcs[0])
+        try:
+            if not frappe.db.exists("QC Coverage", {"source_row": source_row}):
+                cov = frappe.new_doc("QC Coverage")
+                cov.source_row = source_row
+                cov.qc_inspection = pick.name
+                cov.insert(ignore_permissions=True)
+        except Exception:
+            pass
+        _stamp_row_link(row, pick.name)
+        status = "Pending" if pick.docstatus == 0 else (pick.status or "Pending")
+        return {"qci": pick.name, "status": status, "created": False}
 
     # Safeguard: refuse to silently spawn ANOTHER QCI for this item on this
     # reference doc if one is already sitting there unresolved (draft/

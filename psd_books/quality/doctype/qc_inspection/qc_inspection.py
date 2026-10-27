@@ -42,11 +42,14 @@ class QCInspection(Document):
 
     def on_submit(self):
         self._log_activity("Submitted")
+        # GRN (Purchase Receipt) accepted/rejected qty follows the QC split
+        self._sync_purchase_receipt_qty()
         # Update a denormalised qc_status field on the reference doc (if present)
         self._stamp_reference_status()
 
     def on_cancel(self):
         self._log_activity("Cancelled")
+        self._sync_purchase_receipt_qty(cancelled=True)
         self._stamp_reference_status(cancelled=True)
         self._clear_row_link()
 
@@ -167,6 +170,8 @@ class QCInspection(Document):
           rather than silently overwriting a deliberate partial accept/reject.
         """
         if not flt(self.inspected_qty):
+            self._derive_inspected_qty()
+        if not flt(self.inspected_qty):
             return
 
         accepted = flt(self.accepted_qty)
@@ -187,12 +192,65 @@ class QCInspection(Document):
                 "Inspected Qty ({2})."
             ).format(accepted, rejected, self.inspected_qty))
 
-        if rejected and self.status != "Fail":
-            frappe.throw(_(
-                "Rejected Qty is set but the overall inspection status is "
-                "'{0}', not 'Fail'. A rejected quantity requires at least "
-                "one Rejected reading."
-            ).format(self.status))
+        # A partial reject is allowed on a Pass inspection: the inspector may
+        # reject part of the lot (damaged / short-shelf-life units) even when
+        # every sampled reading is within spec. A Fail inspection must still
+        # reject something, which the default above already guarantees.
+
+    def _grn_row(self):
+        """The Purchase Receipt Item row this inspection covers, or None."""
+        if self.reference_type != "Purchase Receipt" or not self.reference_name:
+            return None
+        rows = frappe.get_all(
+            "Purchase Receipt Item",
+            filters={"parent": self.reference_name, "parenttype": "Purchase Receipt"},
+            fields=["name", "item_code", "batch_no", "qty", "accepted_qty", "quality_inspection"],
+            order_by="idx",
+        )
+        for r in rows:
+            if r.quality_inspection == self.name:
+                return r
+        for r in rows:
+            if r.item_code == self.item and (not self.batch_no or (r.batch_no or "") == self.batch_no):
+                return r
+        return None
+
+    def _derive_inspected_qty(self):
+        """Older / manually created GRN inspections may carry no inspected_qty,
+        which hid the accept/reject split entirely. Take it from the GRN row."""
+        row = self._grn_row()
+        if not row:
+            return
+        qty = row.accepted_qty if row.accepted_qty not in (None, "") else row.qty
+        self.inspected_qty = flt(qty)
+
+    def _sync_purchase_receipt_qty(self, cancelled: bool = False):
+        """
+        Write the QC accept/reject split back onto the GRN row so the Purchase
+        Receipt shows what was really accepted and rejected.
+
+        Only the row's accepted/rejected figures are updated (no new stock
+        entry here -- the stock moves are made by qc_hold_manager). Rejected is
+        always received qty minus accepted, so it stays consistent with
+        PurchaseReceipt.validate(). Cancelling restores the pre-QC figures
+        (inspected_qty is the quantity that was accepted at receipt).
+        """
+        try:
+            row = self._grn_row()
+            if not row or not flt(self.inspected_qty):
+                return
+            accepted = flt(self.inspected_qty) if cancelled else flt(self.accepted_qty)
+            accepted = max(0.0, min(accepted, flt(row.qty)))
+            vals = {"accepted_qty": accepted, "rejected_qty": flt(row.qty) - accepted}
+            cf = frappe.db.get_value("Purchase Receipt Item", row.name, "conversion_factor")
+            if frappe.db.has_column("Purchase Receipt Item", "qty_in_stock_uom"):
+                vals["qty_in_stock_uom"] = round(accepted * flt(cf or 1), 4)
+            frappe.db.set_value("Purchase Receipt Item", row.name, vals, update_modified=False)
+        except Exception:
+            frappe.log_error(
+                title=f"Could not sync QC qty to GRN for {self.name}",
+                message=frappe.get_traceback(),
+            )
 
     # ──────────────────────────────────────────────────────────────────────────
     # Activity log

@@ -108,6 +108,13 @@ def get_qc_inspections_for_doc(reference_type: str, reference_name: str) -> list
 def get_inspection_detail(inspection_name: str) -> dict:
     """Return full QC Inspection document including readings."""
     doc = frappe.get_doc("QC Inspection", inspection_name)
+    if doc.docstatus == 0 and not flt(doc.inspected_qty):
+        # Older GRN inspections have no qty; derive it so the accept/reject
+        # split is available to the inspector (persisted on the next save).
+        doc._derive_inspected_qty()
+        if flt(doc.inspected_qty) and not (flt(doc.accepted_qty) or flt(doc.rejected_qty)):
+            doc.accepted_qty = flt(doc.inspected_qty)
+            doc.rejected_qty = 0
     d = doc.as_dict()
     return d
 
@@ -378,10 +385,8 @@ def create_qc_inspection(
             return {"inspection_name": existing, "created": False, "message": "Inspection already exists"}
 
     batch_no = getattr(target_row, "batch_no", None) if target_row is not None else None
-    inspected_qty = (
-        (getattr(target_row, "qty", None) or getattr(target_row, "received_qty", None))
-        if target_row is not None else None
-    )
+    from psd_books.quality.qc_engine import _row_inspect_qty
+    inspected_qty = _row_inspect_qty(target_row) if target_row is not None else None
 
     try:
         inspection_name = create_qc_inspection_for_item(

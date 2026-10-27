@@ -384,6 +384,14 @@
           <div class="qc-view-section" v-if="viewDoc.inspected_qty">
             <div class="qc-view-sec-lbl">Accepted / Rejected Qty</div>
             <div v-if="viewDoc.docstatus===0">
+              <div class="qc-qty-actions">
+                <button type="button" class="qc-qty-chip" :class="{on: qtyMode==='accept'}" @click="setQtyMode('accept')">Accept All</button>
+                <button type="button" class="qc-qty-chip" :class="{on: qtyMode==='partial'}" @click="setQtyMode('partial')">Partial Accept / Reject</button>
+                <button type="button" class="qc-qty-chip qc-qty-chip--bad" :class="{on: qtyMode==='reject'}" @click="setQtyMode('reject')">Reject All</button>
+              </div>
+              <div v-if="viewDoc.reference_type==='Purchase Receipt'" class="qc-qty-note">
+                Submitting updates the Accepted / Rejected Qty on GRN {{ viewDoc.reference_name }}. Rejected stock moves to the Rejected Store.
+              </div>
               <div class="qc-qty-grid">
                 <div class="qc-qty-card qc-qty-card--fixed">
                   <label class="qc-qty-lbl">Inspected Qty</label>
@@ -849,6 +857,30 @@ async function openView(r) {
 
 function markDirty() { isDirty.value = true; }
 
+const qtyMode = computed(() => {
+  const d = viewDoc.value;
+  if (!d?.inspected_qty) return "";
+  const insp = Number(d.inspected_qty) || 0;
+  const rej = Number(d.rejected_qty) || 0;
+  if (rej <= 0) return "accept";
+  if (rej >= insp) return "reject";
+  return "partial";
+});
+
+function setQtyMode(mode) {
+  const d = viewDoc.value;
+  if (!d?.inspected_qty) return;
+  const insp = Number(d.inspected_qty) || 0;
+  if (mode === "accept") { d.accepted_qty = insp; d.rejected_qty = 0; }
+  else if (mode === "reject") { d.accepted_qty = 0; d.rejected_qty = insp; }
+  else if (qtyMode.value !== "partial") {
+    // start the split somewhere valid; the inspector then types the real figure
+    d.rejected_qty = +(insp / 2).toFixed(3);
+    d.accepted_qty = +(insp - d.rejected_qty).toFixed(3);
+  }
+  markDirty();
+}
+
 function onAcceptedQtyChange() {
   if (!viewDoc.value?.inspected_qty) return;
   const inspected = Number(viewDoc.value.inspected_qty) || 0;
@@ -901,8 +933,25 @@ async function saveReadings() {
 }
 
 async function submitInspection(name) {
+  const d = viewDoc.value;
+  if (d?.inspected_qty && Number(d.accepted_qty || 0) + Number(d.rejected_qty || 0) !== Number(d.inspected_qty)) {
+    toast.error(`Accepted + Rejected must sum to ${d.inspected_qty}`);
+    return;
+  }
   saving.value = true;
   try {
+    // Persist the readings and the accept/reject split first -- previously
+    // an edited split was lost unless Save was clicked before Submit.
+    if (d && d.name === name) {
+      await apiCall("psd_books.api.qc.save_qc_readings", {
+        inspection_name: name,
+        readings_json: JSON.stringify((d.readings || []).map((rd, i) => ({
+          idx: rd.idx || (i + 1), reading_value: rd.reading_value || "", remarks: rd.remarks || "",
+        }))),
+        accepted_qty: d.inspected_qty ? d.accepted_qty : undefined,
+        rejected_qty: d.inspected_qty ? d.rejected_qty : undefined,
+      });
+    }
     const res = await apiCall("psd_books.api.qc.submit_qc_inspection", { inspection_name: name });
     const data = res?.message || res;
     if (viewDoc.value) {
@@ -1440,6 +1489,11 @@ onMounted(() => {
 .qc-qty-lbl { font-size:11px; font-weight:600; color:#6b7280; }
 .qc-qty-fixed-val { font-size:15px; font-weight:700; color:#111827; padding:7px 0; }
 .qc-qty-input { width:100%; box-sizing:border-box; font-size:14px; font-weight:600; }
+.qc-qty-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.qc-qty-chip { border:1px solid #d1d5db; background:#fff; color:#374151; border-radius:999px; padding:5px 12px; font-size:12px; font-weight:600; cursor:pointer; }
+.qc-qty-chip.on { background:#16a34a; border-color:#16a34a; color:#fff; }
+.qc-qty-chip--bad.on { background:#dc2626; border-color:#dc2626; }
+.qc-qty-note { font-size:11.5px; color:#6b7280; margin-bottom:10px; }
 .qc-qty-warn { display:flex; align-items:center; gap:6px; margin-top:8px; padding:8px 12px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; font-size:12px; font-weight:600; color:#dc2626; }
 @media (max-width:520px) {
   .qc-qty-grid { grid-template-columns:1fr; }

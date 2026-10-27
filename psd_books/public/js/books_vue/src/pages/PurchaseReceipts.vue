@@ -174,7 +174,9 @@
               <div class="inv-view-subtitle">Purchase Receipt (GRN) · {{ viewDoc.posting_date }} · <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span></div>
             </div>
             <div class="pr-hdr-right">
-              <div class="pr-hdr-actions">
+
+          <!-- Action bar -->
+          <div class="pr-hdr-actions">
             <button v-if="viewDoc.source==='real'" class="inv-ab-btn" @click="printGRN(viewDoc)">
               <span v-html="icon('printer',13)"></span> Print
             </button>
@@ -193,7 +195,7 @@
             <button v-if="viewDoc.docstatus===0 && viewDoc.source==='real'" class="inv-ab-btn pr-act-del" :disabled="!$canDelete('inventory') || !prCanEdit" :title="!prCanEdit ? prNoAccess : (!$canDelete('inventory') ? 'Not permitted' : '')" @click="confirmTarget={row:viewDoc,mode:'delete'}">
               <span v-html="icon('trash',13)"></span> Delete
             </button>
-              </div>
+            </div>
               <button class="inv-dclose" @click="viewOpen=false"><span v-html="icon('x',16)"></span></button>
             </div>
           </div>
@@ -459,14 +461,15 @@
                       <div class="po-item-num-row">
                         <div class="po-item-field">
                           <label>Qty <span class="inv-req">*</span></label>
-                          <input class="inv-fi" type="number" v-model.number="it.qty" placeholder="1" min="0.01" :max="it.po_pending || undefined" step="0.01"/>
+                          <input class="inv-fi" type="number" v-model.number="it.qty" :disabled="!!it.qc_locked" placeholder="1" min="0.01" :max="it.po_pending || undefined" step="0.01"/>
                           <div v-if="it.po_qty" class="exp-field-hint" :class="{'exp-field-hint-err': flt(it.qty) > flt(it.po_pending) + 0.0001}">
                             Ordered {{ it.po_qty }} · Received {{ it.po_received }} · Pending {{ it.po_pending }}
                           </div>
                         </div>
                         <div class="po-item-field">
                           <label>Accepted Qty</label>
-                          <input class="inv-fi" type="number" v-model.number="it.accepted_qty" placeholder="1" min="0" :max="it.qty" step="0.01"/>
+                          <input class="inv-fi" type="number" v-model.number="it.accepted_qty" :disabled="!!it.qc_locked" placeholder="1" min="0" :max="it.qty" step="0.01"/>
+                          <div v-if="it.qc_locked" class="exp-field-hint">Locked — final after QC {{ it.qc_locked }}</div>
                         </div>
                       </div>
                       <div class="po-item-field" style="margin-top:14px">
@@ -853,7 +856,19 @@ async function openEdit(r) {
         flagMap = Object.fromEntries(itemRows.map(x => [x.name, x.has_batch_no ? 1 : 0]));
       } catch {}
     }
+    // Lines whose QC Inspection is submitted are locked (qty / accepted qty).
+    let qcDone = {};
+    const qcNames = [...new Set(items.map(it => it.quality_inspection).filter(Boolean))];
+    if (qcNames.length) {
+      try {
+        const qrows = await apiList("QC Inspection", { fields: ["name"], filters: [["name", "in", qcNames], ["docstatus", "=", 1]], limit: qcNames.length });
+        qcDone = Object.fromEntries(qrows.map(x => [x.name, 1]));
+      } catch {}
+    }
     form.items = items.map(it => ({
+      row_name:           it.name || "",
+      qc_locked:          qcDone[it.quality_inspection] ? it.quality_inspection : "",
+      quality_inspection: it.quality_inspection || "",
       po_item:            it.po_item || null,
       item_code:          it.item_code || "",
       item_name:          it.item_name || it.item_code || "",
@@ -881,7 +896,10 @@ function addItem() {
     has_batch_no: 0, batch_no: "", manufacturing_date: "", expiry_date: "", batchOptions: [], collapsedUI: false,
   });
 }
-function removeItem(i) { form.items.splice(i, 1); }
+function removeItem(i) {
+  if (form.items[i]?.qc_locked) { toast.error(`Line is locked by submitted QC ${form.items[i].qc_locked}`); return; }
+  form.items.splice(i, 1);
+}
 
 async function fetchVendors(q = "") {
   try {
@@ -1129,6 +1147,8 @@ async function saveGRN(submit) {
         const rowAccepted = Math.min(Math.max(isNaN(rawAccepted) ? rowQty : rawAccepted, 0), rowQty);
         return {
         doctype: "Purchase Receipt Item",
+        // forward the saved row identity so QC coverage / links survive an edit
+        ...(it.row_name ? { name: it.row_name, quality_inspection: it.quality_inspection || undefined } : {}),
         item_code: it.item_code,
         item_name: it.item_name || it.item_code,
         qty: rowQty,

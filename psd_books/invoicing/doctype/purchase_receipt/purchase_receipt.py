@@ -38,9 +38,38 @@ class PurchaseReceipt(Document):
             # amount is derived, never left to the client: stock valuation divides amount by qty
             # (inventory/stock_link.py), so an empty amount would value the receipt at zero.
             row.amount = flt(row.qty) * flt(row.rate)
+        self._lock_qc_inspected_rows()
         self.total_qty = sum(flt(r.qty) for r in self.items)
         self._block_over_receipt()
         self._warn_project_store()
+
+    def _lock_qc_inspected_rows(self):
+        """Once a QC Inspection for a line is submitted, its accepted/rejected
+        split is final: the GRN may no longer change that line's Received or
+        Accepted Qty. (The QC itself writes the split onto the row directly;
+        to change it, cancel the QC Inspection first.)"""
+        if self.is_new():
+            return
+        for qci in frappe.get_all(
+            "QC Inspection",
+            filters={"reference_type": "Purchase Receipt", "reference_name": self.name, "docstatus": 1},
+            fields=["name", "item", "batch_no", "inspected_qty", "accepted_qty"],
+        ):
+            if not flt(qci.inspected_qty):
+                continue
+            row = next((r for r in self.items if r.get("quality_inspection") == qci.name), None) or next(
+                (r for r in self.items if r.item_code == qci.item
+                 and (not qci.batch_no or (r.get("batch_no") or "") == qci.batch_no)), None)
+            if not row:
+                continue
+            stored_qty = frappe.db.get_value(
+                "Purchase Receipt Item", {"parent": self.name, "item_code": qci.item}, "qty")
+            if flt(row.accepted_qty) != flt(qci.accepted_qty) or (
+                    stored_qty is not None and flt(row.qty) != flt(stored_qty)):
+                frappe.throw(
+                    _("Row {0}: {1} is already inspected in submitted QC Inspection {2} (Accepted {3}). "
+                      "Qty and Accepted Qty can't be changed — cancel the QC Inspection first.")
+                    .format(row.idx, row.item_code, qci.name, flt(qci.accepted_qty)))
 
     def _warn_project_store(self):
         """A11: a receipt should go to the store of the LPO's project. Warns only, never blocks.
