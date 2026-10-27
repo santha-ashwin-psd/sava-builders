@@ -810,9 +810,9 @@
           </div>
           <div v-if="!form.is_group" class="nim-grid-2 nim-mb">
             <div>
-              <label class="nim-label">Store Role</label>
+              <label class="nim-label">Store Role <span v-if="drawerMode === 'add'" class="nim-req">*</span></label>
               <select class="nim-input" v-model="form.store_role">
-                <option value="">— None —</option>
+                <option value="">{{ drawerMode === 'add' ? '— Select store role —' : '— None —' }}</option>
                 <option v-for="r in STORE_ROLES" :key="r" :value="r">{{ r }}</option>
               </select>
             </div>
@@ -1736,6 +1736,7 @@ async function openEdit(wh) {
 
 async function saveWarehouse() {
   if (!form.warehouse_name.trim()) { toast("Warehouse name is required", "error"); return; }
+  if (drawerMode.value === "add" && !form.is_group && !form.store_role) { toast("Store role is required", "error"); return; }
   // Store role only applies to leaf warehouses; groups never carry a role or project.
   const storeRole = form.is_group ? "" : (form.store_role || "");
   const storeProjects = needsProject(storeRole)

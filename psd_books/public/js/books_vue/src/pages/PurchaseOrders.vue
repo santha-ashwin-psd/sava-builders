@@ -941,16 +941,16 @@
         <button class="inv-dclose" @click="recvModal.open=false"><span v-html="icon('x',16)"></span></button>
       </div>
       <div class="inv-dbody">
-        <div style="font-size:12.5px;color:#374151">Enter the quantity received for each line (defaults to remaining). A Draft Purchase Receipt and its QC inspection are created for these quantities.</div>
+        <div style="font-size:12.5px;color:#374151">Enter the quantity received for each line (defaults to remaining). Quantities already on Draft receipts are excluded. A Draft Purchase Receipt and its QC inspection are created for these quantities.</div>
         <div class="po-inv-tbl">
           <div class="po-inv-head">
             <span>Item</span><span class="ta-r">Ordered</span><span class="ta-r">Remaining</span><span class="ta-r">Receive</span>
           </div>
-          <div v-for="l in recvModal.lines" :key="l.name" class="po-inv-row" :class="{warn: l.toReceive > l.remaining_to_receive || l.toReceive < 0}">
+          <div v-for="l in recvModal.lines" :key="l.name" class="po-inv-row" :class="{warn: l.toReceive > l.receivable_qty || l.toReceive < 0}">
             <span>{{ l.item_name||l.item_code }}</span>
             <span class="ta-r mono-sm text-muted">{{ l.qty }}</span>
-            <span class="ta-r mono-sm text-muted">{{ l.remaining_to_receive }}</span>
-            <input v-model.number="l.toReceive" type="number" min="0" :max="l.remaining_to_receive" step="0.001" class="inv-fi ta-r" style="width:90px" />
+            <span class="ta-r mono-sm text-muted">{{ l.receivable_qty }}</span>
+            <input v-model.number="l.toReceive" type="number" min="0" :max="l.receivable_qty" step="0.001" class="inv-fi ta-r" style="width:90px" />
           </div>
         </div>
         <div v-if="recvModalInvalid" class="po-warn">⚠ A quantity is negative or more than the remaining quantity.</div>
@@ -1827,12 +1827,16 @@ function openReceiveModal() {
   if (!viewDoc.value) return;
   recvModal.poName = viewDoc.value.name;
   recvModal.lines = fulfill.lines
-    .filter(l => flt(l.remaining_to_receive) > 0)
-    .map(l => ({ ...l, toReceive: flt(l.remaining_to_receive) }));
+    .filter(l => flt(l.receivable_qty ?? l.remaining_to_receive) > 0)
+    .map(l => ({ ...l, receivable_qty: flt(l.receivable_qty ?? l.remaining_to_receive), toReceive: flt(l.receivable_qty ?? l.remaining_to_receive) }));
+  if (!recvModal.lines.length) {
+    toast.warn("Draft Purchase Receipts already cover the remaining quantity. Complete their QC readings and submit them.");
+    return;
+  }
   recvModal.open = true;
 }
 const recvModalTotal = computed(() => (recvModal.lines || []).reduce((s, l) => s + flt(l.toReceive), 0));
-const recvModalInvalid = computed(() => (recvModal.lines || []).some(l => flt(l.toReceive) < 0 || flt(l.toReceive) > flt(l.remaining_to_receive)));
+const recvModalInvalid = computed(() => (recvModal.lines || []).some(l => flt(l.toReceive) < 0 || flt(l.toReceive) > flt(l.receivable_qty)));
 
 async function submitReceive() {
   if (recvModalInvalid.value || recvModalTotal.value <= 0) return;

@@ -3975,9 +3975,19 @@ def get_purchase_order_fulfillment(purchase_order):
         fields=["name", "item_code", "item_name", "qty", "uom", "rate", "amount",
                 "received_qty", "billed_qty"],
         order_by="idx asc")
+    # Qty already sitting on Draft Purchase Receipts (GRNs) is not "received" yet (received_qty only
+    # moves on submit), but it must not be offered again for a new receipt.
+    _draft = {str(d.po_item): flt(d.qty) for d in frappe.db.sql(
+        """SELECT pri.po_item, SUM(pri.qty) AS qty
+           FROM `tabPurchase Receipt Item` pri
+           JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
+           WHERE pr.purchase_order = %s AND pr.docstatus = 0
+           GROUP BY pri.po_item""", (purchase_order,), as_dict=True)}
     for r in rows:
         r["remaining_to_receive"] = max(0.0, flt(r["qty"]) - flt(r["received_qty"]))
         r["remaining_to_bill"]    = max(0.0, flt(r["qty"]) - flt(r["billed_qty"]))
+        r["in_draft_qty"]         = _draft.get(str(r["name"]), 0.0)
+        r["receivable_qty"]       = max(0.0, flt(r["qty"]) - flt(r["received_qty"]) - r["in_draft_qty"])
     return {"lines": rows, "computed_status": _po_status_from_fulfillment(purchase_order)}
 
 
