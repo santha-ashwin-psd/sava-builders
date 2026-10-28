@@ -643,9 +643,13 @@
           <button class="nim-close" @click="adjDrawer.open=false">✕</button>
         </div>
         <div class="nim-dialog-body" style="display:flex;flex-direction:column;gap:16px">
+          <div v-if="adjDrawer.pick_item" style="display:flex;align-items:center;justify-content:space-between;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 12px">
+            <span style="font-size:12.5px;font-weight:600;color:#374151">Asset <span style="font-weight:400;color:#6b7280">&mdash; {{ adjDrawer.asset_only ? 'showing asset items only' : 'asset items hidden' }}</span></span>
+            <input type="checkbox" :checked="adjDrawer.asset_only" @change="onAdjAssetToggle($event.target.checked)" />
+          </div>
           <div v-if="adjDrawer.pick_item">
             <label class="nim-label">Item <span style="color:#dc2626">*</span></label>
-            <SearchableSelect v-model="adjDrawer.item_code" :options="allItems"
+            <SearchableSelect v-model="adjDrawer.item_code" :options="adjItems"
               value-key="name" label-key="item_name" placeholder="Search item to add stock…" />
           </div>
           <div v-if="adjDrawer.pick_item && adjDrawer.pickedHasBatch" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#b91c1c">
@@ -1019,7 +1023,7 @@ const adjDrawer = reactive({
   open: false, saving: false, pick_item: false,
   item_code: "", item_name: "", item_uom: "", warehouse: "",
   current_qty: 0, new_qty: "", reason: "", notes: "",
-  batch_no: "", item_total_qty: 0, pickedHasBatch: false,
+  batch_no: "", item_total_qty: 0, pickedHasBatch: false, asset_only: false,
 });
 const showDrawer     = ref(false);
 const showTransfer   = ref(false);
@@ -1029,6 +1033,13 @@ const drawerMode     = ref("add");
 const saving         = ref(false);
 const transferSaving = ref(false);
 const allItems       = ref([]);
+// Add Stock: Asset toggle on = asset items only; off = asset items hidden.
+const adjItems = computed(() => allItems.value.filter((i) => !!i.is_asset_item === !!adjDrawer.asset_only));
+function onAdjAssetToggle(on) {
+  adjDrawer.asset_only = on;
+  adjDrawer.item_code = "";
+  adjDrawer.item_name = "";
+}
 
 const form = reactive({
   name: "", warehouse_name: "", warehouse_type: "Stores",
@@ -1547,7 +1558,7 @@ function printStockPdf() {
 async function loadItems() {
   try { 
   allItems.value = await apiList("Item", { 
-    fields: ["name","item_name","has_batch_no","stock_uom"], 
+    fields: ["name","item_name","has_batch_no","stock_uom","is_asset_item"], 
     filters: [["disabled", "=", 0]],
     limit: 100000, 
     order: "item_name asc" 
@@ -1572,7 +1583,7 @@ function openNewAdjustment(wh) {
     item_code: "", item_name: "",
     warehouse: wh?.name || "",
     current_qty: 0, new_qty: "", reason: "Opening Stock", notes: "",
-    batch_no: "", item_total_qty: 0, pickedHasBatch: false,
+    batch_no: "", item_total_qty: 0, pickedHasBatch: false, asset_only: false,
   });
 }
 

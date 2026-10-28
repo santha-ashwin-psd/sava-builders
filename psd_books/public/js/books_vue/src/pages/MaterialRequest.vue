@@ -153,7 +153,7 @@
               <div class="bomx-hf-label">Purpose <span style="color:var(--bx-red)">*</span></div>
               <select class="bomx-fi" v-model="mr.material_request_type" :disabled="readOnly" style="width:100%" @change="onPurposeChange">
                 <option value="Purchase">Purchase</option>
-                <option value="Asset">Asset</option>
+                <option v-if="mr.material_request_type==='Asset'" value="Asset">Asset</option>
 <option value="Material Transfer">Material Transfer</option>
               </select>
             </div>
