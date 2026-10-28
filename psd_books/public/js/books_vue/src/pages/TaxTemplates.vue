@@ -40,7 +40,7 @@
         <template v-else>
           <tr v-for="t in filtered" :key="t.name" class="inv-row" @click="openEdit(t)">
             <td data-label="Template" class="td-id"><span class="inv-link">{{ t.template_name }}</span></td>
-            <td data-label="Type">{{ t.tax_type || 'GST' }}</td>
+            <td data-label="Type">{{ typeOf(t.tax_type) }}</td>
             <td data-label="Components" class="text-muted" style="font-size:12px">{{ t.rateLabel || '—' }}</td>
             <td data-label="Rate" class="ta-r">{{ t.headlineRate != null ? t.headlineRate + '%' : '—' }}</td>
             <td data-label="Applies To">
@@ -61,7 +61,7 @@
               <div class="bk-empty-inner">
                 <div class="bk-empty-illus" style="font-size:34px">🧾</div>
                 <p class="bk-empty-title">No tax templates</p>
-                <p class="bk-empty-sub">Create a GST/VAT template to apply on invoices and bills.</p>
+                <p class="bk-empty-sub">Create a VAT template to apply on invoices and bills.</p>
                 <button class="bk-empty-btn" v-if="$canCreate('taxes')" @click="openNew"><span v-html="icon('plus',13)"></span> New Template</button>
               </div>
             </td>
@@ -90,7 +90,7 @@
         <div class="tt-body">
           <div class="tt-field" style="margin-bottom:16px">
             <label class="tt-label">Template Name <span class="tt-req">*</span></label>
-            <input v-model="form.template_name" class="b-input" :placeholder="form.tax_type==='VAT' ? 'e.g. VAT 5%' : form.tax_type==='GST' ? 'e.g. GST 18%' : 'e.g. Cess 1%'" :disabled="!!editing" />
+            <input v-model="form.template_name" class="b-input" :placeholder="form.tax_type==='VAT' ? 'e.g. VAT 16%' : 'e.g. Excise Duty 10%'" :disabled="!!editing" />
           </div>
 
           <div class="tt-field" style="margin-bottom:16px">
@@ -101,7 +101,7 @@
             <div class="text-muted" style="font-size:12px;margin-top:6px">
               Which documents can use this template. <b>Sales</b> templates should post to Payable/liability
               accounts and only show up on Invoices/Credit Notes/Sales Orders/Quotes. <b>Purchase</b> templates
-              should post to Input/ITC accounts and only show up on Bills/Debit Notes/Purchase Orders. Get this
+              should post to Input VAT accounts and only show up on Bills/Debit Notes/Purchase Orders. Get this
               wrong and tax gets posted to the wrong side of the ledger.
             </div>
           </div>
@@ -109,19 +109,7 @@
           <div class="tt-field" style="margin-bottom:6px">
             <label class="tt-label">Tax Regime</label>
             <div class="tt-pills">
-              <button v-for="t in ['GST','VAT','Custom']" :key="t" type="button" class="tt-pill" :class="{active:form.tax_type===t}" @click="setType(t)">{{ t }}</button>
-            </div>
-          </div>
-
-          <!-- GST quick-fill: build CGST + SGST + IGST from a single total -->
-          <div v-if="form.tax_type==='GST'" class="tt-quickfill">
-            <div>
-              <div class="tt-qf-label">Quick fill</div>
-              <div class="tt-qf-sub">Enter a total GST % — we'll add CGST, SGST &amp; IGST rows you can edit.</div>
-            </div>
-            <div class="tt-qf-input">
-              <input v-model.number="quick" type="number" min="0" step="0.5" class="b-input" placeholder="e.g. 18" style="width:90px" />
-              <button class="tt-qf-btn" @click="quickFillGst" :disabled="!quick">Generate</button>
+              <button v-for="t in ['VAT','Custom']" :key="t" type="button" class="tt-pill" :class="{active:form.tax_type===t}" @click="setType(t)">{{ t }}</button>
             </div>
           </div>
 
@@ -145,19 +133,7 @@
             <button class="tt-row-del" @click="removeRow(i)" title="Remove"><span v-html="icon('trash',13)"></span></button>
           </div>
           <div v-if="!form.rows.length" class="tt-norows">
-            {{ form.tax_type==='GST'
-              ? 'No components yet — add CGST + SGST (used for same-state sales) and IGST (used for other-state sales).'
-              : form.tax_type==='VAT' ? 'Add a VAT component.' : 'Add tax components.' }}
-          </div>
-
-          <!-- GST intra/inter preview -->
-          <div v-if="form.tax_type==='GST' && form.rows.length" class="tt-note">
-            <span v-html="icon('info',14)"></span>
-            <span>
-              <strong>Same-state (intra):</strong> {{ intraLabel || '—' }} = <strong>{{ intraRate }}%</strong>.
-              <strong>Other-state (inter):</strong> {{ interLabel || '—' }} = <strong>{{ interRate }}%</strong>.
-              Invoices &amp; bills post to the account head on each row, chosen automatically by Place of Supply.
-            </span>
+            {{ form.tax_type==='VAT' ? 'Add a VAT component (e.g. 16% standard rate).' : 'Add tax components.' }}
           </div>
 
           <div class="tt-grid2" style="margin-top:20px">
@@ -195,17 +171,20 @@ import { fmtDate } from "../utils/format.js";
 const { toast } = useToast();
 const { confirm } = useConfirm();
 
-const TYPE_PILLS = ["All", "GST", "VAT", "Custom"];
+const TYPE_PILLS = ["All", "VAT", "Custom"];
 // Components offered per regime. Values must match the Tax Template Detail
-// doctype's `tax_type` Select options (CGST/SGST/IGST/VAT/Cess/Other).
+// doctype's `tax_type` Select options. Kenya: VAT only; legacy India
+// components (CGST/SGST/IGST/Cess) are kept only so old rows still display.
 const COMPONENTS_BY_TYPE = {
-  GST:    ["CGST", "SGST", "IGST", "Cess"],
   VAT:    ["VAT"],
-  Custom: ["CGST", "SGST", "IGST", "VAT", "Cess", "Other"],
+  Custom: ["VAT", "Other"],
 };
+// Legacy India components, only used to summarise old templates.
 const INTRA = new Set(["CGST", "SGST"]);
 const INTER = new Set(["IGST"]);
 const BOTH = new Set(["Cess"]);
+// Old "GST" templates are shown/edited as Custom.
+const typeOf = (t) => (t === "VAT" ? "VAT" : "Custom");
 
 const list      = ref([]);
 const loading   = ref(true);
@@ -215,21 +194,17 @@ const accounts  = ref([]);
 const drawer    = ref(false);
 const editing   = ref(null);
 const saving    = ref(false);
-const quick     = ref(null);
 
-const form = reactive({ template_name: "", applies_to: "Both", tax_type: "GST", is_default: 0, disabled: 0, rows: [], owner: null, creation: null, modified_by: null, modified: null });
+const form = reactive({ template_name: "", applies_to: "Both", tax_type: "VAT", is_default: 0, disabled: 0, rows: [], owner: null, creation: null, modified_by: null, modified: null });
 
-const allowedComponents = computed(() => COMPONENTS_BY_TYPE[form.tax_type] || COMPONENTS_BY_TYPE.Custom);
+const allowedComponents = computed(() => {
+  const base = COMPONENTS_BY_TYPE[form.tax_type] || COMPONENTS_BY_TYPE.Custom;
+  // keep any legacy component already on the template so it still displays
+  const extra = form.rows.map((r) => r.tax_type).filter((t) => t && !base.includes(t));
+  return [...base, ...new Set(extra)];
+});
 
-// ── GST intra/inter preview ──
-const intraRows = computed(() => form.rows.filter((r) => INTRA.has(r.tax_type) || BOTH.has(r.tax_type)));
-const interRows = computed(() => form.rows.filter((r) => INTER.has(r.tax_type) || BOTH.has(r.tax_type)));
 const sumRate = (rows) => Math.round(rows.reduce((s, r) => s + (Number(r.rate) || 0), 0) * 100) / 100;
-const labelOf = (rows) => rows.filter((r) => Number(r.rate)).map((r) => `${r.tax_type} ${Number(r.rate)}%`).join(" + ");
-const intraRate  = computed(() => sumRate(intraRows.value));
-const interRate  = computed(() => sumRate(interRows.value));
-const intraLabel = computed(() => labelOf(intraRows.value));
-const interLabel = computed(() => labelOf(interRows.value));
 
 // Guess a GL account for a component by matching its keyword in the account name.
 function guessAccount(component) {
@@ -240,21 +215,9 @@ function guessAccount(component) {
 
 function setType(t) {
   form.tax_type = t;
-  // Drop rows whose component isn't valid for the new regime.
-  const allowed = new Set(COMPONENTS_BY_TYPE[t] || []);
-  form.rows = form.rows.filter((r) => allowed.has(r.tax_type));
+  // VAT allows VAT rows only; Custom keeps whatever rows exist.
+  if (t === "VAT") form.rows = form.rows.filter((r) => r.tax_type === "VAT");
   if (t === "VAT" && !form.rows.length) addRow("VAT");
-}
-
-function quickFillGst() {
-  const total = Number(quick.value) || 0;
-  if (!total) return;
-  const half = Math.round(total / 2 * 100) / 100;
-  form.rows = [
-    { tax_type: "CGST", rate: half,  account_head: guessAccount("CGST"), description: `CGST @ ${half}%` },
-    { tax_type: "SGST", rate: half,  account_head: guessAccount("SGST"), description: `SGST @ ${half}%` },
-    { tax_type: "IGST", rate: total, account_head: guessAccount("IGST"), description: `IGST @ ${total}%` },
-  ];
 }
 
 function addRow(type) {
@@ -262,13 +225,12 @@ function addRow(type) {
 }
 function removeRow(i) { form.rows.splice(i, 1); }
 
-// Build a per-template summary: the headline is the intra total for GST (what a
-// same-state invoice charges), with a component breakdown label.
+// Per-template summary: headline rate plus a component breakdown label.
 function summarize(taxes, type) {
   const rows = (taxes || []).map((r) => ({ tax_type: r.tax_type, rate: Number(r.rate) || 0 }));
   const label = rows.filter((r) => r.rate).map((r) => `${r.tax_type} ${r.rate}%`).join(" + ");
   let headline;
-  if ((type || "GST") === "GST") {
+  if (rows.some((r) => INTRA.has(r.tax_type) || INTER.has(r.tax_type))) { // legacy GST rows
     headline = sumRate(rows.filter((r) => INTRA.has(r.tax_type) || BOTH.has(r.tax_type)));
     if (!headline) headline = sumRate(rows.filter((r) => INTER.has(r.tax_type) || BOTH.has(r.tax_type)));
   } else {
@@ -321,14 +283,14 @@ async function loadAccounts() {
 
 const typeCounts = computed(() => {
   const m = {};
-  list.value.forEach((t) => { const k = t.tax_type || "GST"; m[k] = (m[k] || 0) + 1; });
+  list.value.forEach((t) => { const k = typeOf(t.tax_type); m[k] = (m[k] || 0) + 1; });
   return m;
 });
 
 const filtered = computed(() => {
   // Sales tax templates hidden for Sava
   let r = list.value.filter((t) => t.applies_to !== "Sales");
-  if (typeFilter.value !== "All") r = r.filter((t) => (t.tax_type || "GST") === typeFilter.value);
+  if (typeFilter.value !== "All") r = r.filter((t) => typeOf(t.tax_type) === typeFilter.value);
   const q = search.value.trim().toLowerCase();
   if (q) r = r.filter((t) => (t.template_name || "").toLowerCase().includes(q));
   return r;
@@ -336,13 +298,13 @@ const filtered = computed(() => {
 
 function openNew() {
   editing.value = null;
-  quick.value = null;
-  Object.assign(form, { template_name: "", applies_to: "Both", tax_type: "GST", is_default: 0, disabled: 0, rows: [], owner: null, creation: null, modified_by: null, modified: null });
+  Object.assign(form, { template_name: "", applies_to: "Both", tax_type: "VAT", is_default: 0, disabled: 0, rows: [], owner: null, creation: null, modified_by: null, modified: null });
+  addRow("VAT");
+  form.rows[0].rate = 16; // Kenya standard rate
   drawer.value = true;
 }
 function openEdit(t) {
   editing.value = t.name;
-  quick.value = null;
   const rows = (t._taxes || []).map((r) => ({
     tax_type: r.tax_type || "Other",
     rate: Number(r.rate) || 0,
@@ -352,7 +314,7 @@ function openEdit(t) {
   Object.assign(form, {
     template_name: t.template_name,
     applies_to: t.applies_to || "Both",
-    tax_type: t.tax_type || "GST",
+    tax_type: typeOf(t.tax_type),
     is_default: t.is_default ? 1 : 0,
     disabled: t.disabled ? 1 : 0,
     rows,
