@@ -8,8 +8,8 @@
 - the server fills rank, lowest, rate, VAT, amounts and totals; the client sends only
   selected_quotation and reason per line
 - status changes only with flags.qc_workflow (approval in A9.4, LPO creation in A9.5)
-- approval by total incl. VAT: Purchase Manager always; Finance above KES 200,000;
-  Director above KES 500,000 (strictly above). Levels run in order.
+- approval by total incl. VAT: Purchase Manager always; Finance above KES 200,000 (strictly above). Levels run in
+  order. There is no Director level (comparisons and LPOs): a Director can act on any pending level (see is_admin).
 """
 import json
 from decimal import Decimal
@@ -405,7 +405,6 @@ def summary(doc):
 # --- approval (A9.4) -------------------------------------------------------
 APPROVAL_ROLES = ("Purchase Manager", "Finance", "Director")
 FINANCE_ABOVE = Decimal("200000")
-DIRECTOR_ABOVE = Decimal("500000")
 PENDING_APPROVAL = "Pending Approval"
 APPROVED = "Approved"
 REJECTED = "Rejected"
@@ -415,13 +414,12 @@ STEP_REJECTED = "Rejected"
 
 
 def required_roles(total):
-	"""Approval levels for a total incl. VAT. A total exactly on a threshold does not add a level."""
+	"""Approval levels for a total incl. VAT. A total exactly on a threshold does not add a level.
+	Levels stop at Finance; a Director acts on any level as admin."""
 	value = Decimal(str(total or 0))
 	roles = ["Purchase Manager"]
 	if value > FINANCE_ABOVE:
 		roles.append("Finance")
-	if value > DIRECTOR_ABOVE:
-		roles.append("Director")
 	return roles
 
 

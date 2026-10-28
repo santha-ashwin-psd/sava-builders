@@ -41,7 +41,7 @@ class TestSavaAccess(unittest.TestCase):
 			"Purchase Receipt": {"Store Keeper"}, "Purchase Order": {"Purchase Officer"},
 			"Request for Quotation": {"Purchase Officer"}, "Supplier Quotation": {"Purchase Officer"},
 			"Quotation Comparison": {"Purchase Officer"}, "Purchase Invoice": {"Accounts Officer"},
-			"Payment Entry": {"Accounts Officer", "Finance"}}
+			"Payment Entry": {"Accounts Officer", "Finance"}, "QC Inspection": {"Store Keeper"}}
 		full = {m: "Delete" for m in access.MODULES}  # every module on: only the role rule may refuse
 		for dt, allowed in writers.items():
 			for role in ROLES:

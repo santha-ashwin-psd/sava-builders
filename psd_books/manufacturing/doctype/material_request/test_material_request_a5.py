@@ -108,19 +108,15 @@ class TestRequiredFields(unittest.TestCase):
 			check(FakeMR(delivery_warehouse=""))
 		self.assertIn("Delivery Warehouse", str(cm.exception))
 
-	def test_blank_intended_use_names_the_row(self):
-		doc = FakeMR(rows=[Row("Columns"), Row("   ")])
-		with self.assertRaises(Exception) as cm:
-			check(doc)
-		self.assertIn("Row 2: Intended Use", str(cm.exception))
-		self.assertNotIn("Row 1", str(cm.exception))
+	def test_blank_intended_use_is_allowed(self):
+		check(FakeMR(rows=[Row("Columns"), Row("   "), Row("")]))
 
 	def test_all_missing_listed_in_one_message(self):
 		doc = FakeMR(rows=[Row("")], project="", delivery_warehouse="")
 		with self.assertRaises(Exception) as cm:
 			check(doc)
 		msg = str(cm.exception)
-		for part in ("Project", "Delivery Warehouse", "Row 1: Intended Use"):
+		for part in ("Project", "Delivery Warehouse"):
 			self.assertIn(part, msg)
 
 

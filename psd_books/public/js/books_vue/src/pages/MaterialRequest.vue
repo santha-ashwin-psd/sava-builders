@@ -14,7 +14,8 @@
         <select v-model="filterType" class="mrl-select">
           <option value="">All Types</option>
           <option value="Purchase">Purchase</option>
-          <option value="Material Transfer">Material Transfer</option>
+          <option value="Asset">Asset</option>
+<option value="Material Transfer">Material Transfer</option>
         </select>
         <button class="mrl-btn" @click="reloadList" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
         <button class="mrl-btn" @click="exportCSV" :disabled="!sorted.length"><span v-html="icon('download',14)"></span> CSV</button>
@@ -93,14 +94,14 @@
                 <button v-if="!isNew && mr.docstatus===1" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="cancelMR" :disabled="submitting || !canCancelMR" :title="!canCancelMR ? MR_CANCEL_NOTE : ''">
                   {{ submitting ? 'Cancelling…' : 'Cancel' }}
                 </button>
-                <button v-if="SHOW_CREATE_PO && !isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status !== 'Ordered'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !canCreatePO || !!linkedNote" :title="!canCreatePO ? PO_NOTE : linkedNote">
+                <button v-if="SHOW_CREATE_PO && !isNew && mr.docstatus===1 && isPurchaseLike && mr.status !== 'Ordered'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !canCreatePO || !!linkedNote" :title="!canCreatePO ? PO_NOTE : linkedNote">
                   {{ actionLoading === 'po' ? 'Creating…' : 'Create Purchase Order' }}
                 </button>
-                <span v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && mr.status === 'Ordered'" class="bomx-badge badge-active" style="align-self:center">Purchase Order Created</span>
-                <button v-if="!isNew && mr.docstatus===1 && mr.material_request_type==='Purchase' && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createRfq" :disabled="!canCreateRFQ || !!linkedNote" :title="!canCreateRFQ ? RFQ_NOTE : linkedNote">
+                <span v-if="!isNew && mr.docstatus===1 && isPurchaseLike && mr.status === 'Ordered'" class="bomx-badge badge-active" style="align-self:center">Purchase Order Created</span>
+                <button v-if="!isNew && mr.docstatus===1 && isPurchaseLike && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createRfq" :disabled="!canCreateRFQ || !!linkedNote" :title="!canCreateRFQ ? RFQ_NOTE : linkedNote">
                   Create RFQ
                 </button>
-                <button v-if="!isNew && mr.docstatus===1 && mr.material_request_type!=='Purchase' && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="issueFromStore" :disabled="!canIssueStock" :title="!canIssueStock ? ISSUE_NOTE : ''">
+                <button v-if="!isNew && mr.docstatus===1 && !isPurchaseLike && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="issueFromStore" :disabled="!canIssueStock" :title="!canIssueStock ? ISSUE_NOTE : ''">
                   Issue from Store
                 </button>
                 <button v-if="!isNew && mr.docstatus===0 && mr.production_plan" class="bomx-btn bomx-btn-light" @click="submitMR" :disabled="submitting || saving || !$canEdit('inventory')">
@@ -109,10 +110,10 @@
                 <button v-if="!isNew && mr.docstatus===0 && !mr.production_plan && (mr.status==='Draft' || mr.status==='Sent Back')" class="bomx-btn bomx-btn-light" @click="sendForApproval" :disabled="submitting || saving || !$canEdit('inventory')">
                   {{ submitting ? 'Sending…' : 'Send for Approval' }}
                 </button>
-                <button v-if="!isNew && mr.docstatus===0 && mr.status==='Pending Approval' && approval.can_approve" class="bomx-btn bomx-btn-light" @click="approveMR" :disabled="submitting">
+                <button v-if="!isNew && mr.docstatus===0 && mr.status==='Pending Approval' && approval.can_approve && !showSendBack" class="bomx-btn bomx-btn-light" @click="approveMR" :disabled="submitting">
                   {{ submitting ? 'Approving…' : 'Approve' }}
                 </button>
-                <button v-if="!isNew && mr.docstatus===0 && mr.status==='Pending Approval' && approval.can_approve" class="bomx-btn bomx-btn-light" @click="showSendBack = !showSendBack" :disabled="submitting">
+                <button v-if="!isNew && mr.docstatus===0 && mr.status==='Pending Approval' && approval.can_approve && !showSendBack" class="bomx-btn bomx-btn-light" @click="showSendBack = true" :disabled="submitting">
                   Send Back
                 </button>
                 <button v-if="!readOnly && !isNew" class="bomx-btn bomx-btn-light" @click="save" :disabled="saving || loading || !(isNew ? canRaiseMR : canEditMR)">
@@ -135,12 +136,14 @@
           </div>
           <div class="bomx-toggle-row" v-if="!isNew && mr.status==='Pending Approval' && approval.can_approve && showSendBack" style="align-items:flex-start">
             <textarea class="bomx-fi" v-model="sendBackReason" rows="2" placeholder="Reason for sending back (required)" style="flex:1;min-width:260px;resize:vertical"></textarea>
-            <button class="bomx-btn bomx-btn-light" @click="sendBackMR" :disabled="submitting || !sendBackReason.trim()">{{ submitting ? 'Sending…' : 'Confirm Send Back' }}</button>
-            <button class="bomx-btn bomx-btn-light" @click="showSendBack = false; sendBackReason = ''" :disabled="submitting">Cancel</button>
+            <button class="mrx-sb-confirm" @click="sendBackMR" :disabled="submitting || !sendBackReason.trim()">{{ submitting ? 'Sending…' : 'Confirm Send Back' }}</button>
+            <button class="mrx-sb-cancel" @click="showSendBack = false; sendBackReason = ''" :disabled="submitting">Cancel</button>
           </div>
-          <div class="bomx-toggle-row" v-if="!isNew && mr.status==='Sent Back' && mr.docstatus===0">
-            <div class="bomx-field-hint" style="margin:0">
-              Sent back by {{ ownerName(mr.sent_back_by) }} on {{ fmtDate(mr.sent_back_on) }}: {{ mr.send_back_reason }}. Correct it and send it for approval again.
+          <div class="mrx-sb-note" v-if="!isNew && mr.status==='Sent Back' && mr.docstatus===0">
+            <span class="mrx-sb-tag">Sent Back</span>
+            <div>
+              <div class="mrx-sb-reason">{{ mr.send_back_reason }}</div>
+              <div class="mrx-sb-meta">Sent back by {{ ownerName(mr.sent_back_by) }} on {{ fmtDate(mr.sent_back_on) }}. Correct it and send it for approval again.</div>
             </div>
           </div>
 
@@ -148,9 +151,10 @@
           <div class="bomx-hdr-fields">
             <div>
               <div class="bomx-hf-label">Purpose <span style="color:var(--bx-red)">*</span></div>
-              <select class="bomx-fi" v-model="mr.material_request_type" :disabled="readOnly" style="width:100%">
+              <select class="bomx-fi" v-model="mr.material_request_type" :disabled="readOnly" style="width:100%" @change="onPurposeChange">
                 <option value="Purchase">Purchase</option>
-                <option value="Material Transfer">Material Transfer</option>
+                <option value="Asset">Asset</option>
+<option value="Material Transfer">Material Transfer</option>
               </select>
             </div>
             <div>
@@ -182,38 +186,31 @@
                 <span v-html="icon('plus',12)"></span> Add Row
               </button>
             </div>
-            <div class="bomx-rm-cards" style="margin-bottom:20px">
+            <div class="mrx-items" :class="{ 'mrx-has-wh': mr.production_plan }" style="margin-bottom:20px">
               <div v-if="!mr.items || !mr.items.length" class="bomx-tree-empty">No items yet. Add a row or create from Production Plan.</div>
-              <div v-for="(row, idx) in mr.items" :key="idx" class="bomx-rm-card">
-                <div class="bomx-rm-card-hdr">
-                  <span class="bomx-rm-card-title">{{ row.item_name || row.item_code || 'New Row' }}</span>
-                  <button v-if="!readOnly" class="bomx-btn-icon danger" @click="mr.items.splice(idx,1)" title="Remove">
+              <template v-else>
+                <div class="mrx-head">
+                  <span class="mrx-c-no">#</span>
+                  <span>Item</span>
+                  <span>Required Qty</span>
+                  <span>UOM</span>
+                  <span v-if="mr.production_plan">Warehouse</span>
+                  <span v-if="!readOnly"></span>
+                </div>
+                <div v-for="(row, idx) in mr.items" :key="idx" class="mrx-row">
+                  <span class="mrx-c-no">{{ idx + 1 }}</span>
+                  <SearchableSelect v-model="row.item_code" :options="ssOpts2" placeholder="— Select Item —" :disabled="readOnly" @select="onItemChange(row)" compact />
+                  <input class="bomx-fi bomx-fi-mono" type="number" v-model="row.required_qty" min="0.001" step="any" :disabled="readOnly"/>
+                  <SearchableSelect v-model="row.uom" :options="ssOpts3" placeholder="—" :disabled="readOnly" compact />
+                  <SearchableSelect v-if="mr.production_plan" v-model="row.warehouse" :options="ssOpts4" placeholder="— Select —" :disabled="readOnly" compact />
+                  <button v-if="!readOnly" class="bomx-btn-icon danger" @click="mr.items.splice(idx,1)" title="Remove row">
                     <span v-html="icon('trash',13)"></span>
                   </button>
                 </div>
-                <div class="bomx-rm-card-body">
-                  <div class="bomx-rm-field" style="grid-column:span 2">
-                    <label>Item</label>
-                    <SearchableSelect v-model="row.item_code" :options="ssOpts2" placeholder="— Select Item —" :disabled="readOnly" @select="onItemChange(row)" compact />
-                  </div>
-                  <div class="bomx-rm-field">
-                    <label>Required Qty</label>
-                    <input class="bomx-fi bomx-fi-mono" type="number" v-model="row.required_qty" min="0.001" step="any" :disabled="readOnly"/>
-                  </div>
-                  <div class="bomx-rm-field">
-                    <label>UOM</label>
-                    <SearchableSelect v-model="row.uom" :options="ssOpts3" placeholder="—" :disabled="readOnly" compact />
-                  </div>
-                  <div class="bomx-rm-field" style="grid-column:span 2">
-                    <label>Intended Use <span v-if="!mr.production_plan" style="color:var(--bx-red)">*</span></label>
-                    <input class="bomx-fi" type="text" v-model="row.intended_use" :disabled="readOnly" placeholder="What the material is for"/>
-                  </div>
-                  <div class="bomx-rm-field" style="grid-column:span 2" v-if="mr.production_plan">
-                    <label>Warehouse</label>
-                    <SearchableSelect v-model="row.warehouse" :options="ssOpts4" placeholder="— Select —" :disabled="readOnly" compact />
-                  </div>
-                </div>
-              </div>
+              </template>
+              <button v-if="!readOnly && mr.items && mr.items.length" class="mrx-add" @click="addItem">
+                <span v-html="icon('plus',12)"></span> Add another item
+              </button>
             </div>
 
             <div class="bomx-section-lbl">Remarks</div>
@@ -387,6 +384,7 @@ const { projects, fetchProjects } = useProjectOptions();
 
 const companiesList = ref([]);
 const itemsList = ref([]);
+const isPurchaseLike = computed(() => ["Purchase", "Asset"].includes(mr.value && mr.value.material_request_type));
 const uomList = ref([]);
 const warehouseList = ref([]);
 
@@ -421,7 +419,7 @@ const linkedNote = computed(() => {
 async function loadLinkedDocs() {
   linkedDocs.value = { rfq: "", po: "" };
   const m = mr.value;
-  if (!m || !m.name || m.docstatus !== 1 || m.material_request_type !== "Purchase") return;
+  if (!m || !m.name || m.docstatus !== 1 || !["Purchase", "Asset"].includes(m.material_request_type)) return;
   const first = async (dt, filters) => {
     try { return ((await apiList(dt, { fields: ["name"], filters, limit: 1 })) || [])[0]?.name || ""; }
     catch { return ""; }
@@ -434,11 +432,11 @@ async function loadLinkedDocs() {
 }
 const followOnNotes = computed(() => {
   const out = [];
-  if (mr.value.material_request_type === "Purchase") {
+  if (isPurchaseLike.value) {
     if (!canCreatePO.value) out.push(PO_NOTE);
     if (!canCreateRFQ.value) out.push(RFQ_NOTE);
   }
-  if (mr.value.material_request_type !== "Purchase" && !canIssueStock.value) out.push(ISSUE_NOTE);
+  if (!isPurchaseLike.value && !canIssueStock.value) out.push(ISSUE_NOTE);
   return out;
 });
 const showFollowOnNotes = computed(() => !isNew.value && mr.value.docstatus === 1 &&
@@ -457,7 +455,7 @@ onMounted(async () => {
 
     [companiesList.value, itemsList.value, uomList.value] = await Promise.all([
       apiList("Company", { fields: ["name"], limit: 100000 }),
-      apiList("Item", { fields: ["name", "item_name", "stock_uom"], filters: [["disabled", "=", 0]], limit: 5000, order: "name asc" }),
+      apiList("Item", { fields: ["name", "item_name", "stock_uom", "is_asset_item"], filters: [["disabled", "=", 0]], limit: 5000, order: "name asc" }),
       apiList("UOM", { fields: ["name"], limit: 200, order: "name asc" }),
     ]);
     companiesList.value = companiesList.value || [];
@@ -573,7 +571,24 @@ async function approveMR() {
 }
 
 function addItem() {
-  mr.value.items.push({ item_code: "", item_name: "", required_qty: 1, uom: "", warehouse: "", intended_use: "" });
+  mr.value.items.push({ item_code: "", item_name: "", required_qty: 1, uom: "", warehouse: "" });
+}
+
+function itemAllowed(i) {
+  const t = mr.value.material_request_type;
+  if (t === "Asset") return !!i.is_asset_item;
+  if (t === "Purchase") return !i.is_asset_item;
+  return true;
+}
+
+function onPurposeChange() {
+  const byCode = {};
+  (itemsList.value || []).forEach(i => { byCode[i.name] = i; });
+  let cleared = 0;
+  for (const r of mr.value.items || []) {
+    if (r.item_code && byCode[r.item_code] && !itemAllowed(byCode[r.item_code])) { r.item_code = ""; r.item_name = ""; r.uom = ""; cleared++; }
+  }
+  if (cleared) toast(`${cleared} item${cleared > 1 ? "s" : ""} cleared. They don't match the ${mr.value.material_request_type} purpose.`, "error");
 }
 
 function onItemChange(row) {
@@ -592,7 +607,6 @@ async function save() {
   for (const r of mr.value.items) {
     if (!r.item_code) return toast("Select an item for every row", "error");
     if (!r.required_qty || r.required_qty <= 0) return toast(`Required Qty must be > 0 for ${r.item_code}`, "error");
-    if (!mr.value.production_plan && !(r.intended_use || "").trim()) return toast(`Enter the intended use for ${r.item_code}`, "error");
   }
   saving.value = true;
   try {
@@ -725,7 +739,7 @@ function icon(name, size) {
 
 // ── Searchable dropdown options (typing filters the list) ──
 const ssOpts1 = computed(() => [{ value: '', label: 'All Status' }, ...(statusOptions || []).map(s => ({ value: s, label: s }))]);
-const ssOpts2 = computed(() => [{ value: '', label: '— Select Item —' }, ...(itemsList.value || []).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
+const ssOpts2 = computed(() => [{ value: '', label: '— Select Item —' }, ...(itemsList.value || []).filter(i => itemAllowed(i) || (mr.value.items || []).some(r => r.item_code === i.name)).map(i => ({ value: i.name, label: i.item_name || i.name }))]);
 const ssOpts3 = computed(() => [{ value: '', label: '—' }, ...(uomList.value || []).map(u => ({ value: u.name, label: u.name }))]);
 const ssOpts4 = computed(() => [{ value: '', label: '— Select —' }, ...(warehouseList.value || []).map(w => ({ value: w.name, label: w.name }))]);
 </script>
@@ -803,6 +817,34 @@ const ssOpts4 = computed(() => [{ value: '', label: '— Select —' }, ...(ware
 .bomx-rm-field .bomx-fi { width:100%; }
 @media (max-width:640px) {
   .bomx-rm-card-body { grid-template-columns:1fr 1fr; }
+}
+
+/* ── Send back actions + notice ── */
+.mrx-sb-confirm { padding:8px 16px; border:none; border-radius:8px; background:#dc2626; color:#fff; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 1px 2px rgba(220,38,38,.35); }
+.mrx-sb-confirm:hover:not(:disabled) { background:#b91c1c; }
+.mrx-sb-confirm:disabled { opacity:.45; cursor:not-allowed; box-shadow:none; }
+.mrx-sb-cancel { padding:7px 16px; border:1.5px solid #94a3b8; border-radius:8px; background:#fff; color:#334155; font-size:13px; font-weight:600; cursor:pointer; }
+.mrx-sb-cancel:hover:not(:disabled) { background:#f1f5f9; border-color:#64748b; }
+.mrx-sb-note { display:flex; align-items:flex-start; gap:12px; margin:0; padding:12px 22px; background:#fef2f2; border-bottom:1px solid #fecaca; border-left:4px solid #dc2626; }
+.mrx-sb-tag { flex-shrink:0; padding:3px 10px; border-radius:999px; background:#dc2626; color:#fff; font-size:11px; font-weight:700; letter-spacing:.03em; text-transform:uppercase; }
+.mrx-sb-reason { font-size:14px; font-weight:700; color:#991b1b; }
+.mrx-sb-meta { margin-top:2px; font-size:12px; color:#7f1d1d; }
+
+/* ── Compact item rows (New / edit Material Request) ── */
+.mrx-items { background:#fff; border:1px solid var(--bx-border); border-radius:var(--bx-radius); box-shadow:0 1px 3px rgba(16,24,40,.04); overflow:hidden; --mrx-cols:34px minmax(0,1fr) 110px 130px 32px; }
+.mrx-items.mrx-has-wh { --mrx-cols:34px minmax(0,1fr) 110px 130px minmax(0,.8fr) 32px; }
+.mrx-head, .mrx-row { display:grid; grid-template-columns:var(--mrx-cols); gap:10px; align-items:center; padding:0 14px; }
+.mrx-head { padding-top:9px; padding-bottom:9px; background:var(--bx-mfgS); border-bottom:1px solid var(--bx-border); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--bx-muted); }
+.mrx-row { padding-top:6px; padding-bottom:6px; border-bottom:1px solid #eef1f5; }
+.mrx-row:hover { background:#fafbfd; }
+.mrx-c-no { text-align:center; font-size:12px; color:var(--bx-muted); }
+.mrx-row .bomx-fi { width:100%; }
+.mrx-add { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:10px; border:none; background:#fff; color:var(--bx-mfgB); font-size:13px; font-weight:600; cursor:pointer; }
+.mrx-add:hover { background:var(--bx-mfgS); }
+@media (max-width:640px) {
+  .mrx-head { display:none; }
+  .mrx-row, .mrx-items.mrx-has-wh .mrx-row { grid-template-columns:28px minmax(0,1fr) 32px; row-gap:6px; padding:10px 12px; }
+  .mrx-row > :nth-child(3), .mrx-row > :nth-child(4), .mrx-row > :nth-child(5) { grid-column:2; }
 }
 
 /* ── Buttons / inputs ── */

@@ -101,7 +101,7 @@ const routeReady = ref(false);
 
 const route  = useRoute();
 const router = useRouter();
-const { can, role } = usePermissions();
+const { can, role, flags: navFlags } = usePermissions();
 
 // ── Open section (accordion — only one open at a time) ───────────────
 const SECTION_KEY = "books_sidebar_open_section";
@@ -198,7 +198,8 @@ const navGroups = computed(() => {
       current = { section: item.section, items: [] };
       continue;
     }
-    if (!can(item.module)) continue;
+    // An item with a doctype is also shown to anyone the server lets read that doctype (e.g. Store Keeper -> Purchase Orders).
+    if (!can(item.module) && !(item.doctype && navFlags.value.doc_access?.[item.doctype]?.read)) continue;
     if (!current) current = { section: null, items: [] };
     current.items.push(item);
   }

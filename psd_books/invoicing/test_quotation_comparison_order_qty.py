@@ -81,7 +81,7 @@ class ApplySelections(unittest.TestCase):
 		full = rules.apply_selections(ranking, {"L1": {"selected_quotation": "SQ-1"}})
 		part = rules.apply_selections(ranking, {"L1": {"selected_quotation": "SQ-1", "order_qty": 15}})
 		t_full, t_part = rules.calc.totals(full), rules.calc.totals(part)
-		self.assertEqual(rules.required_roles(t_full["grand_total"]), ["Purchase Manager", "Finance", "Director"])
+		self.assertEqual(rules.required_roles(t_full["grand_total"]), ["Purchase Manager", "Finance"])
 		self.assertEqual(t_part["grand_total"], 348000.0)
 		self.assertEqual(rules.required_roles(t_part["grand_total"]), ["Purchase Manager", "Finance"])
 

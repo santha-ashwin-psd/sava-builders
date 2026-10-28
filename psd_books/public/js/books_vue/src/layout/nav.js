@@ -33,7 +33,7 @@ export const NAV = [
   // { path: "/expenses/categories",           label: "Expense Categories", icon: "folder",   module: "bills"      },  // hidden for Sava (Purchases)
   { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },
   { path: "/rfqs",                          label: "Request for Quotation", icon: "purchase", module: "bills"    },
-  { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills"      },
+  { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills", doctype: "Purchase Order" },  // also shown to anyone who may read Purchase Orders (Store Keeper: marks goods received)
   { path: "/delivery-challans",             label: "Delivery Notes",    icon: "truck",      module: "inventory"  },
   // { path: "/purchases",                     label: "Bills",            icon: "fileplus",   module: "bills"      },  // hidden (sidebar)
   // { path: "/recurring-bills",               label: "Recurring Bills",  icon: "recurring",  module: "bills"      },  // hidden (sidebar)

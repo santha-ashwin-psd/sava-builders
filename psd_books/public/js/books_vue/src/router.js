@@ -335,7 +335,7 @@ const routes = [
   { path: "/sales-orders",      name: "sales-orders",     component: SalesOrders,    meta: { module: "invoices" } },
   { path: "/credit-notes",      name: "credit-notes",     component: CreditNotes,    meta: { module: "invoices" } },
   { path: "/purchases",         name: "purchases",        component: Bills,          meta: { module: "bills"    } },
-  { path: "/purchase-orders",   name: "purchase-orders",  component: PurchaseOrders, meta: { module: "bills"    } },
+  { path: "/purchase-orders",   name: "purchase-orders",  component: PurchaseOrders, meta: { module: "bills", doctype: "Purchase Order" } },
   { path: "/expenses",          name: "expenses",         component: Expenses,       meta: { module: "bills"    } },
   { path: "/expenses/categories", name: "expense-categories", component: ExpenseCategories, meta: { module: "bills" } },
   { path: "/payments",          name: "payments",         component: Payments,       meta: { module: "payments" } },
@@ -445,8 +445,9 @@ router.beforeEach((to) => {
 
   if (isHiddenPath(to.path)) return { path: "/dashboard" };
 
-  const { can } = usePermissions();
-  if (to.meta?.module && !can(to.meta.module)) {
+  const { can, flags } = usePermissions();
+  const docRead = to.meta?.doctype && !!flags.value.doc_access?.[to.meta.doctype]?.read;
+  if (to.meta?.module && !can(to.meta.module) && !docRead) {
     useToast().error(`You don't have access to "${to.name || to.path}".`);
     return { path: "/dashboard" };
   }

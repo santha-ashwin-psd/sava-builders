@@ -162,9 +162,6 @@
           <td @click="openView(row)" data-label="Code"><DocLink doctype="Item" :name="row.name">{{row.item_code||row.name}}</DocLink></td>
           <td class="fw-600" data-label="Name">
   <span @click="openView(row)">{{row.item_name}}</span>
-  <span class="text-muted" style="font-size:11px;margin-left:6px;">
-    ({{row.stock_uom || 'Nos'}})
-  </span>
   <span v-if="row.has_variants" class="it-tpl-badge it-tpl-badge--link" @click.stop="openVariants(row)" title="Manage variants">Template ↗</span>
   <span v-else-if="row.variant_of" class="it-var-badge">Variant</span>
 </td>

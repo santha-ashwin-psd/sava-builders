@@ -144,6 +144,9 @@ SAVA_ACCESS = {
         "read": frozenset({"Site Engineer", "Store Keeper", "Purchase Manager"}),
         "write": frozenset({"Store Keeper"})},
     "Purchase Receipt": {"read": _ALL_SAVA, "write": frozenset({"Store Keeper"})},
+    # QC (create, edit, readings, submit, cancel): Store Keeper, Director and Books Admin (admins pass above).
+    # No "read" key, so who can see inspections stays with the Inventory module check.
+    "QC Inspection": {"write": frozenset({"Store Keeper"})},
     "Purchase Order": {
         "read": _ALL_SAVA - {"Site Engineer", "Project Manager"},
         "write": frozenset({"Purchase Officer"})},

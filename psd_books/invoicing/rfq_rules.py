@@ -47,8 +47,8 @@ def check_mrn(mrn, company=None):
 	if mrn.get("docstatus") != 1 or mrn.get("status") not in MRN_STATUSES:
 		frappe.throw(_("Material Request {0} is not open for a quotation request (status: {1}). "
 			"Only Approved or Partly Issued requests can have one.").format(mrn.get("name"), mrn.get("status")))
-	if mrn.get("material_request_type") != "Purchase":
-		frappe.throw(_("Material Request {0} is a {1} request. Only Purchase requests can have an RFQ.")
+	if mrn.get("material_request_type") not in ("Purchase", "Asset"):
+		frappe.throw(_("Material Request {0} is a {1} request. Only Purchase or Asset requests can have an RFQ.")
 			.format(mrn.get("name"), mrn.get("material_request_type")))
 	if company and mrn.get("company") and mrn.get("company") != company:
 		frappe.throw(_("Material Request {0} belongs to another company.").format(mrn.get("name")))
@@ -173,9 +173,9 @@ def build_email(doc, row, company_name, project_name=None):
 	"""(subject, html) for one supplier. Only that supplier's name appears in it."""
 	e = escape
 	items = "".join(
-		"<tr><td>{0}</td><td>{1}</td><td align=\"right\">{2}</td><td>{3}</td><td>{4}</td></tr>".format(
+		"<tr><td>{0}</td><td>{1}</td><td align=\"right\">{2}</td><td>{3}</td></tr>".format(
 			i, e(str(r.get("item_name") or r.get("item_code") or "")), e(str(flt(r.get("qty")))),
-			e(str(r.get("uom") or "")), e(str(r.get("intended_use") or "")))
+			e(str(r.get("uom") or "")))
 		for i, r in enumerate(doc.items, 1))
 	where = " - {0}".format(e(str(project_name))) if project_name else ""
 	lines = [
@@ -187,7 +187,7 @@ def build_email(doc, row, company_name, project_name=None):
 		lines.append("<p>Deliver to: {0}</p>".format(e(str(doc.delivery_warehouse))))
 	lines.append(
 		"<table border=\"1\" cellpadding=\"6\" cellspacing=\"0\" style=\"border-collapse:collapse\">"
-		"<tr><th>#</th><th>Item</th><th>Qty</th><th>UOM</th><th>Intended use</th></tr>{0}</table>".format(items))
+		"<tr><th>#</th><th>Item</th><th>Qty</th><th>UOM</th></tr>{0}</table>".format(items))
 	if (doc.get("message") or "").strip():
 		lines.append("<p>{0}</p>".format(e(doc.message.strip()).replace("\n", "<br>")))
 	lines.append("<p>Please give your rate, any discount, delivery days and payment terms for each item, "

@@ -61,7 +61,7 @@ class MaterialRequest(Document):
 				row.warehouse = self.delivery_warehouse
 
 	def _validate_mrn_fields(self):
-		"""Sava A5: a new MRN needs a project, a delivery warehouse and an intended use on every line.
+		"""Sava A5: a new MRN needs a project and a delivery warehouse (Intended Use is optional).
 
 		Not applied to Production Plan requests, to documents that are already submitted
 		(editing after submit, cancel), or during install, patch, migrate and tests.
@@ -73,9 +73,6 @@ class MaterialRequest(Document):
 			missing.append(_("Project"))
 		if not self.get("delivery_warehouse"):
 			missing.append(_("Delivery Warehouse"))
-		for idx, row in enumerate(self.items, 1):
-			if not (row.get("intended_use") or "").strip():
-				missing.append(_("Row {0}: Intended Use").format(idx))
 		if missing:
 			frappe.throw(
 				_("Please fill in: {0}").format(", ".join(missing)),

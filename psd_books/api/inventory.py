@@ -1842,8 +1842,8 @@ def create_po_from_mr(material_request):
     
     if mr.docstatus != 1:
         frappe.throw("Material Request must be submitted")
-    if mr.material_request_type != "Purchase":
-        frappe.throw("Only Purchase Material Requests can be converted to Purchase Orders")
+    if mr.material_request_type not in ("Purchase", "Asset"):
+        frappe.throw("Only Purchase or Asset Material Requests can be converted to Purchase Orders")
 
     po_items = []
     for row in mr.items:

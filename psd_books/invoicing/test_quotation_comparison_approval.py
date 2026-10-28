@@ -89,8 +89,10 @@ class Tiers(unittest.TestCase):
 	def test_exactly_on_director_threshold_adds_no_level(self):
 		self.assertEqual(rules.required_roles(500000), [PM, FIN])
 
-	def test_just_above_director_threshold(self):
-		self.assertEqual(rules.required_roles(500000.01), [PM, FIN, DIR])
+	def test_comparison_has_no_director_level(self):
+		self.assertEqual(rules.required_roles(500000.01), [PM, FIN])
+		self.assertEqual(rules.required_roles(5000000), [PM, FIN])
+
 
 	def test_none_or_zero_total(self):
 		self.assertEqual(rules.required_roles(None), [PM])
@@ -99,20 +101,18 @@ class Tiers(unittest.TestCase):
 	def test_steps_are_numbered_and_pending(self):
 		steps = rules.build_steps(600000)
 		self.assertEqual([(s["level"], s["role"], s["status"]) for s in steps],
-			[(1, PM, "Pending"), (2, FIN, "Pending"), (3, DIR, "Pending")])
+			[(1, PM, "Pending"), (2, FIN, "Pending")])
 
 
 class Sequence(unittest.TestCase):
-	def test_three_levels_then_approved(self):
+	def test_two_levels_then_approved(self):
 		d = pending_doc(600000)
 		rules.approve(d, "pm@x.com", [PM], "ok", "t1")
 		self.assertEqual(d.status, "Pending Approval")
-		rules.approve(d, "fin@x.com", [FIN], "", "t2")
-		self.assertEqual(d.status, "Pending Approval")
-		rules.approve(d, "dir@x.com", [DIR], "  go ahead ", "t3")
+		rules.approve(d, "fin@x.com", [FIN], "  go ahead ", "t2")
 		self.assertEqual(d.status, "Approved")
-		self.assertEqual([s.approver for s in d.approval_steps], ["pm@x.com", "fin@x.com", "dir@x.com"])
-		self.assertEqual(d.approval_steps[2].remarks, "go ahead")
+		self.assertEqual([s.approver for s in d.approval_steps], ["pm@x.com", "fin@x.com"])
+		self.assertEqual(d.approval_steps[1].remarks, "go ahead")
 		self.assertEqual(d.approval_steps[0].approved_on, "t1")
 		self.assertTrue(d.flags.qc_workflow)
 
@@ -187,8 +187,8 @@ class AdminBypass(unittest.TestCase):
 	def test_admin_can_approve_own_comparison_at_any_level(self):
 		d = pending_doc(600000)  # raised_by is the raiser from pending_doc
 		rules.approve(d, d.raised_by, [], None, "t1", is_admin=True)
+		self.assertEqual(d.status, "Pending Approval")
 		rules.approve(d, d.raised_by, [], None, "t2", is_admin=True)
-		rules.approve(d, d.raised_by, [], None, "t3", is_admin=True)
 		self.assertEqual(d.status, "Approved")
 
 	def test_admin_can_reject(self):

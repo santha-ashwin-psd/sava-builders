@@ -39,6 +39,7 @@ PREFILL = {
 	"Purchase Manager": ("Books Manager", ["bills", "inventory", "reports", "customers"]),
 	"Finance": ("Accountant", ["bills", "payments", "reports"]),
 	"Director": ("Books Viewer", ["bills", "reports"]),
+	"Project Manager": ("Books Manager", ["inventory"]),
 }
 
 # (role, doctype, action, expected) - from the plan. Approval roles raise nothing; they approve.
@@ -163,7 +164,7 @@ def _can_act(role, steps, raised_by):
 def check_approve():
 	for total, want in ((150000, ["Purchase Manager"]), (200000, ["Purchase Manager"]),
 			(250000, ["Purchase Manager", "Finance"]), (500000, ["Purchase Manager", "Finance"]),
-			(600000, ["Purchase Manager", "Finance", "Director"])):
+			(600000, ["Purchase Manager", "Finance"])):
 		check("LPO of %s needs %s" % (total, " > ".join(want)), PO.required_roles(total) == want,
 			PO.required_roles(total))
 	raiser = ROLE_USER["Purchase Officer"]
@@ -176,14 +177,10 @@ def check_approve():
 	for role in ADM.SAVA_ROLES:
 		check("level 2: %s %s act" % (role, "can" if role == "Finance" else "cannot"),
 			_can_act(role, s_l2, raiser) == (role == "Finance"))
-	s_l3 = _steps(600000, {"Purchase Manager": pm, "Finance": ROLE_USER["Finance"]})
-	for role in ADM.SAVA_ROLES:
-		check("level 3: %s %s act" % (role, "can" if role == "Director" else "cannot"),
-			_can_act(role, s_l3, raiser) == (role == "Director"))
 	check("the Purchase Manager who sent the LPO can approve it",
 		_can_act("Purchase Manager", s600, pm))
 	check("a Books Admin can act on any level",
-		PO.action_state(PO.PENDING_APPROVAL, pm, s_l3, "admin@example.invalid", [], True)["can_act"])
+		PO.action_state(PO.PENDING_APPROVAL, pm, s_l2, "admin@example.invalid", [], True)["can_act"])
 
 
 def check_mrn():

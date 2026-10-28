@@ -10,7 +10,7 @@ and runs the PO approval API as those real users. Each check prints OK or FAILED
 Safe to run again (it leaves its TEST purchase orders on the site, like a9_check does).
 
 Scenarios (PO of 100 bags, no VAT line, so the total is 100 x rate):
-	A  600,000 -> 3 levels, gate blocks every other submit route, out-of-order and repeat approvals
+	A  600,000 -> 2 levels, gate blocks every other submit route, out-of-order and repeat approvals
 	B  250,000 -> 2 levels, send back (reason), edit while Sent Back, raise the total, send again
 	C  100,000 -> 1 level, statuses can't be set by editing, no-value PO can't be sent
 	D  100,000 -> LPO made from an approved comparison still goes through PO approval
@@ -106,7 +106,7 @@ def doctype_checks():
 
 # --- scenarios -------------------------------------------------------------
 def scenario_a():
-	print("\n--- A: 600,000 -> three levels, gate on every submit route ---")
+	print("\n--- A: 600,000 -> two levels, gate on every submit route ---")
 	name = make_po(6000)
 	st = state(name)
 	check("PO %s is a Draft with total 600,000" % name, st.docstatus == 0 and st.status == "Draft" and float(st.grand_total) == 600000,
@@ -124,7 +124,7 @@ def scenario_a():
 
 	# a Draft previews the levels it will need
 	pre = as_user(PM, lambda: api().get_approval_state(name))
-	check("Draft preview: 3 roles", pre["preview_roles"] == ["Purchase Manager", "Finance", "Director"], pre["preview_roles"])
+	check("Draft preview: 2 roles", pre["preview_roles"] == ["Purchase Manager", "Finance"], pre["preview_roles"])
 	check("Draft can be sent, nobody can act yet", pre["can_send"] and not pre["action"]["can_act"], pre)
 
 	res = sent(name)
@@ -133,17 +133,17 @@ def scenario_a():
 	reload()
 	st = state(name)
 	check("status Pending Approval, not submitted", st.status == "Pending Approval" and st.docstatus == 0, (st.status, st.docstatus))
-	check("3 levels: Purchase Manager, Finance, Director", roles_of(name) == ["Purchase Manager", "Finance", "Director"], steps(name))
+	check("2 levels: Purchase Manager, Finance", roles_of(name) == ["Purchase Manager", "Finance"], steps(name))
 	check("raised_by is the sender", st.raised_by == RAISER, st.raised_by)
 
 	# who can do what right now (level 1 = Purchase Manager)
 	check("PM can act on level 1", as_user(PM, lambda: api().get_approval_state(name))["action"]["can_act"])
-	check("Director can't act on level 1", not as_user(DIR, lambda: api().get_approval_state(name))["action"]["can_act"])
+	check("Finance can't act on level 1", not as_user(FIN, lambda: api().get_approval_state(name))["action"]["can_act"])
 	check("sender can't act", not as_user(RAISER, lambda: api().get_approval_state(name))["action"]["can_act"])
 
-	expect_block("sender approving", lambda: as_user(RAISER, lambda: api().approve_po(name)), "sent this")
-	expect_block("sender sending back", lambda: as_user(RAISER, lambda: api().send_back_po(name, "no")), "sent this")
-	expect_block("Director approving level 1 (out of order)", lambda: as_user(DIR, lambda: api().approve_po(name)), "needs the")
+	expect_block("sender approving (no approver role)", lambda: as_user(RAISER, lambda: api().approve_po(name)), "needs the")
+	expect_block("sender sending back (no approver role)", lambda: as_user(RAISER, lambda: api().send_back_po(name, "no")), "needs the")
+	expect_block("Finance approving level 1 (out of order)", lambda: as_user(FIN, lambda: api().approve_po(name)), "needs the")
 	expect_block("send back without a reason", lambda: as_user(PM, lambda: api().send_back_po(name, "  ")), "reason")
 	expect_block("sending again while Pending Approval", lambda: as_user(RAISER, lambda: api().send_for_approval(name)), "Draft or Sent Back")
 	expect_block("edit while Pending Approval", lambda: edit_rate(name, 5000), "pending approval")
@@ -164,18 +164,14 @@ def scenario_a():
 	pm_doc.remove_roles("Finance")
 	frappe.clear_cache(user=PM)
 
-	expect_ok("Finance approves level 2", lambda: as_user(FIN, lambda: api().approve_po(name)))
-	reload()
-	check("still Pending Approval after level 2, not submitted",
-		state(name).status == "Pending Approval" and state(name).docstatus == 0, state(name))
-	res = expect_ok("Director approves level 3 (last)", lambda: as_user(DIR, lambda: api().approve_po(name, "approved")))
+	res = expect_ok("Finance approves level 2 (last)", lambda: as_user(FIN, lambda: api().approve_po(name, "approved")))
 	reload()
 	st = state(name)
 	check("final approval submits the PO: docstatus 1, status To Receive", st.docstatus == 1 and st.status == "To Receive",
 		(st.docstatus, st.status))
-	check("all three steps Approved with an approver, three different people",
-		all(s[2] == "Approved" and s[3] for s in steps(name)) and len({s[3] for s in steps(name)}) == 3, steps(name))
-	expect_block("approve again after it is submitted", lambda: as_user(DIR, lambda: api().approve_po(name)), "pending approval")
+	check("both steps Approved with an approver, two different people",
+		all(s[2] == "Approved" and s[3] for s in steps(name)) and len({s[3] for s in steps(name)}) == 2, steps(name))
+	expect_block("approve again after it is submitted", lambda: as_user(FIN, lambda: api().approve_po(name)), "pending approval")
 	expect_block("send for approval after it is submitted", lambda: as_user(RAISER, lambda: api().send_for_approval(name)),
 		"already submitted")
 
@@ -214,8 +210,8 @@ def scenario_b():
 	st = state(name)
 	check("sent again: Pending Approval, reason cleared", st.status == "Pending Approval" and not st.rejection_reason,
 		(st.status, st.rejection_reason))
-	check("fresh 3 levels for the new total, all Pending",
-		roles_of(name) == ["Purchase Manager", "Finance", "Director"] and all(s[2] == "Pending" for s in steps(name)), steps(name))
+	check("fresh 2 levels for the new total, all Pending",
+		roles_of(name) == ["Purchase Manager", "Finance"] and all(s[2] == "Pending" for s in steps(name)), steps(name))
 
 
 def scenario_c():

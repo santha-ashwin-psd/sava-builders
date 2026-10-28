@@ -224,6 +224,11 @@
                   Services
                 </button>
               </div>
+              <label class="po-asset-switch" title="Show only Asset items in the line items">
+                <span class="po-asset-lbl">Asset</span>
+                <input type="checkbox" :checked="assetOnly" @change="onAssetToggle($event.target.checked)"/>
+                <span class="po-asset-track"></span>
+              </label>
             </div>
             <div class="add-details-grid">
               <div style="grid-column:1/-1">
@@ -525,7 +530,7 @@
                 </button>
               </div>
             </div>
-            <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods' && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled' && !isApprovalStage(viewDoc)" class="inv-ab-btn" @click="openReceiveModal" :disabled="actionRunning || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
+            <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods' && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled' && !isApprovalStage(viewDoc)" class="inv-ab-btn" @click="openReceiveModal" :disabled="actionRunning || !poCanReceive" :title="!poCanReceive ? 'Only the Store Keeper, Director or an admin can mark goods received' : ''">
               <span v-html="icon('truck',13)"></span> <span class="ab-label">Mark Received</span>
             </button>
             <span class="inv-ab-spacer"></span>
@@ -788,7 +793,7 @@
                 </div>
 
                 <div v-if="hasUnreceived && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled' && !isApprovalStage(viewDoc)" style="display:flex;justify-content:flex-end;margin-top:12px">
-                  <button class="inv-view-cta" @click="openReceiveModal" :disabled="actionRunning || !$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''">
+                  <button class="inv-view-cta" @click="openReceiveModal" :disabled="actionRunning || !poCanReceive" :title="!poCanReceive ? 'Only the Store Keeper, Director or an admin can mark goods received' : ''">
                     <span v-html="icon('truck',14)"></span> Mark All Received
                   </button>
                 </div>
@@ -1172,6 +1177,8 @@ const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref(""),
 const { isAdmin: poIsAdmin, flags: poFlags } = usePermissions();
 const poCanCreate = computed(() => poIsAdmin.value || !!poFlags.value.doc_access?.["Purchase Order"]?.create);
 const poCanEdit = computed(() => poIsAdmin.value || !!poFlags.value.doc_access?.["Purchase Order"]?.edit);
+// Mark Received raises a GRN: Store Keeper, Director or a Books Admin (server rule: Purchase Receipt create).
+const poCanReceive = computed(() => poIsAdmin.value || !!poFlags.value.doc_access?.["Purchase Receipt"]?.create);
 const poCanSave = computed(() => (editingName.value ? poCanEdit.value : poCanCreate.value));
 const poWho = computed(() => {
   const r = poFlags.value.doc_access?.["Purchase Order"]?.write_roles || [];
@@ -1455,6 +1462,7 @@ const threeWayMismatch = computed(() =>
 
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
+  assetOnly.value = false;
   editingName.value = ""; editingStatus.value = "";
   Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "" });
   fetchWarehouses(""); fetchProjects("");
@@ -1463,6 +1471,7 @@ function openNew() {
   drawerOpen.value = true;
 }
 async function openEdit(o) {
+  assetOnly.value = false;
   editingName.value = o.name; editingStatus.value = o.status || "";
   Object.assign(form, {
     supplier: o.supplier || "", transaction_date: o.transaction_date || todayStr(),
@@ -1638,9 +1647,28 @@ async function fetchVendors(q = "") {
     vendors.value = r.map(x => ({ ...x, label: x.supplier_name || x.name, value: x.name }));
   } catch { vendors.value = []; }
 }
+const assetOnly = ref(false);
+async function onAssetToggle(on) {
+  assetOnly.value = !!on;
+  await fetchItems("");
+  if (!on) return;
+  const codes = lines.value.map(l => l.item_code).filter(Boolean);
+  if (!codes.length) return;
+  let ok = new Set();
+  try {
+    const r = await apiList("Item", { fields: ["name"], filters: [["name", "in", codes], ["is_asset_item", "=", 1]], limit: 500 });
+    ok = new Set(r.map(x => x.name));
+  } catch {}
+  let cleared = 0;
+  for (const l of lines.value) {
+    if (l.item_code && !ok.has(l.item_code)) { l.item_code = ""; l.item_name = ""; l.description = ""; l.rate = 0; l.tax_code = ""; cleared++; }
+  }
+  if (cleared) toast.error(`${cleared} non-asset item${cleared > 1 ? "s" : ""} cleared. Only asset items can be added while Asset is on.`);
+}
 async function fetchItems(q = "") {
   try {
     const f = [["disabled", "=", 0]];
+    if (assetOnly.value) f.push(["is_asset_item", "=", 1]);
     if (q) f.push(["item_name", "like", "%" + q + "%"]);
     const r = await apiList("Item", { fields: ["name", "item_name", "description", "standard_rate", "standard_buying_rate", "stock_uom", "purchase_uom", "default_purchase_tax_template"], filters: [...f, ["has_variants", "=", 0], ["is_purchase_item", "=", 1]], limit: 30, order: "item_name asc" });
     items.value = r.map(x => ({ ...x, label: x.item_name || x.name, value: x.name, rate: x.standard_buying_rate || x.standard_rate || 0, description: x.description || "", tax_code: x.default_purchase_tax_template || "" }));
@@ -2276,6 +2304,16 @@ watch(() => form.supplier, (val) => {
 .add-btn-primary:hover { background: #155fd4; }
 .add-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
 
+/* -- Asset toggle (Purchase Order) --------------------------------- */
+.po-asset-switch { display:inline-flex; align-items:center; gap:8px; margin-left:auto; cursor:pointer; user-select:none; }
+.po-asset-lbl { font-size:12.5px; font-weight:600; color:#374151; }
+.po-asset-switch input { position:absolute; opacity:0; pointer-events:none; }
+.po-asset-track { position:relative; width:40px; height:22px; border-radius:999px; background:#cbd5e1; border:1.5px solid #94a3b8; box-sizing:border-box; transition:background .15s, border-color .15s; }
+.po-asset-track::after { content:""; position:absolute; top:1.5px; left:1.5px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.25); transition:transform .15s; }
+.po-asset-switch input:checked + .po-asset-track { background:#1a6ef7; border-color:#1a6ef7; }
+.po-asset-switch input:checked + .po-asset-track::after { transform:translateX(18px); }
+.po-asset-switch:has(input:checked) .po-asset-lbl { color:#1a6ef7; }
+.po-asset-switch input:focus-visible + .po-asset-track { box-shadow:0 0 0 3px rgba(26,110,247,.25); }
 /* -- Purchase Type Toggle ----------------------------------------- */
 .po-type-toggle { display: flex; align-items: center; gap: 12px; padding: 10px 0 14px; border-bottom: 1px solid #f0f2f5; margin-bottom: 14px; }
 .po-type-lbl { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }

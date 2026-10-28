@@ -99,7 +99,7 @@ class Sending(unittest.TestCase):
 
 	def test_levels_follow_the_value_rules(self):
 		for total, roles in ((100000, [PM]), (200000, [PM]), (200000.01, [PM, FIN]),
-				(500000, [PM, FIN]), (500000.01, [PM, FIN, DIR])):
+				(500000, [PM, FIN]), (500000.01, [PM, FIN]), (5000000, [PM, FIN])):
 			d = PO(total)
 			rules.send_for_approval(d, "r@x.com")
 			self.assertEqual([s.role for s in d.approval_steps], roles, total)
@@ -133,15 +133,14 @@ class Sending(unittest.TestCase):
 
 
 class Acting(unittest.TestCase):
-	def test_three_levels_in_order_then_last_flag(self):
+	def test_two_levels_in_order_then_last_flag(self):
 		d = pending(600000)
 		self.assertFalse(rules.approve(d, "pm@x.com", [PM], "ok", "t1"))
 		self.assertEqual(d.status, "Pending Approval")
-		self.assertFalse(rules.approve(d, "fin@x.com", [FIN], "", "t2"))
-		self.assertTrue(rules.approve(d, "dir@x.com", [DIR], "", "t3"))
-		self.assertEqual([s.status for s in d.approval_steps], ["Approved"] * 3)
+		self.assertTrue(rules.approve(d, "fin@x.com", [FIN], "", "t2"))
+		self.assertEqual([s.status for s in d.approval_steps], ["Approved"] * 2)
 		self.assertEqual(d.approval_steps[0].remarks, "ok")
-		self.assertEqual(d.approval_steps[2].approver, "dir@x.com")
+		self.assertEqual(d.approval_steps[1].approver, "fin@x.com")
 
 	def test_single_level_is_last(self):
 		d = pending(100000)
@@ -165,9 +164,8 @@ class Acting(unittest.TestCase):
 	def test_admin_can_approve_any_level_without_the_role_or_as_sender(self):
 		d = pending(600000, raised_by="admin@x.com")
 		self.assertFalse(rules.approve(d, "admin@x.com", [], "", "t1", is_admin=True))
-		self.assertFalse(rules.approve(d, "admin@x.com", [], "", "t2", is_admin=True))
-		self.assertTrue(rules.approve(d, "admin@x.com", [], "", "t3", is_admin=True))
-		self.assertEqual([s.status for s in d.approval_steps], ["Approved"] * 3)
+		self.assertTrue(rules.approve(d, "admin@x.com", [], "", "t2", is_admin=True))
+		self.assertEqual([s.status for s in d.approval_steps], ["Approved"] * 2)
 
 	def test_admin_can_send_back_and_cancel(self):
 		d = pending(250000)
@@ -393,20 +391,19 @@ class Cancelling(unittest.TestCase):
 		changed = rules.cancel_pending(d, "raiser@x.com", [], " duplicate order ", "t2")
 		self.assertEqual(d.status, "Cancelled")
 		self.assertTrue(d.flags.po_workflow)
-		self.assertEqual([s.status for s in d.approval_steps], ["Approved", "Cancelled", "Cancelled"])
-		self.assertEqual([s.level for s in changed], [2, 3])
+		self.assertEqual([s.status for s in d.approval_steps], ["Approved", "Cancelled"])
+		self.assertEqual([s.level for s in changed], [2])
 		self.assertEqual((d.approval_steps[1].approver, d.approval_steps[1].approved_on), ("raiser@x.com", "t2"))
 		self.assertEqual(d.approval_steps[1].remarks, "Cancelled: duplicate order")
-		self.assertIsNone(getattr(d.approval_steps[2], "approver", None))
 		self.assertEqual(d.approval_steps[0].remarks, "ok")
 
 	def test_cancelling_a_sent_back_po_closes_only_the_untouched_levels(self):
 		d = pending(600000)
 		rules.send_back(d, "pm@x.com", [PM], "rate too high", "now")
-		self.assertEqual([s.status for s in d.approval_steps], ["Rejected", "Pending", "Pending"])
+		self.assertEqual([s.status for s in d.approval_steps], ["Rejected", "Pending"])
 		changed = rules.cancel_open_steps(d)
-		self.assertEqual([s.status for s in d.approval_steps], ["Rejected", "Cancelled", "Cancelled"])
-		self.assertEqual(len(changed), 2)
+		self.assertEqual([s.status for s in d.approval_steps], ["Rejected", "Cancelled"])
+		self.assertEqual(len(changed), 1)
 		self.assertEqual(rules.cancel_open_steps(d), [])
 
 	def test_pending_approval_po_can_not_be_deleted(self):

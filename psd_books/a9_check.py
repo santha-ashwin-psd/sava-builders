@@ -10,7 +10,7 @@ It reuses the A7 seed (TEST Company, TEST-001, TEST-CEMENT, 3 TEST suppliers), c
 as the real users. Each check prints OK or FAILED with the reason. Safe to run again.
 
 Scenarios (item: 100 bags, net total = 100 x L1 rate, plus VAT if the item carries it):
-  A  about 580,000  -> 3 levels (Purchase Manager, Finance, Director), approve all three
+  A  about 580,000  -> 2 levels (Purchase Manager, Finance), approve both
   B  about 250,000  -> 2 levels (Purchase Manager, Finance), Draft cannot be approved, reject path
   C  about 100,000  -> 1 level (Purchase Manager only)
 A and C also create the LPOs (A9.5). Not covered: an RFQ item nobody quoted, and LPOs split over\ntwo suppliers (both need a 2-item MRN).
@@ -183,7 +183,7 @@ def lpo_checks(name):
 
 
 def scenario_a():
-    print("\n--- A: about 580,000 -> three levels ---")
+    print("\n--- A: about 580,000 -> two levels ---")
     from psd_books.api import quotation_comparison as qc
 
     rfq_name, suppliers = make_rfq_with_quotes([5800, 6000, 6200])
@@ -219,8 +219,8 @@ def scenario_a():
     if not sub:
         return
     check("status Pending Approval", status(name) == "Pending Approval", status(name))
-    check("3 levels: Purchase Manager, Finance, Director",
-		[s[1] for s in steps(name)] == ["Purchase Manager", "Finance", "Director"], steps(name))
+    check("2 levels: Purchase Manager, Finance",
+		[s[1] for s in steps(name)] == ["Purchase Manager", "Finance"], steps(name))
     expect_block("raiser approving", lambda: as_user(RAISER, lambda: qc.approve_comparison(name)), "raised")
     expect_block("raiser rejecting", lambda: as_user(RAISER, lambda: qc.reject_comparison(name, "no")), "raised")
     expect_block("Finance approving level 1 (out of order)",
@@ -240,11 +240,9 @@ def scenario_a():
     pm_doc.remove_roles("Finance")
     frappe.clear_cache(user=PM)
 
-    expect_ok("Finance approves level 2", lambda: as_user(FIN, lambda: qc.approve_comparison(name)))
-    check("still Pending Approval after level 2", status(name) == "Pending Approval", status(name))
-    expect_ok("Director approves level 3", lambda: as_user(DIR, lambda: qc.approve_comparison(name, "approved")))
+    expect_ok("Finance approves level 2 (last)", lambda: as_user(FIN, lambda: qc.approve_comparison(name, "approved")))
     check("status Approved", status(name) == "Approved", status(name))
-    check("all three steps Approved with an approver", all(s[2] == "Approved" and s[3] for s in steps(name)), steps(name))
+    check("both steps Approved with an approver", all(s[2] == "Approved" and s[3] for s in steps(name)), steps(name))
     expect_block("approve again after Approved", lambda: as_user(DIR, lambda: qc.approve_comparison(name)), "approved")
     expect_block("submit again after Approved", lambda: as_user(RAISER, lambda: qc.submit_for_approval(name)), "Draft")
     lpo_checks(name)

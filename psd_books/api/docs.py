@@ -3993,8 +3993,9 @@ def get_purchase_order_fulfillment(purchase_order):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def mark_po_received(purchase_order, line_qtys=None):
-    from psd_books.utils.access import require_module
-    require_module("bills", write=True)
+    from psd_books.utils.access import assert_can
+    # Same rule as create_purchase_receipt_from_po: Store Keeper, Director or a Books Admin
+    assert_can("Purchase Receipt", "create")
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(line_qtys, str):
@@ -5901,8 +5902,9 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
     save_draft=1 saves it as a Draft only. Submitting it is what runs the QC
     gate, so stock is accepted only after the QC inspection passes.
     Otherwise it is submitted straight away."""
-    from psd_books.utils.access import require_module
-    require_module("bills", write=True)
+    from psd_books.utils.access import assert_can
+    # Mark Received = raising a GRN: Store Keeper, Director or a Books Admin (SAVA_ACCESS "Purchase Receipt")
+    assert_can("Purchase Receipt", "create")
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     if isinstance(line_qtys, str):

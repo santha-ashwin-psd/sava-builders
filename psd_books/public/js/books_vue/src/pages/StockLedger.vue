@@ -50,7 +50,7 @@
       <table class="sl-table sl-desktop-table">
         <thead><tr>
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
-          <th @click="sort('item_code')" class="sortable">Item <span v-html="sortArrow('item_code')"></span></th>
+          <th @click="sort('item_name')" class="sortable">Item <span v-html="sortArrow('item_name')"></span></th>
           <th @click="sort('warehouse')" class="sortable">Warehouse <span v-html="sortArrow('warehouse')"></span></th>
           <th>Voucher Type</th><th>Voucher #</th>
           <th @click="sort('actual_qty')" class="sortable ta-r">Qty In/Out <span v-html="sortArrow('actual_qty')"></span></th>
@@ -62,7 +62,7 @@
           <template v-else>
             <tr v-for="e in sorted" :key="e.name" class="sl-row" @click="openView(e)">
               <td class="mono-sm text-muted">{{ fmtDate(e.posting_date) }}</td>
-              <td class="font-medium">{{ e.item_code }}</td>
+              <td class="font-medium" :title="e.item_code">{{ e.item_name || e.item_code }}</td>
               <td class="text-muted">{{ e.warehouse }}</td>
               <td class="text-muted" style="font-size:12px">{{ e.voucher_type }}</td>
               <td><span class="sl-voucher">{{ e.voucher_no }}</span></td>
@@ -96,7 +96,7 @@
                 {{ flt(e.actual_qty)>0?'+':'' }}{{ fmtQty(e.actual_qty) }}
               </span>
             </div>
-            <div class="sl-mc-mid">{{ e.item_code }}</div>
+            <div class="sl-mc-mid">{{ e.item_name || e.item_code }}</div>
             <div class="sl-mc-meta">
               <span>{{ e.voucher_type }} · {{ e.voucher_no }}</span>
               <span>Bal: {{ fmtQty(e.qty_after_transaction) }}</span>
@@ -166,12 +166,12 @@ const sortCol=ref("posting_date"),sortDir=ref("desc");
 const now=new Date();
 const firstOfMonth=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
 const filters=reactive({item:"",warehouse:"",from_date:firstOfMonth,to_date:now.toISOString().slice(0,10)});
-async function load(){loading.value=true;loaded.value=true;try{const co=await resolveCompany();const f=[["company","=",co]];if(filters.item)f.push(["item_code","=",filters.item]);if(filters.warehouse)f.push(["warehouse","=",filters.warehouse]);if(filters.from_date)f.push(["posting_date",">=",filters.from_date]);if(filters.to_date)f.push(["posting_date","<=",filters.to_date]);list.value=await apiList("Stock Ledger Entry",{fields:["name","posting_date","posting_time","item_code","warehouse","voucher_type","voucher_no","actual_qty","qty_after_transaction","stock_value_difference","valuation_rate"],filters:f,limit:100000,order:"posting_date asc"});}catch(e){toast.error(e.message||"Failed to load stock ledger");}finally{loading.value=false;}}
+async function load(){loading.value=true;loaded.value=true;try{const co=await resolveCompany();const f=[["company","=",co]];if(filters.item)f.push(["item_code","=",filters.item]);if(filters.warehouse)f.push(["warehouse","=",filters.warehouse]);if(filters.from_date)f.push(["posting_date",">=",filters.from_date]);if(filters.to_date)f.push(["posting_date","<=",filters.to_date]);list.value=await apiList("Stock Ledger Entry",{fields:["name","posting_date","posting_time","item_code","warehouse","voucher_type","voucher_no","actual_qty","qty_after_transaction","stock_value_difference","valuation_rate"],filters:f,limit:100000,order:"posting_date asc"});await attachItemNames();}catch(e){toast.error(e.message||"Failed to load stock ledger");}finally{loading.value=false;}}
 const filteredRows=computed(()=>{
   let r=list.value;
   if(dirFilter.value==="in")r=r.filter(e=>flt(e.actual_qty)>0);
   else if(dirFilter.value==="out")r=r.filter(e=>flt(e.actual_qty)<0);
-  if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(e=>(e.item_code||"").toLowerCase().includes(q)||(e.voucher_no||"").toLowerCase().includes(q)||(e.warehouse||"").toLowerCase().includes(q)||(e.voucher_type||"").toLowerCase().includes(q));}
+  if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(e=>(e.item_code||"").toLowerCase().includes(q)||(e.item_name||"").toLowerCase().includes(q)||(e.voucher_no||"").toLowerCase().includes(q)||(e.warehouse||"").toLowerCase().includes(q)||(e.voucher_type||"").toLowerCase().includes(q));}
   return r;
 });
 const sorted=computed(()=>{const col=sortCol.value;return[...filteredRows.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
@@ -204,6 +204,7 @@ function exportCSV(){
   a.click();URL.revokeObjectURL(url);
   toast.success(`Exported ${rows.length} row(s)`);
 }
+async function attachItemNames(){const codes=[...new Set(list.value.map(e=>e.item_code).filter(Boolean))];if(!codes.length)return;try{const rows=await apiList("Item",{fields:["name","item_name"],filters:[["name","in",codes]],limit:100000});const m={};rows.forEach(r=>{m[r.name]=r.item_name;});list.value=list.value.map(e=>({...e,item_name:m[e.item_code]||e.item_code}));}catch{list.value=list.value.map(e=>({...e,item_name:e.item_code}));}}
 async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 // Pre-load dropdown options so the pickers aren't empty on first open.

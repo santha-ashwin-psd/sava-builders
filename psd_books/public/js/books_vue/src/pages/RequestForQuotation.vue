@@ -190,14 +190,13 @@
             <div class="pr-view-card">
               <div class="pr-view-card-hdr">Items <span class="pr-item-count">{{ (viewDoc.items||[]).length }} line{{ (viewDoc.items||[]).length!==1?'s':'' }}</span></div>
               <table class="inv-table pr-items-tbl">
-                <thead><tr><th style="width:32px">#</th><th>Item</th><th class="ta-r" style="width:80px">Qty</th><th style="width:60px">UOM</th><th>Intended Use</th></tr></thead>
+                <thead><tr><th style="width:32px">#</th><th>Item</th><th class="ta-r" style="width:80px">Qty</th><th style="width:60px">UOM</th></tr></thead>
                 <tbody>
                   <tr v-for="(it,i) in viewDoc.items||[]" :key="it.name||i" class="inv-row">
                     <td class="pr-row-num">{{ i+1 }}</td>
                     <td style="font-weight:500;color:#111827">{{ it.item_name || it.item_code }}</td>
                     <td class="ta-r mono">{{ it.qty }}</td>
                     <td class="c-muted">{{ it.uom || '—' }}</td>
-                    <td class="c-muted">{{ it.intended_use || '—' }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -288,13 +287,7 @@
                       <div class="po-item-card-subtotal"><span class="po-item-card-subtotal-label">QTY</span><span class="po-item-card-amount">{{ it.qty || '—' }}</span></div>
                       <button v-if="!itemsLocked" class="po-item-card-rm" @click.stop="removeItem(idx)"><span v-html="icon('x',16)"></span></button>
                     </div>
-                    <div class="po-item-card-body">
-                      <div class="po-item-col po-item-col--left">
-                        <div class="po-item-field">
-                          <label>Intended Use</label>
-                          <input class="inv-fi" :value="it.intended_use || '—'" readonly tabindex="-1" style="background:#f3f4f6;color:#6b7280"/>
-                        </div>
-                      </div>
+                    <div class="po-item-card-body" style="grid-template-columns:1fr">
                       <div class="po-item-col po-item-col--right">
                         <div class="po-item-num-row">
                           <div class="po-item-field">
@@ -600,7 +593,7 @@ async function refreshView() {
 // --- pickers -----------------------------------------------------------------
 async function fetchMrns(q = "") {
   try {
-    const filters = [["docstatus", "=", 1], ["material_request_type", "=", "Purchase"],
+    const filters = [["docstatus", "=", 1], ["material_request_type", "in", ["Purchase", "Asset"]],
       ["status", "in", ["Approved", "Partly Issued"]]];
     if (q) filters.push(["name", "like", `%${q}%`]);
     const rows = await apiList("Material Request", {

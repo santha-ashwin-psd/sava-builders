@@ -24,7 +24,7 @@
    "fieldname": "material_request_type",
    "fieldtype": "Select",
    "label": "Purpose",
-   "options": "Purchase\nMaterial Transfer",
+   "options": "Purchase\nAsset\nMaterial Transfer",
    "default": "Purchase",
    "reqd": 1,
    "in_list_view": 1,

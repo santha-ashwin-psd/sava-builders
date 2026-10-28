@@ -75,8 +75,9 @@
                         <td class="ta-r mono">{{ e.line.qty }} <span class="c-muted">{{ e.line.uom || '' }}</span></td>
                         <td class="ta-r">
                           <input v-if="editable && e.offers.length" class="inv-fi mono" type="number" min="0" :max="e.line.qty" step="any"
-                            v-model="choices[e.line.mrn_item].order_qty" style="width:96px;text-align:right" />
+                            v-model="choices[e.line.mrn_item].order_qty" @input="clampOrderQty(e)" style="width:96px;text-align:right" />
                           <span v-else class="mono">{{ orderQtyOf(e) }}</span>
+                          <div v-if="qtyCapped[e.line.mrn_item]" class="mono-sm" style="color:#dc2626;white-space:nowrap">Max {{ e.line.qty }} (requested qty)</div>
                           <div v-if="e.offers.length && balanceOf(e) > 0" class="c-muted mono-sm" style="white-space:nowrap">
                             {{ orderQtyOf(e) > 0 ? 'Balance ' + balanceOf(e) + ' not ordered now' : 'Not ordered now' }}
                           </div>
@@ -330,6 +331,17 @@ function orderQtyOf(entry) {
   if (raw === null || raw === undefined || raw === "") return full;
   const n = Number(raw);
   return Number.isFinite(n) ? n : full;
+}
+const qtyCapped = ref({});
+function clampOrderQty(entry) {
+  const key = entry.line.mrn_item;
+  const c = choices.value[key];
+  if (!c || c.order_qty === "" || c.order_qty === null || c.order_qty === undefined) { qtyCapped.value[key] = false; return; }
+  const n = Number(c.order_qty);
+  const full = Number(entry.line.qty || 0);
+  if (Number.isFinite(n) && n > full) { c.order_qty = full; qtyCapped.value[key] = true; }
+  else if (Number.isFinite(n) && n < 0) { c.order_qty = 0; qtyCapped.value[key] = false; }
+  else qtyCapped.value[key] = false;
 }
 function balanceOf(entry) { return r2(Math.max(0, Number(entry.line.qty || 0) - orderQtyOf(entry))); }
 // the offer's amount and VAT (worked out for the full qty) scaled to the order qty, like the server does
