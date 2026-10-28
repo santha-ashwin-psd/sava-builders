@@ -68,7 +68,7 @@
         <tr v-else v-for="r in paged" :key="r.name" class="inv-row" @click="openView(r)">
           <td><DocLink doctype="Request for Quotation" :name="r.name" /></td>
           <td class="mono-sm">{{ r.material_request || '—' }}</td>
-          <td class="c-muted">{{ r.project || '—' }}</td>
+          <td class="c-muted">{{ projectLabel(r.project) || '—' }}</td>
           <td class="c-muted">{{ r.posting_date ? fmtDate(r.posting_date) : '—' }}</td>
           <td class="c-muted">{{ r.respond_by ? fmtDate(r.respond_by) : '—' }}</td>
           <td><span class="inv-status-badge" :class="statusClass(displayStatus(r))">{{ displayStatus(r) }}</span></td>
@@ -428,6 +428,8 @@ const saving   = ref(false);
 const sending  = ref(false);
 const editingName = ref("");
 const mrnOptions = ref([]);
+const projectNames = ref({});
+const projectLabel = (code) => (code ? (projectNames.value[code] || code) : "");
 const supplierOptions = ref([]);
 const collapsed = reactive({ details: false, items: false, suppliers: false });
 
@@ -471,7 +473,7 @@ const filtered = computed(() => {
   else if (tab.value !== "all") rows = rows.filter(r => r.status === tab.value);
   if (dateRange.value !== "all") rows = rows.filter(inDateRange);
   const q = search.value.trim().toLowerCase();
-  if (q) rows = rows.filter(r => [r.name, r.material_request, r.project].some(v => (v || "").toLowerCase().includes(q)));
+  if (q) rows = rows.filter(r => [r.name, r.material_request, r.project, projectLabel(r.project)].some(v => (v || "").toLowerCase().includes(q)));
   return rows;
 });
 const { page, pageSize, paged } = usePagination(filtered, { storageKey: "rfqs" });
@@ -563,6 +565,10 @@ async function load() {
     toast.error(e.message || "Could not load Requests for Quotation");
     list.value = [];
   }
+  try {
+    const pr = await apiList("Project", { fields: ["name", "project_name"], limit: 1000 });
+    projectNames.value = Object.fromEntries((pr || []).map(x => [x.name, x.project_name]));
+  } catch (e) { projectNames.value = {}; }
   try {
     const waiting = await apiList("Quotation Comparison", {
       fields: ["request_for_quotation"], filters: [["status", "=", "Pending Approval"]], limit: 100000,

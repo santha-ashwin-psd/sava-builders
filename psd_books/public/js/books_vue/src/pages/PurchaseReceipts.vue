@@ -72,6 +72,7 @@
           <th style="width:32px" class="th-check"><input type="checkbox" @change="toggleAll" :checked="allChecked"/></th>
           <th @click="sortBy('name')" class="sortable">GRN # <span v-html="sortArrow('name')"></span></th>
           <th @click="sortBy('supplier_name')" class="sortable">Supplier <span v-html="sortArrow('supplier_name')"></span></th>
+            <th>Project</th>
           <th @click="sortBy('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
           <th @click="sortBy('purchase_order')" class="sortable">Purchase Order <span v-html="sortArrow('purchase_order')"></span></th>
           <th @click="sortBy('total_qty')" class="sortable ta-r">Items <span v-html="sortArrow('total_qty')"></span></th>
@@ -81,10 +82,10 @@
       </thead>
       <tbody>
         <template v-if="loading">
-          <tr v-for="n in 5" :key="n"><td colspan="8" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
+          <tr v-for="n in 5" :key="n"><td colspan="9" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
         </template>
         <tr v-else-if="!sorted.length">
-          <td colspan="8" class="bk-empty-state">
+          <td colspan="9" class="bk-empty-state">
             <div class="bk-empty-inner">
               <template v-if="search||tab!=='all'">
                 <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -103,6 +104,7 @@
           <td class="td-check"><input type="checkbox" :disabled="r.source!=='real'" :checked="selectedRows.has(r.name)" @change="toggleRow(r.name)"/></td>
           <td @click="openView(r)"><DocLink doctype="Purchase Receipt" :name="r.name" /></td>
           <td class="fw-600" @click="openView(r)">{{r.supplier_name||r.supplier||'—'}}</td>
+            <td class="c-muted" @click="openView(r)">{{projectLabel(r.project)||'—'}}</td>
           <td class="c-muted mono-sm" @click="openView(r)">{{r.posting_date||'—'}}</td>
           <td class="c-muted mono-sm" @click="openView(r)">{{r.purchase_order||'—'}}</td>
           <td class="ta-r c-muted mono-sm" @click="openView(r)">{{r.total_qty||'—'}}</td>
@@ -569,6 +571,8 @@ function goToLandedCost(doc) {
 
 const TABS = [{k:"all",l:"All"},{k:"0",l:"Draft"},{k:"1",l:"Received"},{k:"2",l:"Cancelled"}];
 const list      = ref([]);
+const projectNames = ref({});
+const projectLabel = (code) => (code ? (projectNames.value[code] || code) : "");
 const loading   = ref(false);
 const search    = ref("");
 const tab       = ref("all");
@@ -659,6 +663,19 @@ async function load() {
       grand_total: r.grand_total,
       source: r.source || "derived",
     }));
+    // Project: from the real Purchase Receipt, else from its Purchase Order.
+    try {
+      const pr = await apiList("Project", { fields: ["name", "project_name"], limit: 1000 });
+      projectNames.value = Object.fromEntries((pr || []).map(x => [x.name, x.project_name]));
+    } catch (e) { projectNames.value = {}; }
+    try {
+      const prRows = await apiList("Purchase Receipt", { fields: ["name", "project"], limit: 100000 }).catch(() => []);
+      const prMap = Object.fromEntries(prRows.map(x => [x.name, x.project]));
+      const poNames = [...new Set(rawList.map(r => r.purchase_order).filter(Boolean))];
+      const poRows = poNames.length ? await apiList("Purchase Order", { fields: ["name", "project"], filters: [["name", "in", poNames]], limit: poNames.length }).catch(() => []) : [];
+      const poMap = Object.fromEntries(poRows.map(x => [x.name, x.project]));
+      rawList.forEach(r => { r.project = prMap[r.name] || poMap[r.purchase_order] || ""; });
+    } catch (e) { /* project column stays blank */ }
     list.value = rawList;
     // Resolve missing supplier_name — backend may omit it
     const missing = [...new Set(rawList.filter(r => !r.supplier_name && r.supplier).map(r => r.supplier))];
@@ -678,7 +695,7 @@ const filtered = computed(() => {
   else if (tab.value === "2") r = r.filter(x => x.docstatus === 2);
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
-    r = r.filter(x => (x.name||"").toLowerCase().includes(q) || (x.supplier_name||"").toLowerCase().includes(q));
+    r = r.filter(x => (x.name||"").toLowerCase().includes(q) || (x.supplier_name||"").toLowerCase().includes(q) || projectLabel(x.project).toLowerCase().includes(q));
   }
   return r;
 });

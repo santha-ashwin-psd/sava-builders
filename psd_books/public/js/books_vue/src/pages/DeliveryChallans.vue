@@ -114,7 +114,8 @@
           <!-- Customer column hidden for Sava
           <th @click="sort('customer_name')" class="sortable">Customer <span v-html="sa('customer_name')"></span></th>
           -->
-          <th @click="sort('posting_date')" class="sortable">Date <span v-html="sa('posting_date')"></span></th>
+          <th>Project</th>
+            <th @click="sort('posting_date')" class="sortable">Date <span v-html="sa('posting_date')"></span></th>
           <th>Sales Order</th>
           <th>Status</th>
           <th class="ta-r">Qty</th>
@@ -123,10 +124,10 @@
       </thead>
       <tbody>
         <template v-if="loading">
-          <tr v-for="n in 6" :key="n"><td colspan="7" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
+          <tr v-for="n in 6" :key="n"><td colspan="8" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
         </template>
         <tr v-else-if="!sorted.length">
-          <td colspan="7" class="b-empty">{{search?'No delivery notes match your search':'No delivery notes yet'}}</td>
+          <td colspan="8" class="b-empty">{{search?'No delivery notes match your search':'No delivery notes yet'}}</td>
         </tr>
         <tr v-else v-for="r in paged" :key="r.name" class="inv-row" :class="{selected: selected.has(r.name)}" @click="openView(r)">
           <td @click.stop><input v-if="r._source==='dn'" type="checkbox" :checked="selected.has(r.name)" @change="toggle(r.name)" /></td>
@@ -134,7 +135,8 @@
           <!-- Customer cell hidden for Sava
           <td class="fw-600">{{r.customer_name||r.customer||'—'}}</td>
           -->
-          <td class="c-muted" style="font-size:13px">{{r.posting_date||'—'}}</td>
+          <td class="c-muted" style="font-size:13px">{{projectLabel(r.project)||'—'}}</td>
+            <td class="c-muted" style="font-size:13px">{{r.posting_date||'—'}}</td>
           <td class="c-muted mono" style="font-size:13px">{{r.sales_order||r.name||'—'}}</td>
           <td><span class="inv-status-badge" :class="statusClass(r)">{{statusLabel(r)}}</span></td>
           <td class="ta-r c-muted" style="font-size:13px">{{r.total_qty||'—'}}</td>
@@ -836,6 +838,8 @@ const TABS = [
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const list        = ref([]);
+const projectNames = ref({});
+const projectLabel = (code) => (code ? (projectNames.value[code] || code) : "");
 const loading     = ref(false);
 const search      = ref("");
 const tab         = ref("all");
@@ -978,7 +982,7 @@ async function load() {
     const dnRows = await apiList("Delivery Note", {
       fields: ["name", "customer", "customer_name", "posting_date", "delivery_date",
                "sales_order", "status", "total_qty", "lr_no", "transporter_name", "docstatus",
-               "received_on", "material_request", "is_stock_transfer"],
+               "received_on", "material_request", "is_stock_transfer", "project"],
       filters: [["company", "=", company]],
       limit: 100000,
       order: "posting_date desc, creation desc",
@@ -1013,6 +1017,7 @@ async function load() {
       received_on:   r.received_on || "",
       material_request: r.material_request || "",
       is_stock_transfer: r.is_stock_transfer || 0,
+      project: r.project || "",
     }));
 
     // Sales Orders — only include those that don't already have a matching DN
@@ -1033,6 +1038,10 @@ async function load() {
         total_qty:     null,
       }));
 
+    try {
+      const pr = await apiList("Project", { fields: ["name", "project_name"], limit: 1000 });
+      projectNames.value = Object.fromEntries((pr || []).map(x => [x.name, x.project_name]));
+    } catch (e) { projectNames.value = {}; }
     list.value = [...dnNormalised, ...soNormalised];
   } catch (e) {
     console.warn("DC load failed:", e.message);
@@ -1054,7 +1063,8 @@ const filtered = computed(() => {
     r = r.filter(x =>
       (x.name || "").toLowerCase().includes(q) ||
       (x.customer_name || x.customer || "").toLowerCase().includes(q) ||
-      (x.sales_order || "").toLowerCase().includes(q)
+      (x.sales_order || "").toLowerCase().includes(q) ||
+      projectLabel(x.project).toLowerCase().includes(q)
     );
   }
   return r;

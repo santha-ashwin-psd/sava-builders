@@ -61,22 +61,24 @@
             <th style="width:32px"><input type="checkbox" @change="toggleAll" :checked="allChecked" /></th>
             <th @click="sortBy('name')" class="sortable">PO # <span v-html="sortArrow('name')"></span></th>
             <th @click="sortBy('supplier_name')" class="sortable">Vendor <span v-html="sortArrow('supplier_name')"></span></th>
+            <th>Project</th>
             <th @click="sortBy('transaction_date')" class="sortable">Date <span v-html="sortArrow('transaction_date')"></span></th>
             <th @click="sortBy('expected_delivery_date')" class="sortable">Expected <span v-html="sortArrow('expected_delivery_date')"></span></th>
-            <th>Status</th>
-            <th @click="sortBy('grand_total')" class="sortable ta-r">Amount <span v-html="sortArrow('grand_total')"></span></th>
+            <th style="width:170px">Status</th>
+            <th @click="sortBy('grand_total')" class="sortable ta-r" style="text-align:right;width:160px">Amount <span v-html="sortArrow('grand_total')"></span></th>
             <th style="width:120px;text-align:center">Actions</th>
           </tr>
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="8"><div class="shimmer"></div></td></tr>
+            <tr v-for="n in 6" :key="n"><td colspan="9"><div class="shimmer"></div></td></tr>
           </template>
           <template v-else>
             <tr v-for="o in paged" :key="o.name" class="inv-row" :class="{selected:selected.has(o.name)}">
               <td class="td-check"><input type="checkbox" :checked="selected.has(o.name)" @change="toggle(o.name)" /></td>
               <td class="td-id" @click="openView(o)"><DocLink doctype="Purchase Order" :name="o.name" /></td>
               <td class="td-customer" @click="openView(o)">{{ o.supplier_name || o.supplier || '—' }}</td>
+              <td class="text-muted" @click="openView(o)">{{ projectLabel(o.project) || '—' }}</td>
               <td class="td-date text-muted mono-sm" @click="openView(o)">{{ fmtDate(o.transaction_date) }}</td>
               <td class="td-due mono-sm" @click="openView(o)" :class="isPastExpected(o)?'text-danger':'text-muted'">{{ fmtDate(o.expected_delivery_date)||'—' }}</td>
               <td class="td-status" @click="openView(o)"><span class="inv-status-badge" :class="badgeClass(o)">{{ displayStatus(o) }}</span></td>
@@ -88,7 +90,7 @@
                 <button v-if="canDelete(o) && $canDelete('bills')" class="inv-act-btn po-act-del" @click="deletePO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="8" class="po-empty">No purchase orders match</td></tr>
+            <tr v-if="!sorted.length"><td colspan="9" class="po-empty">No purchase orders match</td></tr>
           </template>
         </tbody>
       </table>
@@ -1169,6 +1171,8 @@ const tabs = [
   { key: "cancelled", label: "Cancelled" },
 ];
 
+const projectNames = ref({});
+const projectLabel = (code) => (code ? (projectNames.value[code] || code) : "");
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
 const viewMode = ref("table"); // "table" | "grid"
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref(""), editingStatus = ref("");
@@ -1294,12 +1298,16 @@ async function load() {
   try {
     const co = await resolveCompany();
     list.value = await apiList("Purchase Order", {
-      fields: ["name", "supplier", "supplier_name", "transaction_date", "expected_delivery_date", "status", "grand_total", "billed_amount", "billing_address", "delivery_address", "billing_address_name", "delivery_address_name"],
+      fields: ["name", "supplier", "supplier_name", "transaction_date", "expected_delivery_date", "status", "grand_total", "billed_amount", "billing_address", "delivery_address", "billing_address_name", "delivery_address_name", "project"],
       filters: [["company", "=", co]],
       limit: 100000,
       order: "transaction_date desc, creation desc",
     });
   } catch (e) { toast.error(e.message || "Failed to load purchase orders"); }
+  try {
+    const pr = await apiList("Project", { fields: ["name", "project_name"], limit: 1000 });
+    projectNames.value = Object.fromEntries((pr || []).map(x => [x.name, x.project_name]));
+  } catch (e) { projectNames.value = {}; }
   finally { loading.value = false; }
 }
 async function loadTaxAccount() {
@@ -1366,7 +1374,8 @@ const filtered = computed(() => {
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
     r = r.filter(x => (x.name || "").toLowerCase().includes(q)
-      || (x.supplier_name || x.supplier || "").toLowerCase().includes(q));
+      || (x.supplier_name || x.supplier || "").toLowerCase().includes(q)
+      || projectLabel(x.project).toLowerCase().includes(q));
   }
   return r;
 });
