@@ -46,7 +46,7 @@
             <span class="iv-sep">·</span>
             <span v-if="item.item_group" class="iv-group-badge">{{ item.item_group }}</span>
             <span class="iv-sep">·</span>
-            <span class="iv-type-badge">{{ item.item_type || 'Product' }}</span>
+            <span class="iv-type-badge">{{ item.is_asset_item ? 'Asset' : (item.item_type || 'Product') }}</span>
             <span class="iv-sep">·</span>
             <span class="iv-uom">{{ item.stock_uom || 'Nos' }}</span>
           </div>
@@ -89,7 +89,7 @@
             <div class="iv-kv"><span class="iv-k">Item Code</span><span class="iv-v iv-mono">{{ item.item_code }}</span></div>
             <div class="iv-kv"><span class="iv-k">Item Name</span><span class="iv-v">{{ item.item_name }}</span></div>
             <div class="iv-kv"><span class="iv-k">Group</span><span class="iv-v">{{ item.item_group || '—' }}</span></div>
-            <div class="iv-kv"><span class="iv-k">Type</span><span class="iv-v">{{ item.item_type || 'Product' }}</span></div>
+            <div class="iv-kv"><span class="iv-k">Type</span><span class="iv-v">{{ item.is_asset_item ? 'Asset' : (item.item_type || 'Product') }}</span></div>
             <div class="iv-kv"><span class="iv-k">Unit of Measure</span><span class="iv-v">{{ item.stock_uom || 'Nos' }}</span></div>
             <div class="iv-kv"><span class="iv-k">Sales Tax Template</span><span class="iv-v">{{ item.tax_code || '—' }}</span></div>
             <div class="iv-kv"><span class="iv-k">Purchase Tax Template</span><span class="iv-v">{{ item.default_purchase_tax_template || '—' }}</span></div>

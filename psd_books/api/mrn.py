@@ -77,11 +77,13 @@ def send_for_approval(name):
 		frappe.throw(_("Requests made from a Production Plan are submitted directly, not approved."))
 	if doc.docstatus != 0 or doc.status not in SENDABLE:
 		frappe.throw(_("Only a draft or sent-back MRN can be sent for approval."))
-	if not doc.get("project"):
-		frappe.throw(_("Select a project and save the MRN before sending it for approval."))
-	if not _project_manager(doc):
-		frappe.throw(_("Project {0} has no Project Manager. Set one on the Projects screen first.")
-			.format(doc.project))
+	# an Asset request may have no project; a Books Admin approves it
+	if doc.material_request_type != "Asset":
+		if not doc.get("project"):
+			frappe.throw(_("Select a project and save the MRN before sending it for approval."))
+		if not _project_manager(doc):
+			frappe.throw(_("Project {0} has no Project Manager. Set one on the Projects screen first.")
+				.format(doc.project))
 
 	doc.status = "Pending Approval"
 	doc.flags.mrn_workflow = True

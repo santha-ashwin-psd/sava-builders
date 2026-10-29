@@ -69,7 +69,8 @@ class MaterialRequest(Document):
 		if not self._mrn_rules_apply():
 			return
 		missing = []
-		if not self.get("project"):
+		# an Asset request needs no project
+		if not self.get("project") and self.material_request_type != "Asset":
 			missing.append(_("Project"))
 		if not self.get("delivery_warehouse"):
 			missing.append(_("Delivery Warehouse"))

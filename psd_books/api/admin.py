@@ -213,7 +213,17 @@ def get_project_manager_options():
         "User", filters=[["name", "in", list(holders)], ["enabled", "=", 1]],
         fields=["name", "full_name"], order_by="full_name asc", ignore_permissions=True,
     )
-    return [{"name": u["name"], "label": u.get("full_name") or u["name"]} for u in users]
+    # Show the linked Employee's name; fall back to the user's name when no employee exists.
+    emp_names = {
+        e["user"]: e["employee_name"]
+        for e in frappe.get_all(
+            "Employee",
+            filters=[["user", "in", [u["name"] for u in users]], ["company", "=", company]],
+            fields=["user", "employee_name"], ignore_permissions=True,
+        ) if e.get("user") and e.get("employee_name")
+    }
+    return [{"name": u["name"], "label": emp_names.get(u["name"]) or u.get("full_name") or u["name"]}
+            for u in users]
 
 
 @frappe.whitelist()

@@ -54,6 +54,24 @@
           </div>
 
           <div class="ad-section">
+            <div class="ad-toggle-row">
+              <div class="ad-toggle-left">
+                <div class="ad-toggle-title">Asset Item</div>
+                <div class="ad-toggle-sub">Equipment and tools kept in the warehouse. Only Asset items can be requested with the Asset purpose on a Material Request</div>
+              </div>
+              <label class="ad-switch">
+                <input type="checkbox" :checked="!!form.is_asset_item" @change="onAssetToggle($event.target.checked)"/>
+                <span class="ad-switch-track ad-switch-track--green"></span>
+              </label>
+            </div>
+            <div v-if="form.is_asset_item" :style="form.is_purchase_item
+                ? 'margin-top:10px;font-size:12px;color:#1d4ed8;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:8px 10px'
+                : 'margin-top:10px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px'">
+              {{ form.is_purchase_item ? 'ℹ️' : '⚠️' }} To purchase this asset, keep the <b>Purchase Item</b> toggle below turned on.
+            </div>
+          </div>
+
+          <div v-if="!form.is_asset_item" class="ad-section">
             <div class="ad-section-title">Item Type <span class="ad-hint" style="font-size:11px;font-weight:400">(sets stock & valuation defaults)</span></div>
             <div class="ad-type-grid">
               <button v-for="t in ITEM_TYPES" :key="t" type="button"
@@ -111,16 +129,6 @@
             <div v-if="SHOW_PORTAL && form.portal_item && form.disabled" style="margin-top:10px;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px">
               ⚠ This item is Disabled (Inventory tab), so it won't appear in the Customer Portal even with Portal Item on. Both need to be set for it to show up.
             </div>
-            <div class="ad-toggle-row" style="margin-top:12px">
-              <div class="ad-toggle-left">
-                <div class="ad-toggle-title">Asset Item</div>
-                <div class="ad-toggle-sub">Equipment and tools kept in the warehouse. Only Asset items can be requested with the Asset purpose on a Material Request</div>
-              </div>
-              <label class="ad-switch">
-                <input type="checkbox" :checked="!!form.is_asset_item" @change="form.is_asset_item=($event.target.checked?1:0)"/>
-                <span class="ad-switch-track ad-switch-track--green"></span>
-              </label>
-            </div>
             <!-- Is Fixed Asset (toggle, warning, category) hidden. Remove "false &&" / v-if="false" to show again. -->
             <div v-if="false" class="ad-toggle-row" style="margin-top:12px">
               <div class="ad-toggle-left">
@@ -170,7 +178,7 @@
                 </select>
               </div>
             </div>
-            <div>
+            <div v-if="drawerMode === 'edit'">
               <div class="ad-field">
                 <label class="ad-label">Barcode</label>
                 <div style="display:flex;gap:6px">
@@ -316,14 +324,15 @@
           <div class="ad-section">
             <div class="ad-section-title">Stock Settings</div>
             <div class="ad-grid-2">
-              <div class="ad-field">
+              <!-- Valuation Method hidden (still set by item type, default FIFO). Remove v-if="false" to show again. -->
+              <div v-if="false" class="ad-field">
                 <label class="ad-label">Valuation Method</label>
                 <select class="ad-input" v-model="form.valuation_method">
                   <option v-for="m in VAL_METHODS" :key="m" :value="m">{{m}}</option>
                 </select>
               </div>
-              <div class="ad-field">
-                <label class="ad-label">Default Warehouse <span v-if="form.is_stock_item" class="ad-required">*</span></label>
+              <div class="ad-field" style="grid-column:1/-1">
+                <label class="ad-label">Default Warehouse</label>
                 <SearchableSelect v-model="form.default_warehouse" :options="warehouses" value-key="name" label-key="label" placeholder="Select warehouse…"/>
               </div>
             </div>
@@ -795,6 +804,22 @@ watch(() => form.item_type, (t) => {
   }
 });
 
+let typeBeforeAsset = "";
+function onAssetToggle(on) {
+  form.is_asset_item = on ? 1 : 0;
+  if (on) {
+    // Asset items need no Item Type: store the neutral "Product" type (stocked) so the record saves cleanly
+    if (form.item_type !== "Product") typeBeforeAsset = form.item_type;
+    form.item_type = "Product";
+    applyTypeDefaults("Product");
+  } else {
+    // Back to the normal flow: restore the type the user had before
+    form.item_type = typeBeforeAsset || "Raw Material";
+    applyTypeDefaults(form.item_type);
+    typeBeforeAsset = "";
+  }
+}
+
 function applyTypeDefaults(type) {
   const d = ITEM_TYPE_DEFAULTS[type] || {};
   // Set is_stock_item
@@ -836,6 +861,7 @@ async function confirmNewAssetCategory() {
 
 function openAdd(presetType) {
   drawerMode.value = "add"; drawerTab.value = "basic";
+  typeBeforeAsset = "";
   addingNewAssetCategory.value = false;
   const defaultType = presetType || "Raw Material";
   const d = ITEM_TYPE_DEFAULTS[defaultType] || {};
@@ -970,7 +996,7 @@ function validateItem() {
     // Accounts section hidden for Sava, so these required checks are off too (else save is blocked)
     // [!form.income_account,                           "Income account is required",   "pricing"],
     // [!form.expense_account,                          "Expense account is required",  "pricing"],
-    [!!form.is_stock_item && !form.default_warehouse, "Default Warehouse is required when Track Inventory is on", "inventory"],
+    // Default Warehouse is optional now (can be set later)
     [!!form.is_fixed_asset && !!form.is_stock_item,
       "An item can't be both Is Fixed Asset and Track Inventory — a fixed asset is capitalized, not stocked. Turn one off.", "basic"],
     [form.item_type !== "Work In Progress" && !form.is_sales_item && !form.is_purchase_item,

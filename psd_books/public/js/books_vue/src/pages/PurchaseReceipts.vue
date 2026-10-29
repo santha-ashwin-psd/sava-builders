@@ -14,7 +14,7 @@
     </div>
     <div style="margin-left:auto;display:flex;gap:6px">
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span></button>
-      <!-- New GRN hidden for Sava -->
+      <button v-if="prCanCreate" class="sales-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New GRN</button>
     </div>
   </div>
 
@@ -95,7 +95,7 @@
                 <div class="bk-empty-illus"><svg width="80" height="96" viewBox="0 0 80 96" fill="none"><rect x="10" y="8" width="60" height="80" rx="6" fill="#e2e8f0"/><rect x="14" y="12" width="52" height="72" rx="4" fill="#fff"/><rect x="22" y="26" width="36" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="34" width="28" height="3" rx="2" fill="#e2e8f0"/><rect x="22" y="42" width="32" height="3" rx="2" fill="#e2e8f0"/><rect x="50" y="64" width="18" height="20" rx="3" fill="#16a34a" opacity=".7"/><rect x="36" y="70" width="12" height="14" rx="3" fill="#2563eb" opacity=".6"/></svg></div>
                 <p class="bk-empty-title">No purchase receipts yet</p>
                 <p class="bk-empty-sub">Create a GRN to record stock received from a supplier.</p>
-                <!-- New GRN hidden for Sava -->
+                <button v-if="prCanCreate" class="sales-btn-primary" @click="openNew"><span v-html="icon('plus',13)"></span> New GRN</button>
               </template>
             </div>
           </td>
@@ -347,7 +347,7 @@
                   <input class="inv-fi" type="date" v-model="form.posting_date"/>
                 </div>
                 <div>
-                  <label class="inv-lbl">Purchase Order (optional)</label>
+                  <label class="inv-lbl">Purchase Order <span class="inv-req">*</span></label>
                   <SearchableSelect v-model="form.purchase_order" :options="poOptions" placeholder="Select PO (filtered by supplier)…" @search="fetchPOs" @open="fetchPOs('')" @select="onPOSelect" />
                 </div>
               </div>
@@ -863,7 +863,7 @@ async function openEdit(r) {
       items: [],
     });
     fetchProjects("", doc.project || "");
-    if (doc.purchase_order) fetchPOs("");
+    if (doc.purchase_order) { fetchPOs(""); if (doc.docstatus === 0) fillHeaderFromPO(doc.purchase_order); }
     const items = doc.items || [];
     const codes = [...new Set(items.map(it => it.item_code).filter(Boolean))];
     let flagMap = {};
@@ -966,17 +966,28 @@ async function fetchPOs(q = "") {
   } catch { poOptions.value = []; }
 }
 
+// Pull Project and Warehouse from the Purchase Order into empty Receiving Details fields
+async function fillHeaderFromPO(poName) {
+  if (!poName || (form.project && form.set_warehouse)) return;
+  try {
+    const pr = await apiList("Purchase Order", { fields: ["name", "project", "set_warehouse"], filters: [["name", "=", poName]], limit: 1 });
+    const po = pr?.[0];
+    if (!po) return;
+    if (!form.project && po.project) { form.project = po.project; fetchProjects("", po.project); }
+    if (!form.set_warehouse && po.set_warehouse) {
+      if (!warehouses.value.some(w => w.value === po.set_warehouse)) await fetchWarehouses("");
+      form.set_warehouse = po.set_warehouse;
+    }
+  } catch {}
+}
+
 // ── PO select: pull remaining-to-receive lines from the Purchase Order ───────
 async function onPOSelect(opt) {
   const poName = opt?.value ?? opt;
   form.purchase_order = poName;
   if (!poName) return;
   try {
-    if (!form.project) {
-      const pr = await apiList("Purchase Order", { fields: ["name", "project"], filters: [["name", "=", poName]], limit: 1 });
-      const p = pr?.[0]?.project;
-      if (p) { form.project = p; fetchProjects("", p); }
-    }
+    await fillHeaderFromPO(poName);
     if (!form.supplier) {
       const ps = await apiList("Purchase Order", { fields: ["name", "supplier", "supplier_name"], filters: [["name", "=", poName]], limit: 1 });
       const sp = ps?.[0];
@@ -1083,6 +1094,7 @@ function onBatchCreate(line, val) { line.batch_no = val; }
 
 async function saveGRN(submit) {
   if (!form.supplier.trim()) { toast.error("Supplier is required"); return; }
+  if (!form.purchase_order) { toast.error("Purchase Order is required"); return; }
   const usable = form.items.filter(it => it.item_code.trim());
   if (!usable.length) { toast.error("Add at least one item"); return; }
 

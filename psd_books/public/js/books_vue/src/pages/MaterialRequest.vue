@@ -60,7 +60,7 @@
   </div>
 
     <!-- ══════════ DETAIL ══════════ -->
-    <div v-if="selectedName" class="mr-drawer-overlay">
+    <div v-if="selectedName" class="mr-drawer-overlay" @click.self="!(saving || submitting) && goBackToList()">
     <div class="mr-drawer">
 
       <template v-if="selectedName">
@@ -153,8 +153,8 @@
               <div class="bomx-hf-label">Purpose <span style="color:var(--bx-red)">*</span></div>
               <select class="bomx-fi" v-model="mr.material_request_type" :disabled="readOnly" style="width:100%" @change="onPurposeChange">
                 <option value="Purchase">Purchase</option>
-                <option v-if="mr.material_request_type==='Asset'" value="Asset">Asset</option>
-<option value="Material Transfer">Material Transfer</option>
+                <option value="Asset">Asset</option>
+                <option value="Material Transfer">Material Transfer</option>
               </select>
             </div>
             <div>
@@ -162,7 +162,7 @@
               <input class="bomx-fi" type="date" v-model="mr.posting_date" :disabled="readOnly" style="width:100%"/>
             </div>
             <div>
-              <div class="bomx-hf-label">Project <span v-if="!mr.production_plan" style="color:var(--bx-red)">*</span></div>
+              <div class="bomx-hf-label">Project <span v-if="!mr.production_plan && mr.material_request_type!=='Asset'" style="color:var(--bx-red)">*</span></div>
               <SearchableSelect v-model="mr.project" :options="projects" :disabled="readOnly" placeholder="Select project" @update:modelValue="onProjectPicked" @search="q => fetchProjects(q, mr.project)" />
             </div>
             <div>
@@ -600,7 +600,7 @@ function onItemChange(row) {
 async function save() {
   if (!mr.value.posting_date) return toast("Required By date is required", "error");
   if (!mr.value.production_plan) {
-    if (!mr.value.project) return toast("Select a project", "error");
+    if (!mr.value.project && mr.value.material_request_type !== "Asset") return toast("Select a project", "error");
     if (!mr.value.delivery_warehouse) return toast("Select a delivery warehouse", "error");
   }
   if (!mr.value.items.length) return toast("Add at least one item", "error");

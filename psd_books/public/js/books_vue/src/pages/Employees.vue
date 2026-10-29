@@ -39,16 +39,16 @@
           <th class="sortable" @click="sortBy('employee_name')">Name <span class="em-sort" v-html="sortArrow('employee_name')"></span></th>
           <th class="sortable" @click="sortBy('designation')">Designation <span class="em-sort" v-html="sortArrow('designation')"></span></th>
           <th class="sortable" @click="sortBy('department')">Department <span class="em-sort" v-html="sortArrow('department')"></span></th>
-          <th class="sortable" @click="sortBy('project')">Project <span class="em-sort" v-html="sortArrow('project')"></span></th>
+          <!-- Project column hidden -->
           <th class="sortable" @click="sortBy('user')">Login User <span class="em-sort" v-html="sortArrow('user')"></span></th>
           <th class="sortable" @click="sortBy('status')">Status <span class="em-sort" v-html="sortArrow('status')"></span></th>
           <th class="em-th-actions">Actions</th>
         </tr></thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 5" :key="n" class="em-skel"><td colspan="8"><div class="shimmer"></div></td></tr>
+            <tr v-for="n in 5" :key="n" class="em-skel"><td colspan="7"><div class="shimmer"></div></td></tr>
           </template>
-          <tr v-else-if="!sorted.length"><td colspan="8" class="em-empty">
+          <tr v-else-if="!sorted.length"><td colspan="7" class="em-empty">
             <template v-if="search || filterTab !== 'all'">
               <p class="em-empty-title">No employees match your filters</p>
               <p class="em-empty-sub">Try a different search or switch the status filter.</p>
@@ -66,7 +66,6 @@
             <td @click="openEdit(row)" data-label="Name" class="em-name">{{ row.employee_name }}</td>
             <td @click="openEdit(row)" data-label="Designation">{{ row.designation || '—' }}</td>
             <td @click="openEdit(row)" data-label="Department">{{ row.department || '—' }}</td>
-            <td @click="openEdit(row)" data-label="Project">{{ projectLabel(row.project) }}</td>
             <td @click="openEdit(row)" data-label="Login User">{{ row.user ? (members[row.user] || row.user) : '—' }}</td>
             <td @click="openEdit(row)" data-label="Status">
               <span class="em-status" :class="row.status === 'Inactive' ? 'is-inactive' : 'is-active'">{{ row.status || 'Active' }}</span>
@@ -123,7 +122,8 @@
           </div>
         </div>
 
-        <div class="em-group">
+        <!-- Project field hidden in the dialog; form.project is still sent so an existing value isn't cleared -->
+        <div class="em-group" v-if="false">
           <label for="em-f-project">Project</label>
           <div class="em-field em-field-select" :class="{ open: ddOpen === 'project' }">
             <span class="em-field-ico" v-html="icon('box',16)"></span>

@@ -168,8 +168,8 @@
           <td @click="openView(row)" class="col-hide-tablet" data-label="Group"><span v-if="row.item_group" class="it-group-badge">{{row.item_group}}</span><span v-else class="text-muted">—</span></td>
           <td @click="openView(row)" data-label="Type">
             <span class="b-badge" style="font-size:11px"
-              :style="row.item_type && ITEM_TYPE_COLOR[row.item_type] ? { background: ITEM_TYPE_COLOR[row.item_type].bg, color: ITEM_TYPE_COLOR[row.item_type].text } : {}">
-              {{ ITEM_TYPE_ICONS[row.item_type] || '' }} {{row.item_type||'—'}}
+              :style="typeOf(row) && ITEM_TYPE_COLOR[typeOf(row)] ? { background: ITEM_TYPE_COLOR[typeOf(row)].bg, color: ITEM_TYPE_COLOR[typeOf(row)].text } : {}">
+              {{ ITEM_TYPE_ICONS[typeOf(row)] || '' }} {{typeOf(row)||'—'}}
             </span>
           </td>
           <td @click="openView(row)" class="text-muted col-hide-tablet mono-sm" data-label="UOM">{{row.stock_uom||'Nos'}}</td>
@@ -204,7 +204,7 @@
             <span class="inv-link" style="font-size:11.5px">{{row.item_code||row.name}}</span>
             <span class="text-muted" style="font-size:11px">·</span>
             <span v-if="row.item_group" class="it-group-badge" style="font-size:10.5px">{{row.item_group}}</span>
-            <span class="b-badge b-badge-muted" style="font-size:10.5px">{{row.item_type||'—'}}</span>
+            <span class="b-badge b-badge-muted" style="font-size:10.5px">{{typeOf(row)||'—'}}</span>
           </div>
         </div>
         <div class="ii-mob-card-right">
@@ -228,7 +228,7 @@
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
           <span class="inv-status-badge" :class="row.disabled?'status-inactive':'status-active'" style="font-size:10.5px">{{row.disabled?'Inactive':'Active'}}</span>
           <div style="display:flex;align-items:center;gap:4px">
-            <span class="b-badge b-badge-muted" style="font-size:10.5px">{{row.item_type||'—'}}</span>
+            <span class="b-badge b-badge-muted" style="font-size:10.5px">{{typeOf(row)||'—'}}</span>
             <button @click.stop="openEdit(row)" class="ii-qa-btn ii-qa-edit ii-card-edit" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : 'Quick Edit'" v-html="icon('edit',12)"></button>
           </div>
         </div>
@@ -332,7 +332,10 @@ const ITEM_TYPE_ICONS = {
   "Scrap Item":       "♻️",
   "Product":          "🛒",
   "Service":          "🛠️",
+  "Asset":            "🧰",
 };
+// Asset items display as "Asset" instead of their stored item_type (display only)
+const typeOf = (r) => (r && r.is_asset_item) ? "Asset" : (r && r.item_type) || "";
 const ITEM_TYPE_COLOR = {
   "Raw Material":     { bg: "#dcfce7", text: "#15803d" },
   "Work In Progress": { bg: "#fef9c3", text: "#a16207" },
@@ -341,6 +344,7 @@ const ITEM_TYPE_COLOR = {
   "Scrap Item":       { bg: "#fef3c7", text: "#b45309" },
   "Product":          { bg: "#f1f5f9", text: "#475569" },
   "Service":          { bg: "#fee2e2", text: "#b91c1c" },
+  "Asset":            { bg: "#ffedd5", text: "#c2410c" },
 };
 
 // Navigate to the dedicated Variant Manager page (used from the list badge).
@@ -357,7 +361,7 @@ async function load() {
   // instead of blocking on the item-group filter dropdown lookup below it.
   try {
     const rows = await apiList("Item", {
-      fields: ["name","item_code","item_name","item_group","item_type","stock_uom","standard_rate","standard_buying_rate","disabled","is_stock_item","is_sales_item","is_purchase_item","has_variants","variant_of","creation","default_bom","quality_inspection_required","inspection_required_before_purchase","inspection_required_before_delivery","inspection_required_before_manufacture","min_order_qty","lead_time_days","is_fixed_asset","asset_category"],
+      fields: ["name","item_code","item_name","item_group","item_type","stock_uom","standard_rate","standard_buying_rate","disabled","is_stock_item","is_sales_item","is_purchase_item","has_variants","variant_of","creation","default_bom","quality_inspection_required","inspection_required_before_purchase","inspection_required_before_delivery","inspection_required_before_manufacture","min_order_qty","lead_time_days","is_fixed_asset","asset_category","is_asset_item"],
       order: "item_name asc", limit: 100000,
     });
     list.value = rows || [];
@@ -392,7 +396,7 @@ const filtered = computed(() => {
   if (filterTab.value === "fixed_asset") r = r.filter((i) => i.is_fixed_asset);
   if (filterGroup.value) r = r.filter((i) => i.item_group === filterGroup.value);
   const q = search.value.toLowerCase().trim();
-  if (q) r = r.filter((i) => ((i.item_name || "") + (i.item_code || "") + (i.item_group || "") + (i.item_type || "")).toLowerCase().includes(q));
+  if (q) r = r.filter((i) => ((i.item_name || "") + (i.item_code || "") + (i.item_group || "") + (typeOf(i))).toLowerCase().includes(q));
   return r;
 });
 
@@ -486,7 +490,7 @@ function exportSelectedCSV() {
   const esc = v => { const s = v==null?"":String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
   const lines = [["Item Code","Item Name","Group","Type","UOM","Selling Rate","Buying Rate","Stock Item","Status"].join(",")];
   for (const i of rows) {
-    lines.push([i.item_code||"",i.item_name||"",i.item_group||"",i.item_type||"",i.stock_uom||"",flt(i.standard_rate),flt(i.standard_buying_rate),i.is_stock_item?"Yes":"No",i.disabled?"Inactive":"Active"].map(esc).join(","));
+    lines.push([i.item_code||"",i.item_name||"",i.item_group||"",typeOf(i),i.stock_uom||"",flt(i.standard_rate),flt(i.standard_buying_rate),i.is_stock_item?"Yes":"No",i.disabled?"Inactive":"Active"].map(esc).join(","));
   }
   const blob = new Blob(["﻿"+lines.join("\r\n")], {type:"text/csv;charset=utf-8;"});
   const url = URL.createObjectURL(blob);
@@ -502,7 +506,7 @@ function exportCSV() {
   const esc = v => { const s = v==null?"":String(v); return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; };
   const lines = [["Item Code","Item Name","Group","Type","UOM","Selling Rate","Buying Rate","Stock Item","Status"].join(",")];
   for (const i of rows) {
-    lines.push([i.item_code||"",i.item_name||"",i.item_group||"",i.item_type||"",i.stock_uom||"",flt(i.standard_rate),flt(i.standard_buying_rate),i.is_stock_item?"Yes":"No",i.disabled?"Inactive":"Active"].map(esc).join(","));
+    lines.push([i.item_code||"",i.item_name||"",i.item_group||"",typeOf(i),i.stock_uom||"",flt(i.standard_rate),flt(i.standard_buying_rate),i.is_stock_item?"Yes":"No",i.disabled?"Inactive":"Active"].map(esc).join(","));
   }
   const blob = new Blob(["﻿"+lines.join("\r\n")], {type:"text/csv;charset=utf-8;"});
   const url = URL.createObjectURL(blob);
