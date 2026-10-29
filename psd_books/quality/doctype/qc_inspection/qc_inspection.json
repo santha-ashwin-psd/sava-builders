@@ -44,7 +44,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Pending\nPass\nFail",
+   "options": "Pending\nPass\nFail\nCancelled",
    "default": "Pending",
    "reqd": 1,
    "in_list_view": 1,

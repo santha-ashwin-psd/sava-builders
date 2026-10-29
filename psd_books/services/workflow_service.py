@@ -355,7 +355,7 @@ def receive_goods_from_order(
     se.submit()
 
     fully_received = _is_fully_received("Purchase Order", purchase_order, doc)
-    new_status = "Received" if fully_received else "Partly Received"
+    new_status = "Closed" if fully_received else "Partially Received"
     frappe.db.set_value("Purchase Order", purchase_order, "status", new_status, update_modified=True)
 
     # Release ordered qty for received items

@@ -809,7 +809,7 @@ onMounted(async () => {
 .ob-empty { text-align:center; padding:36px 16px; color:#6b7280; }
 .ob-shimmer { height:14px; border-radius:6px; background:linear-gradient(90deg,#f3f4f6 25%,#e9ecef 50%,#f3f4f6 75%); background-size:200% 100%; animation:ob-sh 1.4s infinite; }
 @keyframes ob-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-.ta-r { text-align:right; } .text-muted { color:#9ca3af; } .mono-sm { font-size:12px; }
+.ta-r { text-align:right; } .ob-table th.ta-r, .ob-view-items-tbl th.ta-r { text-align:right; } .text-muted { color:#9ca3af; } .mono-sm { font-size:12px; }
 
 .ob-overlay { position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:40; }
 .ob-drawer { position:fixed; top:0; right:-720px; width:720px; max-width:94vw; height:100%; background:#fff; box-shadow:-8px 0 30px rgba(0,0,0,.15); z-index:41; display:flex; flex-direction:column; transition:right .25s ease; }

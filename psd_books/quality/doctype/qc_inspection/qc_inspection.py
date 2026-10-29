@@ -52,6 +52,9 @@ class QCInspection(Document):
         self._sync_purchase_receipt_qty(cancelled=True)
         self._stamp_reference_status(cancelled=True)
         self._clear_row_link()
+        # Show the cancellation on the inspection itself (status was Pass/Fail).
+        frappe.db.set_value("QC Inspection", self.name, "status", "Cancelled", update_modified=False)
+        self.status = "Cancelled"
 
     def before_submit(self):
         if not self.readings:

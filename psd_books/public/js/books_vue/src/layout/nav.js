@@ -67,7 +67,7 @@ export const NAV = [
   { path: "/inventory/item-groups",         label: "Item Groups",      icon: "folder",     module: "inventory"  },
   { path: "/inventory/warehouses",          label: "Warehouses",       icon: "warehouse",  module: "inventory"  },
   // { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },  // moved to Purchases for Sava
-  // { path: "/inventory/opening-stock",       label: "Opening Stock",    icon: "opening",    module: "inventory"  },  // hidden for Sava (Inventory)
+  { path: "/inventory/opening-stock",       label: "Opening Stock",    icon: "opening",    module: "inventory"  },
   { path: "/inventory/stock-entries",       label: "Stock Entries",    icon: "stack",      module: "inventory"  },
   // { path: "/inventory/adjustments",         label: "Stock Adjustments", icon: "repeat",    module: "inventory"  },  // hidden for Sava (Inventory)
   { path: "/inventory/stock-ledger",        label: "Stock Ledger",     icon: "ledger",     module: "inventory"  },

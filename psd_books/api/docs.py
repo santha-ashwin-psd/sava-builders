@@ -3955,12 +3955,11 @@ def _po_status_from_fulfillment(po_name):
     billed    = sum(flt(r.billed_qty)   for r in rows)
     if total_qty <= 0:
         return "Submitted"
-    if billed >= total_qty - 0.001 and received >= total_qty - 0.001:
+    # Sava does not use Bills, so a PO is Closed as soon as every line is received.
+    if received >= total_qty - 0.001:
         return "Closed"
     if billed >= total_qty - 0.001:
         return "Billed"
-    if received >= total_qty - 0.001:
-        return "Received"
     if received > 0 or billed > 0:
         return "Partially Received"
     return "To Receive"
@@ -4232,8 +4231,27 @@ def submit_purchase_order(purchase_order):
     return po.as_dict()
 
 
+def _po_linked_submitted_docs(purchase_order):
+    """Submitted GRNs on this PO and the submitted QC Inspections on those GRNs."""
+    receipts = frappe.get_all("Purchase Receipt",
+        filters={"purchase_order": purchase_order, "docstatus": 1}, pluck="name")
+    inspections = frappe.get_all("QC Inspection",
+        filters={"reference_type": "Purchase Receipt", "reference_name": ["in", receipts], "docstatus": 1},
+        pluck="name") if receipts else []
+    return receipts, inspections
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_purchase_order_linked_docs(purchase_order):
+    """What cancelling this PO would also cancel (GRNs and their QC Inspections)."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    receipts, inspections = _po_linked_submitted_docs(purchase_order)
+    return {"purchase_receipts": receipts, "qc_inspections": inspections}
+
+
 @frappe.whitelist(allow_guest=False, methods=["POST"])
-def cancel_purchase_order_safe(purchase_order):
+def cancel_purchase_order_safe(purchase_order, cancel_linked=0):
     from psd_books.utils.access import require_module
     require_module("bills", write=True)
     if frappe.session.user == "Guest":
@@ -4253,6 +4271,28 @@ def cancel_purchase_order_safe(purchase_order):
         frappe.throw("This Purchase Order is pending approval. Cancel it with a reason from the "
                      "Purchase Order screen (the person who sent it, or an approver of the pending level).")
     if po.docstatus == 1:
+        receipts, inspections = _po_linked_submitted_docs(purchase_order)
+        if (receipts or inspections) and not int(cancel_linked or 0):
+            frappe.throw(
+                f"PO {purchase_order} is linked to GRN(s) {', '.join(receipts)}"
+                + (f" and QC Inspection(s) {', '.join(inspections)}" if inspections else "")
+                + ". Confirm to cancel them along with the PO."
+            )
+        if inspections:
+            roles = set(frappe.get_roles(frappe.session.user))
+            if frappe.session.user != "Administrator" and not (roles & {"Books Admin", "System Manager"}):
+                frappe.throw("Only Books Admin can cancel the QC Inspections linked to this PO.",
+                             frappe.PermissionError)
+        # Inspections first (they reference the GRN), then GRNs (which reverse PO received qty
+        # and stock), then the PO. One request = one transaction: any failure rolls all back.
+        from psd_books.api.qc import cancel_qc_inspection
+        for name in inspections:
+            cancel_qc_inspection(name)
+        for name in receipts:
+            rec = frappe.get_doc("Purchase Receipt", name)
+            rec.flags.ignore_permissions = True
+            rec.cancel()
+        po.reload()
         po.flags.ignore_permissions = True
         po.cancel()
     else:

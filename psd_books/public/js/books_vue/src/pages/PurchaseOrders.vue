@@ -1989,10 +1989,26 @@ async function cancelPO(o) {
     // Pending approval: the sender or an approver of the pending level cancels, with a reason.
     reason = await prompt({ title: "Cancel Purchase Order", label: "Reason for cancelling (required):", okLabel: "Cancel PO" });
     if (!reason || !reason.trim()) return;
-  } else if (!await confirm({ title: "Cancel Purchase Order", body: `Cancel ${o.name}? Linked bills must be cancelled separately.`, okLabel: "Cancel PO" })) return;
+  } else {
+    // Submitted PO: GRNs and their QC inspections are cancelled together with it, after confirmation.
+    const linkedRes = await apiPOST("psd_books.api.docs.get_purchase_order_linked_docs", { purchase_order: o.name });
+    const linked = linkedRes?.message ?? linkedRes ?? {};
+    const grns = linked.purchase_receipts || [], qcis = linked.qc_inspections || [];
+    if (grns.length || qcis.length) {
+      const lines = [];
+      if (grns.length) lines.push(`GRN: <b>${grns.join(", ")}</b>`);
+      if (qcis.length) lines.push(`QC Inspection: <b>${qcis.join(", ")}</b>`);
+      if (!await confirm({
+        title: "Cancel linked documents?",
+        body: `${o.name} is linked to:<br>${lines.join("<br>")}<br><br>Cancelling will also cancel these, reverse their stock and PO received quantities, then cancel ${o.name}.`,
+        okLabel: "Yes, cancel all",
+        okStyle: "danger",
+      })) return;
+    } else if (!await confirm({ title: "Cancel Purchase Order", body: `Cancel ${o.name}? Linked bills must be cancelled separately.`, okLabel: "Cancel PO" })) return;
+  }
   try {
     if (pending) await apiPOST("psd_books.api.purchase_order_approval.cancel_po", { name: o.name, reason: reason.trim() });
-    else await apiPOST("psd_books.api.docs.cancel_purchase_order_safe", { purchase_order: o.name });
+    else await apiPOST("psd_books.api.docs.cancel_purchase_order_safe", { purchase_order: o.name, cancel_linked: 1 });
     toast.success("Purchase Order cancelled");
     await load(); if (viewDoc.value?.name === o.name) await openView(o);
   } catch (e) { toast.error(e.message || "Cancel failed"); }

@@ -515,8 +515,8 @@
     </div>
 
     <!-- CONFIRM DIALOG (delete draft / cancel submitted) -->
-    <div v-if="confirmTarget" class="inv-drawer-bg" style="z-index:60" @click.self="confirmTarget=null"></div>
-    <div v-if="confirmTarget" class="pr-confirm" style="z-index:61">
+    <div v-if="confirmTarget" class="inv-drawer-bg" style="z-index:8100" @click.self="confirmTarget=null"></div>
+    <div v-if="confirmTarget" class="pr-confirm" style="z-index:8101">
       <div class="pr-confirm-icon" :class="confirmTarget.mode==='delete'?'danger':'warn'">
         <span v-html="icon(confirmTarget.mode==='delete'?'trash':'x', 20)"></span>
       </div>

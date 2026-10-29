@@ -492,6 +492,9 @@
           <button v-if="viewDoc.docstatus===0 && qcCanWrite" class="qc-btn-save" :disabled="saving || !qcCanWrite" @click="saveReadings">
             <span v-html="icon('save',13)"></span>{{ saving?'Saving…':'Save' }}
           </button>
+          <button v-if="viewDoc.docstatus===1 && qcIsAdmin" class="qc-btn-ghost" :disabled="cancelling" title="Cancel this submitted inspection (Books Admin only)" @click="cancelInspection(viewDoc.name)">
+            {{ cancelling ? 'Cancelling…' : 'Cancel Inspection' }}
+          </button>
           <button v-if="viewDoc.docstatus===0 && qcCanWrite && (viewDoc.readings||[]).length" class="qc-btn-primary" :disabled="saving || !qcCanWrite" @click="submitInspection(viewDoc.name)">
             <span v-html="icon('check',13)"></span>{{ saving?'Submitting…':'Submit' }}
           </button>
@@ -628,6 +631,7 @@ const list        = ref([]);
 const loading     = ref(false);
 const drawerOpen  = ref(false);
 const drawerSaving = ref(false);
+const cancelling   = ref(false);
 const editOpen    = ref(false);
 const editSaving  = ref(false);
 const editTemplates     = ref([]);
@@ -740,6 +744,7 @@ function statusClass(r) {
   const s = r.status || "";
   if (s === "Pass")    return "qc-status-pass";
   if (s === "Fail")    return "qc-status-fail";
+  if (s === "Cancelled") return "qc-status-cancelled";
   return "qc-status-pending";
 }
 function shortUser(u) {
@@ -978,6 +983,19 @@ async function submitInspection(name) {
   } finally { saving.value = false; }
 }
 
+async function cancelInspection(name) {
+  if (!window.confirm(`Cancel QC Inspection ${name}? This reverses its effect on the GRN.`)) return;
+  cancelling.value = true;
+  try {
+    await apiCall("psd_books.api.qc.cancel_qc_inspection", { inspection_name: name });
+    toast.success(`QC Inspection ${name} cancelled`);
+    viewOpen.value = false;
+    await load();
+  } catch (e) {
+    toast.error(e.message || "Cancel failed");
+  } finally { cancelling.value = false; }
+}
+
 async function requestApproval(inspectionName) {
   if (!inspectionName) return;
   approvalSending.value = true;
@@ -1077,7 +1095,7 @@ async function fetchEditRefDocs(q = "") {
     const fields = labelField ? ["name", labelField] : ["name"];
     const rows = await apiList(editForm.reference_type, {
       fields,
-      filters: [["docstatus", "!=", 2], ...(q ? [["name", "like", `%${q}%`]] : [])],
+      filters: [...(q ? [["name", "like", `%${q}%`]] : [])],
       limit: 50,
       order: "modified desc",
     });
@@ -1252,7 +1270,7 @@ async function fetchRefDocs(q = "") {
     const qFilter = q ? [["name", "like", `%${q}%`]] : [];
     const rows = await apiList(form.reference_type, {
       fields,
-      filters: [["docstatus", "!=", 2], ...qFilter],
+      filters: [...qFilter],
       limit: 50,
       order: "modified desc",
     });
@@ -1457,6 +1475,7 @@ onMounted(() => {
 .qc-status-pass    { background:#dcfce7; color:#15803d; }
 .qc-status-fail    { background:#fee2e2; color:#dc2626; }
 .qc-status-pending { background:#fef3c7; color:#b45309; }
+.qc-status-cancelled { background:#e5e7eb; color:#4b5563; }
 
 /* Drawer */
 .qc-overlay { position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:998; }

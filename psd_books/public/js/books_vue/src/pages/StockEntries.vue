@@ -472,8 +472,7 @@
               <tbody>
                 <tr v-for="it in viewDoc.items" :key="it.name||it.idx">
                   <td>
-                    <div style="font-weight:600;font-size:12.5px">{{ it.item_code }}</div>
-                    <div v-if="it.item_name && it.item_name!==it.item_code" style="font-size:11px;color:#9ca3af">{{ it.item_name }}</div>
+                    <div style="font-weight:600;font-size:12.5px">{{ it.item_name || it.item_code }}</div>
                   </td>
                   <td class="text-muted" style="font-size:12px">{{ it.batch_no||'—' }}</td>
                   <td class="text-muted" style="font-size:12px">{{ it.s_warehouse||viewDoc.from_warehouse||'—' }}</td>
@@ -490,8 +489,7 @@
               <div v-for="it in viewDoc.items" :key="it.name||it.idx" class="se-vic">
                 <div class="se-vic-top">
                   <div>
-                    <div class="se-vic-name">{{ it.item_code }}</div>
-                    <div v-if="it.item_name && it.item_name!==it.item_code" class="se-vic-sub">{{ it.item_name }}</div>
+                    <div class="se-vic-name">{{ it.item_name || it.item_code }}</div>
                   </div>
                   <div class="se-vic-amount">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</div>
                 </div>
@@ -871,11 +869,22 @@ async function fetchSalesPersons(q = "") {
 }
 async function fetchItems(q = "") {
   try {
-    const filters = [["disabled", "=", 0], ["is_asset_item", "=", assetMode.value ? 1 : 0]];
-    if (q) filters.push(["name", "like", `%${q}%`]);
-    const r = await apiList("Item", { fields: ["name"], filters, limit: 30, order: "name asc" });
-    items.value = (r || []).map(x => ({ label: x.name, value: x.name }));
+    const base = [["disabled", "=", 0], ["is_asset_item", "=", assetMode.value ? 1 : 0]];
+    const run = (extra) => apiList("Item", { fields: ["name", "item_name"], filters: [...base, ...extra], limit: 30, order: "item_name asc" });
+    // Match on item name or item code (no OR support in apiList, so two queries merged)
+    const rows = q
+      ? [...(await run([["item_name", "like", `%${q}%`]])), ...(await run([["name", "like", `%${q}%`]]))]
+      : await run([]);
+    const seen = new Set();
+    items.value = (rows || []).filter(x => !seen.has(x.name) && seen.add(x.name))
+      .slice(0, 30).map(x => ({ label: x.item_name || x.name, value: x.name }));
   } catch { items.value = []; }
+}
+// Show the item's name (not its code) in messages; falls back to the code
+// when the item isn't in the currently loaded options.
+function itemLabel(code) {
+  const o = items.value.find(x => x.value === code);
+  return o ? o.label : code;
 }
 function onAssetToggle(on) {
   assetMode.value = !!on;
@@ -1009,7 +1018,14 @@ line.stock_uom = r?.[0]?.stock_uom || "";
       }));
       lines.value = built.length ? built : [blankLine()];
       assetMode.value = built.some(l => l.is_asset);
-      fetchItems("");
+      await fetchItems("");
+      const missing = [...new Set(built.map(l => l.item_code).filter(c => c && !items.value.some(o => o.value === c)))];
+      if (missing.length) {
+        try {
+          const nr = await apiList("Item", { fields: ["name", "item_name"], filters: [["name", "in", missing]], limit: missing.length });
+          items.value = [...items.value, ...(nr || []).map(x => ({ label: x.item_name || x.name, value: x.name }))];
+        } catch {}
+      }
     }
   } catch {
     toast.error("Failed to load entry for editing");
@@ -1102,7 +1118,7 @@ async function checkAvailability(sourceWh) {
     try {
       const d = await apiGET("psd_books.api.inventory.get_item_stock_detail", { item_code: item, warehouse: sourceWh });
       const avail = flt(d?.warehouses?.[0]?.actual_qty);
-      if (qty > avail) return `Not enough stock of "${item}" in ${sourceWh} — need ${qty}, available ${avail}.`;
+      if (qty > avail) return `Not enough stock of "${itemLabel(item)}" in ${sourceWh} — need ${qty}, available ${avail}.`;
     } catch { /* balance lookup failed — don't block the save */ }
   }
   return "";
@@ -1118,7 +1134,7 @@ async function saveEntry(submit) {
     return toast.error("Source and destination warehouses must be different");
   for (const [idx, l] of usable.entries()) {
     if (l.has_batch_no && batchRequired(l) && !l.batch_no)
-      return toast.error(`Row ${idx + 1}: ${l.item_code} is batch-tracked — Batch No is required`);
+      return toast.error(`Row ${idx + 1}: ${itemLabel(l.item_code)} is batch-tracked — Batch No is required`);
   }
   // Block disabled batches even if typed in manually (dropdown already
   // excludes them, but a typed-in exact match can bypass that). Also block a
@@ -1139,7 +1155,7 @@ async function saveEntry(submit) {
       return toast.error(`Row ${idx + 1}: Batch "${l.batch_no}" is disabled and can't be used.`);
     }
     if (existing.length && existing[0].item && existing[0].item !== l.item_code) {
-      return toast.error(`Row ${idx + 1}: Batch "${l.batch_no}" already exists for item "${existing[0].item}", not "${l.item_code}".`);
+      return toast.error(`Row ${idx + 1}: Batch "${l.batch_no}" already exists for another item, not "${itemLabel(l.item_code)}".`);
     }
   }
   // Verify stock exists before actually posting an outgoing/transfer movement.
@@ -1219,7 +1235,7 @@ function exportCSV() {
       flt(e.total_incoming_value), flt(e.total_outgoing_value), flt(e.value_difference),
     ].map(esc).join(","));
   }
-  const blob = new Blob(["﻿" + lines2.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob(["\ufeff" + lines2.join("\r\n")], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = `stock_entries_${new Date().toISOString().slice(0, 10)}.csv`;
