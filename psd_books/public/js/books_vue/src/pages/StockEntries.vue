@@ -52,7 +52,7 @@
       <div style="display:flex;gap:8px;">
         <button class="se-btn-ghost" @click="load"><span v-html="icon('refresh',14)"></span></button>
         <button class="se-btn-ghost" @click="exportCSV" :disabled="!sorted.length"><span v-html="icon('download',14)"></span> Export</button>
-        <button v-if="false" class="se-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Entry</button>
+        <button class="se-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Entry</button>
       </div>
     </div>
 
@@ -127,7 +127,7 @@
                 <div style="font-size:32px;margin-bottom:8px">📦</div>
                 <div style="font-weight:600;margin-bottom:4px">No stock entries found</div>
                 <div style="font-size:13px;color:#9ca3af;margin-bottom:12px">Try changing the filter or date range</div>
-                <button v-if="false" class="se-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Entry</button>
+                <button class="se-btn-primary" :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Entry</button>
               </td>
             </tr>
           </template>
@@ -232,6 +232,17 @@
             <label class="se-label">To Warehouse <span v-if="toWhRequired" class="req">*</span></label>
             <SearchableSelect v-model="form.to_warehouse" :options="warehouses" placeholder="Destination warehouse…" @search="fetchWarehouses" />
           </div>
+        </div>
+
+        <div class="se-asset-row" :class="{ 'se-asset-row--on': assetMode }">
+          <div>
+            <div class="se-asset-title">Asset Items <span class="se-asset-pill" :class="assetMode ? 'se-asset-pill--on' : ''">{{ assetMode ? '🧰 Asset mode ON' : 'OFF' }}</span></div>
+            <div class="se-asset-sub">{{ assetMode ? 'Only asset items are listed below' : 'All items except assets are listed below' }}</div>
+          </div>
+          <label class="se-switch">
+            <input type="checkbox" :checked="assetMode" @change="onAssetToggle($event.target.checked)" />
+            <span class="se-switch-track"></span>
+          </label>
         </div>
 
         <div class="se-section-title" style="margin-top:4px">Items</div>
@@ -616,6 +627,7 @@ const pageSize   = 30;
 const list        = ref([]);
 const loading     = ref(false);
 const drawerOpen  = ref(false);
+const assetMode   = ref(false);   // UI filter only: on = asset items, off = everything except assets
 const drawerSaving = ref(false);
 const editingName = ref("");
 const viewOpen    = ref(false);
@@ -859,9 +871,16 @@ async function fetchSalesPersons(q = "") {
 }
 async function fetchItems(q = "") {
   try {
-    const r = await apiLinkValues("Item", q);
-    items.value = r.map(x => ({ label: x.name, value: x.name }));
+    const filters = [["disabled", "=", 0], ["is_asset_item", "=", assetMode.value ? 1 : 0]];
+    if (q) filters.push(["name", "like", `%${q}%`]);
+    const r = await apiList("Item", { fields: ["name"], filters, limit: 30, order: "name asc" });
+    items.value = (r || []).map(x => ({ label: x.name, value: x.name }));
   } catch { items.value = []; }
+}
+function onAssetToggle(on) {
+  assetMode.value = !!on;
+  lines.value = [blankLine()];   // items picked under the other mode no longer apply
+  fetchItems("");
 }
 async function fetchBatches(line, q = "") {
   if (!line.item_code) { line.batchOptions = []; return; }
@@ -925,6 +944,7 @@ function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.
 
 function openNew() {
   editingName.value = "";
+  assetMode.value = false;
   Object.assign(form, {
     stock_entry_type: "Material Receipt",
     posting_date: new Date().toISOString().slice(0, 10),
@@ -938,6 +958,7 @@ function openNew() {
 async function openEdit(e, { force = false } = {}) {
   if (e.docstatus !== 0 && !force) return;
   editingName.value = e.name;
+  assetMode.value = false;
   Object.assign(form, {
     stock_entry_type: e.stock_entry_type || "Material Receipt",
     posting_date: e.posting_date || new Date().toISOString().slice(0, 10),
@@ -959,8 +980,9 @@ async function openEdit(e, { force = false } = {}) {
           has_batch_no: 0, batch_no: it.batch_no || "", manufacturing_date: "", expiry_date: "", batchOptions: [],
         };
         try {
-          const r = await apiList("Item", { fields: ["name", "has_batch_no", "stock_uom"], filters: [["name", "=", line.item_code]], limit: 1 });
+          const r = await apiList("Item", { fields: ["name", "has_batch_no", "stock_uom", "is_asset_item"], filters: [["name", "=", line.item_code]], limit: 1 });
           line.has_batch_no = r?.[0]?.has_batch_no ? 1 : 0;
+          line.is_asset = r?.[0]?.is_asset_item ? 1 : 0;
 line.stock_uom = r?.[0]?.stock_uom || "";
         } catch {}
         if (line.has_batch_no && line.batch_no) {
@@ -986,6 +1008,8 @@ line.stock_uom = r?.[0]?.stock_uom || "";
         return line;
       }));
       lines.value = built.length ? built : [blankLine()];
+      assetMode.value = built.some(l => l.is_asset);
+      fetchItems("");
     }
   } catch {
     toast.error("Failed to load entry for editing");
@@ -1309,6 +1333,18 @@ function salesPersonLabel(code) {
 textarea.se-input { resize:vertical; }
 .se-select { border:1px solid #e2e8f0; border-radius:8px; padding:8px 11px; font:inherit; font-size:13px; outline:none; background:#fff; color:#0f172a; cursor:pointer; }
 .se-select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+.se-asset-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; margin:6px 0 14px; background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px; }
+.se-asset-row--on { background:#fff7ed; border-color:#fdba74; }
+.se-asset-pill { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:10px; font-size:10.5px; font-weight:700; background:#e5e7eb; color:#6b7280; vertical-align:middle; }
+.se-asset-pill--on { background:#ffedd5; color:#c2410c; }
+.se-asset-title { font-size:13px; font-weight:600; color:#111827; }
+.se-asset-sub { font-size:11.5px; color:#6b7280; margin-top:2px; }
+.se-switch { position:relative; display:inline-block; width:38px; height:22px; flex-shrink:0; cursor:pointer; }
+.se-switch input { opacity:0; width:0; height:0; position:absolute; }
+.se-switch-track { position:absolute; inset:0; background:#cbd5e1; border-radius:22px; transition:background .15s; }
+.se-switch-track::after { content:""; position:absolute; left:3px; top:3px; width:16px; height:16px; background:#fff; border-radius:50%; transition:transform .15s; box-shadow:0 1px 2px rgba(0,0,0,.25); }
+.se-switch input:checked + .se-switch-track { background:#16a34a; }
+.se-switch input:checked + .se-switch-track::after { transform:translateX(16px); }
 .se-section-title { font-size:11.5px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
 .se-items-table { display:flex; flex-direction:column; border:1px solid #e5e7eb; border-radius:8px; max-width:100%;}
 .se-items-head { display:grid; grid-template-columns:2.5fr 90px 110px 28px; gap:6px; background:#f9fafb; padding:8px 10px; font-size:11px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.03em; }
