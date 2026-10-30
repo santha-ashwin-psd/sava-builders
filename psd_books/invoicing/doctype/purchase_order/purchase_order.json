@@ -10,6 +10,7 @@
   "supplier",
   "supplier_name",
   "transaction_date",
+  "entry_date",
   "expected_delivery_date",
   "status",
   "raised_by",
@@ -18,6 +19,8 @@
   "quotation_comparison",
   "company",
   "project",
+  "employee",
+  "employee_name",
   "billing_address",
   "delivery_address",
   "delivery_address_name",
@@ -58,6 +61,11 @@
    "in_list_view": 1,
    "label": "Order Date",
    "reqd": 1
+  },
+  {
+   "fieldname": "entry_date",
+   "fieldtype": "Date",
+   "label": "Entry Date"
   },
   {
    "fieldname": "expected_delivery_date",
@@ -112,6 +120,17 @@
    "options": "Project",
    "in_standard_filter": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Data",
+   "label": "Employee"
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
   },
   {
    "fieldname": "billing_address",

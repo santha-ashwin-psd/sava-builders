@@ -8,6 +8,8 @@ class MaterialRequest(Document):
 	def validate(self):
 		if not self.posting_date:
 			self.posting_date = nowdate()
+		if self.is_new() and not self.get("entry_date") and self._approval_required():
+			frappe.throw(_("Entry Date is required."))
 		if not self.items:
 			frappe.throw(_("Material Request must have at least one item."))
 		for row in self.items:

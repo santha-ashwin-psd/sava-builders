@@ -1,32 +1,23 @@
-"""Supplier Quotation API (Sava A8.3). Logic lives in invoicing/supplier_quotation_flow.py.
-
-Endpoints
-- get_quotation_prefill(request_for_quotation, supplier): read-only, what the Enter/Revise screen starts with
-- enter_quotation(data): data = {request_for_quotation, supplier, quotation_date, delivery_days,
-  payment_terms, remarks, items: [{mrn_item, rate, discount_percent}]}
-- revise_quotation(name, data): Active -> Superseded, new Active quotation
-- cancel_quotation(name): Active -> Cancelled
-"""
 import frappe
+from frappe import _
+from frappe.model.document import Document
 
-from psd_books.invoicing import supplier_quotation_flow as flow
-
-
-@frappe.whitelist(allow_guest=False, methods=["GET"])
-def get_quotation_prefill(request_for_quotation, supplier):
-	return flow.get_prefill(request_for_quotation, supplier)
+from psd_books.invoicing import supplier_quotation_calc, supplier_quotation_rules
 
 
-@frappe.whitelist(allow_guest=False, methods=["POST"])
-def enter_quotation(data):
-	return flow.enter_quotation(data)
-
-
-@frappe.whitelist(allow_guest=False, methods=["POST"])
-def revise_quotation(name, data):
-	return flow.revise_quotation(name, data)
-
-
-@frappe.whitelist(allow_guest=False, methods=["POST"])
-def cancel_quotation(name):
-	return flow.cancel_quotation(name)
+class SupplierQuotation(Document):
+	def validate(self):
+		# Entry Date: the day the record was entered. Filled automatically when blank, so documents
+		# created by other steps (GRN, stock entries, orders from a comparison) never fail on it.
+		if self.is_new() and not self.get("entry_date"):
+			self.entry_date = frappe.utils.nowdate()
+		before = self.get_doc_before_save()
+		supplier_quotation_rules.keep_status_server_side(self, before)
+		if before is not None and not self.flags.get("sq_workflow"):
+			if before.status == "Active":
+				frappe.throw(_("An Active quotation can't be edited. Revise it instead."))
+			frappe.throw(_("A {0} quotation can't be edited.").format(before.status.lower()))
+		if self.status != "Active":
+			return  # superseding or cancelling must work even if the RFQ has moved on
+		supplier_quotation_rules.validate_active(self)
+		supplier_quotation_calc.apply_to_doc(self)

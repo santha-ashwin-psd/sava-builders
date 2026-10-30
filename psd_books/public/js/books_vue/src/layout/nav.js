@@ -33,11 +33,12 @@ export const NAV = [
   // { path: "/expenses/categories",           label: "Expense Categories", icon: "folder",   module: "bills"      },  // hidden for Sava (Purchases)
   { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },
   { path: "/rfqs",                          label: "Request for Quotation", icon: "purchase", module: "bills"    },
-  { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills", doctype: "Purchase Order" },  // also shown to anyone who may read Purchase Orders (Store Keeper: marks goods received)
+  { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills", doctype: "Purchase Order" }, 
+    { path: "/purchase-receipts",             label: "GRN",              icon: "purchase",   module: "inventory"  }, // also shown to anyone who may read Purchase Orders (Store Keeper: marks goods received)
   { path: "/delivery-challans",             label: "Delivery Notes",    icon: "truck",      module: "inventory"  },
   // { path: "/purchases",                     label: "Bills",            icon: "fileplus",   module: "bills"      },  // hidden (sidebar)
   // { path: "/recurring-bills",               label: "Recurring Bills",  icon: "recurring",  module: "bills"      },  // hidden (sidebar)
-  { path: "/purchase-receipts",             label: "GRN",              icon: "purchase",   module: "inventory"  },
+
   // { path: "/purchasing/landed-cost-vouchers", label: "Landed Costs",   icon: "balance",    module: "bills"      },  // hidden for Sava (Purchases)
   // { path: "/payments",                      label: "Payments Made",    icon: "payment",    module: "payments"   },  // hidden for Sava (Purchases)
   // { path: "/debit-notes",                   label: "Debit Notes",      icon: "creditnote", module: "bills"      },  // hidden for Sava (Purchases)
@@ -90,9 +91,9 @@ export const NAV = [
   // { path: "/assets/depreciation-schedule",  label: "Depreciation Schedule", icon: "calendar", module: "inventory"  },  // hidden for Sava
   // { path: "/assets/maintenance-log",        label: "Maintenance Log",  icon: "gear",       module: "inventory"  },  // hidden for Sava
 
-  { section: "Quality" },
-  { path: "/quality/inspections",           label: "Inspections",      icon: "shield",     module: "inventory"  },
-  { path: "/quality/templates",             label: "QC Templates",     icon: "file",       module: "inventory"  },
+  // { section: "Quality" },  // hidden for Sava (Quality)
+  // { path: "/quality/inspections",           label: "Inspections",      icon: "shield",     module: "inventory"  },  // hidden for Sava (Quality)
+  // { path: "/quality/templates",             label: "QC Templates",     icon: "file",       module: "inventory"  },  // hidden for Sava (Quality)
   // { path: "/quality/approvals",             label: "QC Approvals",     icon: "check",      module: "inventory"  },  // hidden for Sava (Quality)
 
   // { section: "Manufacturing" },  // hidden for Sava

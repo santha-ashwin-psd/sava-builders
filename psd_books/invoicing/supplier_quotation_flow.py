@@ -16,7 +16,7 @@ from frappe.utils import nowdate
 
 from psd_books.invoicing import supplier_quotation_rules as rules
 
-FIELDS = ("quotation_date", "delivery_days", "payment_terms", "remarks")
+FIELDS = ("entry_date", "quotation_date", "delivery_days", "payment_terms", "remarks")
 ROW_FIELDS = ("mrn_item", "rate", "discount_percent")
 NUMERIC_ROW_FIELDS = ("rate", "discount_percent")
 

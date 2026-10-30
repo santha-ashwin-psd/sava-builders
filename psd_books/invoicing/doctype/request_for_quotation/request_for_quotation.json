@@ -51,6 +51,11 @@
    "in_list_view": 1
   },
   {
+   "fieldname": "entry_date",
+   "fieldtype": "Date",
+   "label": "Entry Date"
+  },
+  {
    "fieldname": "respond_by",
    "fieldtype": "Date",
    "label": "Respond By",

@@ -365,7 +365,7 @@ const routes = [
   { path: "/gst/tax-templates", name: "tax-templates", component: TaxTemplates, meta: { module: "taxes" } },
   { path: "/reports",      name: "reports",  component: Reports,     meta: { module: null       } },
   { path: "/bulk-import",        name: "bulk-import",       component: BulkImport,       meta: { module: "admin"    } },
-  { path: "/delivery-challans",   name: "delivery-challans",   component: DeliveryChallans,   meta: { module: "inventory" } },
+  { path: "/delivery-challans",   name: "delivery-challans",   component: StockEntries,   meta: { module: "inventory" } },
   { path: "/proforma-invoices",   name: "proforma-invoices",   component: ProformaInvoices,   meta: { module: "invoices" } },
   { path: "/purchase-receipts",   name: "purchase-receipts",   component: PurchaseReceipts,   meta: { module: "inventory"} },
   { path: "/rfqs",               name: "rfqs",               component: RequestForQuotation, meta: { module: "bills"    } },

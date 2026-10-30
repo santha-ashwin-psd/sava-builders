@@ -9,6 +9,10 @@ from psd_books.db.validators import validate_fiscal_year, set_posting_time
 class PurchaseReceipt(Document):
 
     def validate(self):
+        # Entry Date: the day the record was entered. Filled automatically when blank, so documents
+        # created by other steps (GRN, stock entries, orders from a comparison) never fail on it.
+        if self.is_new() and not self.get("entry_date"):
+            self.entry_date = frappe.utils.nowdate()
         set_posting_time(self)
         # Purchase Receipt is not wired to central_validator, so fiscal year
         # validation must run here.  Block saves into closed or missing periods
@@ -237,6 +241,11 @@ class PurchaseReceipt(Document):
                                 new_status, update_modified=True)
         except Exception:
             pass
+        try:
+            from psd_books.invoicing.doctype.purchase_order.purchase_order import sync_material_request_status
+            sync_material_request_status(frappe.db.get_value("Purchase Order", self.purchase_order, "material_request"))
+        except Exception:
+            frappe.log_error(frappe.get_traceback(), "MRN status sync failed after receipt")
 
 
 def over_receipt_errors(po_rows, receipt_rows):

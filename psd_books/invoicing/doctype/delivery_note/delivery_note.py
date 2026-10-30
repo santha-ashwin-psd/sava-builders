@@ -12,6 +12,10 @@ from psd_books.inventory.store_issue import (
 class DeliveryNote(Document):
 
     def validate(self):
+        # Entry Date: the day the record was entered. Filled automatically when blank, so documents
+        # created by other steps (GRN, stock entries, orders from a comparison) never fail on it.
+        if self.is_new() and not self.get("entry_date"):
+            self.entry_date = frappe.utils.nowdate()
         set_posting_time(self)
         # Guard posting_date against closed / missing fiscal years before the
         # document can be saved.  Delivery Notes are not wired to

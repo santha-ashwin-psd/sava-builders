@@ -37,7 +37,7 @@
     <div class="mrl-table-wrap">
       <table class="mrl-table">
         <thead><tr>
-          <th>Material Request No.</th><th>Request Type</th><th>Reference</th><th>Requested Date</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
+          <th>Material Request No.</th><th>Request Type</th><th>Project</th><th>Requested Date</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
         </tr></thead>
         <tbody>
           <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="7"><div class="shimmer" style="height:26px;border-radius:6px"></div></td></tr></template>
@@ -94,10 +94,10 @@
                 <button v-if="!isNew && mr.docstatus===1" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="cancelMR" :disabled="submitting || !canCancelMR" :title="!canCancelMR ? MR_CANCEL_NOTE : ''">
                   {{ submitting ? 'Cancelling…' : 'Cancel' }}
                 </button>
-                <button v-if="SHOW_CREATE_PO && !isNew && mr.docstatus===1 && isPurchaseLike && mr.status !== 'Ordered'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !canCreatePO || !!linkedNote" :title="!canCreatePO ? PO_NOTE : linkedNote">
+                <button v-if="SHOW_CREATE_PO && !isNew && mr.docstatus===1 && isPurchaseLike && mr.status !== 'Ordered' && mr.status !== 'Received'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !canCreatePO || !!linkedNote" :title="!canCreatePO ? PO_NOTE : linkedNote">
                   {{ actionLoading === 'po' ? 'Creating…' : 'Create Purchase Order' }}
                 </button>
-                <span v-if="!isNew && mr.docstatus===1 && isPurchaseLike && mr.status === 'Ordered'" class="bomx-badge badge-active" style="align-self:center">Purchase Order Created</span>
+                <span v-if="!isNew && mr.docstatus===1 && isPurchaseLike && (mr.status === 'Ordered' || mr.status === 'Received')" class="bomx-badge badge-active" style="align-self:center">Purchase Order Created</span>
                 <button v-if="!isNew && mr.docstatus===1 && isPurchaseLike && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createRfq" :disabled="!canCreateRFQ || !!linkedNote" :title="!canCreateRFQ ? RFQ_NOTE : linkedNote">
                   Create RFQ
                 </button>
@@ -154,12 +154,20 @@
               <select class="bomx-fi" v-model="mr.material_request_type" :disabled="readOnly" style="width:100%" @change="onPurposeChange">
                 <option value="Purchase">Purchase</option>
                 <option value="Asset">Asset</option>
-                <option value="Material Transfer">Material Transfer</option>
+                <option v-if="mr.material_request_type && !['Purchase', 'Asset'].includes(mr.material_request_type)" :value="mr.material_request_type">{{ mr.material_request_type }}</option>
               </select>
+            </div>
+            <div>
+              <div class="bomx-hf-label">Entry Date <span style="color:var(--bx-red)">*</span></div>
+              <input class="bomx-fi" type="date" v-model="mr.entry_date" :disabled="readOnly" style="width:100%"/>
             </div>
             <div>
               <div class="bomx-hf-label">Required By <span style="color:var(--bx-red)">*</span></div>
               <input class="bomx-fi" type="date" v-model="mr.posting_date" :disabled="readOnly" style="width:100%"/>
+            </div>
+            <div>
+              <div class="bomx-hf-label">Employee</div>
+              <SearchableSelect v-model="mr.employee" :options="employeeOpts" :disabled="readOnly" placeholder="Select employee" @update:modelValue="onEmployeePicked" />
             </div>
             <div>
               <div class="bomx-hf-label">Project <span v-if="!mr.production_plan && mr.material_request_type!=='Asset'" style="color:var(--bx-red)">*</span></div>
@@ -252,8 +260,8 @@ import { useToast } from "../composables/useToast.js";
 import { usePermissions } from "../composables/usePermissions.js";
 import { useConfirm } from "../composables/useConfirm.js";
 
-// Purchase Orders are made only from an RFQ comparison (Sava). Set to true to show "Create Purchase Order" on a Material Request again.
-const SHOW_CREATE_PO = false;
+// "Create Purchase Order" on an approved Purchase / Asset Material Request (opens the PO form filled from the MRN).
+const SHOW_CREATE_PO = true;
 
 const { printDoc } = useLivePreview();
 async function printMR() {
@@ -276,7 +284,7 @@ const page = ref(1);
 const pageSize = ref(25);
 const projectNames = ref({});
 
-const statusOptions = ["Draft", "Pending Approval", "Sent Back", "Approved", "Partly Issued", "Issued", "Submitted", "Ordered", "Cancelled"];
+const statusOptions = ["Draft", "Pending Approval", "Sent Back", "Approved", "Partly Issued", "Issued", "Submitted", "Ordered", "Received", "Cancelled"];
 
 const selectedName = computed(() => (route.params.name && route.params.name !== "new") ? route.params.name : (route.params.name === "new" ? "new" : null));
 
@@ -319,7 +327,7 @@ watch([search, filterStatus, filterType], () => { page.value = 1; });
 
 const ACTIVE_KEY = "__active";
 const ACTIVE_STATUSES = ["Draft", "Pending Approval", "Sent Back", "Approved", "Partly Issued"];
-const statusTabs = ["", "Ordered", "Approved", "Pending Approval", "Partly Issued", "Issued", "Draft", "Sent Back", "Cancelled"];
+const statusTabs = ["", "Ordered", "Received", "Approved", "Pending Approval", "Partly Issued", "Issued", "Draft", "Sent Back", "Cancelled"];
 const kpis = computed(() => {
   const l = list.value;
   const n = st => l.filter(i => i.status === st).length;
@@ -332,7 +340,7 @@ const kpis = computed(() => {
   ];
 });
 function exportCSV() {
-  const headers = ["Material Request No.", "Request Type", "Reference", "Requested Date", "Requested By", "Status"];
+  const headers = ["Material Request No.", "Request Type", "Project", "Requested Date", "Requested By", "Status"];
   const rows = sorted.value.map(r => [r.name, r.material_request_type || "", refLabel(r), r.posting_date || "", r.owner ? ownerName(r.owner) : "", r.status || ""]);
   const csv = [headers, ...rows].map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
@@ -343,7 +351,7 @@ function exportCSV() {
 
 function statusClass(row) {
   const s = row.status;
-  if (s === "Approved" || s === "Partly Issued" || s === "Issued" || s === "Submitted" || s === "Ordered") return "badge-active";
+  if (s === "Approved" || s === "Partly Issued" || s === "Issued" || s === "Submitted" || s === "Ordered" || s === "Received") return "badge-active";
   if (s === "Cancelled" || s === "Sent Back") return "badge-cancelled";
   return "badge-obsolete";
 }
@@ -371,6 +379,9 @@ function emptyMR() {
     material_request_type: "Purchase",
     status: "Draft",
     posting_date: new Date().toISOString().slice(0, 10),
+    entry_date: new Date().toISOString().slice(0, 10),
+    employee: "",
+    employee_name: "",
     company: "",
     production_plan: "",
     project: "",
@@ -387,6 +398,33 @@ const itemsList = ref([]);
 const isPurchaseLike = computed(() => ["Purchase", "Asset"].includes(mr.value && mr.value.material_request_type));
 const uomList = ref([]);
 const warehouseList = ref([]);
+
+// Employee dropdown: active Employee records only, by name.
+const employeeList = ref([]);
+const employeeOpts = computed(() => {
+  const opts = [{ value: "", label: "— Select —" }];
+  for (const e of employeeList.value) opts.push({ value: e.value, label: e.label });
+  // a saved value that isn't in the active list (inactive employee, or one saved as a user) still shows a name, not the raw id/email
+  const cur = mr.value && mr.value.employee;
+  if (cur && !opts.some(o => o.value === cur)) opts.push({ value: cur, label: mr.value.employee_name || ownerName(cur) });
+  return opts;
+});
+function onEmployeePicked(v) {
+  const hit = employeeList.value.find(e => e.value === v);
+  mr.value.employee_name = hit ? hit.label : "";
+}
+async function loadEmployeeOptions(co) {
+  let emps = [];
+  try {
+    emps = (await apiList("Employee", {
+      fields: ["name", "employee_name", "status"],
+      filters: co ? [["company", "=", co], ["status", "!=", "Inactive"]] : [["status", "!=", "Inactive"]],
+      order: "employee_name asc",
+      limit: 1000,
+    })) || [];
+  } catch { emps = []; }
+  employeeList.value = emps.map(e => ({ value: e.name, label: e.employee_name || e.name }));
+}
 
 // Who may raise a material request is decided on the server (Site Engineer, Books Admin, Director);
 // doc_access carries that answer to the screen. These only disable buttons / fields.
@@ -468,6 +506,7 @@ onMounted(async () => {
       limit: 1000,
     });
     warehouseList.value = whs || [];
+    await loadEmployeeOptions(co);
 
     await loadList();
     await fetchProjects("");
@@ -598,6 +637,7 @@ function onItemChange(row) {
 }
 
 async function save() {
+  if (!mr.value.entry_date) return toast("Entry Date is required", "error");
   if (!mr.value.posting_date) return toast("Required By date is required", "error");
   if (!mr.value.production_plan) {
     if (!mr.value.project && mr.value.material_request_type !== "Asset") return toast("Select a project", "error");

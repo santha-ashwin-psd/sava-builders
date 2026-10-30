@@ -159,10 +159,10 @@ class TestPlanSend(unittest.TestCase):
 	def three(self, **kw):
 		return [sup("S1"), sup("S2"), sup("S3")]
 
-	def test_needs_two_suppliers(self):
+	def test_needs_one_supplier(self):
 		with self.assertRaises(frappe.ValidationError):
-			R.plan_send("Draft", [sup("S1")])
-		self.assertEqual(len(R.plan_send("Draft", [sup("S1"), sup("S2")])), 2)
+			R.plan_send("Draft", [])
+		self.assertEqual(len(R.plan_send("Draft", [sup("S1")])), 1)
 
 	def test_missing_email_blocked(self):
 		rows = self.three()
@@ -227,11 +227,11 @@ class TestSending(unittest.TestCase):
 
 
 class TestStatusAfterSend(unittest.TestCase):
-	def test_sent_needs_two_delivered(self):
-		one = [sup("S1", status="Sent"), sup("S2", status="Failed"), sup("S3", status="Failed")]
-		self.assertEqual(R.status_after_send("Draft", one), "Draft")
-		two = [sup("S1", status="Sent"), sup("S2", status="Sent"), sup("S3", status="Failed")]
-		self.assertEqual(R.status_after_send("Draft", two), "Sent")
+	def test_sent_needs_one_delivered(self):
+		none = [sup("S1", status="Failed"), sup("S2", status="Failed")]
+		self.assertEqual(R.status_after_send("Draft", none), "Draft")
+		one = [sup("S1", status="Sent"), sup("S2", status="Failed")]
+		self.assertEqual(R.status_after_send("Draft", one), "Sent")
 
 	def test_cancelled_stays(self):
 		self.assertEqual(R.status_after_send("Cancelled", [sup(s, status="Sent") for s in "abc"]), "Cancelled")

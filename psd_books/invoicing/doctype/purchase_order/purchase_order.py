@@ -5,9 +5,55 @@ from frappe.model.document import Document
 from psd_books.db.validators import validate_fiscal_year
 
 
+def sync_material_request_status(material_request):
+    """Set a Material Request's status from its submitted Purchase Orders.
+
+    - no submitted PO            -> "Submitted"
+    - a submitted PO, goods still to come -> "Ordered"
+    - every submitted PO fully received   -> "Received"
+    Only touches an MRN that is itself submitted, and only these three statuses,
+    so Cancelled / Issued / Approved (no PO yet) etc. are never overwritten here.
+    """
+    if not material_request:
+        return
+    mr = frappe.db.get_value("Material Request", material_request, ["docstatus", "status"], as_dict=True)
+    if not mr or mr.docstatus != 1:
+        return  # only touch status while the MR itself is a submitted doc
+    pos = frappe.get_all("Purchase Order",
+                         filters={"material_request": material_request, "docstatus": 1}, pluck="name")
+    if not pos:
+        new_status = "Submitted"
+    else:
+        new_status = "Received"
+        for po in pos:
+            rows = frappe.get_all("Purchase Order Item", filters={"parent": po},
+                                  fields=["qty", "received_qty"])
+            total = sum(flt(r.qty) for r in rows)
+            received = sum(flt(r.received_qty) for r in rows)
+            if total <= 0 or received < total - 0.001:
+                new_status = "Ordered"
+                break
+    if mr.status != new_status:
+        frappe.db.set_value("Material Request", material_request, "status", new_status)
+
+
+def backfill_received_material_requests():
+    """One-off: re-run the sync for every MRN that already has a PO (bench execute)."""
+    names = frappe.get_all("Purchase Order", filters={"docstatus": 1, "material_request": ["!=", ""]},
+                           pluck="material_request", distinct=True)
+    for n in names:
+        sync_material_request_status(n)
+    frappe.db.commit()
+    return len(names)
+
+
 class PurchaseOrder(Document):
 
     def validate(self):
+        # Entry Date: the day the record was entered. Filled automatically when blank, so documents
+        # created by other steps (GRN, stock entries, orders from a comparison) never fail on it.
+        if self.is_new() and not self.get("entry_date"):
+            self.entry_date = frappe.utils.nowdate()
         # Mirror SalesOrder: stamp fiscal_year so downstream GL and reports
         # can group by year without an extra query.
         if self.transaction_date and self.company:
@@ -49,19 +95,9 @@ class PurchaseOrder(Document):
         self._sync_material_request_status()
 
     def _sync_material_request_status(self):
-        """Keep the source Material Request's status in step with whether it
-        still has a submitted Purchase Order against it."""
-        if not self.material_request:
-            return
-        still_ordered = frappe.db.exists(
-            "Purchase Order",
-            {"material_request": self.material_request, "docstatus": 1, "name": ["!=", self.name]},
-        ) or self.docstatus == 1
-        mr_docstatus = frappe.db.get_value("Material Request", self.material_request, "docstatus")
-        if mr_docstatus != 1:
-            return  # only touch status while the MR itself is a submitted doc
-        new_status = "Ordered" if still_ordered else "Submitted"
-        frappe.db.set_value("Material Request", self.material_request, "status", new_status)
+        """Keep the source Material Request's status in step with its submitted
+        Purchase Orders (Submitted -> Ordered -> Received)."""
+        sync_material_request_status(self.material_request)
 
     def _update_ordered_qty(self, direction: int):
         """Increase (submit) or decrease (cancel) ordered_qty in Bin for each PO line.

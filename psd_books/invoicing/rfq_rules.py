@@ -1,7 +1,7 @@
 """Request for Quotation rules (Sava A7.1).
 
-An RFQ is raised from an approved Purchase MRN and emailed to at least two
-suppliers, each in a separate email so no supplier sees the others.
+An RFQ is raised from an approved Purchase MRN and emailed to at least one
+supplier, each in a separate email so no supplier sees the others.
 
 - validate_draft(doc): MRN, item, supplier and date checks on every draft save
 - build_rfq_prefill(mrn, lines): what a new RFQ starts with (no database)
@@ -15,7 +15,7 @@ from frappe import _
 from frappe.utils import add_days, flt, getdate, nowdate
 
 MRN_STATUSES = ("Approved", "Partly Issued")
-MIN_SUPPLIERS = 2
+MIN_SUPPLIERS = 1
 EPS = 0.0001
 ERROR_LEN = 140
 
@@ -158,7 +158,7 @@ def plan_send(status, rows):
 	if status not in ("Draft", "Sent"):
 		frappe.throw(_("A {0} Request for Quotation can't be sent.").format(status))
 	if len(rows) < MIN_SUPPLIERS:
-		frappe.throw(_("Add at least {0} suppliers before sending (now {1}).").format(MIN_SUPPLIERS, len(rows)))
+		frappe.throw(_("Add at least {0} supplier(s) before sending (now {1}).").format(MIN_SUPPLIERS, len(rows)))
 	targets = [r for r in rows if r.get("send_status") != "Sent"]
 	if not targets:
 		frappe.throw(_("This Request for Quotation was already sent to every supplier."))

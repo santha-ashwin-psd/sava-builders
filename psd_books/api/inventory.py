@@ -1866,6 +1866,8 @@ def create_po_from_mr(material_request):
         "company":          mr.company,
         "material_request": mr.name,
         "project":          mr.get("project") or "",
+        "set_warehouse":    mr.get("delivery_warehouse") or "",
+        "material_request_type": mr.material_request_type,
         "items":            po_items,
     }
     return po

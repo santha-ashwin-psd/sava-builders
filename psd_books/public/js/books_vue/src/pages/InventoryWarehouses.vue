@@ -267,6 +267,7 @@
           </div>
           <div class="wh-card-footer wh-card-footer--actions" @click.stop>
             <button
+              v-if="false"
               class="wh-adj-btn"
               :class="{ 'wh-adj-btn--active': selectedChild?.name === child.name }"
               :disabled="!$canCreate('inventory')" :title="!$canCreate('inventory') ? 'Read-only access' : ''"
@@ -274,7 +275,7 @@
             >
               <span v-html="icon('plus', 11)"></span> Add Stock
             </button>
-            <button v-if="!child.is_group" class="wh-action-btn" style="padding:5px 10px" :disabled="!$canCreate('inventory')" @click="openTransfer(child)" :title="!$canCreate('inventory') ? 'Read-only access' : 'Transfer stock to another warehouse'">
+            <button v-if="false && !child.is_group" class="wh-action-btn" style="padding:5px 10px" :disabled="!$canCreate('inventory')" @click="openTransfer(child)" :title="!$canCreate('inventory') ? 'Read-only access' : 'Transfer stock to another warehouse'">
               <span v-html="icon('truck', 13)"></span>
             </button>
             <button class="wh-action-btn" style="padding:5px 10px" :disabled="!$canEdit('inventory')" :title="!$canEdit('inventory') ? 'Read-only access' : ''" @click="openEdit(child)">

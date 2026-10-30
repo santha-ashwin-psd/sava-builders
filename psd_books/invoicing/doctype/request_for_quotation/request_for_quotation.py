@@ -7,6 +7,10 @@ from psd_books.invoicing import rfq_rules
 
 class RequestforQuotation(Document):
 	def validate(self):
+		# Entry Date: the day the record was entered. Filled automatically when blank, so documents
+		# created by other steps (GRN, stock entries, orders from a comparison) never fail on it.
+		if self.is_new() and not self.get("entry_date"):
+			self.entry_date = frappe.utils.nowdate()
 		before = self.get_doc_before_save()
 		self._keep_status_server_side(before)
 		if before is not None and before.status == "Cancelled":

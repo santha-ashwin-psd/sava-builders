@@ -73,7 +73,7 @@
           <th @click="sortBy('name')" class="sortable">GRN # <span v-html="sortArrow('name')"></span></th>
           <th @click="sortBy('supplier_name')" class="sortable">Supplier <span v-html="sortArrow('supplier_name')"></span></th>
             <th>Project</th>
-          <th @click="sortBy('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
+          <th @click="sortBy('posting_date')" class="sortable">Received Date <span v-html="sortArrow('posting_date')"></span></th>
           <th @click="sortBy('purchase_order')" class="sortable">Purchase Order <span v-html="sortArrow('purchase_order')"></span></th>
           <th @click="sortBy('total_qty')" class="sortable ta-r">Items <span v-html="sortArrow('total_qty')"></span></th>
           <th>Status</th>
@@ -219,7 +219,7 @@
                   </div>
                 </div>
                 <div class="pr-info-item">
-                  <div class="pr-info-lbl">Date</div>
+                  <div class="pr-info-lbl">Received Date</div>
                   <div class="pr-info-val">{{ viewDoc.posting_date||'—' }}<span v-if="viewDoc.posting_time" style="margin-left:6px">{{ String(viewDoc.posting_time).slice(0, 8) }}</span></div>
                 </div>
                 <div class="pr-info-item">
@@ -305,7 +305,7 @@
 
     <!-- CREATE / EDIT DRAWER -->
     <div v-if="formOpen" class="inv-drawer-bg" @click.self="formOpen=false">
-      <div class="inv-drawer-panel" :class="{'is-add':!editingName}">
+      <div class="inv-drawer-panel pr-form-drawer" :class="{'is-add':!editingName}">
 
         <!-- Header -->
         <div class="inv-dh">
@@ -343,7 +343,11 @@
                   <SearchableSelect v-model="form.supplier" :options="vendorOptions" placeholder="Search supplier…" @search="fetchVendors" @select="onSupSelect" />
                 </div>
                 <div>
-                  <label class="inv-lbl">Date <span class="inv-req">*</span></label>
+                  <label class="inv-lbl">Entry Date <span class="inv-req">*</span></label>
+                  <input class="inv-fi" type="date" v-model="form.entry_date"/>
+                </div>
+                <div>
+                  <label class="inv-lbl">Received Date <span class="inv-req">*</span></label>
                   <input class="inv-fi" type="date" v-model="form.posting_date"/>
                 </div>
                 <div>
@@ -376,19 +380,19 @@
                   <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…"
                     :createable="true" :staticCreate="true" createLabel="+ Create Warehouse" createDoctype="Warehouse" @search="fetchWarehouses" @open="fetchWarehouses('')" @create="fetchWarehouses('')" />
                 </div>
-                <div>
+                <div v-if="false">
                   <label class="inv-lbl">Supplier Delivery Note No.</label>
                   <input class="inv-fi" v-model="form.supplier_delivery_note" maxlength="140" placeholder="Supplier's DN number" />
                 </div>
-                <div>
+                <div v-if="false">
                   <label class="inv-lbl">Vehicle No.</label>
                   <input class="inv-fi" v-model="form.vehicle_no" maxlength="140" placeholder="e.g. KDA 123A" />
                 </div>
-                <div>
+                <div v-if="false">
                   <label class="inv-lbl">Driver Name</label>
                   <input class="inv-fi" v-model="form.driver_name" maxlength="140" placeholder="Driver's full name" />
                 </div>
-                <div>
+                <div v-if="false">
                   <label class="inv-lbl">Driver ID No.</label>
                   <input class="inv-fi" v-model="form.driver_id_no" maxlength="140" placeholder="National ID / passport" />
                 </div>
@@ -421,71 +425,48 @@
               </div>
             </div>
             <div class="add-card-body" :class="{collapsed:collapsed.items}" style="padding:16px 16px 8px">
-              <div class="po-item-cards">
-                <div v-for="(it,i) in form.items" :key="i" class="po-item-card">
-                  <!-- Card header -->
-                  <div class="po-item-card-header" @click="it.collapsedUI=!it.collapsedUI">
-                    <span class="po-item-card-num">#{{ i+1 }}</span>
-                    <span class="po-item-card-title">{{ it.item_name || it.item_code || 'Line Item' }}</span>
-                    <div class="po-item-card-subtotal">
-                      <span class="po-item-card-subtotal-label">QTY</span>
-                      <span class="po-item-card-amount">{{ it.qty || '—' }}</span>
-                    </div>
-                    <span class="po-item-card-chevron" :class="{collapsed:it.collapsedUI}">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                    </span>
-                    <button @click.stop="removeItem(i)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
+              <div class="pr-lines-wrap">
+                <div class="pr-lines-tbl">
+                  <div class="pr-lines-row pr-lines-head">
+                    <span>#</span><span>Item</span><span>Qty</span><span>Accepted Qty</span><span>UOM</span><span></span>
                   </div>
-                  <!-- Card body -->
-                  <div class="po-item-card-body" v-show="!it.collapsedUI">
-                    <div class="po-item-col po-item-col--left">
-                      <div class="po-item-field">
-                        <label>Item <span class="inv-req">*</span></label>
-                        <SearchableSelect v-model="it.item_code" :options="itemOptions" placeholder="Search item…" @search="fetchItems" @select="opt => onItemSelect(it, opt)" />
+                  <template v-for="(it,i) in form.items" :key="i">
+                    <div class="pr-lines-row">
+                      <span class="pr-lines-idx">{{ i+1 }}</span>
+                      <SearchableSelect v-model="it.item_code" :options="itemOptions" placeholder="Search item…" @search="fetchItems" @select="opt => onItemSelect(it, opt)" />
+                      <input class="inv-fi" type="number" v-model.number="it.qty" :disabled="!!it.qc_locked" placeholder="1" min="0.01" :max="it.po_pending || undefined" step="0.01"/>
+                      <input class="inv-fi" type="number" v-model.number="it.accepted_qty" :disabled="!!it.qc_locked" placeholder="1" min="0" :max="it.qty" step="0.01"/>
+                      <select class="inv-fi" v-model="it.uom">
+                        <option v-for="u in uomOptionsFor(it)" :key="u" :value="u">{{ u }}</option>
+                      </select>
+                      <button @click.stop="askRemoveLine(i)" class="po-item-card-rm" title="Remove line"><span v-html="icon('x',16)"></span></button>
+                    </div>
+                    <div v-if="it.po_qty || it.qc_locked" class="pr-lines-sub">
+                      <div v-if="it.po_qty" class="exp-field-hint" :class="{'exp-field-hint-err': flt(it.qty) > flt(it.po_pending) + 0.0001}">
+                        Ordered {{ it.po_qty }} · Received {{ it.po_received }} · Pending {{ it.po_pending }}
                       </div>
-                      <div v-if="it.has_batch_no" class="po-item-field" style="margin-top:14px">
+                      <div v-if="it.qc_locked" class="exp-field-hint">Locked — final after QC {{ it.qc_locked }}</div>
+                    </div>
+                    <div v-if="it.has_batch_no" class="pr-lines-sub pr-lines-batch">
+                      <div class="po-item-field">
                         <label>Batch No <span class="inv-req">*</span></label>
                         <SearchableSelect v-model="it.batch_no" :options="it.batchOptions" placeholder="Select existing or type to create new"
                           createable @search="q => fetchBatches(it, q)" @select="opt => onBatchSelect(it, opt)" @create="val => onBatchCreate(it, val)" />
-                        <div class="po-item-num-row" style="margin-top:10px">
-                          <div class="po-item-field">
-                            <label>Mfg. Date</label>
-                            <input class="inv-fi" type="date" v-model="it.manufacturing_date"/>
-                          </div>
-                          <div class="po-item-field">
-                            <label>Expiry Date</label>
-                            <input class="inv-fi" type="date" v-model="it.expiry_date"/>
-                          </div>
-                        </div>
+                      </div>
+                      <div class="po-item-field">
+                        <label>Mfg. Date</label>
+                        <input class="inv-fi" type="date" v-model="it.manufacturing_date"/>
+                      </div>
+                      <div class="po-item-field">
+                        <label>Expiry Date</label>
+                        <input class="inv-fi" type="date" v-model="it.expiry_date"/>
                       </div>
                     </div>
-                    <div class="po-item-col po-item-col--right">
-                      <div class="po-item-num-row">
-                        <div class="po-item-field">
-                          <label>Qty <span class="inv-req">*</span></label>
-                          <input class="inv-fi" type="number" v-model.number="it.qty" :disabled="!!it.qc_locked" placeholder="1" min="0.01" :max="it.po_pending || undefined" step="0.01"/>
-                          <div v-if="it.po_qty" class="exp-field-hint" :class="{'exp-field-hint-err': flt(it.qty) > flt(it.po_pending) + 0.0001}">
-                            Ordered {{ it.po_qty }} · Received {{ it.po_received }} · Pending {{ it.po_pending }}
-                          </div>
-                        </div>
-                        <div class="po-item-field">
-                          <label>Accepted Qty</label>
-                          <input class="inv-fi" type="number" v-model.number="it.accepted_qty" :disabled="!!it.qc_locked" placeholder="1" min="0" :max="it.qty" step="0.01"/>
-                          <div v-if="it.qc_locked" class="exp-field-hint">Locked — final after QC {{ it.qc_locked }}</div>
-                        </div>
-                      </div>
-                      <div class="po-item-field" style="margin-top:14px">
-                        <label>UOM</label>
-                        <select class="inv-fi" v-model="it.uom">
-                          <option v-for="u in uomOptionsFor(it)" :key="u" :value="u">{{ u }}</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
+                  </template>
                 </div>
               </div>
 
-              <div v-if="!form.items.length" class="pr-items-empty" style="padding:20px 0 8px">No items yet — click Add Item</div>
+              <div v-if="false" class="pr-items-empty" style="padding:20px 0 8px">No items yet — click Add Item</div>
 
               <button v-if="false" class="inv-add-line-btn" style="margin-top:12px" :disabled="!prCanSave" @click="addItem">
                 <span v-html="icon('plus',12)"></span> Add Item
@@ -511,6 +492,20 @@
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- CONFIRM DIALOG (remove line item) -->
+    <div v-if="removeLineIdx!==null" class="inv-drawer-bg" style="z-index:8100" @click.self="removeLineIdx=null"></div>
+    <div v-if="removeLineIdx!==null" class="pr-confirm" style="z-index:8101">
+      <div class="pr-confirm-icon danger"><span v-html="icon('trash',20)"></span></div>
+      <div class="pr-confirm-title">Remove this line?</div>
+      <div class="pr-confirm-sub">
+        <strong>{{ (form.items[removeLineIdx] && (form.items[removeLineIdx].item_name || form.items[removeLineIdx].item_code)) || ('Line #' + (removeLineIdx+1)) }}</strong> will be removed from this GRN.
+      </div>
+      <div class="pr-confirm-actions">
+        <button class="b-btn b-btn-ghost" @click="removeLineIdx=null">Keep it</button>
+        <button class="b-btn pr-btn-danger" @click="confirmRemoveLine">Yes, Remove</button>
       </div>
     </div>
 
@@ -597,6 +592,7 @@ const prWho = computed(() => {
   return r.length ? r.join(" or ") + " (or an admin)" : "an admin";
 });
 const prNoAccess = computed(() => `Read-only access. Only ${prWho.value} can do this.`);
+const removeLineIdx = ref(null); // index of the GRN line awaiting remove confirmation
 const confirmTarget = ref(null); // { row, mode: "delete"|"cancel" }
 const selectedRows = ref(new Set());
 const sortKey = ref("posting_date");
@@ -609,7 +605,7 @@ const { projects, fetchProjects } = useProjectOptions();
 const collapsed = reactive({ details: false, receiving: false, items: false });
 
 const form = reactive({
-  supplier: "", supplier_name: "", posting_date: new Date().toISOString().slice(0,10),
+  supplier: "", supplier_name: "", entry_date: new Date().toISOString().slice(0,10), posting_date: new Date().toISOString().slice(0,10),
   purchase_order: "", set_warehouse: "", project: "", remarks: "", supplier_delivery_note: "", vehicle_no: "", driver_name: "", driver_id_no: "", items: [],
 });
 
@@ -819,7 +815,7 @@ async function confirmAction() {
 
 function resetForm() {
   Object.assign(form, {
-    supplier: "", supplier_name: "", posting_date: new Date().toISOString().slice(0,10),
+    supplier: "", supplier_name: "", entry_date: new Date().toISOString().slice(0,10), posting_date: new Date().toISOString().slice(0,10),
     purchase_order: "", set_warehouse: "", project: "", remarks: "", supplier_delivery_note: "", vehicle_no: "", driver_name: "", driver_id_no: "", items: [],
   });
 }
@@ -851,6 +847,7 @@ async function openEdit(r) {
     Object.assign(form, {
       supplier:       doc.supplier || "",
       supplier_name:  doc.supplier_name || "",
+      entry_date:     doc.entry_date || doc.posting_date || new Date().toISOString().slice(0,10),
       posting_date:   doc.posting_date || new Date().toISOString().slice(0,10),
       purchase_order: doc.purchase_order || "",
       set_warehouse:  doc.set_warehouse || "",
@@ -912,6 +909,15 @@ function addItem() {
     item_code:"", item_name:"", qty:1, accepted_qty:1, uom:"Nos", po_item: null,
     has_batch_no: 0, batch_no: "", manufacturing_date: "", expiry_date: "", batchOptions: [], collapsedUI: false,
   });
+}
+function askRemoveLine(i) {
+  if (form.items[i]?.qc_locked) { toast.error(`Line is locked by submitted QC ${form.items[i].qc_locked}`); return; }
+  removeLineIdx.value = i;
+}
+function confirmRemoveLine() {
+  const i = removeLineIdx.value;
+  removeLineIdx.value = null;
+  if (i !== null) removeItem(i);
 }
 function removeItem(i) {
   if (form.items[i]?.qc_locked) { toast.error(`Line is locked by submitted QC ${form.items[i].qc_locked}`); return; }
@@ -1094,6 +1100,7 @@ function onBatchCreate(line, val) { line.batch_no = val; }
 
 async function saveGRN(submit) {
   if (!form.supplier.trim()) { toast.error("Supplier is required"); return; }
+  if (!form.entry_date) { toast.error("Entry Date is required"); return; }
   if (!form.purchase_order) { toast.error("Purchase Order is required"); return; }
   const usable = form.items.filter(it => it.item_code.trim());
   if (!usable.length) { toast.error("Add at least one item"); return; }
@@ -1160,6 +1167,7 @@ async function saveGRN(submit) {
     const doc = {
       doctype: "Purchase Receipt",
       supplier: form.supplier,
+      entry_date: form.entry_date,
       posting_date: form.posting_date,
       company,
       purchase_order: form.purchase_order || null,
@@ -1285,6 +1293,17 @@ onMounted(async () => {
 .pr-view-drawer .pr-hdr-actions .pr-act-del:hover { background: #fecaca !important; border-color: #fecaca !important; color: #b91c1c !important; }
 .pr-view-drawer .inv-dclose { width: 30px; height: 30px; border: none; border-radius: 8px; background: #fff; color: #000; display: grid; place-items: center; flex-shrink: 0; }
 .pr-view-drawer .inv-dclose:hover { background: #f8fafc; }
+
+/* GRN form drawer: wider, single-line item rows */
+.inv-drawer-panel.pr-form-drawer { width: 1040px; max-width: 96vw; }
+.pr-lines-wrap { overflow-x: auto; }
+.pr-lines-tbl { min-width: 640px; display: flex; flex-direction: column; border: 1px solid #dde3f0; border-radius: 10px; background: #fff; }
+.pr-lines-row { display: grid; grid-template-columns: 28px minmax(220px, 1fr) 100px 120px 110px 32px; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #eef0f6; }
+.pr-lines-head { background: #eef2ff; border-radius: 10px 10px 0 0; font-size: 10.5px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
+.pr-lines-idx { font-size: 12px; font-weight: 700; color: #4f46e5; text-align: center; }
+.pr-lines-row .inv-fi { font-size: 13px; width: 100%; }
+.pr-lines-sub { padding: 0 12px 8px 48px; border-bottom: 1px solid #eef0f6; }
+.pr-lines-batch { display: grid; grid-template-columns: minmax(220px, 1fr) 150px 150px; gap: 8px; }
 
 /* ── Mobile cards (hidden on desktop, base display:none must precede @media) ── */
 .pr-mobile-cards { display: none; }

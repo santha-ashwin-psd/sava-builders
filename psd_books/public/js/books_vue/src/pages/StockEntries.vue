@@ -71,7 +71,7 @@
         <thead><tr>
           <th @click="sort('name')" class="sortable">Entry # <span v-html="sortArrow('name')"></span></th>
           <th @click="sort('stock_entry_type')" class="sortable">Type <span v-html="sortArrow('stock_entry_type')"></span></th>
-          <th @click="sort('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
+          <th @click="sort('posting_date')" class="sortable">Transfer Date <span v-html="sortArrow('posting_date')"></span></th>
           <th>Source</th>
           <th>Warehouse Flow</th>
           <th class="ta-r">Items</th>
@@ -186,7 +186,7 @@
 
     <!-- ── Create Drawer ── -->
     <div v-if="drawerOpen" class="se-overlay" @click.self="drawerOpen=false"></div>
-    <div class="se-drawer" :class="{open:drawerOpen}">
+    <div class="se-drawer se-form-drawer" :class="{open:drawerOpen}">
       <div class="se-dheader" :style="'background:'+typeGradient(form.stock_entry_type)">
         <button class="se-dclose se-dclose-abs" @click="drawerOpen=false"><span v-html="icon('x',16)"></span></button>
         <div class="se-dh-top">
@@ -203,24 +203,32 @@
           <div class="se-field" style="grid-column:1/-1">
             <label class="se-label">Entry Type <span class="req">*</span></label>
             <select v-model="form.stock_entry_type" class="se-select">
-              <option value="Material Receipt">Material Receipt — Stock coming IN</option>
+              <option v-if="editingName && form.stock_entry_type === 'Material Receipt'" value="Material Receipt">Material Receipt — Stock coming IN</option>
               <option value="Material Issue">Material Issue — Stock going OUT</option>
               <option value="Material Transfer">Material Transfer — Move between warehouses</option>
             </select>
           </div>
           <div class="se-field">
-            <label class="se-label">Date <span class="req">*</span></label>
+            <label class="se-label">Entry Date <span class="req">*</span></label>
+            <input v-model="form.entry_date" type="date" class="se-input" />
+          </div>
+          <div class="se-field">
+            <label class="se-label">{{ form.stock_entry_type === 'Material Issue' ? 'Issue Date' : (form.stock_entry_type === 'Material Transfer' ? 'Transfer Date' : 'Receipt Date') }} <span class="req">*</span></label>
             <input v-model="form.posting_date" type="date" class="se-input" />
           </div>
           <div class="se-field">
             <label class="se-label">Project</label>
-            <SearchableSelect v-model="form.project" :options="projects" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" />
+            <SearchableSelect v-model="form.project" :options="projects" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" @select="onProjectPick" />
           </div>
           <div class="se-field">
+            <label class="se-label">MRN</label>
+            <SearchableSelect v-model="form.material_request" :options="mrnOptions" placeholder="Select approved MRN (optional)" @search="q => fetchMrns(q, form.material_request)" @open="fetchMrns('', form.material_request)" @select="onMrnPick" />
+          </div>
+          <div class="se-field" v-if="false">
             <label class="se-label">Adjustment Reason</label>
             <input v-model="form.adjustment_reason" class="se-input" placeholder="e.g. Annual count, damage…"/>
           </div>
-          <div class="se-field" v-if="form.stock_entry_type === 'Material Issue'">
+          <div class="se-field" v-if="false && form.stock_entry_type === 'Material Issue'">
             <label class="se-label">Issued To (Sales Person)</label>
             <SearchableSelect v-model="form.sales_person" :options="salesPersons" placeholder="Who took this stock…" @search="fetchSalesPersons" />
           </div>
@@ -229,12 +237,32 @@
             <SearchableSelect v-model="form.from_warehouse" :options="warehouses" placeholder="Source warehouse…" @search="fetchWarehouses" />
           </div>
           <div class="se-field" v-if="showToWh">
-            <label class="se-label">To Warehouse <span v-if="toWhRequired" class="req">*</span></label>
-            <SearchableSelect v-model="form.to_warehouse" :options="warehouses" placeholder="Destination warehouse…" @search="fetchWarehouses" />
+            <label class="se-label">{{ form.stock_entry_type === 'Material Issue' ? 'Receiving Warehouse' : 'To Warehouse' }} <span v-if="toWhRequired" class="req">*</span></label>
+            <SearchableSelect v-model="form.to_warehouse" :options="warehouses" :placeholder="form.stock_entry_type === 'Material Issue' ? 'Receiving warehouse…' : 'Destination warehouse…'" @search="fetchWarehouses" />
+          </div>
+          <div class="se-field">
+            <label class="se-label">Driver Name</label>
+            <input v-model="form.driver_name" class="se-input" maxlength="140" placeholder="Driver's full name" />
+          </div>
+          <div class="se-field">
+            <label class="se-label">Truck No.</label>
+            <input v-model="form.vehicle_no" class="se-input" maxlength="140" placeholder="e.g. KDA 123A" />
           </div>
         </div>
 
-        <div class="se-asset-row" :class="{ 'se-asset-row--on': assetMode }">
+        <div v-if="form.stock_entry_type === 'Material Transfer'" class="se-asset-row se-asset-row--on">
+          <div>
+            <div class="se-asset-title">Assets only <span class="se-asset-pill se-asset-pill--on">🧰 Asset items</span></div>
+            <div class="se-asset-sub">Only asset items held in the From Warehouse are listed below, with available qty</div>
+          </div>
+        </div>
+        <div v-if="form.stock_entry_type === 'Material Issue'" class="se-asset-row">
+          <div>
+            <div class="se-asset-title">Items only <span class="se-asset-pill">Stock items</span></div>
+            <div class="se-asset-sub">Asset items are not listed for stock going out</div>
+          </div>
+        </div>
+        <div v-if="form.stock_entry_type !== 'Material Transfer' && form.stock_entry_type !== 'Material Issue'" class="se-asset-row" :class="{ 'se-asset-row--on': assetMode }">
           <div>
             <div class="se-asset-title">Asset Items <span class="se-asset-pill" :class="assetMode ? 'se-asset-pill--on' : ''">{{ assetMode ? '🧰 Asset mode ON' : 'OFF' }}</span></div>
             <div class="se-asset-sub">{{ assetMode ? 'Only asset items are listed below' : 'All items except assets are listed below' }}</div>
@@ -546,20 +574,6 @@
             <div style="font-size:13px;color:#374151;line-height:1.5;background:#f8fafc;border-radius:6px;padding:10px 12px;border:1px solid #e2e8f0">{{ viewDoc.remarks }}</div>
           </div>
 
-          <!-- Journal (debit/credit ledger) -->
-          <div class="se-view-section">
-            <div class="se-view-sec-lbl">Journal</div>
-            <template v-if="viewDoc.docstatus===1">
-              <JournalTab
-                voucher-type="Stock Entry"
-                :voucher-no="viewDoc.name"
-                label="Stock Entry"
-                :currency="viewDoc.currency || 'KES'"
-              />
-            </template>
-            <div v-else style="color:#9ca3af;font-size:13px;padding:8px 0">Journal entries are posted once the stock entry is submitted.</div>
-          </div>
-
           <!-- Timestamps -->
           <div class="se-view-section">
             <div style="display:flex;gap:16px;flex-wrap:wrap">
@@ -596,7 +610,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { apiList, apiGet, apiGET, apiSave, apiSubmit, apiCancel, apiDelete, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
@@ -645,10 +659,11 @@ const blankLine = () => ({
 });
 
 const form = reactive({
-  stock_entry_type: "Material Receipt",
+  stock_entry_type: "Material Issue",
+  entry_date: new Date().toISOString().slice(0, 10),
   posting_date: new Date().toISOString().slice(0, 10),
   from_warehouse: "", to_warehouse: "",
-  adjustment_reason: "", sales_person: "", remarks: "", project: "",
+  adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", driver_name: "", vehicle_no: "",
 });
 
 const TYPE_META = {
@@ -687,7 +702,8 @@ function batchPlaceholder(line) {
 // Warehouse fields shown per entry type: a Receipt has no source, an Issue has
 // no destination; a Transfer/Manufacture uses both.
 const showFromWh     = computed(() => form.stock_entry_type !== "Material Receipt");
-const showToWh       = computed(() => form.stock_entry_type !== "Material Issue");
+// Material Issue shows an optional Receiving Warehouse: when set, the entry is saved as a Material Transfer
+const showToWh       = computed(() => true);
 const fromWhRequired = computed(() => ["Material Issue", "Material Transfer", "Manufacture"].includes(form.stock_entry_type));
 const toWhRequired   = computed(() => ["Material Receipt", "Material Transfer", "Manufacture"].includes(form.stock_entry_type));
 
@@ -810,10 +826,10 @@ async function load() {
   try {
     const co = await resolveCompany();
     const rows = await apiList("Stock Entry", {
-      fields: ["name", "stock_entry_type", "posting_date", "from_warehouse", "to_warehouse",
+      fields: ["name", "stock_entry_type", "entry_date", "posting_date", "from_warehouse", "to_warehouse",
                "value_difference", "total_incoming_value", "total_outgoing_value",
                "docstatus", "remarks", "reference_doctype", "reference_name", "work_order",
-               "adjustment_reason", "sales_person", "company", "owner", "creation"],
+               "adjustment_reason", "sales_person", "material_request", "driver_name", "vehicle_no", "company", "owner", "creation"],
       filters: [["company", "=", co]],
       limit: 100000, order: "posting_date desc, creation desc",
     });
@@ -846,6 +862,63 @@ async function submitEntry(name) {
   } catch (e) { toast.error(e.message || "Submit failed"); }
 }
 
+// ── MRN: approved Material Requests (narrowed to the picked project) ──
+const mrnOptions = ref([]);
+async function fetchMrns(q = "", keep = "") {
+  try {
+    const co = await resolveCompany();
+    // Stock going out (Material Issue) never uses Asset MRNs; other entry types use Asset MRNs only
+    const assetMrn = form.stock_entry_type === "Material Issue" ? ["material_request_type", "!=", "Asset"] : ["material_request_type", "=", "Asset"];
+    const f = [["docstatus", "=", 1], ["status", "=", "Approved"], assetMrn];
+    if (co) f.push(["company", "=", co]);
+    if (form.project) f.push(["project", "=", form.project]);
+    if (q) f.push(["name", "like", "%" + q + "%"]);
+    const r = await apiList("Material Request", { fields: ["name", "project", "posting_date"], filters: f, limit: 50, order: "creation desc" });
+    const opts = (r || []).map(x => ({ label: x.project ? `${x.name} — ${x.project}` : x.name, value: x.name }));
+    if (keep && !opts.some(o => o.value === keep)) opts.unshift({ label: keep, value: keep });
+    mrnOptions.value = opts;
+  } catch { mrnOptions.value = keep ? [{ label: keep, value: keep }] : []; }
+}
+// Picking a project fills From Warehouse from the project's own store (if it has one).
+async function fillFromProjectWarehouse(proj) {
+  if (!proj || form.stock_entry_type === "Material Receipt") return;
+  try {
+    const rows = await apiList("Project", { fields: ["warehouse"], filters: [["name", "=", proj]], limit: 1 });
+    const wh = rows?.[0]?.warehouse;
+    if (!wh || form.project !== proj) return;
+    if (!warehouses.value.some(o => o.value === wh)) warehouses.value = [{ label: wh, value: wh }, ...warehouses.value];
+    form.from_warehouse = wh;
+  } catch { /* leave the warehouse as it is */ }
+}
+// Picking an MRN fills in its project automatically (when the MRN has one).
+async function onMrnPick(opt) {
+  const name = opt?.value || form.material_request;
+  if (!name) return;
+  const r = await apiList("Material Request", { fields: ["project", "delivery_warehouse"], filters: [["name", "=", name]], limit: 1 }).catch(() => []);
+  const row = (r && r[0]) || {};
+  if (row.project && row.project !== form.project) {
+    form.project = row.project;
+    await fetchProjects("", row.project);
+    await fillFromProjectWarehouse(row.project);
+  }
+  // The MRN's delivery warehouse fills the To Warehouse
+  if (row.delivery_warehouse) {
+    if (!warehouses.value.some(o => o.value === row.delivery_warehouse))
+      warehouses.value = [{ label: row.delivery_warehouse, value: row.delivery_warehouse }, ...warehouses.value];
+    form.to_warehouse = row.delivery_warehouse;
+  }
+}
+// Picking a project narrows the MRN list to that project's MRNs; an MRN from another project is cleared.
+async function onProjectPick(opt) {
+  form.project = opt?.value || "";
+  await fillFromProjectWarehouse(form.project);
+  if (form.material_request && form.project) {
+    const r = await apiList("Material Request", { fields: ["project"], filters: [["name", "=", form.material_request]], limit: 1 }).catch(() => []);
+    if (!r || !r[0] || r[0].project !== form.project) form.material_request = "";
+  }
+  await fetchMrns("", form.material_request);
+}
+
 async function fetchWarehouses(q = "") {
   try {
     const co = await resolveCompany();
@@ -867,9 +940,36 @@ async function fetchSalesPersons(q = "") {
     salesPersons.value = r.map(x => ({ label: x.sales_person_name || x.name, value: x.name }));
   } catch { salesPersons.value = []; }
 }
+// Material Transfer: item codes with stock in the chosen From Warehouse -> qty
+const whQty = ref({});
+async function loadWhStock() {
+  const wh = form.from_warehouse;
+  if (!["Material Transfer", "Material Issue"].includes(form.stock_entry_type) || !wh) { whQty.value = {}; fetchItems(""); return; }
+  try {
+    const rows = await apiList("Bin", { fields: ["item_code", "actual_qty"], filters: [["warehouse", "=", wh], ["actual_qty", ">", 0]], limit: 100000 });
+    const m = {};
+    (rows || []).forEach(r => { m[r.item_code] = flt(r.actual_qty); });
+    whQty.value = m;
+  } catch { whQty.value = {}; }
+  fetchItems("");
+}
+watch(() => form.from_warehouse, () => loadWhStock());
+watch(() => form.stock_entry_type, () => loadWhStock());
 async function fetchItems(q = "") {
   try {
-    const base = [["disabled", "=", 0], ["is_asset_item", "=", assetMode.value ? 1 : 0]];
+    const isTransfer = form.stock_entry_type === "Material Transfer";
+    // Transfers move only assets, and only those held in the From Warehouse
+    const inWh = isTransfer || form.stock_entry_type === "Material Issue";  // list only items held in the From Warehouse
+    if (inWh && !form.from_warehouse) { items.value = []; return; }
+    const isIssue = form.stock_entry_type === "Material Issue";
+    // Transfer: assets only. Issue: items only (no assets). Other types: follow the Asset Items toggle.
+    const assetFlag = isTransfer ? 1 : isIssue ? 0 : (assetMode.value ? 1 : 0);
+    const base = [["disabled", "=", 0], ["is_asset_item", "=", assetFlag]];
+    if (inWh) {
+      const codes = Object.keys(whQty.value);
+      if (!codes.length) { items.value = []; return; }
+      base.push(["name", "in", codes]);
+    }
     const run = (extra) => apiList("Item", { fields: ["name", "item_name"], filters: [...base, ...extra], limit: 30, order: "item_name asc" });
     // Match on item name or item code (no OR support in apiList, so two queries merged)
     const rows = q
@@ -877,7 +977,12 @@ async function fetchItems(q = "") {
       : await run([]);
     const seen = new Set();
     items.value = (rows || []).filter(x => !seen.has(x.name) && seen.add(x.name))
-      .slice(0, 30).map(x => ({ label: x.item_name || x.name, value: x.name }));
+      .slice(0, 30).map(x => ({
+        label: inWh
+          ? `${x.item_name || x.name} — ${whQty.value[x.name]} available`
+          : (x.item_name || x.name),
+        value: x.name,
+      }));
   } catch { items.value = []; }
 }
 // Show the item's name (not its code) in messages; falls back to the code
@@ -955,12 +1060,13 @@ function openNew() {
   editingName.value = "";
   assetMode.value = false;
   Object.assign(form, {
-    stock_entry_type: "Material Receipt",
+    stock_entry_type: "Material Issue",
+    entry_date: new Date().toISOString().slice(0, 10),
     posting_date: new Date().toISOString().slice(0, 10),
-    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "", project: "",
+    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", driver_name: "", vehicle_no: "",
   });
   lines.value = [blankLine()];
-  fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects("");
+  fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects(""); fetchMrns("");
   drawerOpen.value = true;
 }
 
@@ -970,11 +1076,14 @@ async function openEdit(e, { force = false } = {}) {
   assetMode.value = false;
   Object.assign(form, {
     stock_entry_type: e.stock_entry_type || "Material Receipt",
+    entry_date: e.entry_date || e.posting_date || new Date().toISOString().slice(0, 10),
     posting_date: e.posting_date || new Date().toISOString().slice(0, 10),
     from_warehouse: e.from_warehouse || "", to_warehouse: e.to_warehouse || "",
     adjustment_reason: e.adjustment_reason || "", sales_person: e.sales_person || "", remarks: e.remarks || "",
     project: e.project || "",
+    material_request: e.material_request || "", driver_name: e.driver_name || "", vehicle_no: e.vehicle_no || "",
   });
+  fetchMrns("", form.material_request);
   lines.value = [blankLine()];
   fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects("", e.project || "");
   drawerOpen.value = true;
@@ -1128,9 +1237,12 @@ async function saveEntry(submit) {
   const usable = lines.value.filter(l => l.item_code);
   if (!usable.length) return toast.error("At least one item is required");
   const type = form.stock_entry_type;
+  if (!form.entry_date) return toast.error("Entry Date is required");
   if (fromWhRequired.value && !form.from_warehouse) return toast.error("From Warehouse is required");
   if (toWhRequired.value && !form.to_warehouse) return toast.error("To Warehouse is required");
-  if (type === "Material Transfer" && form.from_warehouse && form.from_warehouse === form.to_warehouse)
+  // Issue with a Receiving Warehouse is saved as a transfer
+  const saveType = (type === "Material Issue" && form.to_warehouse) ? "Material Transfer" : type;
+  if (saveType === "Material Transfer" && form.from_warehouse && form.from_warehouse === form.to_warehouse)
     return toast.error("Source and destination warehouses must be different");
   for (const [idx, l] of usable.entries()) {
     if (l.has_batch_no && batchRequired(l) && !l.batch_no)
@@ -1190,7 +1302,8 @@ async function saveEntry(submit) {
 
     const doc = {
       doctype: "Stock Entry", company,
-      stock_entry_type: form.stock_entry_type,
+      stock_entry_type: saveType,
+      entry_date: form.entry_date,
       posting_date: form.posting_date,
       from_warehouse: form.from_warehouse || null,
       to_warehouse: form.to_warehouse || null,
@@ -1198,6 +1311,9 @@ async function saveEntry(submit) {
       sales_person: form.stock_entry_type === "Material Issue" ? (form.sales_person || "") : "",
       remarks: form.remarks || "",
       project: form.project || null,
+      material_request: form.material_request || null,
+      driver_name: form.driver_name || "",
+      vehicle_no: form.vehicle_no || "",
       items: usable.map(l => ({
         doctype: "Stock Entry Detail",
         item_code: l.item_code,
@@ -1320,6 +1436,7 @@ function salesPersonLabel(code) {
 .se-overlay { position:fixed; inset:0; background:rgba(15,23,42,.28); z-index:40; }
 .se-drawer { position:fixed; top:0; right:-520px; bottom:0; width:520px; max-width:96vw; background:#fff; border-left:1px solid #e5e7eb; box-shadow:-8px 0 28px rgba(15,23,42,.12); z-index:50; display:flex; flex-direction:column; transition:right .24s ease; }
 .se-drawer.open { right:0; }
+.se-drawer.se-form-drawer { width:820px; right:-820px; } .se-drawer.se-form-drawer.open { right:0; }
 .se-view-drawer { width:580px; right:-580px; } .se-view-drawer.open { right:0; }
 .se-dheader { position:relative; flex-shrink:0; padding:20px; border-bottom:1px solid #e5e7eb; }
 .se-dh-top { display:flex; align-items:center; gap:13px; padding-right:36px; }

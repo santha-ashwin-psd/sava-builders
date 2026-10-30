@@ -27,6 +27,10 @@
               <div class="add-card-body">
                 <div class="inv-fg inv-fg2">
                   <div>
+                    <label class="inv-lbl">Entry Date <span class="inv-req">*</span></label>
+                    <input class="inv-fi" type="date" v-model="form.entry_date"/>
+                  </div>
+                  <div>
                     <label class="inv-lbl">Quotation Date <span class="inv-req">*</span></label>
                     <input class="inv-fi" type="date" v-model="form.quotation_date"/>
                   </div>
@@ -151,7 +155,7 @@ const saving = ref(false);
 const loadError = ref("");
 const termsOptions = ref([]);
 const form = reactive({
-  quotation_date: "", delivery_days: null, payment_terms: "", remarks: "",
+  entry_date: "", quotation_date: "", delivery_days: null, payment_terms: "", remarks: "",
   active_quotation: null, revision_no: 0, items: [],
 });
 const isRevision = computed(() => !!form.active_quotation);
@@ -191,6 +195,7 @@ async function load() {
       loadTerms(),
     ]);
     Object.assign(form, {
+      entry_date: new Date().toISOString().slice(0, 10),   // this screen always creates a new record, so the entry day is today
       quotation_date: d.quotation_date || "", delivery_days: d.delivery_days ?? null,
       payment_terms: d.payment_terms || "", remarks: d.remarks || "",
       active_quotation: d.active_quotation || null, revision_no: d.revision_no || 0,
@@ -211,6 +216,7 @@ async function load() {
 watch(() => props.open, (v) => { if (v) load(); }, { immediate: true });
 
 function validate() {
+  if (!form.entry_date) return "Enter the entry date";
   if (!form.quotation_date) return "Enter the quotation date";
   if (form.delivery_days !== null && form.delivery_days !== "" && !(flt(form.delivery_days) >= 0)) return "Delivery days can't be negative";
   for (const it of form.items) {
@@ -229,6 +235,7 @@ async function save() {
   try {
     const data = {
       request_for_quotation: props.rfq, supplier: props.supplier,
+      entry_date: form.entry_date,
       quotation_date: form.quotation_date,
       delivery_days: form.delivery_days === "" ? null : form.delivery_days,
       payment_terms: form.payment_terms || null, remarks: form.remarks || "",

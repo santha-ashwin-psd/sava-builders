@@ -449,6 +449,10 @@
                   />
                 </div>
                 <div>
+                  <label class="inv-lbl">Entry Date <span class="inv-req">*</span></label>
+                  <input class="inv-fi" type="date" v-model="form.entry_date"/>
+                </div>
+                <div>
                   <label class="inv-lbl">Date <span class="inv-req">*</span></label>
                   <input class="inv-fi" type="date" v-model="form.posting_date"/>
                 </div>
@@ -889,6 +893,7 @@ const blankItem = () => ({ _id: _lineId++, item_code: "", item_name: "", descrip
 const form = reactive({
   customer: "",
   customer_name: "",
+  entry_date: new Date().toISOString().slice(0, 10),
   posting_date: new Date().toISOString().slice(0, 10),
   sales_order: "",
   set_warehouse: "",
@@ -980,7 +985,7 @@ async function load() {
 
     // 1) Real Delivery Notes (submitted doctype)
     const dnRows = await apiList("Delivery Note", {
-      fields: ["name", "customer", "customer_name", "posting_date", "delivery_date",
+      fields: ["name", "customer", "customer_name", "entry_date", "posting_date", "delivery_date",
                "sales_order", "status", "total_qty", "lr_no", "transporter_name", "docstatus",
                "received_on", "material_request", "is_stock_transfer", "project"],
       filters: [["company", "=", company]],
@@ -1286,6 +1291,7 @@ function resetForm() {
   Object.assign(form, {
     customer: "",
     customer_name: "",
+    entry_date: new Date().toISOString().slice(0, 10),
     posting_date: new Date().toISOString().slice(0, 10),
     sales_order: "",
     set_warehouse: "",
@@ -1385,6 +1391,7 @@ async function openEdit(r) {
   Object.assign(form, {
     customer:              r.customer || "",
     customer_name:         r.customer_name || r.customer || "",
+    entry_date:            r.entry_date || r.posting_date || new Date().toISOString().slice(0, 10),
     posting_date:          r.posting_date || new Date().toISOString().slice(0, 10),
     sales_order:           r.sales_order || "",
     lr_no:                 r.lr_no || "",
@@ -1684,6 +1691,7 @@ async function saveChallan(submit) {
   const isTransfer = transferMode.value;
   const move = isMrn || isTransfer;   // both move stock between warehouses, no customer
   if (!move && !form.customer) { toast.error("Customer is required"); return; }
+  if (!form.entry_date) { toast.error("Entry Date is required"); return; }
   const validItems = form.items.filter(it => it.item_code && flt(it.qty) > 0);
   if (!validItems.length) { toast.error("At least one item with qty > 0 is required"); return; }
   if (form.items.some(it => (it.description||'').length > 500)) { toast.error("Item description cannot exceed 500 characters"); return; }
@@ -1706,6 +1714,7 @@ async function saveChallan(submit) {
       company,
       customer:              move ? undefined : form.customer,
       customer_name:         move ? undefined : (form.customer_name || form.customer),
+      entry_date:            form.entry_date,
       posting_date:          form.posting_date,
       sales_order:           move ? undefined : (form.sales_order || undefined),
       set_warehouse:         move ? "" : (form.set_warehouse || ""),

@@ -63,7 +63,7 @@
             <th @click="sortBy('supplier_name')" class="sortable">Vendor <span v-html="sortArrow('supplier_name')"></span></th>
             <th>Project</th>
             <th @click="sortBy('transaction_date')" class="sortable">Date <span v-html="sortArrow('transaction_date')"></span></th>
-            <th @click="sortBy('expected_delivery_date')" class="sortable">Expected <span v-html="sortArrow('expected_delivery_date')"></span></th>
+            <th v-if="false" @click="sortBy('expected_delivery_date')" class="sortable">Expected <span v-html="sortArrow('expected_delivery_date')"></span></th>
             <th style="width:170px">Status</th>
             <th @click="sortBy('grand_total')" class="sortable ta-r" style="text-align:right;width:160px">Amount <span v-html="sortArrow('grand_total')"></span></th>
             <th style="width:120px;text-align:center">Actions</th>
@@ -71,7 +71,7 @@
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="9"><div class="shimmer"></div></td></tr>
+            <tr v-for="n in 6" :key="n"><td colspan="8"><div class="shimmer"></div></td></tr>
           </template>
           <template v-else>
             <tr v-for="o in paged" :key="o.name" class="inv-row" :class="{selected:selected.has(o.name)}">
@@ -80,17 +80,17 @@
               <td class="td-customer" @click="openView(o)">{{ o.supplier_name || o.supplier || '—' }}</td>
               <td class="text-muted" @click="openView(o)">{{ projectLabel(o.project) || '—' }}</td>
               <td class="td-date text-muted mono-sm" @click="openView(o)">{{ fmtDate(o.transaction_date) }}</td>
-              <td class="td-due mono-sm" @click="openView(o)" :class="isPastExpected(o)?'text-danger':'text-muted'">{{ fmtDate(o.expected_delivery_date)||'—' }}</td>
+              <td v-if="false" class="td-due mono-sm" @click="openView(o)" :class="isPastExpected(o)?'text-danger':'text-muted'">{{ fmtDate(o.expected_delivery_date)||'—' }}</td>
               <td class="td-status" @click="openView(o)"><span class="inv-status-badge" :class="badgeClass(o)">{{ displayStatus(o) }}</span></td>
               <td class="td-amount ta-r mono-sm" @click="openView(o)">{{ fmtCur(o.grand_total) }}</td>
               <td class="td-actions po-act-cell">
                 <button class="inv-act-btn" @click="openView(o)" title="View"><span v-html="icon('eye',13)"></span></button>
                 <button v-if="canEdit(o)" class="inv-act-btn" :disabled="!poCanEdit" @click="openEdit(o)" :title="poCanEdit ? 'Edit' : poNoAccess"><span v-html="icon('edit',13)"></span></button>
-                <button class="inv-act-btn po-act-conv" v-if="canBill(o) && $canCreate('bills')" @click="openBillModal(o)" title="Bill"><span v-html="icon('arrow-right',13)"></span></button>
+                <button class="inv-act-btn po-act-conv" v-if="false && canBill(o) && $canCreate('bills')" @click="openBillModal(o)" title="Bill"><span v-html="icon('arrow-right',13)"></span></button>
                 <button v-if="canDelete(o) && $canDelete('bills')" class="inv-act-btn po-act-del" @click="deletePO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="9" class="po-empty">No purchase orders match</td></tr>
+            <tr v-if="!sorted.length"><td colspan="8" class="po-empty">No purchase orders match</td></tr>
           </template>
         </tbody>
       </table>
@@ -119,7 +119,7 @@
               <span>{{ fmtDate(o.transaction_date) }}</span>
               <span class="po-mc-amount">{{ fmtCur(o.grand_total) }}</span>
             </div>
-            <div v-if="o.expected_delivery_date" class="po-mc-sub" :class="isPastExpected(o)?'text-danger':''">Expected: {{ fmtDate(o.expected_delivery_date) }}</div>
+            <div v-if="false && o.expected_delivery_date" class="po-mc-sub" :class="isPastExpected(o)?'text-danger':''">Expected: {{ fmtDate(o.expected_delivery_date) }}</div>
             <div class="po-mc-footer">
               <button class="po-mc-btn" @click.stop="openView(o)">View</button>
               <button v-if="canEdit(o)" class="po-mc-btn" @click.stop="openEdit(o)">Edit</button>
@@ -158,7 +158,7 @@
                 <span>{{ fmtDate(o.transaction_date) }}</span>
                 <span style="font-weight:700;color:#1a1d23">{{ fmtCur(o.grand_total) }}</span>
               </div>
-              <div v-if="o.expected_delivery_date" style="font-size:11.5px;" :class="isPastExpected(o)?'text-danger':'text-muted'">
+              <div v-if="false && o.expected_delivery_date" style="font-size:11.5px;" :class="isPastExpected(o)?'text-danger':'text-muted'">
                 Expected: {{ fmtDate(o.expected_delivery_date) }}
               </div>
               <div style="display:flex;gap:6px;border-top:1px solid #f3f4f6;padding-top:10px">
@@ -219,7 +219,7 @@
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                   Goods
                 </button>
-                <button type="button"
+                <button type="button" v-if="form.purchase_type === 'Services'"
                   class="po-type-btn" :class="{active: form.purchase_type === 'Services'}"
                   @click="form.purchase_type = 'Services'; form.set_warehouse = ''">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
@@ -234,26 +234,37 @@
             </div>
             <div class="add-details-grid">
               <div style="grid-column:1/-1">
+                <label class="inv-lbl">Project <span v-if="!assetOnly" class="inv-req">*</span></label>
+                <SearchableSelect v-model="form.project" :options="projectChoices" :placeholder="assetOnly ? 'Select project (optional)…' : 'Select project…'" @search="q => fetchProjects(q, form.project)" @select="onProjectPick" />
+              </div>
+              <div style="grid-column:1/-1">
+                <label class="inv-lbl">MRN <span class="inv-req">*</span></label>
+                <SearchableSelect v-model="form.material_request" :options="mrnOptions"
+                  :placeholder="assetOnly ? 'Select approved Asset MRN…' : 'Select approved Purchase MRN…'"
+                  @search="q => fetchMrns(q, form.material_request)" @select="onMrnPick" />
+              </div>
+              <div style="grid-column:1/-1">
                 <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
                 <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Select vendor…"
                   :createable="true" createDoctype="Supplier" @search="fetchVendors" />
               </div>
-              <div>
+              <div style="grid-column:1/-1">
+                <label class="inv-lbl">Employee</label>
+                <SearchableSelect v-model="form.employee" :options="employeeOpts" placeholder="Select employee…" @select="onEmployeePick" />
+              </div>
+              <div style="grid-column:1/-1">
+                <label class="inv-lbl">Entry Date <span class="inv-req">*</span></label>
+                <input v-model="form.entry_date" type="date" class="inv-fi" />
+              </div>
+              <div style="grid-column:1/-1">
                 <label class="inv-lbl">Order Date <span class="inv-req">*</span></label>
                 <input v-model="form.transaction_date" type="date" class="inv-fi" />
               </div>
-              <div>
-                <label class="inv-lbl">Expected Delivery</label>
-                <input v-model="form.expected_delivery_date" type="date" class="inv-fi" />
-              </div>
-              <div style="grid-column:1/-1">
-                <label class="inv-lbl">Project</label>
-                <SearchableSelect v-model="form.project" :options="projectChoices" placeholder="Select project (optional)…" @search="q => fetchProjects(q, form.project)" />
-              </div>
+              <!-- Expected Delivery is hidden; the form still carries its default value on save. -->
               <!-- Warehouse: only shown and required for Goods -->
               <div v-if="form.purchase_type === 'Goods'" style="grid-column:1/-1">
                 <label class="inv-lbl">Receiving Warehouse <span class="inv-req">*</span></label>
-                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…"
+                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" :disabled="!!form.material_request" placeholder="Select warehouse where goods will be received…"
                   :createable="true" :staticCreate="true" createLabel="+ Create Warehouse" createDoctype="Warehouse" @search="fetchWarehouses" @create="fetchWarehouses('')" />
               </div>
             </div>
@@ -334,68 +345,31 @@
             </span>
           </div>
           <div class="add-card-body" :class="{collapsed:poCollapsed.lines}">
-            <div class="po-item-cards">
-              <div v-for="(line, idx) in lines" :key="line.id" class="po-item-card">
-                <div class="po-item-card-header" @click="line.collapsed=!line.collapsed" style="cursor:pointer">
-                  <span class="po-item-card-num">#{{ idx + 1 }}</span>
-                  <span class="po-item-card-title">{{ line.item_code || 'Line Item Detail' }}</span>
-                  <div class="po-item-card-subtotal">
-                    <span class="po-item-card-subtotal-label">SUBTOTAL</span>
-                    <span class="po-item-card-amount">{{ fmtCur(line.amount) }}</span>
-                  </div>
-                  <span class="po-item-card-chevron" :class="{collapsed:line.collapsed}">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-                  </span>
-                  <button @click.stop="removeLine(line.id)" class="po-item-card-rm"><span v-html="icon('x',16)"></span></button>
+            <div class="po-lines-wrap">
+              <div class="po-lines-tbl">
+                <div class="po-lines-row po-lines-head">
+                  <span>#</span><span>Item</span><span>Tax Template</span><span>UOM</span><span>Qty</span><span>Rate (KES)</span><span class="po-lines-num">Amount</span><span></span>
                 </div>
-                <div class="po-item-card-body" v-show="!line.collapsed">
-                  <div class="po-item-col po-item-col--left">
-                    <div class="po-item-field">
-                      <label>Item Name</label>
-                      <SearchableSelect v-model="line.item_code" :options="items"
-                        placeholder="Select item…" :createable="true" createDoctype="Item"
-                        @search="fetchItems" @select="v=>onItemSelect(line,v)" />
-                    </div>
-                    <div class="po-item-field" style="margin-top:14px">
-                      <label>Description</label>
-                      <textarea v-model="line.description" class="inv-fi po-item-desc-ta" :class="{'field-error': line.description && line.description.length > 500}" rows="4" maxlength="500" placeholder="Enter item description…"></textarea>
-                      <div class="exp-field-hint" :class="{'exp-field-hint-err': line.description && line.description.length >= 500}">{{ (line.description || '').length }}/500 characters</div>
-                    </div>
-                  </div>
-                  <div class="po-item-col po-item-col--right">
-                    <div class="po-item-num-row">
-                      <div class="po-item-field">
-                        <label>Tax Template</label>
-                        <select v-model="line.tax_code" class="inv-fi">
-                          <option value="">— No Tax —</option>
-                          <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.template_name || t.name }}</option>
-                        </select>
-                      </div>
-                      <div class="po-item-field">
-                        <label>UOM</label>
-                        <select v-model="line.uom" class="inv-fi">
-                          <option v-for="u in uomOptionsFor(line)" :key="u" :value="u">{{ u }}</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="po-item-num-row">
-                      <div class="po-item-field">
-                        <label>Qty</label>
-                        <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" :class="{'field-error': line.qty > 999999999}" @input="calcLine(line)" />
-                        <div v-if="line.qty > 999999999" class="exp-field-hint exp-field-hint-err">Max 9 digits</div>
-                      </div>
-                      <div class="po-item-field">
-                        <label>Rate (KES)</label>
-                        <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999}" @input="calcLine(line)" />
-                        <div v-if="line.rate > 999999999" class="exp-field-hint exp-field-hint-err">Max 9 digits</div>
-                      </div>
-                    </div>
-                    <div class="po-item-hint">Pricing is calculated based on current inventory stock and regional tax policies.</div>
-                  </div>
+                <div v-for="(line, idx) in lines" :key="line.id" class="po-lines-row">
+                  <span class="po-lines-idx">{{ idx + 1 }}</span>
+                  <SearchableSelect v-model="line.item_code" :options="items" :disabled="!!form.material_request"
+                    placeholder="Select item…" :createable="true" createDoctype="Item"
+                    @search="fetchItems" @select="v=>onItemSelect(line,v)" />
+                  <select v-model="line.tax_code" class="inv-fi">
+                    <option value="">— No Tax —</option>
+                    <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.template_name || t.name }}</option>
+                  </select>
+                  <select v-model="line.uom" class="inv-fi">
+                    <option v-for="u in uomOptionsFor(line)" :key="u" :value="u">{{ u }}</option>
+                  </select>
+                  <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" :disabled="!!form.material_request" :class="{'field-error': line.qty > 999999999}" @input="calcLine(line)" />
+                  <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999}" @input="calcLine(line)" />
+                  <span class="po-lines-num">{{ fmtCur(line.amount) }}</span>
+                  <button @click.stop="removeLine(line.id)" class="po-item-card-rm" title="Remove line"><span v-html="icon('x',16)"></span></button>
                 </div>
               </div>
             </div>
-            <button class="inv-add-line-btn" style="margin-top:10px" :disabled="!poCanSave" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+            <button v-if="!form.material_request" class="inv-add-line-btn" style="margin-top:10px" :disabled="!poCanSave" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
 
             <!-- Totals -->
             <div class="po-totals" style="margin-top:16px">
@@ -468,7 +442,7 @@
             </div>
             <div class="inv-view-subtitle">
               {{ viewDoc.supplier_name || viewDoc.supplier }}
-              <span v-if="viewDoc.expected_delivery_date"> · Expected {{ fmtDate(viewDoc.expected_delivery_date) }}
+              <span v-if="false && viewDoc.expected_delivery_date"> · Expected {{ fmtDate(viewDoc.expected_delivery_date) }}
                 <span v-if="isPastExpected(viewDoc)" class="text-danger"> (overdue)</span>
               </span>
             </div>
@@ -574,7 +548,7 @@
                   <div class="inv-dmeta-date-val">{{ fmtDateLong(viewDoc.transaction_date) }}</div>
                   <div class="inv-dmeta-date-sub">{{ fmtDateDay(viewDoc.transaction_date) }}</div>
                 </div>
-                <div class="inv-details-meta-col">
+                <div v-if="false" class="inv-details-meta-col">
                   <div class="inv-dmeta-icon-row">
                     <span class="inv-dmeta-icon" v-html="icon('calendar',13)"></span>
                     <span class="inv-dmeta-lbl">Expected Delivery</span>
@@ -1214,12 +1188,34 @@ const addrModal = reactive({
 let _id = 1;
 const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, uom: "", amount: 0, tax_code: "", collapsed: false });
 const form = reactive({
-  supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
+  supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
   billing_address: "", delivery_address: "",
   billing_address_name: "", delivery_address_name: "",
-  set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "",
+  set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "", employee: "", employee_name: "",
 });
 const { projects, fetchProjects } = useProjectOptions();
+
+// Employee dropdown: active Employee records only, by name.
+const employeeList = ref([]);
+const employeeOpts = computed(() => {
+  const opts = [{ value: "", label: "— None —" }, ...employeeList.value];
+  const cur = form.employee;
+  if (cur && !opts.some(o => o.value === cur)) opts.push({ value: cur, label: form.employee_name || cur });
+  return opts;
+});
+function onEmployeePick(opt) {
+  form.employee = opt?.value || "";
+  form.employee_name = form.employee ? (opt.label || "") : "";
+}
+async function fetchEmployees() {
+  try {
+    const co = await resolveCompany();
+    const f = [["status", "!=", "Inactive"]];
+    if (co) f.push(["company", "=", co]);
+    const r = await apiList("Employee", { fields: ["name", "employee_name"], filters: f, order: "employee_name asc", limit: 1000 });
+    employeeList.value = (r || []).map(e => ({ value: e.name, label: e.employee_name || e.name }));
+  } catch { employeeList.value = []; }
+}
 // Project is optional: a leading "None" row lets the user clear a chosen project.
 const projectChoices = computed(() => [{ label: "— None —", value: "" }, ...projects.value]);
 const warehouses = ref([]);
@@ -1298,7 +1294,7 @@ async function load() {
   try {
     const co = await resolveCompany();
     list.value = await apiList("Purchase Order", {
-      fields: ["name", "supplier", "supplier_name", "transaction_date", "expected_delivery_date", "status", "grand_total", "billed_amount", "billing_address", "delivery_address", "billing_address_name", "delivery_address_name", "project"],
+      fields: ["name", "supplier", "supplier_name", "entry_date", "transaction_date", "expected_delivery_date", "status", "grand_total", "billed_amount", "billing_address", "delivery_address", "billing_address_name", "delivery_address_name", "project"],
       filters: [["company", "=", co]],
       limit: 100000,
       order: "transaction_date desc, creation desc",
@@ -1473,8 +1469,8 @@ const threeWayMismatch = computed(() =>
 function openNew() {
   assetOnly.value = false;
   editingName.value = ""; editingStatus.value = "";
-  Object.assign(form, { supplier: "", transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "" });
-  fetchWarehouses(""); fetchProjects("");
+  Object.assign(form, { supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "", employee: "", employee_name: "" });
+  fetchWarehouses(""); fetchProjects(""); fetchMrns(""); fetchEmployees();
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems("");
   drawerOpen.value = true;
@@ -1483,7 +1479,7 @@ async function openEdit(o) {
   assetOnly.value = false;
   editingName.value = o.name; editingStatus.value = o.status || "";
   Object.assign(form, {
-    supplier: o.supplier || "", transaction_date: o.transaction_date || todayStr(),
+    supplier: o.supplier || "", entry_date: o.entry_date || o.transaction_date || todayStr(), transaction_date: o.transaction_date || todayStr(),
     expected_delivery_date: o.expected_delivery_date || expectedDefault(),
     billing_address: o.billing_address || "", delivery_address: o.delivery_address || "",
     billing_address_name: "", delivery_address_name: "",
@@ -1491,7 +1487,7 @@ async function openEdit(o) {
     material_request: o.material_request || "", project: o.project || "",
   });
   lines.value = [blankLine()];
-  fetchVendors(""); fetchItems(""); fetchWarehouses(""); fetchProjects("", o.project || "");
+  fetchVendors(""); fetchItems(""); fetchWarehouses(""); fetchProjects("", o.project || ""); fetchMrns("", o.material_request || ""); fetchEmployees();
   if (o.supplier) fetchVendorAddresses(o.supplier);
   drawerOpen.value = true;
   try {
@@ -1506,6 +1502,7 @@ async function openEdit(o) {
     }
     if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
     if (doc?.project) { form.project = doc.project; fetchProjects("", doc.project); }
+    if (doc?.employee) { form.employee = doc.employee; form.employee_name = doc.employee_name || ""; }
     if (doc?.terms) form.terms = doc.terms;
     // Restore address link fields — wait for vendorAddresses to load first
     if (doc?.billing_address_name || doc?.delivery_address_name) {
@@ -1656,9 +1653,68 @@ async function fetchVendors(q = "") {
     vendors.value = r.map(x => ({ ...x, label: x.supplier_name || x.name, value: x.name }));
   } catch { vendors.value = []; }
 }
+// ── MRN: approved Purchase MRNs (Asset MRNs while the Asset toggle is on) ──
+const mrnOptions = ref([]);
+async function fetchMrns(q = "", keep = "") {
+  try {
+    const co = await resolveCompany();
+    const f = [["docstatus", "=", 1], ["status", "=", "Approved"],
+               ["material_request_type", "=", assetOnly.value ? "Asset" : "Purchase"]];
+    if (co) f.push(["company", "=", co]);
+    if (form.project) f.push(["project", "=", form.project]);
+    if (q) f.push(["name", "like", "%" + q + "%"]);
+    const r = await apiList("Material Request", { fields: ["name", "project", "posting_date"], filters: f, limit: 50, order: "creation desc" });
+    const opts = (r || []).map(x => ({ label: x.project ? `${x.name} — ${x.project}` : x.name, value: x.name }));
+    if (keep && !opts.some(o => o.value === keep)) opts.unshift({ label: keep, value: keep });
+    mrnOptions.value = opts;
+  } catch { mrnOptions.value = keep ? [{ label: keep, value: keep }] : []; }
+}
+// Picking a project narrows the MRN list to that project's MRNs. A picked MRN from another project no longer applies.
+function onProjectPick(opt) {
+  form.project = opt?.value || "";
+  if (form.material_request) {
+    form.material_request = ""; form.set_warehouse = "";
+    lines.value = [blankLine()];
+  }
+  fetchMrns("");
+}
+async function onMrnPick(opt) {
+  const name = opt?.value;
+  if (!name) return;
+  try {
+    const d = await apiPOST("psd_books.api.inventory.create_po_from_mr", { material_request: name });
+    applyMrDraft(d);
+  } catch (e) {
+    form.material_request = "";
+    toast.error(e.message || String(e));
+  }
+}
+// Fill project, warehouse and lines from the draft that create_po_from_mr returns.
+function applyMrDraft(d) {
+  {
+    form.project = d.project || "";
+    fetchProjects("", form.project);
+    if (d.set_warehouse && form.purchase_type === "Goods") form.set_warehouse = d.set_warehouse;
+    const known = new Set(items.value.map(i => i.value));
+    const extra = (d.items || []).filter(r => r.item_code && !known.has(r.item_code))
+      .map(r => ({ label: r.item_name || r.item_code, value: r.item_code, rate: r.rate || 0, description: r.description || "", tax_code: "" }));
+    if (extra.length) items.value = [...items.value, ...extra];
+    const rows = (d.items || []).map(r => ({
+      id: _id++, item_code: r.item_code, description: r.description,
+      qty: r.qty, rate: r.rate, uom: r.uom || "", amount: r.amount, tax_code: "", collapsed: false,
+    }));
+    lines.value = rows.length ? rows : [blankLine()];
+  }
+}
 const assetOnly = ref(false);
 async function onAssetToggle(on) {
   assetOnly.value = !!on;
+  // The MRN list switches between Purchase and Asset MRNs, so a picked MRN (and what it filled in) no longer applies.
+  if (form.material_request) {
+    form.material_request = ""; form.project = ""; form.set_warehouse = "";
+    lines.value = [blankLine()];
+  }
+  fetchMrns("");
   await fetchItems("");
   if (!on) return;
   const codes = lines.value.map(l => l.item_code).filter(Boolean);
@@ -1729,7 +1785,10 @@ function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.
 function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100; }
 
 async function savePO(newStatus, sendAfter = false) {
+  if (!assetOnly.value && !form.project) return toast.error("Project is required");
+  if (!form.material_request) return toast.error("MRN is required");
   if (!form.supplier) return toast.error("Vendor is required");
+  if (!form.entry_date) return toast.error("Entry Date is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
   if (form.purchase_type === "Goods" && !form.set_warehouse) return toast.error("Receiving Warehouse is required for Goods orders");
   if ((form.terms || "").length > 500) return toast.error("Terms & Conditions cannot exceed 500 characters");
@@ -1766,7 +1825,7 @@ async function savePO(newStatus, sendAfter = false) {
     const taxes = Object.values(taxMap);
     const doc = {
       doctype: "Purchase Order", company,
-      supplier: form.supplier, transaction_date: form.transaction_date, purchase_type: form.purchase_type || "Goods",
+      supplier: form.supplier, entry_date: form.entry_date, transaction_date: form.transaction_date, purchase_type: form.purchase_type || "Goods",
       expected_delivery_date: form.expected_delivery_date || null,
       billing_address: form.billing_address || "",
       delivery_address: form.delivery_address || "",
@@ -1775,6 +1834,8 @@ async function savePO(newStatus, sendAfter = false) {
       set_warehouse: form.set_warehouse || "",
       material_request: form.material_request || "",
       project: form.project || null,
+      employee: form.employee || "",
+      employee_name: form.employee_name || "",
       // A10.3: a PO is never submitted from here; the last approval submits it.
       status: editingStatus.value === "Sent Back" ? "Sent Back" : "Draft",
       docstatus: 0,
@@ -2079,24 +2140,14 @@ onMounted(async () => {
     try {
       const draft = await apiPOST("psd_books.api.inventory.create_po_from_mr", { material_request: route.query.new_from_mr });
       if (draft) {
-        editingName.value = "";
-        form.supplier = "";
-        form.transaction_date = draft.transaction_date;
+        openNew();
+        // An Asset MRN switches the form to Asset so its MRN is in the list and only asset items show.
+        assetOnly.value = draft.material_request_type === "Asset";
         form.material_request = draft.material_request || "";
-        form.project = draft.project || "";
-        fetchProjects("", form.project);
-        lines.value = (draft.items || []).map(r => ({
-          id: _id++,
-          item_code: r.item_code,
-          description: r.description,
-          qty: r.qty,
-          rate: r.rate,
-          uom: r.uom || r.stock_uom || "",
-          amount: r.amount,
-          tax_code: "",
-          collapsed: false
-        }));
-        drawerOpen.value = true;
+        fetchMrns("", form.material_request);
+        fetchItems("");
+        fetchWarehouses("");
+        applyMrDraft(draft);
         // Strip the query param to avoid re-triggering on refresh
         window.history.replaceState(null, "", "/purchase-orders");
       }
@@ -2191,7 +2242,7 @@ watch(() => form.supplier, (val) => {
   transition: right .22s ease;
 }
 .inv-drawer-panel.open { right: 0; }
-.po-edit-drawer { width: 720px; right: -720px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; max-width: 96vw; z-index: 8100; background: #fff; display: flex; flex-direction: column; }
+.po-edit-drawer { width: 1040px; right: -1040px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; max-width: 96vw; z-index: 8100; background: #fff; display: flex; flex-direction: column; }
 
 /* ── View drawer: Invoice-style full panel ── */
 .inv-drawer-bg { position:fixed; inset:0; z-index:8000; background:rgba(15,23,42,.45); display:flex; justify-content:flex-end; backdrop-filter:blur(2px); }
@@ -2253,7 +2304,16 @@ watch(() => form.supplier, (val) => {
 .po-total-row.grand { font-weight: 700; font-size: 14px; color: #111827; border-top: 1px solid #e5e7eb; padding-top: 6px; }
 
 /* ── Edit drawer line items grid ── */
-/* ---- Line Item Cards ---- */
+/* ---- Line items: one row per item ---- */
+.po-lines-wrap { overflow-x: auto; }
+.po-lines-tbl { min-width: 760px; display: flex; flex-direction: column; border: 1px solid #dde3f0; border-radius: 10px; background: #fff; }
+.po-lines-row { display: grid; grid-template-columns: 28px minmax(200px, 1fr) 140px 96px 84px 104px 108px 32px; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #eef0f6; }
+.po-lines-row:last-child { border-bottom: none; }
+.po-lines-head { background: #eef2ff; border-radius: 10px 10px 0 0; font-size: 10.5px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
+.po-lines-idx { font-size: 12px; font-weight: 700; color: #4f46e5; text-align: center; }
+.po-lines-num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.po-lines-row .inv-fi { font-size: 13px; width: 100%; }
+/* ---- Line Item Cards (old, unused) ---- */
 .po-item-cards { display: flex; flex-direction: column; gap: 12px; }
 .po-item-card { background: #fff; border: 1px solid #dde3f0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(99,102,241,.07); }
 .po-item-card-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: linear-gradient(135deg,#eef2ff 0%,#f5f7ff 100%); border-bottom: 1px solid #dde3f0; }
@@ -2398,7 +2458,7 @@ watch(() => form.supplier, (val) => {
 
 /* ── Small desktop (≤ 1024px) ── */
 @media (max-width: 1024px) {
-  .po-edit-drawer  { width: 660px; right: -660px; }
+  .po-edit-drawer  { width: 92vw; right: -92vw; }
   .po-view-drawer  { width: 800px; right: -800px; }
   .inv-drawer-wide { width: 740px; }
 

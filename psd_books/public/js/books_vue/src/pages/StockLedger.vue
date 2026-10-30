@@ -205,7 +205,7 @@ function exportCSV(){
   toast.success(`Exported ${rows.length} row(s)`);
 }
 async function attachItemNames(){const codes=[...new Set(list.value.map(e=>e.item_code).filter(Boolean))];if(!codes.length)return;try{const rows=await apiList("Item",{fields:["name","item_name"],filters:[["name","in",codes]],limit:100000});const m={};rows.forEach(r=>{m[r.name]=r.item_name;});list.value=list.value.map(e=>({...e,item_name:m[e.item_code]||e.item_code}));}catch{list.value=list.value.map(e=>({...e,item_name:e.item_code}));}}
-async function fetchItems(q=""){try{const r=await apiLinkValues("Item",q);items.value=r.map(x=>({label:x.name,value:x.name}));}catch{items.value=[];}}
+async function fetchItems(q=""){try{const r=await apiList("Item",{fields:["name","item_name"],filters:q?[["name","like","%"+q+"%"]]:[],limit:200});items.value=r.map(x=>({label:x.item_name||x.name,value:x.name}));}catch{items.value=[];}}
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 // Pre-load dropdown options so the pickers aren't empty on first open.
 onMounted(()=>{fetchItems("");fetchWarehouses("");});

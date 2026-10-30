@@ -373,7 +373,7 @@
             </div>
           </div>
 
-          <div class="ad-section" v-if="form.is_stock_item">
+          <div class="ad-section" v-if="false && form.is_stock_item">
             <!-- Manufacturing fields (title, Default BOM, Min Order Qty, Lead Time) hidden; Quality Inspection stays. -->
             <div v-if="false" class="ad-section-title">Manufacturing</div>
 
@@ -401,7 +401,7 @@
               </div>
             </div>
 
-            <div>
+            <div v-if="false">
               <div class="ad-toggle-title" style="margin-bottom:8px">Quality Inspection Required</div>
 
               <div class="ad-toggle-row">
@@ -441,7 +441,7 @@
             </div>
           </div>
 
-          <div class="ad-info-banner">
+          <div v-if="false" class="ad-info-banner">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <p style="margin:0">To set or adjust stock quantities, go to <strong>Inventory → Warehouses</strong> → select a warehouse → click <strong>Adjust</strong> next to any item.</p>
           </div>

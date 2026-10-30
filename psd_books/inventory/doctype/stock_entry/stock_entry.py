@@ -51,6 +51,10 @@ class StockEntry(Document):
     # ── Validate ──────────────────────────────────────────────────────────────
 
     def validate(self):
+        # Entry Date: the day the record was entered. Filled automatically when blank, so documents
+        # created by other steps (GRN, stock entries, orders from a comparison) never fail on it.
+        if self.is_new() and not self.get("entry_date"):
+            self.entry_date = frappe.utils.nowdate()
         self._set_defaults()
         self._validate_fiscal_year()
         self._validate_items()

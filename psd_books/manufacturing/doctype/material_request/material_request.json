@@ -34,7 +34,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nPending Approval\nSent Back\nApproved\nPartly Issued\nIssued\nSubmitted\nOrdered\nCancelled",
+   "options": "Draft\nPending Approval\nSent Back\nApproved\nPartly Issued\nIssued\nSubmitted\nOrdered\nReceived\nCancelled",
    "default": "Draft",
    "read_only": 1,
    "no_copy": 1,
@@ -50,6 +50,22 @@
    "label": "Required By",
    "reqd": 1,
    "in_list_view": 1
+  },
+  {
+   "fieldname": "entry_date",
+   "fieldtype": "Date",
+   "label": "Entry Date"
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Data",
+   "label": "Employee"
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
   },
   {
    "fieldname": "company",

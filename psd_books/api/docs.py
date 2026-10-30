@@ -4036,6 +4036,11 @@ def mark_po_received(purchase_order, line_qtys=None):
     new_status = _po_status_from_fulfillment(purchase_order)
     frappe.db.set_value("Purchase Order", purchase_order, "status", new_status,
                         update_modified=True)
+    try:
+        from psd_books.invoicing.doctype.purchase_order.purchase_order import sync_material_request_status
+        sync_material_request_status(po.get("material_request"))
+    except Exception:
+        frappe.log_error(frappe.get_traceback(), "MRN status sync failed after mark received")
     frappe.db.commit()
     return {"purchase_order": purchase_order, "lines_updated": updated, "status": new_status}
 
@@ -4334,7 +4339,6 @@ def get_purchase_order_email_defaults(purchase_order):
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>PO #</td><td><b>{po.name}</b></td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Amount</td><td><b>KES {po.grand_total:,.2f}</b></td></tr>"
             f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Order Date</td><td>{po.transaction_date}</td></tr>"
-            f"<tr><td style='padding:4px 12px 4px 0;color:#666'>Expected Delivery</td><td>{po.expected_delivery_date or '—'}</td></tr>"
             f"</table><br>"
             f"Please confirm receipt and expected dispatch.<br><br>"
             f"Regards,<br>{po.company or ''}"

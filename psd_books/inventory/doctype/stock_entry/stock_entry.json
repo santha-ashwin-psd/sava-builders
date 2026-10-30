@@ -12,10 +12,14 @@
   "stock_entry_type",
   "sales_person",
   "posting_date",
+  "entry_date",
   "posting_time",
   "col1",
   "company",
   "project",
+  "material_request",
+  "driver_name",
+  "vehicle_no",
   "sec_warehouses",
   "from_warehouse",
   "col2",
@@ -67,6 +71,11 @@
    "reqd": 1
   },
   {
+   "fieldname": "entry_date",
+   "fieldtype": "Date",
+   "label": "Entry Date"
+  },
+  {
    "default": "00:00:00",
    "fieldname": "posting_time",
    "fieldtype": "Time",
@@ -88,6 +97,23 @@
    "options": "Project",
    "in_standard_filter": 1,
    "search_index": 1
+  },
+  {
+   "fieldname": "material_request",
+   "fieldtype": "Link",
+   "label": "MRN",
+   "options": "Material Request",
+   "search_index": 1
+  },
+  {
+   "fieldname": "driver_name",
+   "fieldtype": "Data",
+   "label": "Driver Name"
+  },
+  {
+   "fieldname": "vehicle_no",
+   "fieldtype": "Data",
+   "label": "Vehicle No."
   },
   {
    "fieldname": "sec_warehouses",
@@ -256,7 +282,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-08-10 00:00:00.000000",
+ "modified": "2026-10-30 00:00:00.000000",
  "modified_by": "santhaashwin24@gmail.com",
  "module": "Inventory",
  "name": "Stock Entry",
