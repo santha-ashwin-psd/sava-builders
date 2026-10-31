@@ -82,13 +82,13 @@
               </button>
             </div>
             <div v-if="form.item_type" class="ad-type-info-strip" :style="{ background: ITEM_TYPE_COLOR[form.item_type]?.bg || '#f1f5f9', color: ITEM_TYPE_COLOR[form.item_type]?.text || '#475569' }">
-              <span v-if="form.item_type==='Raw Material'">🌿 Raw herbs, minerals, and base ingredients used in manufacturing</span>
-              <span v-else-if="form.item_type==='Work In Progress'">⚙️ Intermediate semi-finished goods in the production pipeline</span>
-              <span v-else-if="form.item_type==='Finished Good'">✅ Final products ready for sale — capsules, tablets, oils, churnam, etc.</span>
-              <span v-else-if="form.item_type==='Packing Material'">📦 Bottles, labels, cartons, foil, and other packaging components</span>
-              <span v-else-if="form.item_type==='Scrap Item'">♻️ Leftover/byproduct material recovered from production — usually low-value, sellable</span>
+              <span v-if="form.item_type==='Raw Material'">🧱 Construction materials bought and used on site — cement, steel, sand, binding wire, etc.</span>
+              <span v-else-if="form.item_type==='Work In Progress'">⚙️ Partly prepared material, not yet ready to use on site</span>
+              <span v-else-if="form.item_type==='Finished Good'">✅ Ready-made items and components that are used as they are</span>
+              <span v-else-if="form.item_type==='Packing Material'">📦 Bags, crates, wrapping and other packaging that comes with materials</span>
+              <span v-else-if="form.item_type==='Scrap Item'">♻️ Offcuts and surplus material left over on site — low value, can be resold</span>
               <span v-else-if="form.item_type==='Service'">🛠️ Non-stock service — no inventory tracked</span>
-              <span v-else>🛒 General sellable product</span>
+              <span v-else>🛒 General purchased product</span>
             </div>
           </div>
 

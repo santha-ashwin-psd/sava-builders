@@ -17,10 +17,12 @@ class Employee(Document):
 			frappe.throw(_("Employee Name is required"))
 		self.designation = (self.designation or "").strip() or None
 		self.department = (self.department or "").strip() or None
+		self.id_no = (self.id_no or "").strip() or None
 		self.project = (self.project or "").strip() or None
 		self.user = (self.user or "").strip() or None
 		self._validate_user()
 		self._validate_project()
+		self._validate_driver()
 
 	def _validate_user(self):
 		if not self.user:
@@ -46,3 +48,15 @@ class Employee(Document):
 		if proj.company and self.company and proj.company != self.company:
 			frappe.throw(_("Project {0} belongs to company {1}, not {2}").format(
 				self.project, proj.company, self.company))
+
+	def _validate_driver(self):
+		self.truck_no = (self.truck_no or "").strip().upper() or None
+		if not self.is_driver:
+			self.truck_no = None
+			return
+		if not self.truck_no:
+			frappe.throw(_("Truck No. is required for a driver"))
+		other = frappe.db.get_value(
+			"Employee", {"truck_no": self.truck_no, "name": ["!=", self.name or ""]}, "name")
+		if other:
+			frappe.throw(_("Truck No. {0} is already used by employee {1}").format(self.truck_no, other))

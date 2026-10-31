@@ -18,6 +18,8 @@
   "company",
   "project",
   "material_request",
+  "employee",
+  "employee_name",
   "driver_name",
   "vehicle_no",
   "sec_warehouses",
@@ -104,6 +106,17 @@
    "label": "MRN",
    "options": "Material Request",
    "search_index": 1
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Data",
+   "label": "Employee"
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1
   },
   {
    "fieldname": "driver_name",

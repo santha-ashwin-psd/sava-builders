@@ -179,3 +179,36 @@ def get_issue_prefill(name):
 		{"name": doc.name, "docstatus": doc.docstatus, "status": doc.status, "company": doc.company,
 			"project": doc.get("project"), "delivery_warehouse": doc.get("delivery_warehouse")},
 		lines)
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def get_mrn_items(name):
+	"""Read-only: the lines of an MRN with what was already moved against it.
+
+	transferred = submitted Stock Entries (Material Issue / Material Transfer) linked to this MRN
+	+ what store-issue Delivery Notes recorded in issued_qty. pending = required - transferred.
+	"""
+	assert_can("Material Request", "read")
+	doc = _load(name)
+	if doc.docstatus != 1:
+		frappe.throw(_("Material Request {0} is not submitted.").format(doc.name))
+	lines = frappe.get_all(
+		"Material Request Item", filters={"parent": doc.name, "parenttype": "Material Request"},
+		fields=["item_code", "item_name", "required_qty", "issued_qty", "uom"], order_by="idx asc")
+	moved = {r[0]: flt(r[1]) for r in frappe.db.sql(
+		"""SELECT d.item_code, SUM(d.qty) FROM `tabStock Entry Detail` d
+		JOIN `tabStock Entry` s ON s.name = d.parent
+		WHERE s.docstatus = 1 AND s.material_request = %s
+		AND s.stock_entry_type IN ('Material Issue', 'Material Transfer')
+		GROUP BY d.item_code""", doc.name)}
+	items = []
+	for l in lines:
+		required = flt(l.required_qty)
+		transferred = moved.get(l.item_code, 0) + flt(l.issued_qty)
+		pending = required - transferred
+		if pending > 0.0001:
+			items.append({"item_code": l.item_code, "item_name": l.item_name or l.item_code, "uom": l.uom or "",
+				"required_qty": required, "transferred_qty": transferred, "pending_qty": pending, "qty": pending})
+	if not items:
+		frappe.throw(_("Material Request {0} is already fully transferred.").format(doc.name))
+	return {"material_request": doc.name, "items": items}

@@ -111,8 +111,8 @@
       </div>
     </div>
 
-    <!-- ── Deliveries + Quality ── -->
-    <div class="ov-row">
+    <!-- ── Deliveries (Quality card hidden for Sava) ── -->
+    <div class="ov-row ov-row-single">
       <div class="ov-card">
         <div class="ov-card-head">
           <div class="ov-head-l">
@@ -147,6 +147,7 @@
         <div v-else class="ov-empty"><div class="ov-empty-sub">No purchase orders awaiting delivery.</div></div>
       </div>
 
+      <!-- hidden for Sava (Quality)
       <div class="ov-card">
         <div class="ov-card-head">
           <div class="ov-head-l">
@@ -181,6 +182,7 @@
           <div v-else class="ov-empty" style="padding:16px"><div class="ov-empty-sub">No inspections yet.</div></div>
         </template>
       </div>
+      -->
     </div>
 
     <!-- ── Project snapshot + Recent activity ── -->
@@ -261,8 +263,8 @@
             <div class="ov-tl-body">
               <div class="ov-tl-desc">{{ row.doctype }} <span class="ov-tl-doc">{{ row.name }}</span> {{ actVerb(row.status) }}</div>
               <div class="ov-tl-by">by {{ ownerName(row.modified_by) }}<span v-if="row.project_label"> · {{ row.project_label }}</span></div>
+              <div class="ov-tl-date">{{ fmtStamp(row.modified) }}</div>
             </div>
-            <div class="ov-tl-date">{{ fmtStamp(row.modified) }}</div>
           </div>
         </div>
         <div v-else class="ov-empty" style="padding:24px 0"><div class="ov-empty-sub">No recent activity</div></div>
@@ -595,6 +597,7 @@ const iconCheck    = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none
 
 /* ── Project snapshot ── */
 .ov-row-snap { grid-template-columns: 1.9fr 1fr; }
+.ov-row-single { grid-template-columns: 1fr; }
 .ov-snap-wrap { overflow-x: auto; }
 .ov-snap-tbl thead th { background: #f1f5f9; }
 .ov-snap-tbl .ov-subhead th { background: #f1f5f9; color: #94a3b8; font-weight: 600; padding-top: 0; }
@@ -621,17 +624,17 @@ const iconCheck    = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none
 
 /* ── Activity ── */
 .ov-timeline { display: flex; flex-direction: column; }
-.ov-tl-row { display: flex; align-items: center; gap: 12px; padding: 10px 6px; border-radius: 9px; cursor: pointer; transition: background .12s; }
+.ov-tl-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 6px; border-radius: 9px; cursor: pointer; transition: background .12s; }
 .ov-tl-row:hover { background: #f8fafc; }
 .ov-tl-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ov-tl-dot :deep(svg) { width: 14px; height: 14px; }
 .ov-d-green { background: #dcfce7; color: #16a34a; } .ov-d-blue { background: #e0ecff; color: #2563eb; }
 .ov-d-amber { background: #ffedd5; color: #ea580c; } .ov-d-red { background: #fee2e2; color: #dc2626; }
 .ov-tl-body { flex: 1; min-width: 0; }
-.ov-tl-desc { font-size: 13px; color: #334155; font-weight: 500; }
-.ov-tl-doc { color: #2563eb; font-weight: 700; }
-.ov-tl-by { font-size: 11.5px; color: #94a3b8; margin-top: 1px; }
-.ov-tl-date { font-size: 11.5px; color: #94a3b8; flex-shrink: 0; }
+.ov-tl-desc { font-size: 13px; color: #334155; font-weight: 500; line-height: 1.4; }
+.ov-tl-doc { color: #2563eb; font-weight: 700; white-space: nowrap; }
+.ov-tl-by { font-size: 11.5px; color: #94a3b8; margin-top: 2px; line-height: 1.4; }
+.ov-tl-date { font-size: 11px; color: #a3b0c2; margin-top: 2px; white-space: nowrap; }
 
 /* ── Empty / shimmer ── */
 .ov-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 30px 16px; text-align: center; }

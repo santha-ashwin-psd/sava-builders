@@ -3,7 +3,7 @@
  "module": "Inventory",
  "doctype": "DocType",
  "creation": "2026-10-21 00:00:00.000000",
- "modified": "2026-10-21 00:00:00.000000",
+ "modified": "2026-10-31 16:00:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,
@@ -70,6 +70,12 @@
    "in_list_view": 1
   },
   {
+   "fieldname": "id_no",
+   "fieldtype": "Data",
+   "label": "ID No.",
+   "in_list_view": 0
+  },
+  {
    "fieldname": "col2",
    "fieldtype": "Column Break",
    "label": ""
@@ -89,6 +95,18 @@
    "options": "User",
    "unique": 1,
    "description": "Login user of this employee. One employee per user."
+  },
+  {
+   "fieldname": "is_driver",
+   "fieldtype": "Check",
+   "label": "Is Driver",
+   "default": "0"
+  },
+  {
+   "fieldname": "truck_no",
+   "fieldtype": "Data",
+   "label": "Truck No.",
+   "depends_on": "is_driver"
   }
  ],
  "permissions": [

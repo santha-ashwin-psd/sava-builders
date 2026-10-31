@@ -105,6 +105,14 @@
           </div>
         </div>
 
+        <div class="em-group">
+          <label for="em-f-idno">ID No.</label>
+          <div class="em-field">
+            <span class="em-field-ico" v-html="icon('user',16)"></span>
+            <input id="em-f-idno" v-model="form.id_no" maxlength="140" placeholder="ID number" />
+          </div>
+        </div>
+
         <div class="em-row-2">
           <div class="em-group">
             <label for="em-f-desig">Designation</label>
@@ -119,6 +127,21 @@
               <span class="em-field-ico" v-html="icon('building',16)"></span>
               <input id="em-f-dept" v-model="form.department" maxlength="140" placeholder="e.g. Stores" />
             </div>
+          </div>
+        </div>
+
+        
+
+        <div class="em-group">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600">
+            <input type="checkbox" v-model="form.is_driver" style="width:16px;height:16px" /> Is Driver
+          </label>
+        </div>
+        <div class="em-group" v-if="form.is_driver">
+          <label for="em-f-truck">Truck Number <span class="em-req">*</span></label>
+          <div class="em-field">
+            <span class="em-field-ico" v-html="icon('truck',16)"></span>
+            <input id="em-f-truck" v-model="form.truck_no" maxlength="140" placeholder="e.g. KDA 123A" />
           </div>
         </div>
 
@@ -221,7 +244,7 @@ const tabs = [
 ];
 
 function blankForm() {
-  return { employee_name: "", designation: "", department: "", project: "", user: "", status: "Active" };
+  return { employee_name: "", designation: "", department: "", id_no: "", project: "", user: "", status: "Active", is_driver: 0, truck_no: "" };
 }
 
 const counts = computed(() => {
@@ -274,7 +297,7 @@ async function load() {
   try {
     const company = await resolveCompany();
     list.value = await apiList("Employee", {
-      fields: ["name", "employee_name", "designation", "department", "project", "user", "status", "company"],
+      fields: ["name", "employee_name", "designation", "department", "project", "user", "status", "company", "is_driver", "truck_no", "id_no"],
       filters: company ? [["company", "=", company]] : [],
       order: "employee_name asc",
       limit: 1000,
@@ -322,8 +345,9 @@ async function openEdit(row) {
   isEdit.value = true;
   form.value = {
     ...blankForm(), ...row,
-    designation: row.designation || "", department: row.department || "",
+    designation: row.designation || "", department: row.department || "", id_no: row.id_no || "",
     project: row.project || "", user: row.user || "", status: row.status || "Active",
+    is_driver: row.is_driver ? 1 : 0, truck_no: row.truck_no || "",
   };
   await fetchProjects("", row.project || "");
   showForm.value = true;
@@ -393,6 +417,7 @@ function onAnyScroll(e) { if (ddOpen.value && !(e.target.closest && e.target.clo
 
 async function save() {
   const f = form.value;
+  if (f.is_driver && !(f.truck_no || "").trim()) { toast.error("Truck Number is required for a driver"); return; }
   saving.value = true;
   try {
     const doc = {
@@ -400,9 +425,12 @@ async function save() {
       employee_name: (f.employee_name || "").trim(),
       designation: (f.designation || "").trim() || null,
       department: (f.department || "").trim() || null,
+      id_no: (f.id_no || "").trim() || null,
       project: f.project || null,
       user: f.user || null,
       status: f.status || "Active",
+      is_driver: f.is_driver ? 1 : 0,
+      truck_no: f.is_driver ? (f.truck_no || "").trim().toUpperCase() : null,
     };
     if (isEdit.value) {
       doc.name = f.name;

@@ -116,9 +116,9 @@
               <td><span class="se-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span></td>
               <td @click.stop style="display:flex;gap:4px">
                 <button class="se-act-btn" @click="openView(e)" title="View"><span v-html="icon('eye',13)"></span></button>
-                <button v-if="e.docstatus===0 && $canEdit('inventory')" class="se-act-btn" @click="openEdit(e)" title="Edit"><span v-html="icon('edit',13)"></span></button>
-                <button v-if="e.docstatus===1 && $canEdit('inventory')" class="se-act-btn" :disabled="actionBusy" @click="editSubmittedEntry(e)" title="Edit (cancels &amp; re-posts corrected GL)"><span v-html="icon('edit',13)"></span></button>
-                <button v-if="e.docstatus===1 && $canEdit('inventory')" class="se-act-btn" :disabled="actionBusy" @click="cancelSubmittedEntry(e)" title="Cancel entry"><span v-html="icon('x',13)"></span></button>
+                <button v-if="e.docstatus===0 && !isReceipt(e) && $canEdit('inventory')" class="se-act-btn" @click="openEdit(e)" title="Edit"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="e.docstatus===1 && !isReceipt(e) && $canEdit('inventory')" class="se-act-btn" :disabled="actionBusy" @click="editSubmittedEntry(e)" title="Edit (cancels &amp; re-posts corrected GL)"><span v-html="icon('edit',13)"></span></button>
+                <button v-if="e.docstatus===1 && !isReceipt(e) && $canEdit('inventory')" class="se-act-btn" :disabled="actionBusy" @click="cancelSubmittedEntry(e)" title="Cancel entry"><span v-html="icon('x',13)"></span></button>
                 <button v-if="e.docstatus===2 && $canDelete('inventory')" class="se-act-btn" :disabled="actionBusy" @click="deleteEntry(e)" title="Delete cancelled entry"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
@@ -153,9 +153,9 @@
               <span class="se-mc-docno">{{ e.name }}</span>
               <span style="display:flex;gap:6px;align-items:center">
                 <span class="se-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span>
-                <button v-if="e.docstatus===0 && $canEdit('inventory')" class="se-act-btn" @click.stop="openEdit(e)" title="Edit"><span v-html="icon('edit',12)"></span></button>
-                <button v-if="e.docstatus===1 && $canEdit('inventory')" class="se-act-btn" :disabled="actionBusy" @click.stop="editSubmittedEntry(e)" title="Edit (cancels &amp; re-posts corrected GL)"><span v-html="icon('edit',12)"></span></button>
-                <button v-if="e.docstatus===1 && $canEdit('inventory')" class="se-act-btn" :disabled="actionBusy" @click.stop="cancelSubmittedEntry(e)" title="Cancel entry"><span v-html="icon('x',12)"></span></button>
+                <button v-if="e.docstatus===0 && !isReceipt(e) && $canEdit('inventory')" class="se-act-btn" @click.stop="openEdit(e)" title="Edit"><span v-html="icon('edit',12)"></span></button>
+                <button v-if="e.docstatus===1 && !isReceipt(e) && $canEdit('inventory')" class="se-act-btn" :disabled="actionBusy" @click.stop="editSubmittedEntry(e)" title="Edit (cancels &amp; re-posts corrected GL)"><span v-html="icon('edit',12)"></span></button>
+                <button v-if="e.docstatus===1 && !isReceipt(e) && $canEdit('inventory')" class="se-act-btn" :disabled="actionBusy" @click.stop="cancelSubmittedEntry(e)" title="Cancel entry"><span v-html="icon('x',12)"></span></button>
                 <button v-if="e.docstatus===2 && $canDelete('inventory')" class="se-act-btn" :disabled="actionBusy" @click.stop="deleteEntry(e)" title="Delete cancelled entry"><span v-html="icon('trash',12)"></span></button>
               </span>
             </div>
@@ -204,8 +204,8 @@
             <label class="se-label">Entry Type <span class="req">*</span></label>
             <select v-model="form.stock_entry_type" class="se-select">
               <option v-if="editingName && form.stock_entry_type === 'Material Receipt'" value="Material Receipt">Material Receipt — Stock coming IN</option>
-              <option value="Material Issue">Material Issue — Stock going OUT</option>
-              <option value="Material Transfer">Material Transfer — Move between warehouses</option>
+              <option value="Material Issue">Item Transfer</option>
+              <option value="Material Transfer">Asset Transfer</option>
             </select>
           </div>
           <div class="se-field">
@@ -223,6 +223,10 @@
           <div class="se-field">
             <label class="se-label">MRN</label>
             <SearchableSelect v-model="form.material_request" :options="mrnOptions" placeholder="Select approved MRN (optional)" @search="q => fetchMrns(q, form.material_request)" @open="fetchMrns('', form.material_request)" @select="onMrnPick" />
+          </div>
+          <div class="se-field">
+            <label class="se-label">Employee</label>
+            <SearchableSelect v-model="form.employee" :options="employeeOpts" placeholder="Select employee (optional)" @select="onEmployeePick" />
           </div>
           <div class="se-field" v-if="false">
             <label class="se-label">Adjustment Reason</label>
@@ -242,11 +246,11 @@
           </div>
           <div class="se-field">
             <label class="se-label">Driver Name</label>
-            <input v-model="form.driver_name" class="se-input" maxlength="140" placeholder="Driver's full name" />
+            <SearchableSelect v-model="form.driver_name" :options="driverOpts" placeholder="Select driver…" @select="onDriverPick" />
           </div>
           <div class="se-field">
             <label class="se-label">Truck No.</label>
-            <input v-model="form.vehicle_no" class="se-input" maxlength="140" placeholder="e.g. KDA 123A" />
+            <SearchableSelect v-model="form.vehicle_no" :options="truckOpts" placeholder="Select truck…" @select="onTruckPick" />
           </div>
         </div>
 
@@ -276,18 +280,18 @@
         <div class="se-section-title" style="margin-top:4px">Items</div>
 
         <!-- Desktop table -->
-        <div class="se-items-table se-add-items-desktop">
+        <div class="se-items-table se-add-items-desktop" :class="{ 'se-no-rate': noRate }">
           <div class="se-items-head">
             <div>Item</div>
             <div class="ta-r">Qty</div>
-            <div class="ta-r">Rate (KES)</div>
+            <div class="ta-r" v-if="!noRate">Rate (KES)</div>
             <div></div>
           </div>
           <div v-for="line in lines" :key="line.id" class="se-items-line">
             <div class="se-items-row">
               <div>
   <SearchableSelect
-    v-model="line.item_code"
+    v-model="line.item_code" :disabled="line.mrn_required !== undefined || mrnDone"
     :options="items"
     placeholder="Item…"
     @search="fetchItems"
@@ -300,10 +304,11 @@
     UOM: {{ line.stock_uom || 'Nos' }}
   </div>
 </div>
-              <div><input v-model.number="line.qty" type="number" min="0" step="0.001" class="se-input ta-r" /></div>
-              <div><input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" /></div>
+              <div><input v-model.number="line.qty" type="number" min="0" :max="line.mrn_pending" :disabled="mrnDone" step="0.001" class="se-input ta-r" /></div>
+              <div v-if="!noRate"><input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" /></div>
               <div><button @click="removeLine(line.id)" class="se-rm-line"><span v-html="icon('x',12)"></span></button></div>
             </div>
+            <div v-if="line.mrn_required !== undefined" class="se-mrn-note">MRN qty {{ line.mrn_required }} · Transferred {{ line.mrn_transferred }} · Pending {{ line.mrn_pending }}</div>
             <div v-if="line.has_batch_no" class="se-batch-row">
               <div class="se-batch-field" style="flex:1.6">
                 <label class="se-label">Batch No <span v-if="batchRequired(line)" class="req">*</span></label>
@@ -328,12 +333,12 @@
               </div>
             </div>
           </div>
-          <div class="se-items-total" v-if="lines.length">
+          <div class="se-items-total" v-if="lines.length && !noRate">
             <div style="grid-column:1/3;text-align:right;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Total</div>
             <div class="ta-r" style="font-weight:700;color:#0f172a">{{ fmtCur(lineTotal) }}</div>
             <div></div>
           </div>
-          <button class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+          <button v-if="!form.material_request && !mrnDone" class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
         </div>
 
         <!-- Mobile cards -->
@@ -346,7 +351,7 @@
             <div class="se-aic-field">
               <label class="se-label">Item</label>
               <SearchableSelect
-  v-model="line.item_code"
+  v-model="line.item_code" :disabled="line.mrn_required !== undefined || mrnDone"
   :options="items"
   placeholder="Item…"
   @search="fetchItems"
@@ -359,12 +364,13 @@
   UOM: {{ line.stock_uom || 'Nos' }}
 </div>
             </div>
+            <div v-if="line.mrn_required !== undefined" class="se-mrn-note">MRN qty {{ line.mrn_required }} · Transferred {{ line.mrn_transferred }} · Pending {{ line.mrn_pending }}</div>
             <div class="se-aic-row2">
               <div class="se-aic-field">
                 <label class="se-label">Qty</label>
-                <input v-model.number="line.qty" type="number" min="0" step="0.001" class="se-input ta-r" />
+                <input v-model.number="line.qty" type="number" min="0" :max="line.mrn_pending" :disabled="mrnDone" step="0.001" class="se-input ta-r" />
               </div>
-              <div class="se-aic-field">
+              <div class="se-aic-field" v-if="!noRate">
                 <label class="se-label">Rate (KES)</label>
                 <input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" />
               </div>
@@ -393,12 +399,12 @@
                 </div>
               </div>
             </template>
-            <div class="se-aic-amount">Amount: <strong>{{ fmtCur(flt(line.qty) * flt(line.basic_rate)) }}</strong></div>
+            <div class="se-aic-amount" v-if="!noRate">Amount: <strong>{{ fmtCur(flt(line.qty) * flt(line.basic_rate)) }}</strong></div>
           </div>
-          <div v-if="lines.length" class="se-aic-total">
+          <div v-if="lines.length && !noRate" class="se-aic-total">
             <span>Total</span><strong>{{ fmtCur(lineTotal) }}</strong>
           </div>
-          <button class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+          <button v-if="!form.material_request && !mrnDone" class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
         </div>
         <div class="se-field">
           <label class="se-label">Remarks</label>
@@ -451,27 +457,27 @@
               </template>
             </div>
             <div v-if="viewDoc.project" style="margin-top:8px;font-size:12.5px;color:#374151">
-              Project: <strong>{{ viewDoc.project }}</strong>
+              Project: <strong>{{ viewProjectName || viewDoc.project }}</strong>
             </div>
             <div v-if="viewDoc.sales_person" style="margin-top:8px;font-size:12.5px;color:#9a3412">
               Issued to (Sales Person): <strong>{{ salesPersonLabel(viewDoc.sales_person) }}</strong>
             </div>
           </div>
 
-          <!-- Warehouse flow -->
-          <div class="se-view-section">
+          <!-- Warehouse flow (not shown for purchase receipts: vendor -> store) -->
+          <div class="se-view-section" v-if="!isPurchaseSrc(viewDoc)">
             <div class="se-view-sec-lbl">Warehouse Movement</div>
             <div class="se-wh-flow-big">
-              <div class="se-wh-box" :class="viewDoc.from_warehouse?'':'se-wh-box-empty'">
+              <div class="se-wh-box" :class="whFrom(viewDoc)?'':'se-wh-box-empty'">
                 <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:3px">From</div>
-                <div style="font-weight:600;color:#0f172a;font-size:13px">{{ viewDoc.from_warehouse||'—' }}</div>
+                <div style="font-weight:600;color:#0f172a;font-size:13px">{{ whFrom(viewDoc)||'—' }}</div>
               </div>
               <div class="se-wh-arrow">
                 <svg width="32" height="16" viewBox="0 0 32 16"><path d="M0 8h28M24 4l6 4-6 4" stroke="#94a3b8" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </div>
-              <div class="se-wh-box" :class="viewDoc.to_warehouse?'':'se-wh-box-empty'">
+              <div class="se-wh-box" :class="whTo(viewDoc)?'':'se-wh-box-empty'">
                 <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:3px">To</div>
-                <div style="font-weight:600;color:#0f172a;font-size:13px">{{ viewDoc.to_warehouse||'—' }}</div>
+                <div style="font-weight:600;color:#0f172a;font-size:13px">{{ whTo(viewDoc)||'—' }}</div>
               </div>
             </div>
           </div>
@@ -489,8 +495,8 @@
               <thead>
                 <tr>
                   <th>Item</th>
-                  <th>Batch</th>
-                  <th>From WH</th>
+                  <th v-if="isPurchaseSrc(viewDoc)">From</th>
+                  <th v-if="!isPurchaseSrc(viewDoc)">From WH</th>
                   <th>To WH</th>
                   <th class="ta-r">Qty</th>
                   <th class="ta-r">Rate</th>
@@ -502,8 +508,8 @@
                   <td>
                     <div style="font-weight:600;font-size:12.5px">{{ it.item_name || it.item_code }}</div>
                   </td>
-                  <td class="text-muted" style="font-size:12px">{{ it.batch_no||'—' }}</td>
-                  <td class="text-muted" style="font-size:12px">{{ it.s_warehouse||viewDoc.from_warehouse||'—' }}</td>
+                  <td v-if="isPurchaseSrc(viewDoc)" style="font-size:12.5px">{{ vendorName||'—' }}</td>
+                  <td v-if="!isPurchaseSrc(viewDoc)" class="text-muted" style="font-size:12px">{{ it.s_warehouse||viewDoc.from_warehouse||'—' }}</td>
                   <td class="text-muted" style="font-size:12px">{{ it.t_warehouse||viewDoc.to_warehouse||'—' }}</td>
                   <td class="ta-r">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></td>
                   <td class="ta-r">{{ fmtCur(it.basic_rate) }}</td>
@@ -522,10 +528,6 @@
                   <div class="se-vic-amount">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</div>
                 </div>
                 <div class="se-vic-grid">
-                  <div class="se-vic-cell" v-if="it.batch_no">
-                    <span class="se-vic-lbl">Batch</span>
-                    <span class="se-vic-val">{{ it.batch_no }}</span>
-                  </div>
                   <div class="se-vic-cell">
                     <span class="se-vic-lbl">Qty</span>
                     <span class="se-vic-val">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></span>
@@ -534,7 +536,11 @@
                     <span class="se-vic-lbl">Rate</span>
                     <span class="se-vic-val">{{ fmtCur(it.basic_rate) }}</span>
                   </div>
-                  <div class="se-vic-cell">
+                  <div class="se-vic-cell" v-if="isPurchaseSrc(viewDoc)">
+                    <span class="se-vic-lbl">From</span>
+                    <span class="se-vic-val">{{ vendorName||'—' }}</span>
+                  </div>
+                  <div class="se-vic-cell" v-else>
                     <span class="se-vic-lbl">From WH</span>
                     <span class="se-vic-val">{{ it.s_warehouse||viewDoc.from_warehouse||'—' }}</span>
                   </div>
@@ -587,16 +593,19 @@
         </div>
         <div class="se-dfooter">
           <button class="se-btn-ghost" @click="viewOpen=false">Close</button>
-          <button v-if="viewDoc.docstatus===0 && $canEdit('inventory')" class="se-btn-ghost" @click="openEdit(viewDoc); viewOpen=false">
+          <button v-if="viewDoc.docstatus!==2 && (viewDoc.items||[]).length" class="se-btn-ghost" @click="printEntry(viewDoc)">
+            <span v-html="icon('printer',13)"></span> Print
+          </button>
+          <button v-if="viewDoc.docstatus===0 && !isReceipt(viewDoc) && $canEdit('inventory')" class="se-btn-ghost" @click="openEdit(viewDoc); viewOpen=false">
             <span v-html="icon('edit',13)"></span> Edit
           </button>
           <button v-if="viewDoc.docstatus===0" class="se-btn-primary" @click="submitEntry(viewDoc.name)">
             <span v-html="icon('check',13)"></span> Submit
           </button>
-          <button v-if="viewDoc.docstatus===1 && $canEdit('inventory')" class="se-btn-ghost" :disabled="actionBusy" @click="editSubmittedEntry(viewDoc)" title="Cancels this entry and reverses its GL/stock ledger, then opens a corrected draft">
+          <button v-if="viewDoc.docstatus===1 && !isReceipt(viewDoc) && $canEdit('inventory')" class="se-btn-ghost" :disabled="actionBusy" @click="editSubmittedEntry(viewDoc)" title="Cancels this entry and reverses its GL/stock ledger, then opens a corrected draft">
             <span v-html="icon('edit',13)"></span> Edit
           </button>
-          <button v-if="viewDoc.docstatus===1 && $canEdit('inventory')" class="se-btn-ghost" :disabled="actionBusy" @click="cancelSubmittedEntry(viewDoc)">
+          <button v-if="viewDoc.docstatus===1 && !isReceipt(viewDoc) && $canEdit('inventory')" class="se-btn-ghost" :disabled="actionBusy" @click="cancelSubmittedEntry(viewDoc)">
             <span v-html="icon('x',13)"></span> Cancel Entry
           </button>
           <button v-if="viewDoc.docstatus===2 && $canDelete('inventory')" class="se-btn-ghost" :disabled="actionBusy" @click="deleteEntry(viewDoc)" title="Delete cancelled entry">
@@ -622,6 +631,7 @@ import SearchableSelect from "../components/SearchableSelect.vue";
 import { useProjectOptions } from "../composables/useProjectOptions.js";
 import JournalTab from "../components/JournalTab.vue";
 import DocLink from "../components/DocLink.vue";
+import { useLivePreview, DN_PRINT_CONFIG } from "../composables/useLivePreview.js";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
@@ -663,7 +673,7 @@ const form = reactive({
   entry_date: new Date().toISOString().slice(0, 10),
   posting_date: new Date().toISOString().slice(0, 10),
   from_warehouse: "", to_warehouse: "",
-  adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", driver_name: "", vehicle_no: "",
+  adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", employee: "", employee_name: "", driver_name: "", vehicle_no: "",
 });
 
 const TYPE_META = {
@@ -704,6 +714,8 @@ function batchPlaceholder(line) {
 const showFromWh     = computed(() => form.stock_entry_type !== "Material Receipt");
 // Material Issue shows an optional Receiving Warehouse: when set, the entry is saved as a Material Transfer
 const showToWh       = computed(() => true);
+// Item / Asset Transfer only moves stock: no rate is entered (the server values it from the source warehouse).
+const noRate = computed(() => form.stock_entry_type === "Material Issue" || form.stock_entry_type === "Material Transfer");
 const fromWhRequired = computed(() => ["Material Issue", "Material Transfer", "Manufacture"].includes(form.stock_entry_type));
 const toWhRequired   = computed(() => ["Material Receipt", "Material Transfer", "Manufacture"].includes(form.stock_entry_type));
 
@@ -829,7 +841,7 @@ async function load() {
       fields: ["name", "stock_entry_type", "entry_date", "posting_date", "from_warehouse", "to_warehouse",
                "value_difference", "total_incoming_value", "total_outgoing_value",
                "docstatus", "remarks", "reference_doctype", "reference_name", "work_order",
-               "adjustment_reason", "sales_person", "material_request", "driver_name", "vehicle_no", "company", "owner", "creation"],
+               "adjustment_reason", "sales_person", "material_request", "employee", "employee_name", "driver_name", "vehicle_no", "company", "owner", "creation"],
       filters: [["company", "=", co]],
       limit: 100000, order: "posting_date desc, creation desc",
     });
@@ -842,8 +854,57 @@ async function load() {
   }
 }
 
+// Print on the Sava Builders Delivery Note sheet (same template as the Delivery Note print).
+const { printDoc } = useLivePreview();
+function printEntry(d) {
+  const to = d.sales_person ? salesPersonLabel(d.sales_person) : (d.to_warehouse || "");
+  const addr = [d.project ? "Project: " + d.project : "", d.from_warehouse ? "From: " + d.from_warehouse : ""].filter(Boolean).join("\n");
+  printDoc({
+    ...d,
+    customer_name: to,
+    shipping_address: addr,
+    prepared_by_name: ownerName(d.owner),
+    items: (d.items || []).map(it => ({ ...it, item_name: it.item_name || it.item_code, uom: it.uom || it.stock_uom || "" })),
+  }, { ...DN_PRINT_CONFIG, companyName: d.company || "" });
+}
+
+// Material Receipts are auto-posted from GRNs: no edit / cancel from this screen.
+const isReceipt = (e) => e?.stock_entry_type === "Material Receipt";
+
+// Stock entries that came in from a vendor (GRN / bill): show the vendor as "From" instead of warehouses.
+const isTransfer = (e) => e?.stock_entry_type === "Material Transfer";
+// Header warehouse, else the distinct warehouses used on the item rows.
+const _whList = (d, hdr, row) => {
+  if (d?.[hdr]) return d[hdr];
+  return [...new Set((d?.items || []).map(i => i[row]).filter(Boolean))].join(", ");
+};
+const whFrom = (d) => _whList(d, "from_warehouse", "s_warehouse");
+const whTo   = (d) => _whList(d, "to_warehouse", "t_warehouse");
+const isPurchaseSrc = (e) => sourceInfo(e || {}).label === "Purchase";
+const vendorName = ref("");
+async function loadVendor(d) {
+  vendorName.value = "";
+  if (!isPurchaseSrc(d) || !d.reference_doctype || !d.reference_name) return;
+  try {
+    const src = await apiGet(d.reference_doctype, d.reference_name);
+    vendorName.value = src?.supplier_name || src?.supplier || "";
+  } catch { /* leave blank */ }
+}
+
+const viewProjectName = ref("");
+const mrnDone = ref(false);   // picked MRN is fully transferred: no items can be added or edited
+async function loadViewProjectName(proj) {
+  viewProjectName.value = "";
+  if (!proj) return;
+  try {
+    const rows = await apiList("Project", { fields: ["project_name"], filters: [["name", "=", proj]], limit: 1 });
+    if (viewDoc.value?.project === proj) viewProjectName.value = rows?.[0]?.project_name || "";
+  } catch { /* fall back to the code */ }
+}
 async function openView(e) {
   viewDoc.value = { ...e, items: [] };
+  vendorName.value = "";
+  viewProjectName.value = "";
   viewOpen.value = true;
   viewLoading.value = true;
   try {
@@ -851,6 +912,8 @@ async function openView(e) {
     if (full) viewDoc.value = full;
   } catch { /* keep list-row data */ }
   viewLoading.value = false;
+  loadVendor(viewDoc.value);
+  loadViewProjectName(viewDoc.value?.project);
 }
 
 async function submitEntry(name) {
@@ -862,6 +925,60 @@ async function submitEntry(name) {
   } catch (e) { toast.error(e.message || "Submit failed"); }
 }
 
+// Employee dropdown: active Employee records only, by name.
+const employeeList = ref([]);
+const employeeOpts = computed(() => {
+  const opts = [{ value: "", label: "— None —" }, ...employeeList.value];
+  const cur = form.employee;
+  if (cur && !opts.some(o => o.value === cur)) opts.push({ value: cur, label: form.employee_name || cur });
+  return opts;
+});
+function onEmployeePick(opt) {
+  form.employee = opt?.value || "";
+  form.employee_name = form.employee ? (opt.label || "") : "";
+}
+async function fetchEmployees() {
+  try {
+    const co = await resolveCompany();
+    const f = [["status", "!=", "Inactive"]];
+    if (co) f.push(["company", "=", co]);
+    const r = await apiList("Employee", { fields: ["name", "employee_name"], filters: f, order: "employee_name asc", limit: 1000 });
+    employeeList.value = (r || []).map(e => ({ value: e.name, label: e.employee_name || e.name }));
+  } catch { employeeList.value = []; }
+}
+// Drivers: employees ticked "Is Driver" (with their truck). Picking a driver fills the truck and the other way round.
+const driverList = ref([]);
+const driverOpts = computed(() => {
+  const opts = [{ value: "", label: "— None —" }, ...driverList.value.map(d => ({ value: d.employee_name, label: d.employee_name }))];
+  const cur = form.driver_name;
+  if (cur && !opts.some(o => o.value === cur)) opts.push({ value: cur, label: cur });
+  return opts;
+});
+const truckOpts = computed(() => {
+  const opts = [{ value: "", label: "— None —" }, ...driverList.value.filter(d => d.truck_no).map(d => ({ value: d.truck_no, label: `${d.truck_no} — ${d.employee_name}` }))];
+  const cur = form.vehicle_no;
+  if (cur && !opts.some(o => o.value === cur)) opts.push({ value: cur, label: cur });
+  return opts;
+});
+function onDriverPick(opt) {
+  form.driver_name = opt?.value || "";
+  const d = driverList.value.find(x => x.employee_name === form.driver_name);
+  form.vehicle_no = d ? (d.truck_no || "") : "";
+}
+function onTruckPick(opt) {
+  form.vehicle_no = opt?.value || "";
+  const d = driverList.value.find(x => x.truck_no === form.vehicle_no);
+  form.driver_name = d ? d.employee_name : "";
+}
+async function fetchDrivers() {
+  try {
+    const co = await resolveCompany();
+    const f = [["is_driver", "=", 1], ["status", "!=", "Inactive"]];
+    if (co) f.push(["company", "=", co]);
+    const r = await apiList("Employee", { fields: ["name", "employee_name", "truck_no"], filters: f, order: "employee_name asc", limit: 1000 });
+    driverList.value = r || [];
+  } catch { driverList.value = []; }
+}
 // ── MRN: approved Material Requests (narrowed to the picked project) ──
 const mrnOptions = ref([]);
 async function fetchMrns(q = "", keep = "") {
@@ -869,7 +986,11 @@ async function fetchMrns(q = "", keep = "") {
     const co = await resolveCompany();
     // Stock going out (Material Issue) never uses Asset MRNs; other entry types use Asset MRNs only
     const assetMrn = form.stock_entry_type === "Material Issue" ? ["material_request_type", "!=", "Asset"] : ["material_request_type", "=", "Asset"];
-    const f = [["docstatus", "=", 1], ["status", "=", "Approved"], assetMrn];
+    // Only MRNs whose Purchase Order is Closed or Partially Received (goods have reached the store)
+    const pos = await apiList("Purchase Order", { fields: ["material_request"], filters: [["docstatus", "=", 1], ["status", "in", ["Closed", "Partially Received"]], ["material_request", "!=", ""]], limit: 1000 });
+    const mrnNames = [...new Set((pos || []).map(p => p.material_request).filter(Boolean))];
+    if (!mrnNames.length) { mrnOptions.value = keep ? [{ label: keep, value: keep }] : []; return; }
+    const f = [["docstatus", "=", 1], ["name", "in", mrnNames], assetMrn];
     if (co) f.push(["company", "=", co]);
     if (form.project) f.push(["project", "=", form.project]);
     if (q) f.push(["name", "like", "%" + q + "%"]);
@@ -892,6 +1013,7 @@ async function fillFromProjectWarehouse(proj) {
 }
 // Picking an MRN fills in its project automatically (when the MRN has one).
 async function onMrnPick(opt) {
+  mrnDone.value = false;
   const name = opt?.value || form.material_request;
   if (!name) return;
   const r = await apiList("Material Request", { fields: ["project", "delivery_warehouse"], filters: [["name", "=", name]], limit: 1 }).catch(() => []);
@@ -901,11 +1023,29 @@ async function onMrnPick(opt) {
     await fetchProjects("", row.project);
     await fillFromProjectWarehouse(row.project);
   }
-  // The MRN's delivery warehouse fills the To Warehouse
+  // The MRN's delivery warehouse fills the From Warehouse (the stock sits there)
   if (row.delivery_warehouse) {
     if (!warehouses.value.some(o => o.value === row.delivery_warehouse))
       warehouses.value = [{ label: row.delivery_warehouse, value: row.delivery_warehouse }, ...warehouses.value];
-    form.to_warehouse = row.delivery_warehouse;
+    form.from_warehouse = row.delivery_warehouse;
+  }
+  // Items come from the MRN
+  try {
+    const d = await apiGET("psd_books.api.mrn.get_mrn_items", { name });
+    const rows = (d?.items || []).map(r => ({ ...blankLine(), item_code: r.item_code, qty: r.qty, stock_uom: r.uom || "", mrn_required: r.required_qty, mrn_transferred: r.transferred_qty, mrn_pending: r.pending_qty }));
+    if (rows.length) {
+      const known = new Set(items.value.map(i => i.value));
+      const extra = (d.items || []).filter(r => !known.has(r.item_code)).map(r => ({ label: r.item_name, value: r.item_code }));
+      if (extra.length) items.value = [...items.value, ...extra];
+      lines.value = rows;
+      for (const ln of rows) await onItemSelect(ln, { value: ln.item_code });
+    }
+  } catch (e) {
+    // MRN has nothing left to transfer (or failed to load): drop the previous MRN's lines and the selection
+    lines.value = [blankLine()];
+    form.material_request = "";
+    mrnDone.value = /already fully transferred/i.test(e?.message || "");
+    toast.error(e.message || "Could not fetch MRN items");
   }
 }
 // Picking a project narrows the MRN list to that project's MRNs; an MRN from another project is cleared.
@@ -993,6 +1133,7 @@ function itemLabel(code) {
 }
 function onAssetToggle(on) {
   assetMode.value = !!on;
+  mrnDone.value = false;
   lines.value = [blankLine()];   // items picked under the other mode no longer apply
   fetchItems("");
 }
@@ -1057,20 +1198,22 @@ function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
 
 function openNew() {
+  mrnDone.value = false;
   editingName.value = "";
   assetMode.value = false;
   Object.assign(form, {
     stock_entry_type: "Material Issue",
     entry_date: new Date().toISOString().slice(0, 10),
     posting_date: new Date().toISOString().slice(0, 10),
-    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", driver_name: "", vehicle_no: "",
+    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", employee: "", employee_name: "", driver_name: "", vehicle_no: "",
   });
   lines.value = [blankLine()];
-  fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects(""); fetchMrns("");
+  fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects(""); fetchMrns(""); fetchEmployees(); fetchDrivers();
   drawerOpen.value = true;
 }
 
 async function openEdit(e, { force = false } = {}) {
+  mrnDone.value = false;
   if (e.docstatus !== 0 && !force) return;
   editingName.value = e.name;
   assetMode.value = false;
@@ -1081,9 +1224,9 @@ async function openEdit(e, { force = false } = {}) {
     from_warehouse: e.from_warehouse || "", to_warehouse: e.to_warehouse || "",
     adjustment_reason: e.adjustment_reason || "", sales_person: e.sales_person || "", remarks: e.remarks || "",
     project: e.project || "",
-    material_request: e.material_request || "", driver_name: e.driver_name || "", vehicle_no: e.vehicle_no || "",
+    material_request: e.material_request || "", employee: e.employee || "", employee_name: e.employee_name || "", driver_name: e.driver_name || "", vehicle_no: e.vehicle_no || "",
   });
-  fetchMrns("", form.material_request);
+  fetchMrns("", form.material_request); fetchEmployees(); fetchDrivers();
   lines.value = [blankLine()];
   fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects("", e.project || "");
   drawerOpen.value = true;
@@ -1245,6 +1388,10 @@ async function saveEntry(submit) {
   if (saveType === "Material Transfer" && form.from_warehouse && form.from_warehouse === form.to_warehouse)
     return toast.error("Source and destination warehouses must be different");
   for (const [idx, l] of usable.entries()) {
+    if (l.mrn_pending !== undefined && flt(l.qty) > flt(l.mrn_pending) + 0.0001)
+      return toast.error(`Row ${idx + 1}: ${itemLabel(l.item_code)} qty ${l.qty} is more than the MRN pending qty ${l.mrn_pending}`);
+  }
+  for (const [idx, l] of usable.entries()) {
     if (l.has_batch_no && batchRequired(l) && !l.batch_no)
       return toast.error(`Row ${idx + 1}: ${itemLabel(l.item_code)} is batch-tracked — Batch No is required`);
   }
@@ -1312,13 +1459,15 @@ async function saveEntry(submit) {
       remarks: form.remarks || "",
       project: form.project || null,
       material_request: form.material_request || null,
+      employee: form.employee || "",
+      employee_name: form.employee_name || "",
       driver_name: form.driver_name || "",
       vehicle_no: form.vehicle_no || "",
       items: usable.map(l => ({
         doctype: "Stock Entry Detail",
         item_code: l.item_code,
         qty: flt(l.qty),
-        basic_rate: flt(l.basic_rate),
+        basic_rate: noRate.value ? 0 : flt(l.basic_rate),
         s_warehouse: l.s_warehouse || form.from_warehouse || null,
         t_warehouse: l.t_warehouse || form.to_warehouse || null,
         batch_no: l.has_batch_no ? (l.batch_no || null) : null,
@@ -1483,6 +1632,7 @@ textarea.se-input { resize:vertical; }
 .se-items-head { display:grid; grid-template-columns:2.5fr 90px 110px 28px; gap:6px; background:#f9fafb; padding:8px 10px; font-size:11px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.03em; }
 .se-items-row { display:grid; grid-template-columns:2.5fr 90px 110px 28px; gap:6px; padding:8px 10px; border-top:1px solid #f3f4f6; align-items:center; }
 .se-items-total { display:grid; grid-template-columns:2.5fr 90px 110px 28px; gap:6px; padding:8px 10px; border-top:2px solid #e5e7eb; background:#f8fafc; }
+.se-no-rate .se-items-head, .se-no-rate .se-items-row { grid-template-columns:2.5fr 90px 28px; }
 .se-items-row > div, .se-items-head > div { min-width:0; }
 .se-items-row input.se-input { min-width:0; padding-left:6px; padding-right:6px; }
 .se-add-line { background:transparent; border:none; color:#2563eb; font-size:12.5px; font-weight:600; cursor:pointer; padding:8px 10px; display:inline-flex; align-items:center; gap:6px; }
@@ -1563,6 +1713,7 @@ textarea.se-input { resize:vertical; }
   .se-val-strip   { grid-template-columns: 1fr !important; }
 }
 /* ── Add-drawer item cards (mobile) ── */
+.se-mrn-note { font-size: 11px; color: #b45309; margin: 2px 0 6px 2px; }
 .se-add-items-mobile { display: none; flex-direction: column; gap: 10px; }
 .se-aic { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
 .se-aic-header { display: flex; align-items: center; justify-content: space-between; }

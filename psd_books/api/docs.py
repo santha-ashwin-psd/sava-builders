@@ -5958,7 +5958,9 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
         line_qtys = {str(k): v for k, v in line_qtys.items()}
 
     po = frappe.get_doc("Purchase Order", purchase_order)
-    _default_wh = frappe.db.get_single_value("Books Settings", "default_warehouse") or None
+    # Receiving warehouse chosen on the PO wins; Books Settings default is only the fallback.
+    _po_wh = getattr(po, "set_warehouse", "") or ""
+    _default_wh = _po_wh or frappe.db.get_single_value("Books Settings", "default_warehouse") or None
     # received_qty only moves when a Purchase Receipt is submitted, so qty already sitting on a Draft
     # receipt for this PO (with its QC inspection open) must be counted too -- otherwise every click
     # creates another Draft receipt and another QC inspection for the same goods.
@@ -5979,7 +5981,7 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
         else:
             q = remaining
         if q <= 0: continue
-        item_wh = frappe.db.get_value("Item", it.item_code, "default_warehouse") or _default_wh
+        item_wh = _po_wh or frappe.db.get_value("Item", it.item_code, "default_warehouse") or _default_wh
         pr_items.append({
             "doctype": "Purchase Receipt Item",
             "item_code":   it.item_code,
@@ -6006,6 +6008,7 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
         "supplier_name":            po.supplier_name,
         "posting_date":             today(),
         "purchase_order":           po.name,
+        "project":                  getattr(po, "project", "") or "",
         "supplier_delivery_note":   supplier_delivery_note or "",
         "remarks":                  remarks or "",
         "set_warehouse":            _default_wh or "",

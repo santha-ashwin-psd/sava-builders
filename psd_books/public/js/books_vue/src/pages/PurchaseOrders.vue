@@ -215,7 +215,7 @@
               <div class="po-type-btns">
                 <button type="button"
                   class="po-type-btn" :class="{active: form.purchase_type === 'Goods'}"
-                  @click="form.purchase_type = 'Goods'; if(!form.set_warehouse) fetchWarehouses('')">
+                  @click="form.purchase_type = 'Goods'; if(!form.set_warehouse) fetchWarehouses(''); fillWarehouseFromProject(form.project)">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                   Goods
                 </button>
@@ -264,7 +264,7 @@
               <!-- Warehouse: only shown and required for Goods -->
               <div v-if="form.purchase_type === 'Goods'" style="grid-column:1/-1">
                 <label class="inv-lbl">Receiving Warehouse <span class="inv-req">*</span></label>
-                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" :disabled="!!form.material_request" placeholder="Select warehouse where goods will be received…"
+                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" :disabled="whFromProject" placeholder="Select warehouse where goods will be received…"
                   :createable="true" :staticCreate="true" createLabel="+ Create Warehouse" createDoctype="Warehouse" @search="fetchWarehouses" @create="fetchWarehouses('')" />
               </div>
             </div>
@@ -348,7 +348,7 @@
             <div class="po-lines-wrap">
               <div class="po-lines-tbl">
                 <div class="po-lines-row po-lines-head">
-                  <span>#</span><span>Item</span><span>Tax Template</span><span>UOM</span><span>Qty</span><span>Rate (KES)</span><span class="po-lines-num">Amount</span><span></span>
+                  <span>#</span><span>Item</span><span>Tax Template</span><span>UOM</span><span>Qty</span><span>Rate (KES) <span class="inv-req">*</span></span><span class="po-lines-num">Amount</span><span></span>
                 </div>
                 <div v-for="(line, idx) in lines" :key="line.id" class="po-lines-row">
                   <span class="po-lines-idx">{{ idx + 1 }}</span>
@@ -363,7 +363,7 @@
                     <option v-for="u in uomOptionsFor(line)" :key="u" :value="u">{{ u }}</option>
                   </select>
                   <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" :disabled="!!form.material_request" :class="{'field-error': line.qty > 999999999}" @input="calcLine(line)" />
-                  <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999}" @input="calcLine(line)" />
+                  <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999 || (line.item_code && !(flt(line.rate) > 0))}" @input="calcLine(line)" />
                   <span class="po-lines-num">{{ fmtCur(line.amount) }}</span>
                   <button @click.stop="removeLine(line.id)" class="po-item-card-rm" title="Remove line"><span v-html="icon('x',16)"></span></button>
                 </div>
@@ -483,29 +483,12 @@
             <button class="inv-ab-btn" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="emailPO(viewDoc)">
               <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
             </button>
-            <div style="position:relative;display:inline-flex">
-              <button class="inv-ab-btn inv-ab-dropdown" @click="showDownloadMenu=!showDownloadMenu">
-                <span v-html="icon('download',13)"></span> <span class="ab-label">Download</span>
-                <span class="inv-ab-caret">▾</span>
-              </button>
-              <div v-if="showDownloadMenu" class="inv-dl-menu">
-                <div class="inv-dl-menu-header">Export Purchase Order</div>
-                <button @click="downloadPOPdf('pdf')" class="inv-dl-menu-item">
-                  <span class="inv-dl-menu-icon" v-html="icon('download',14)"></span>
-                  <span class="inv-dl-menu-text">
-                    <span class="inv-dl-menu-label">Download PDF</span>
-                    <span class="inv-dl-menu-sub">Save to your device</span>
-                  </span>
-                </button>
-                <button @click="downloadPOPdf('print')" class="inv-dl-menu-item">
-                  <span class="inv-dl-menu-icon" v-html="icon('printer',14)"></span>
-                  <span class="inv-dl-menu-text">
-                    <span class="inv-dl-menu-label">Open &amp; Print</span>
-                    <span class="inv-dl-menu-sub">Preview in new tab</span>
-                  </span>
-                </button>
-              </div>
-            </div>
+            <button class="inv-ab-btn inv-ab-dropdown" @click="downloadPOPdf('pdf')">
+              <span v-html="icon('download',13)"></span> <span class="ab-label">Download</span>
+            </button>
+            <button class="inv-ab-btn" @click="downloadPOPdf('print')">
+              <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
+            </button>
             <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods' && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled' && !isApprovalStage(viewDoc)" class="inv-ab-btn" @click="openReceiveModal" :disabled="actionRunning || !poCanReceive" :title="!poCanReceive ? 'Only the Store Keeper, Director or an admin can mark goods received' : ''">
               <span v-html="icon('truck',13)"></span> <span class="ab-label">Mark Received</span>
             </button>
@@ -578,7 +561,7 @@
 
               <div v-if="viewDoc.project" class="inv-dmeta-row" style="padding:8px 0 4px">
                 <span class="inv-dmeta-lbl">Project</span>
-                <div style="font-size:13px;font-weight:600;color:#111827;margin-top:2px">{{ viewDoc.project }}</div>
+                <div style="font-size:13px;font-weight:600;color:#111827;margin-top:2px">{{ projectLabel(viewDoc.project) }}</div>
               </div>
 
               <!-- Addresses -->
@@ -783,8 +766,28 @@
             <div class="inv-tab-body">
               <div v-if="viewLoading" style="text-align:center;padding:32px;color:#6b7280;font-size:13px">Loading…</div>
               <template v-else>
+                <template v-if="viewDoc?.material_request">
+                  <div class="inv-sec-lbl">Material Request (MRN)</div>
+                  <div class="inv-items-wrap">
+                    <table class="inv-items-table">
+                      <thead>
+                        <tr>
+                          <th>MRN #</th>
+                          <th>Project</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td><DocLink doctype="Material Request" :name="viewDoc.material_request" /></td>
+                          <td class="text-muted mono-sm">{{ projectLabel(viewDoc.project) || "—" }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </template>
+
                 <template v-if="links.purchase_receipts.length">
-                  <div class="inv-sec-lbl">Goods Receipt Notes (GRN)</div>
+                  <div class="inv-sec-lbl" :style="viewDoc?.material_request ? 'margin-top:16px' : ''">Goods Receipt Notes (GRN)</div>
                   <div class="inv-items-wrap">
                     <table class="inv-items-table">
                       <thead>
@@ -1171,7 +1174,7 @@ const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const viewLoading = ref(false), viewItems = ref([]);
 const fulfill = reactive({ lines: [], computed_status: "" });
 const links = reactive({ bills: [], purchase_receipts: [], qc_inspections: [] });
-const linkedCount = computed(() => links.bills.length + links.purchase_receipts.length + links.qc_inspections.length);
+const linkedCount = computed(() => (viewDoc.value?.material_request ? 1 : 0) + links.bills.length + links.purchase_receipts.length + links.qc_inspections.length);
 function grnStatus(r) { return r.docstatus === 0 ? "Draft" : r.docstatus === 2 ? "Cancelled" : (r.status || "Submitted"); }
 function qcColor(st) { return st === "Pass" ? "#059669" : st === "Fail" ? "#dc2626" : "#d97706"; }
 const vendors = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref("");
@@ -1470,6 +1473,7 @@ function openNew() {
   assetOnly.value = false;
   editingName.value = ""; editingStatus.value = "";
   Object.assign(form, { supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "", employee: "", employee_name: "" });
+  whFromProject.value = false;
   fetchWarehouses(""); fetchProjects(""); fetchMrns(""); fetchEmployees();
   lines.value = [blankLine()];
   fetchVendors(""); fetchItems("");
@@ -1487,6 +1491,7 @@ async function openEdit(o) {
     material_request: o.material_request || "", project: o.project || "",
   });
   lines.value = [blankLine()];
+  whFromProject.value = false;
   fetchVendors(""); fetchItems(""); fetchWarehouses(""); fetchProjects("", o.project || ""); fetchMrns("", o.material_request || ""); fetchEmployees();
   if (o.supplier) fetchVendorAddresses(o.supplier);
   drawerOpen.value = true;
@@ -1676,6 +1681,7 @@ function onProjectPick(opt) {
     form.material_request = ""; form.set_warehouse = "";
     lines.value = [blankLine()];
   }
+  fillWarehouseFromProject(form.project);
   fetchMrns("");
 }
 async function onMrnPick(opt) {
@@ -1695,6 +1701,7 @@ function applyMrDraft(d) {
     form.project = d.project || "";
     fetchProjects("", form.project);
     if (d.set_warehouse && form.purchase_type === "Goods") form.set_warehouse = d.set_warehouse;
+    fillWarehouseFromProject(form.project);
     const known = new Set(items.value.map(i => i.value));
     const extra = (d.items || []).filter(r => r.item_code && !known.has(r.item_code))
       .map(r => ({ label: r.item_name || r.item_code, value: r.item_code, rate: r.rate || 0, description: r.description || "", tax_code: "" }));
@@ -1706,12 +1713,26 @@ function applyMrDraft(d) {
     lines.value = rows.length ? rows : [blankLine()];
   }
 }
+// Receiving Warehouse comes from the project's own store (Project > Warehouse). Locked while it does.
+const whFromProject = ref(false);
+async function fillWarehouseFromProject(proj) {
+  whFromProject.value = false;
+  if (!proj || form.purchase_type !== "Goods") return;
+  try {
+    const rows = await apiList("Project", { fields: ["warehouse"], filters: [["name", "=", proj]], limit: 1 });
+    const wh = rows?.[0]?.warehouse;
+    if (!wh || form.project !== proj) return;
+    if (!warehouses.value.some(o => o.value === wh)) warehouses.value = [{ label: wh, value: wh }, ...warehouses.value];
+    form.set_warehouse = wh;
+    whFromProject.value = true;
+  } catch { /* leave the warehouse as it is */ }
+}
 const assetOnly = ref(false);
 async function onAssetToggle(on) {
   assetOnly.value = !!on;
   // The MRN list switches between Purchase and Asset MRNs, so a picked MRN (and what it filled in) no longer applies.
   if (form.material_request) {
-    form.material_request = ""; form.project = ""; form.set_warehouse = "";
+    form.material_request = ""; form.project = ""; form.set_warehouse = ""; whFromProject.value = false;
     lines.value = [blankLine()];
   }
   fetchMrns("");
@@ -1794,6 +1815,7 @@ async function savePO(newStatus, sendAfter = false) {
   if ((form.terms || "").length > 500) return toast.error("Terms & Conditions cannot exceed 500 characters");
   for (const l of lines.value.filter(l => l.item_code)) {
     if (flt(l.qty) > 999999999) return toast.error(`Qty cannot exceed 9 digits for item "${l.item_code}"`);
+    if (!(flt(l.rate) > 0)) return toast.error(`Rate is required for item "${l.item_code}"`);
     if (flt(l.rate) > 999999999) return toast.error(`Rate cannot exceed 9 digits for item "${l.item_code}"`);
     if ((l.description || "").length > 500) return toast.error(`Description too long for item "${l.item_code}" (max 500 characters)`);
   }
