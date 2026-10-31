@@ -338,9 +338,13 @@
             </div>
             <div class="add-card-body" :class="{collapsed:collapsed.details}">
               <div class="inv-fg inv-fg2">
-                <div style="grid-column:1/-1">
+                <div>
                   <label class="inv-lbl">Supplier <span class="inv-req">*</span></label>
                   <SearchableSelect v-model="form.supplier" :options="vendorOptions" placeholder="Search supplier…" @search="fetchVendors" @select="onSupSelect" />
+                </div>
+                <div>
+                  <label class="inv-lbl">Employee</label>
+                  <SearchableSelect v-model="form.employee" :options="employeeOpts" placeholder="Select employee (optional)" @select="onEmployeePick" />
                 </div>
                 <div>
                   <label class="inv-lbl">Entry Date <span class="inv-req">*</span></label>
@@ -371,11 +375,11 @@
             </div>
             <div class="add-card-body" :class="{collapsed:collapsed.receiving}">
               <div class="inv-fg inv-fg2">
-                <div style="grid-column:1/-1">
+                <div>
                   <label class="inv-lbl">Project</label>
                   <SearchableSelect v-model="form.project" :options="projects" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" @open="fetchProjects('', form.project)" />
                 </div>
-                <div style="grid-column:1/-1">
+                <div>
                   <label class="inv-lbl">Warehouse</label>
                   <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…"
                     :createable="true" :staticCreate="true" createLabel="+ Create Warehouse" createDoctype="Warehouse" @search="fetchWarehouses" @open="fetchWarehouses('')" @create="fetchWarehouses('')" />
@@ -606,7 +610,7 @@ const collapsed = reactive({ details: false, receiving: false, items: false });
 
 const form = reactive({
   supplier: "", supplier_name: "", entry_date: new Date().toISOString().slice(0,10), posting_date: new Date().toISOString().slice(0,10),
-  purchase_order: "", set_warehouse: "", project: "", remarks: "", supplier_delivery_note: "", vehicle_no: "", driver_name: "", driver_id_no: "", items: [],
+  purchase_order: "", set_warehouse: "", project: "", employee: "", employee_name: "", remarks: "", supplier_delivery_note: "", vehicle_no: "", driver_name: "", driver_id_no: "", items: [],
 });
 
 const counts = computed(() => ({
@@ -816,7 +820,7 @@ async function confirmAction() {
 function resetForm() {
   Object.assign(form, {
     supplier: "", supplier_name: "", entry_date: new Date().toISOString().slice(0,10), posting_date: new Date().toISOString().slice(0,10),
-    purchase_order: "", set_warehouse: "", project: "", remarks: "", supplier_delivery_note: "", vehicle_no: "", driver_name: "", driver_id_no: "", items: [],
+    purchase_order: "", set_warehouse: "", project: "", employee: "", employee_name: "", remarks: "", supplier_delivery_note: "", vehicle_no: "", driver_name: "", driver_id_no: "", items: [],
   });
 }
 
@@ -828,6 +832,7 @@ function openNew() {
   fetchPOs("");
   fetchWarehouses("");
   fetchProjects("");
+  fetchEmployees();
   addItem();
   formOpen.value = true;
 }
@@ -840,6 +845,7 @@ async function openEdit(r) {
   fetchItems("");
   fetchPOs("");
   fetchWarehouses("");
+  fetchEmployees();
   formOpen.value = true;
   try {
     const doc = await apiGet("Purchase Receipt", r.name);
@@ -852,6 +858,8 @@ async function openEdit(r) {
       purchase_order: doc.purchase_order || "",
       set_warehouse:  doc.set_warehouse || "",
       project:        doc.project || "",
+      employee:       doc.employee || "",
+      employee_name:  doc.employee_name || "",
       remarks:        doc.remarks || "",
       supplier_delivery_note: doc.supplier_delivery_note || "",
       vehicle_no:     doc.vehicle_no || "",
@@ -939,6 +947,27 @@ function onSupSelect(opt) {
   form.purchase_order = "";
   poOptions.value = [];
   fetchPOs("");
+}
+// Employee dropdown: active Employee records only, by name.
+const employeeList = ref([]);
+const employeeOpts = computed(() => {
+  const opts = [{ value: "", label: "— None —" }, ...employeeList.value];
+  const cur = form.employee;
+  if (cur && !opts.some(o => o.value === cur)) opts.push({ value: cur, label: form.employee_name || cur });
+  return opts;
+});
+function onEmployeePick(opt) {
+  form.employee = opt?.value || "";
+  form.employee_name = form.employee ? (opt.label || "") : "";
+}
+async function fetchEmployees() {
+  try {
+    const co = await resolveCompany();
+    const f = [["status", "!=", "Inactive"]];
+    if (co) f.push(["company", "=", co]);
+    const r = await apiList("Employee", { fields: ["name", "employee_name"], filters: f, order: "employee_name asc", limit: 1000 });
+    employeeList.value = (r || []).map(e => ({ value: e.name, label: e.employee_name || e.name }));
+  } catch { employeeList.value = []; }
 }
 async function fetchWarehouses(q = "") {
   try {
@@ -1173,6 +1202,8 @@ async function saveGRN(submit) {
       purchase_order: form.purchase_order || null,
       set_warehouse: form.set_warehouse || null,
       project: form.project || null,
+      employee: form.employee || "",
+      employee_name: form.employee_name || "",
       remarks: form.remarks || "",
       supplier_delivery_note: form.supplier_delivery_note || "",
       vehicle_no: form.vehicle_no || "",

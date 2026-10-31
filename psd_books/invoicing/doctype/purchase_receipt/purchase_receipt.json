@@ -7,7 +7,7 @@
  "autoname": "PR-.YYYY.-.#####",
  "naming_series": null,
  "creation": "2026-05-23 00:00:00.000000",
- "modified": "2026-10-17 00:00:00.000000",
+ "modified": "2026-10-31 18:00:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,
@@ -452,6 +452,29 @@
    "owner": "Administrator",
    "docstatus": 0,
    "idx": 0,
+   "permlevel": 0
+  },
+  {
+   "fieldname": "employee",
+   "fieldtype": "Data",
+   "label": "Employee",
+   "creation": "2026-10-31 00:00:00.000000",
+   "modified": "2026-10-31 00:00:00.000000",
+   "modified_by": "Administrator",
+   "owner": "Administrator",
+   "docstatus": 0,
+   "permlevel": 0
+  },
+  {
+   "fieldname": "employee_name",
+   "fieldtype": "Data",
+   "label": "Employee Name",
+   "read_only": 1,
+   "creation": "2026-10-31 00:00:00.000000",
+   "modified": "2026-10-31 00:00:00.000000",
+   "modified_by": "Administrator",
+   "owner": "Administrator",
+   "docstatus": 0,
    "permlevel": 0
   },
   {

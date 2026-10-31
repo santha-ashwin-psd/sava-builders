@@ -1099,7 +1099,7 @@ const { toast } = useToast();
 const { confirm } = useConfirm();
 const { prompt } = usePrompt();
 const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
-async function printPO(d) { try { await refreshBranding(); } catch {} printDoc(await preparePOPrint({ ...d, items: viewItems.value }), { ...PO_PRINT_CONFIG, companyName: d?.company || "" }); }
+async function printPO(d) { try { await refreshBranding(); } catch {} printDoc(await preparePOPrint({ ...d, items: viewItems.value, prepared_by_name: ownerName(d.owner) }), { ...PO_PRINT_CONFIG, companyName: d?.company || "" }); }
 
 const showDownloadMenu = ref(false);
 

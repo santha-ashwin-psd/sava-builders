@@ -730,7 +730,6 @@ const _SAVA_LOGO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAggAAAHVCAYAAA
 function _renderSavaPO(doc, cfg) {
   const currency = cfg.currency || doc.currency || "KES";
   const fmt = (v) => _fmtNumFor(v, currency);
-  const logo = _SAVA_LOGO;
   const docDate = doc.transaction_date || doc.posting_date || "";
   const lns = (t) => String(t || "").split("\n").map(x => x.trim()).filter(Boolean);
   const msLines = [doc.supplier_name || doc.supplier || "", ...lns(doc.supplier_address)].filter(Boolean);
@@ -812,15 +811,6 @@ function _renderSavaPO(doc, cfg) {
   @media print{.sheet{padding:0}}
 </style></head><body><div class="sheet" style="position:relative">
   <span class="cp print-copy-text">${_esc(cfg.copyText || "")}</span>
-  <div class="top">
-    <div class="lg">${logo ? `<img src="${_esc(logo)}" alt="logo"/>` : ""}</div>
-    <div class="ttl">PURCHASE ORDER</div>
-    <div class="co">
-      <div class="n">Sava Builders Ltd</div>
-      <div class="a">Sava House, Syokimau Road, off Mombasa Road<br/>Post Box No: 18565 - 00500, Nairobi, Kenya<br/>Mobile: 0731 429400, 0715 214240 Tel: 0731 429300,<br/>Email: info@savagroup.net<br/>website: www.savagroup.net</div>
-      <div class="v">Vat No. 01836200 Pin No. P051215043S</div>
-    </div>
-  </div>
   <div class="mid">
     <div class="ms"><div class="l">M/s</div><div class="t">${msLines.length ? `<b>${_esc(msLines[0])}</b>${msLines.slice(1).map(l => `<br/>${_esc(l)}`).join("")}` : ""}</div></div>
     <div class="pn">
@@ -904,14 +894,6 @@ function _renderSavaDN(doc, cfg) {
   @media print{.sheet{padding:0}}
 </style></head><body><div class="sheet" style="position:relative">
   <span class="cp print-copy-text">${_esc(cfg.copyText || "")}</span>
-  <div class="top">
-    <div class="lg"><img src="${_esc(_SAVA_LOGO)}" alt="logo"/></div>
-    <div class="ttl">DELIVERY NOTE</div>
-    <div class="co">
-      <div class="n">Sava Builders Ltd</div>
-      <div class="a">Sava House, Syokimau Road, off Mombasa Road<br/>Post Box No: 18565 - 00500, Nairobi, Kenya<br/>Mobile: 0731 429400, 0715 214240 Tel: 0731 429300,<br/>Email: info@savagroup.net<br/>website: www.savagroup.net</div>
-    </div>
-  </div>
   <div class="mid">
     <div class="ms">${toLines.length ? `<b>${_esc(toLines[0])}</b>${toLines.slice(1).map(l => `<br/>${_esc(l)}`).join("")}` : ""}</div>
     <div class="pn">
@@ -983,15 +965,7 @@ function _renderSavaMR(doc, cfg) {
   @media print{.sheet{padding:0}}
 </style></head><body><div class="sheet" style="position:relative">
   <span class="cp print-copy-text">${_esc(cfg.copyText || "")}</span>
-  <div class="top">
-    <div class="lg"><img src="${_esc(_SAVA_LOGO)}" alt="logo"/></div>
-    <div class="co">
-      <div class="n">Sava Builders Ltd</div>
-      <div class="a">Sava House, Syokimau Road, off Mombasa Road<br/>Post Box No: 18565 - 00500, Nairobi, Kenya<br/>Mobile: 0731 429400, 0715 214240 Tel: 0731 429300,<br/>Email: info@savagroup.net<br/>website: www.savagroup.net</div>
-      <div class="nr"><b>No.</b><span class="no">${_esc(doc.name || "")}</span></div>
-    </div>
-  </div>
-  <div class="ttl"><h1>MATERIAL REQUISITION</h1><div class="dt">Date:<span class="v">${_esc(dateTxt)}</span></div></div>
+  <div class="ttl"><div class="dt" style="width:auto">No.<span class="v" style="border:0;font-size:18px;color:#7a1a8a">${_esc(doc.name || "")}</span></div><div class="dt">Date:<span class="v">${_esc(dateTxt)}</span></div></div>
   <div class="pj">Project:<span class="v">${_esc(doc.project_label || doc.project || "")}</span></div>
   <table class="it">
     <thead><tr><th class="w1">S. No.</th><th class="w2">Item</th><th class="w3">Intended Use</th><th class="w4">Qty</th></tr></thead>
@@ -1058,12 +1032,6 @@ function _renderSavaGRN(doc, cfg) {
   @media print{.sheet{padding:0}}
 </style></head><body><div class="sheet">
   <span class="cp print-copy-text">${_esc(cfg.copyText || "")}</span>
-  <div class="top">
-    <div class="lg"><img src="${_esc(_SAVA_LOGO)}" alt="logo"/></div>
-    <div class="co"><div class="n">SAVA BUILDERS LIMITED</div>
-      <div class="a">Sava House, Syokimau Road, off Mombasa Road,<br/>P.O. BOX 18565-00500, NAIROBI, KENYA<br/>TEL: 0731429400, info@savagroup.net<br/>PIN: P051215043S</div></div>
-  </div>
-  <div class="ttl">${_esc(cfg.title)}</div>
   <div class="info">
     <div class="l">
       <div class="sup">${_esc(doc.supplier_name || doc.supplier || "")}</div>

@@ -341,7 +341,7 @@ const kpiCards = computed(() => {
   return [
     { key: "projects", label: "Active Projects", accent: "ov-a-blue", icon: iconGlyph("folder"), route: "/projects", color: "#2563eb",
       value: x.active_projects ?? 0, sub: `${x.new_projects_month ?? 0} this month`, trend: (x.new_projects_month || 0) > 0 ? "up" : "", spark: spark(sp.projects) },
-    { key: "mr", label: "MRs Pending Approval", accent: "ov-a-amber", icon: iconGlyph("clock"), route: "/manufacturing/material-request", color: "#f59e0b",
+    { key: "mr", label: "MRN Pending Approval", accent: "ov-a-amber", icon: iconGlyph("clock"), route: "/manufacturing/material-request", color: "#f59e0b",
       value: x.mr_pending_count ?? 0, sub: "Waiting for project manager", trend: "", spark: spark(sp.mr) },
     { key: "po", label: "Open Purchase Orders", accent: "ov-a-green", icon: iconGlyph("bill"), route: "/purchase-orders", color: "#16a34a",
       value: x.open_po_count ?? 0, sub: `${x.new_pos_week ?? 0} this week`, trend: (x.new_pos_week || 0) > 0 ? "up" : "", spark: spark(sp.po) },
