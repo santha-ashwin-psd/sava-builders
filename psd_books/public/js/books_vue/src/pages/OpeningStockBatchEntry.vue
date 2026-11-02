@@ -156,6 +156,17 @@
           </div>
         </div>
 
+        <div class="ob-asset-row" :class="{ 'ob-asset-row--on': assetMode }">
+          <div>
+            <div class="ob-asset-title">Asset Items <span class="ob-asset-pill" :class="{ 'ob-asset-pill--on': assetMode }">{{ assetMode ? '🧰 Asset mode ON' : 'OFF' }}</span></div>
+            <div class="ob-asset-sub">{{ assetMode ? 'Only asset items are listed below' : 'All items except assets are listed below' }}</div>
+          </div>
+          <label class="ob-switch">
+            <input type="checkbox" :checked="assetMode" @change="onAssetToggle($event.target.checked)" />
+            <span class="ob-switch-track"></span>
+          </label>
+        </div>
+
         <div class="ob-section-title" style="margin-top:4px">Items & Batches</div>
 
         <!-- Desktop line items -->
@@ -389,6 +400,7 @@ const viewDoc      = ref(null);
 const viewLoading  = ref(false);
 const warehouses   = ref([]);
 const items        = ref([]);
+const assetMode    = ref(false);   // UI filter only: on = asset items, off = everything except assets
 const lines        = ref([]);
 let _id = 1;
 const blankLine = () => ({
@@ -534,7 +546,7 @@ async function fetchWarehouses(q = "") {
 async function fetchItems(q = "") {
   try {
     // Match on item name or item code (no OR support in apiList, so two queries merged)
-    const run = (extra) => apiList("Item", { fields: ["name", "item_name"], filters: extra, limit: 20, order: "item_name asc" });
+    const run = (extra) => apiList("Item", { fields: ["name", "item_name"], filters: [["is_asset_item", "=", assetMode.value ? 1 : 0], ...extra], limit: 20, order: "item_name asc" });
     const rows = q
       ? [...(await run([["item_name", "like", `%${q}%`]])), ...(await run([["name", "like", `%${q}%`]]))]
       : await run([]);
@@ -610,6 +622,11 @@ async function onItemSelect(line, opt) {
   } catch {}
 }
 function addLine() { lines.value.push(blankLine()); }
+function onAssetToggle(on) {
+  assetMode.value = !!on;
+  lines.value = [blankLine()];   // items picked under the other mode no longer apply
+  fetchItems("");
+}
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
 
 function openNew() {
@@ -619,6 +636,7 @@ function openNew() {
     to_warehouse: "", remarks: "",
   });
   lines.value = [blankLine()];
+  assetMode.value = false;
   fetchWarehouses(""); fetchItems("");
   drawerOpen.value = true;
 }
@@ -631,6 +649,7 @@ async function openEdit(e) {
     to_warehouse: e.to_warehouse || "", remarks: e.remarks || "",
   });
   lines.value = [blankLine()];
+  assetMode.value = false;
   fetchWarehouses(""); fetchItems("");
   drawerOpen.value = true;
   try {
@@ -645,8 +664,9 @@ async function openEdit(e) {
           manufacturing_date: "", expiry_date: "", has_batch_no: 0, batchOptions: [],
         };
         try {
-          const r = await apiList("Item", { fields: ["name", "has_batch_no"], filters: [["name", "=", line.item_code]], limit: 1 });
+          const r = await apiList("Item", { fields: ["name", "has_batch_no", "is_asset_item"], filters: [["name", "=", line.item_code]], limit: 1 });
           line.has_batch_no = r?.[0]?.has_batch_no ? 1 : 0;
+          line.is_asset = r?.[0]?.is_asset_item ? 1 : 0;
         } catch {
           // Lookup failed (e.g. network blip) — don't default to "not
           // batch-tracked" here, since saveEntry() nulls batch_no for any
@@ -677,6 +697,8 @@ async function openEdit(e) {
         return line;
       }));
       lines.value = built.length ? built : [blankLine()];
+      const am = built.some(l => l.is_asset);
+      if (am !== assetMode.value) { assetMode.value = am; fetchItems(""); }
     }
   } catch {
     toast.error("Failed to load entry for editing");
@@ -832,6 +854,18 @@ onMounted(async () => {
 .ob-input:disabled { background:#f8fafc; color:#9ca3af; }
 .ob-input-req { border-color:#fca5a5; background:#fff7f7; }
 .ob-section-title { font-size:11.5px; font-weight:700; color:#374151; text-transform:uppercase; letter-spacing:.05em; padding-bottom:6px; border-bottom:1px solid #f3f4f6; }
+.ob-asset-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; margin:6px 0 14px; background:#f8fafc; border:1px solid #e5e7eb; border-radius:8px; }
+.ob-asset-row--on { background:#fff7ed; border-color:#fdba74; }
+.ob-asset-pill { display:inline-block; margin-left:6px; padding:1px 7px; border-radius:10px; font-size:10.5px; font-weight:700; background:#e5e7eb; color:#6b7280; vertical-align:middle; }
+.ob-asset-pill--on { background:#ffedd5; color:#c2410c; }
+.ob-asset-title { font-size:13px; font-weight:600; color:#111827; }
+.ob-asset-sub { font-size:11.5px; color:#6b7280; margin-top:2px; }
+.ob-switch { position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0; cursor:pointer; }
+.ob-switch input { opacity:0; width:0; height:0; position:absolute; }
+.ob-switch-track { position:absolute; inset:0; background:#d1d5db; border-radius:22px; transition:background .15s; }
+.ob-switch-track::before { content:""; position:absolute; left:3px; top:3px; width:16px; height:16px; background:#fff; border-radius:50%; transition:transform .15s; }
+.ob-switch input:checked + .ob-switch-track { background:#ea580c; }
+.ob-switch input:checked + .ob-switch-track::before { transform:translateX(18px); }
 .ob-items-table { display:flex; flex-direction:column; border:1px solid #e5e7eb; border-radius:8px; overflow:hidden; }
 .ob-line-card { padding:12px; border-top:1px solid #f3f4f6; }
 .ob-line-card:first-child { border-top:none; }
