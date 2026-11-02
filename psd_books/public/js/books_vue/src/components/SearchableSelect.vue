@@ -36,7 +36,7 @@
             class="ss-opt"
             :class="{ 'ss-opt-sel': String(o.value) === String(modelValue) }"
             @mousedown.prevent="pick(o)"
-          >{{ o.label }}</div>
+          >{{ o.label }}<div v-if="o.sub" style="font-size:11.5px;font-weight:400;color:#6b7280;margin-top:1px;white-space:normal">{{ o.sub }}</div></div>
           <div
             v-if="showCreate"
             class="ss-opt ss-opt-create"

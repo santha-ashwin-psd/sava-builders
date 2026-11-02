@@ -1845,19 +1845,29 @@ def create_po_from_mr(material_request):
     if mr.material_request_type not in ("Purchase", "Asset"):
         frappe.throw("Only Purchase or Asset Material Requests can be converted to Purchase Orders")
 
+    # Partial ordering: only what is still unordered on this MRN (other non-cancelled POs deducted).
+    from psd_books.invoicing.doctype.purchase_order.purchase_order import mrn_remaining_qty
+    left = dict(mrn_remaining_qty(mr.name))
     po_items = []
     for row in mr.items:
+        take = min(flt(row.required_qty), flt(left.get(row.item_code, 0)))
+        if take <= 0.0005:
+            continue
+        left[row.item_code] = flt(left.get(row.item_code, 0)) - take
         item_doc = frappe.get_cached_doc("Item", row.item_code)
         rate = flt(item_doc.get("standard_buying_rate") or item_doc.get("standard_rate") or 0)
         po_items.append({
             "item_code":   row.item_code,
             "item_name":   item_doc.item_name,
             "description": item_doc.description or item_doc.item_name,
-            "qty":         row.required_qty,
+            "qty":         take,
+            "mrn_qty":     row.required_qty,
             "uom":         row.uom or item_doc.stock_uom or "Nos",
             "rate":        rate,
-            "amount":      row.required_qty * rate,
+            "amount":      take * rate,
         })
+    if not po_items:
+        frappe.throw("Nothing left to order on Material Request {0}: every item is already on a Purchase Order.".format(mr.name))
 
     po = {
         "doctype":          "Purchase Order",
@@ -1871,6 +1881,50 @@ def create_po_from_mr(material_request):
         "items":            po_items,
     }
     return po
+
+
+@frappe.whitelist(allow_guest=False)
+def get_mrn_remaining(material_request, exclude_po=None):
+    """Per item: MRN qty, qty on other non-cancelled POs, and the balance still orderable."""
+    from psd_books.utils.access import assert_can
+    from psd_books.invoicing.doctype.purchase_order.purchase_order import (
+        mrn_required_qty, mrn_ordered_qty)
+    assert_can("Purchase Order", "read")
+    required = mrn_required_qty(material_request)
+    ordered = mrn_ordered_qty(material_request, exclude_po or None)
+    return [{"item_code": it, "item_name": frappe.db.get_value("Item", it, "item_name") or it, "mrn_qty": q, "ordered": flt(ordered.get(it, 0)),
+             "remaining": max(0.0, q - flt(ordered.get(it, 0)))} for it, q in required.items()]
+
+
+@frappe.whitelist(allow_guest=False)
+def get_open_mrns_for_po(material_request_type="Purchase", project=None, company=None, q=None):
+    """Approved MRNs, plus partly ordered ones, that still have qty left to order."""
+    from psd_books.utils.access import assert_can
+    from psd_books.invoicing.doctype.purchase_order.purchase_order import mrn_remaining_qty
+    assert_can("Purchase Order", "read")
+    filters = {"docstatus": 1, "status": ["in", ["Approved", "Partially Ordered", "Ordered"]],
+               "material_request_type": material_request_type}
+    if project:
+        filters["project"] = project
+    if company:
+        filters["company"] = company
+    if q:
+        filters["name"] = ["like", "%" + q + "%"]
+    out = []
+    for r in frappe.get_all("Material Request", filters=filters,
+                            fields=["name", "project", "posting_date", "status"],
+                            order_by="creation desc", limit=200):
+        left = mrn_remaining_qty(r.name)
+        if r.status in ("Ordered", "Partially Ordered") and not any(v > 0.0005 for v in left.values()):
+            continue
+        # Items still to order, shown under the MRN in the PO screen's dropdown.
+        r["items"] = ", ".join(
+            "{0} × {1:g}".format(frappe.db.get_value("Item", it, "item_name") or it, flt(v))
+            for it, v in left.items() if v > 0.0005)
+        out.append(r)
+        if len(out) >= 50:
+            break
+    return out
 
 
 @frappe.whitelist(allow_guest=False)

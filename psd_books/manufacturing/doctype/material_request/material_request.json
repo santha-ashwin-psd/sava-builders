@@ -34,7 +34,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nPending Approval\nSent Back\nApproved\nPartly Issued\nIssued\nSubmitted\nOrdered\nReceived\nCancelled",
+   "options": "Draft\nPending Approval\nSent Back\nApproved\nPartly Issued\nIssued\nSubmitted\nPartially Ordered\nOrdered\nReceived\nCancelled",
    "default": "Draft",
    "read_only": 1,
    "no_copy": 1,

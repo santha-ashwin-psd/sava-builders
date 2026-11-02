@@ -360,6 +360,7 @@ const PIPELINE = [
   { key: "Approved",         label: "Approved",         color: "#2563eb" },
   { key: "Partly Issued",    label: "Partly Issued",    color: "#fb923c" },
   { key: "Issued",           label: "Issued",           color: "#34d399" },
+  { key: "Partially Ordered", label: "Partially Ordered", color: "#a78bfa" },
   { key: "Ordered",          label: "Ordered",          color: "#8b5cf6" },
 ];
 const period = ref("month");
@@ -391,10 +392,10 @@ const projLabel = (pr) => `${pr.project_code || pr.name}${pr.project_name ? " �
 
 // ── Recent activity ──
 const VERB = { "Approved": "approved", "Pending Approval": "sent for approval", "Sent Back": "sent back", "Draft": "saved as draft",
-  "Partly Issued": "partly issued", "Issued": "issued", "Ordered": "ordered", "To Receive": "confirmed", "Partially Received": "partially received",
+  "Partly Issued": "partly issued", "Issued": "issued", "Partially Ordered": "partially ordered", "Ordered": "ordered", "To Receive": "confirmed", "Partially Received": "partially received",
   "Received": "received", "Completed": "completed", "Submitted": "submitted" };
 const actVerb = (s) => VERB[s] || (s ? `is ${String(s).toLowerCase()}` : "updated");
-const GOOD = ["Approved", "Issued", "Received", "Completed", "Ordered"];
+const GOOD = ["Approved", "Issued", "Received", "Completed", "Partially Ordered", "Ordered"];
 const actDotClass = (s) => GOOD.includes(s) ? "ov-d-green" : s === "Sent Back" ? "ov-d-red" : s === "Pending Approval" ? "ov-d-amber" : "ov-d-blue";
 const actIcon = (s) => iconGlyph(GOOD.includes(s) ? "tick" : "bill");
 function fmtStamp(v) {

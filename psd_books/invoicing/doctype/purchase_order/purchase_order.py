@@ -5,11 +5,47 @@ from frappe.model.document import Document
 from psd_books.db.validators import validate_fiscal_year
 
 
+def mrn_required_qty(material_request):
+    """{item_code: qty} the Material Request asks for (rows of the same item are summed)."""
+    out = {}
+    for r in frappe.get_all("Material Request Item", filters={"parent": material_request},
+                            fields=["item_code", "required_qty"]):
+        out[r.item_code] = out.get(r.item_code, 0.0) + flt(r.required_qty)
+    return out
+
+
+def mrn_ordered_qty(material_request, exclude_po=None, submitted_only=False):
+    """{item_code: qty} already on Purchase Orders against the MRN.
+
+    Counts every PO that is not cancelled (Draft, Pending Approval, Sent Back, approved and
+    submitted), so two drafts cannot each order the full MRN quantity.
+    """
+    cond = " and po.name != %(exclude)s" if exclude_po else ""
+    rows = frappe.db.sql(
+        """select poi.item_code, sum(poi.qty) as qty
+             from `tabPurchase Order Item` poi
+             join `tabPurchase Order` po on po.name = poi.parent
+            where po.material_request = %(mr)s
+              and po.docstatus """ + ("= 1" if submitted_only else "< 2") + """
+              and ifnull(po.status, '') != 'Cancelled'""" + cond + """
+         group by poi.item_code""",
+        {"mr": material_request, "exclude": exclude_po}, as_dict=True)
+    return {r.item_code: flt(r.qty) for r in rows}
+
+
+def mrn_remaining_qty(material_request, exclude_po=None, submitted_only=False):
+    """{item_code: remaining qty} = MRN qty - qty on other POs (never below 0)."""
+    required = mrn_required_qty(material_request)
+    ordered = mrn_ordered_qty(material_request, exclude_po, submitted_only)
+    return {it: max(0.0, flt(q) - flt(ordered.get(it, 0))) for it, q in required.items()}
+
+
 def sync_material_request_status(material_request):
     """Set a Material Request's status from its submitted Purchase Orders.
 
     - no submitted PO            -> "Submitted"
-    - a submitted PO, goods still to come -> "Ordered"
+    - submitted POs cover only part of the MRN qty -> "Partially Ordered"
+    - the whole MRN qty is ordered, goods still to come -> "Ordered"
     - every submitted PO fully received   -> "Received"
     Only touches an MRN that is itself submitted, and only these three statuses,
     so Cancelled / Issued / Approved (no PO yet) etc. are never overwritten here.
@@ -23,6 +59,8 @@ def sync_material_request_status(material_request):
                          filters={"material_request": material_request, "docstatus": 1}, pluck="name")
     if not pos:
         new_status = "Submitted"
+    elif any(flt(v) > 0.0005 for v in mrn_remaining_qty(material_request, submitted_only=True).values()):
+        new_status = "Partially Ordered"   # part of the MRN is still to be ordered
     else:
         new_status = "Received"
         for po in pos:
@@ -64,9 +102,35 @@ class PurchaseOrder(Document):
             except Exception:
                 self.fiscal_year = ""   # only suppress unexpected errors (e.g. table missing on install)
         self._calculate_totals()
+        self._validate_against_mrn()
         # A10.1: Pending Approval / Sent Back belong to the approval flow; a PO pending approval is locked.
         from psd_books.invoicing.po_approval_rules import validate_status
         validate_status(self)
+
+    def _validate_against_mrn(self):
+        """A PO (or several, ordered in parts) may not order more of an item than the MRN asks for.
+
+        Checked while the PO is a draft / new, so saving a status change on an old submitted PO
+        is never blocked. Items that are not on the MRN are left alone (substitutions)."""
+        if not self.get("material_request") or (self.docstatus != 0 and not self.is_new()):
+            return
+        if not frappe.db.exists("Material Request", self.material_request):
+            return
+        required = mrn_required_qty(self.material_request)
+        ordered = mrn_ordered_qty(self.material_request, None if self.is_new() else self.name)
+        this = {}
+        for row in (self.items or []):
+            if row.item_code in required:
+                this[row.item_code] = this.get(row.item_code, 0.0) + flt(row.qty)
+        for item, qty in this.items():
+            left = max(0.0, flt(required[item]) - flt(ordered.get(item, 0)))
+            if qty > left + 0.0005:
+                frappe.throw(
+                    "{0}: quantity {1} is more than the balance on Material Request {2}. "
+                    "MRN qty {3}, already ordered on other Purchase Orders {4}, balance {5}.".format(
+                        frappe.db.get_value("Item", item, "item_name") or item, flt(qty), self.material_request, flt(required[item]),
+                        flt(ordered.get(item, 0)), flt(left)),
+                    title="Quantity exceeds MRN")
 
     def _calculate_totals(self):
         for item in (self.items or []):

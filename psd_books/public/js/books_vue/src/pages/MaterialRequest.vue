@@ -94,8 +94,8 @@
                 <button v-if="!isNew && mr.docstatus===1" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="cancelMR" :disabled="submitting || !canCancelMR" :title="!canCancelMR ? MR_CANCEL_NOTE : ''">
                   {{ submitting ? 'Cancelling…' : 'Cancel' }}
                 </button>
-                <button v-if="SHOW_CREATE_PO && !isNew && mr.docstatus===1 && isPurchaseLike && mr.status !== 'Ordered' && mr.status !== 'Received'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !canCreatePO || !!linkedNote" :title="!canCreatePO ? PO_NOTE : linkedNote">
-                  {{ actionLoading === 'po' ? 'Creating…' : 'Create Purchase Order' }}
+                <button v-if="SHOW_CREATE_PO && !isNew && mr.docstatus===1 && isPurchaseLike && mr.status !== 'Ordered' && mr.status !== 'Received'" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createPurchaseOrder" :disabled="actionLoading==='po' || !canCreatePO || !!poBlockNote" :title="!canCreatePO ? PO_NOTE : poBlockNote">
+                  {{ actionLoading === 'po' ? 'Creating…' : (mr.status === 'Partially Ordered' || linkedDocs.po ? 'Create PO for Remaining' : 'Create Purchase Order') }}
                 </button>
                 <span v-if="!isNew && mr.docstatus===1 && isPurchaseLike && (mr.status === 'Ordered' || mr.status === 'Received')" class="bomx-badge badge-active" style="align-self:center">Purchase Order Created</span>
                 <button v-if="!isNew && mr.docstatus===1 && isPurchaseLike && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="createRfq" :disabled="!canCreateRFQ || !!linkedNote" :title="!canCreateRFQ ? RFQ_NOTE : linkedNote">
@@ -221,6 +221,14 @@
               </button>
             </div>
 
+            <div v-if="!isNew && mrnBalance.some(b => b.ordered > 0)" style="margin:10px 0 4px;font-size:13px">
+              <div class="bomx-section-lbl">Ordered so far</div>
+              <div v-for="b in mrnBalance" :key="b.item_code" style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eef0f3">
+                <span>{{ b.item_name || b.item_code }}</span>
+                <span>MRN {{ b.mrn_qty }} · Ordered {{ b.ordered }} · <b>Balance {{ b.remaining }}</b></span>
+              </div>
+            </div>
+
             <div class="bomx-section-lbl">Remarks</div>
             <textarea class="bomx-fi" v-model="mr.remarks" rows="3" :disabled="readOnly" style="width:100%;min-height:90px;resize:vertical" placeholder="Optional notes…"></textarea>
 
@@ -284,7 +292,7 @@ const page = ref(1);
 const pageSize = ref(25);
 const projectNames = ref({});
 
-const statusOptions = ["Draft", "Pending Approval", "Sent Back", "Approved", "Partly Issued", "Issued", "Submitted", "Ordered", "Received", "Cancelled"];
+const statusOptions = ["Draft", "Pending Approval", "Sent Back", "Approved", "Partly Issued", "Issued", "Submitted", "Partially Ordered", "Ordered", "Received", "Cancelled"];
 
 const selectedName = computed(() => (route.params.name && route.params.name !== "new") ? route.params.name : (route.params.name === "new" ? "new" : null));
 
@@ -327,7 +335,7 @@ watch([search, filterStatus, filterType], () => { page.value = 1; });
 
 const ACTIVE_KEY = "__active";
 const ACTIVE_STATUSES = ["Draft", "Pending Approval", "Sent Back", "Approved", "Partly Issued"];
-const statusTabs = ["", "Ordered", "Received", "Approved", "Pending Approval", "Partly Issued", "Issued", "Draft", "Sent Back", "Cancelled"];
+const statusTabs = ["", "Partially Ordered", "Ordered", "Received", "Approved", "Pending Approval", "Partly Issued", "Issued", "Draft", "Sent Back", "Cancelled"];
 const kpis = computed(() => {
   const l = list.value;
   const n = st => l.filter(i => i.status === st).length;
@@ -351,7 +359,7 @@ function exportCSV() {
 
 function statusClass(row) {
   const s = row.status;
-  if (s === "Approved" || s === "Partly Issued" || s === "Issued" || s === "Submitted" || s === "Ordered" || s === "Received") return "badge-active";
+  if (s === "Approved" || s === "Partly Issued" || s === "Issued" || s === "Submitted" || s === "Partially Ordered" || s === "Ordered" || s === "Received") return "badge-active";
   if (s === "Cancelled" || s === "Sent Back") return "badge-cancelled";
   return "badge-obsolete";
 }
@@ -447,6 +455,19 @@ const canIssueStock = computed(() => docRight("Delivery Note"));
 // An RFQ or purchase order already made from this MRN locks both buttons, so they can't be created twice.
 // Cancelled ones don't count. Looked up when the MRN is loaded.
 const linkedDocs = ref({ rfq: "", po: "" });
+// Creating a PO from the MRN is only blocked by an RFQ; an existing PO is fine (order the rest later).
+const poBlockNote = computed(() => linkedDocs.value.rfq ? `RFQ ${linkedDocs.value.rfq} already exists for this request.` : "");
+// Partial ordering: what each item has on POs so far and what is left to order.
+const mrnBalance = ref([]);
+async function loadMrnBalance() {
+  mrnBalance.value = [];
+  const m = mr.value;
+  if (!m || !m.name || m.docstatus !== 1 || !["Purchase", "Asset"].includes(m.material_request_type)) return;
+  try {
+    const rows = await apiPOST("psd_books.api.inventory.get_mrn_remaining", { material_request: m.name });
+    if (mr.value && mr.value.name === m.name) mrnBalance.value = rows || [];
+  } catch { mrnBalance.value = []; }
+}
 const linkedNote = computed(() => {
   const { rfq, po } = linkedDocs.value;
   if (rfq && po) return `RFQ ${rfq} and purchase order ${po} already exist for this request.`;
@@ -555,6 +576,7 @@ async function loadMR() {
   if (mr.value.project) fetchProjects("", mr.value.project);
   await loadApproval();
   loadLinkedDocs();
+  loadMrnBalance();
 }
 
 async function loadApproval() {
@@ -745,7 +767,7 @@ async function amendMR() {
 
 async function createPurchaseOrder() {
   if (!canCreatePO.value) { toast(PO_NOTE, "error"); return; }
-  if (linkedNote.value) { toast(linkedNote.value, "error"); return; }
+  if (poBlockNote.value) { toast(poBlockNote.value, "error"); return; }
   router.push(`/purchase-orders?new_from_mr=${mr.value.name}`);
 }
 

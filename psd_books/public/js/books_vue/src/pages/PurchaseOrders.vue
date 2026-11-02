@@ -362,12 +362,16 @@
                   <select v-model="line.uom" class="inv-fi">
                     <option v-for="u in uomOptionsFor(line)" :key="u" :value="u">{{ u }}</option>
                   </select>
-                  <input v-model.number="line.qty" type="number" min="0" step="0.001" class="inv-fi" :disabled="!!form.material_request" :class="{'field-error': line.qty > 999999999}" @input="calcLine(line)" />
+                  <input v-model.number="line.qty" type="number" min="0" :max="line.max ?? undefined" step="0.001" class="inv-fi" :title="line.max != null ? `Balance on MRN: ${line.max}` : ''" :class="{'field-error': line.qty > 999999999 || (line.max != null && flt(line.qty) > flt(line.max) + 0.0005)}" @input="onQtyInput(line)" />
                   <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999 || (line.item_code && !(flt(line.rate) > 0))}" @input="calcLine(line)" />
                   <span class="po-lines-num">{{ fmtCur(line.amount) }}</span>
                   <button @click.stop="removeLine(line.id)" class="po-item-card-rm" title="Remove line"><span v-html="icon('x',16)"></span></button>
                 </div>
               </div>
+            </div>
+            <div v-if="form.material_request && mrnBalance.length" style="margin-top:10px;font-size:12px;color:#6b7280">
+              <div style="font-weight:600;margin-bottom:2px">Balance on this MRN (you can order less now and the rest later)</div>
+              <div v-for="b in mrnBalance" :key="b.item_code">{{ b.item_name || b.item_code }} — MRN {{ b.mrn_qty }}, ordered elsewhere {{ b.ordered }}, balance {{ b.remaining }}</div>
             </div>
             <button v-if="!form.material_request" class="inv-add-line-btn" style="margin-top:10px" :disabled="!poCanSave" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
 
@@ -1143,7 +1147,7 @@ const tabs = [
   { key: "all",       label: "All" },
   { key: "draft",     label: "Draft" },
   { key: "toReceive", label: "To Receive" },
-  { key: "toBill",    label: "To Bill" },
+  // { key: "toBill",    label: "To Bill" },   // hidden
   { key: "closed",    label: "Closed" },
   { key: "cancelled", label: "Cancelled" },
 ];
@@ -1505,6 +1509,7 @@ async function openEdit(o) {
         tax_code: i.tax_code || "",
       }));
     }
+    if (doc?.material_request) loadMrnBalance(doc.material_request, o.name, true);
     if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
     if (doc?.project) { form.project = doc.project; fetchProjects("", doc.project); }
     if (doc?.employee) { form.employee = doc.employee; form.employee_name = doc.employee_name || ""; }
@@ -1663,13 +1668,11 @@ const mrnOptions = ref([]);
 async function fetchMrns(q = "", keep = "") {
   try {
     const co = await resolveCompany();
-    const f = [["docstatus", "=", 1], ["status", "=", "Approved"],
-               ["material_request_type", "=", assetOnly.value ? "Asset" : "Purchase"]];
-    if (co) f.push(["company", "=", co]);
-    if (form.project) f.push(["project", "=", form.project]);
-    if (q) f.push(["name", "like", "%" + q + "%"]);
-    const r = await apiList("Material Request", { fields: ["name", "project", "posting_date"], filters: f, limit: 50, order: "creation desc" });
-    const opts = (r || []).map(x => ({ label: x.project ? `${x.name} — ${x.project}` : x.name, value: x.name }));
+    // Approved MRNs plus partly ordered ones that still have qty left to order.
+    const r = await apiPOST("psd_books.api.inventory.get_open_mrns_for_po", {
+      material_request_type: assetOnly.value ? "Asset" : "Purchase",
+      project: form.project || "", company: co || "", q: q || "" });
+    const opts = (r || []).map(x => ({ label: x.project ? `${x.name} — ${x.project}` : x.name, value: x.name, sub: x.items || "" }));
     if (keep && !opts.some(o => o.value === keep)) opts.unshift({ label: keep, value: keep });
     mrnOptions.value = opts;
   } catch { mrnOptions.value = keep ? [{ label: keep, value: keep }] : []; }
@@ -1708,10 +1711,25 @@ function applyMrDraft(d) {
     if (extra.length) items.value = [...items.value, ...extra];
     const rows = (d.items || []).map(r => ({
       id: _id++, item_code: r.item_code, description: r.description,
-      qty: r.qty, rate: r.rate, uom: r.uom || "", amount: r.amount, tax_code: "", collapsed: false,
+      qty: r.qty, max: r.qty, rate: r.rate, uom: r.uom || "", amount: r.amount, tax_code: "", collapsed: false,
     }));
     lines.value = rows.length ? rows : [blankLine()];
+    loadMrnBalance(form.material_request, "");
   }
+}
+// Partial ordering: balance per item on the picked MRN (other POs deducted, this PO excluded).
+const mrnBalance = ref([]);
+async function loadMrnBalance(mrn, excludePo, applyToLines = false) {
+  mrnBalance.value = [];
+  if (!mrn) return;
+  try {
+    const rows = await apiPOST("psd_books.api.inventory.get_mrn_remaining", { material_request: mrn, exclude_po: excludePo || "" });
+    mrnBalance.value = rows || [];
+    if (applyToLines) {
+      const left = Object.fromEntries((rows || []).map(b => [b.item_code, b.remaining]));
+      lines.value.forEach(l => { if (l.item_code in left) l.max = left[l.item_code]; });
+    }
+  } catch { mrnBalance.value = []; }
 }
 // Receiving Warehouse comes from the project's own store (Project > Warehouse). Locked while it does.
 const whFromProject = ref(false);
@@ -1803,6 +1821,17 @@ async function onItemSelect(line, opt) {
 }
 function addLine() { lines.value.push(blankLine()); }
 function removeLine(id) { if (lines.value.length > 1) lines.value = lines.value.filter(l => l.id !== id); }
+// Qty can never go above the MRN balance (or below 0): anything higher snaps back to the balance.
+const itemNameOf = (code) => items.value.find(i => i.value === code)?.label || code;
+function onQtyInput(l) {
+  if (l.max != null && flt(l.qty) > flt(l.max) + 0.0005) {
+    l.qty = flt(l.max);
+    toast.error(`Qty for "${itemNameOf(l.item_code)}" cannot exceed the MRN balance (${l.max})`);
+  } else if (flt(l.qty) < 0) {
+    l.qty = 0;
+  }
+  calcLine(l);
+}
 function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 100; }
 
 async function savePO(newStatus, sendAfter = false) {
@@ -1815,6 +1844,7 @@ async function savePO(newStatus, sendAfter = false) {
   if ((form.terms || "").length > 500) return toast.error("Terms & Conditions cannot exceed 500 characters");
   for (const l of lines.value.filter(l => l.item_code)) {
     if (flt(l.qty) > 999999999) return toast.error(`Qty cannot exceed 9 digits for item "${l.item_code}"`);
+    if (l.max != null && flt(l.qty) > flt(l.max) + 0.0005) return toast.error(`Qty for "${itemNameOf(l.item_code)}" is more than the balance on the MRN (${l.max})`);
     if (!(flt(l.rate) > 0)) return toast.error(`Rate is required for item "${l.item_code}"`);
     if (flt(l.rate) > 999999999) return toast.error(`Rate cannot exceed 9 digits for item "${l.item_code}"`);
     if ((l.description || "").length > 500) return toast.error(`Description too long for item "${l.item_code}" (max 500 characters)`);
