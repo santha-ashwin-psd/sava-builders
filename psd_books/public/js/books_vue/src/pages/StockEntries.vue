@@ -955,7 +955,7 @@ const driverOpts = computed(() => {
   return opts;
 });
 const truckOpts = computed(() => {
-  const opts = [{ value: "", label: "— None —" }, ...driverList.value.filter(d => d.truck_no).map(d => ({ value: d.truck_no, label: `${d.truck_no} — ${d.employee_name}` }))];
+  const opts = [{ value: "", label: "— None —" }, ...driverList.value.filter(d => d.truck_no).map(d => ({ value: d.truck_no, label: d.truck_no }))];
   const cur = form.vehicle_no;
   if (cur && !opts.some(o => o.value === cur)) opts.push({ value: cur, label: cur });
   return opts;

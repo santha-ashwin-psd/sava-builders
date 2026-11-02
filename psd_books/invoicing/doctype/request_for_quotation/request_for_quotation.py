@@ -1,11 +1,16 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from psd_books.utils.naming import next_plain_name
 
 from psd_books.invoicing import rfq_rules
 
 
 class RequestforQuotation(Document):
+	def autoname(self):
+		# Plain sequential number (01, 02, ...), counter kept per doctype.
+		self.name = next_plain_name(self.doctype)
+
 	def validate(self):
 		# Entry Date: the day the record was entered. Filled automatically when blank, so documents
 		# created by other steps (GRN, stock entries, orders from a comparison) never fail on it.

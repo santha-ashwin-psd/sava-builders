@@ -264,7 +264,7 @@
               <!-- Warehouse: only shown and required for Goods -->
               <div v-if="form.purchase_type === 'Goods'" style="grid-column:1/-1">
                 <label class="inv-lbl">Receiving Warehouse <span class="inv-req">*</span></label>
-                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" :disabled="whFromProject" placeholder="Select warehouse where goods will be received…"
+                <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…"
                   :createable="true" :staticCreate="true" createLabel="+ Create Warehouse" createDoctype="Warehouse" @search="fetchWarehouses" @create="fetchWarehouses('')" />
               </div>
             </div>
@@ -1224,7 +1224,7 @@ async function fetchEmployees() {
   } catch { employeeList.value = []; }
 }
 // Project is optional: a leading "None" row lets the user clear a chosen project.
-const projectChoices = computed(() => [{ label: "— None —", value: "" }, ...projects.value]);
+const projectChoices = computed(() => [{ label: "— None —", value: "" }, ...projects.value.map(p => ({ ...p, label: projectNames.value[p.value] || p.label }))]);
 const warehouses = ref([]);
 async function fetchWarehouses(q = "") {
   try {
@@ -1672,7 +1672,7 @@ async function fetchMrns(q = "", keep = "") {
     const r = await apiPOST("psd_books.api.inventory.get_open_mrns_for_po", {
       material_request_type: assetOnly.value ? "Asset" : "Purchase",
       project: form.project || "", company: co || "", q: q || "" });
-    const opts = (r || []).map(x => ({ label: x.project ? `${x.name} — ${x.project}` : x.name, value: x.name, sub: x.items || "" }));
+    const opts = (r || []).map(x => ({ label: x.project ? `${x.name} — ${projectLabel(x.project)}` : x.name, value: x.name, sub: x.items || "" }));
     if (keep && !opts.some(o => o.value === keep)) opts.unshift({ label: keep, value: keep });
     mrnOptions.value = opts;
   } catch { mrnOptions.value = keep ? [{ label: keep, value: keep }] : []; }
@@ -1731,7 +1731,7 @@ async function loadMrnBalance(mrn, excludePo, applyToLines = false) {
     }
   } catch { mrnBalance.value = []; }
 }
-// Receiving Warehouse comes from the project's own store (Project > Warehouse). Locked while it does.
+// Receiving Warehouse is pre-filled from the project's own store (Project > Warehouse) but stays editable.
 const whFromProject = ref(false);
 async function fillWarehouseFromProject(proj) {
   whFromProject.value = false;

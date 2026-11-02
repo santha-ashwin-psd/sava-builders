@@ -2,6 +2,7 @@
 import frappe
 from frappe.utils import flt
 from frappe.model.document import Document
+from psd_books.utils.naming import next_plain_name
 from psd_books.db.validators import validate_fiscal_year
 
 
@@ -86,6 +87,10 @@ def backfill_received_material_requests():
 
 
 class PurchaseOrder(Document):
+    def autoname(self):
+        # Plain sequential number (01, 02, ...), counter kept per doctype.
+        self.name = next_plain_name(self.doctype)
+
 
     def validate(self):
         # Entry Date: the day the record was entered. Filled automatically when blank, so documents

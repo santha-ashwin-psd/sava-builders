@@ -12,6 +12,7 @@ Audit fixes applied:
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from psd_books.utils.naming import next_plain_name
 from frappe.utils import flt, today
 from psd_books.db.validators import validate_fiscal_year
 
@@ -47,6 +48,10 @@ def _segregate_scrap_gl():
 
 
 class StockEntry(Document):
+    def autoname(self):
+        # Plain sequential number (01, 02, ...), counter kept per doctype.
+        self.name = next_plain_name(self.doctype)
+
 
     # ── Validate ──────────────────────────────────────────────────────────────
 
@@ -1022,4 +1027,4 @@ class StockEntry(Document):
                 WHERE voucher_type = 'Stock Entry' AND voucher_no = %s
             """, self.name)
 
-        frappe.db.commit()
+        frappe.db.commit()  

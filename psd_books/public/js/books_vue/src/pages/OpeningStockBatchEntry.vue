@@ -533,13 +533,14 @@ async function fetchWarehouses(q = "") {
 }
 async function fetchItems(q = "") {
   try {
-    const r = await apiList("Item", {
-      fields: ["name", "item_name"],
-      filters: q ? [["name", "like", `%${q}%`]] : [],
-      limit: 20,
-    });
-    items.value = r.map(x => ({
-      label: x.item_name ? `${x.name} — ${x.item_name}` : x.name,
+    // Match on item name or item code (no OR support in apiList, so two queries merged)
+    const run = (extra) => apiList("Item", { fields: ["name", "item_name"], filters: extra, limit: 20, order: "item_name asc" });
+    const rows = q
+      ? [...(await run([["item_name", "like", `%${q}%`]])), ...(await run([["name", "like", `%${q}%`]]))]
+      : await run([]);
+    const seen = new Set();
+    items.value = (rows || []).filter(x => !seen.has(x.name) && seen.add(x.name)).slice(0, 20).map(x => ({
+      label: x.item_name || x.name,
       value: x.name,
     }));
   } catch {

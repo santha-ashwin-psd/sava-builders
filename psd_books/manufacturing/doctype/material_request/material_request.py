@@ -1,10 +1,15 @@
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from psd_books.utils.naming import next_plain_name
 from frappe.utils import nowdate
 
 
 class MaterialRequest(Document):
+	def autoname(self):
+		# Plain sequential number (01, 02, ...), counter kept per doctype.
+		self.name = next_plain_name(self.doctype)
+
 	def validate(self):
 		if not self.posting_date:
 			self.posting_date = nowdate()
