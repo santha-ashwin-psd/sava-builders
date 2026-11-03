@@ -32,7 +32,7 @@
 
     <!-- ── KPI Cards ── -->
     <div class="bk-kpi-grid bk-kpi-grid-4" style="margin-bottom:18px">
-      <div v-for="kpi in vendorKpiCards" :key="kpi.key" class="bk-kpi-card">
+      <div v-for="kpi in vendorKpiCards.filter(k => k.key !== 'with_balance' && k.key !== 'total_payable')" :key="kpi.key" class="bk-kpi-card">
         <div class="bk-kpi-inner">
           <div class="bk-kpi-icon" :style="{ background: kpi.iconBg }"><span v-html="kpi.icon"></span></div>
           <div class="bk-kpi-body">
@@ -74,8 +74,8 @@
               <th class="vt-th">Type</th>
               <th class="vt-th">Group</th>
               <th class="vt-th">KRA PIN</th>
-              <th class="vt-th vt-th-num">Outstanding</th>
-              <th class="vt-th">Last Bill</th>
+              <th v-if="false" class="vt-th vt-th-num">Outstanding</th>
+              <th v-if="false" class="vt-th">Last Bill</th>
               <th class="vt-th">Mobile</th>
               <th class="vt-th">Status</th>
               <th class="vt-th vt-th-actions">Actions</th>
@@ -127,12 +127,12 @@
                 <span v-if="v.tax_id">{{v.tax_id}}</span>
                 <span v-else class="vt-badge vt-badge-amber">No KRA PIN</span>
               </td>
-              <td class="vt-td vt-td-num">
+              <td v-if="false" class="vt-td vt-td-num">
                 <span :class="(balancesByVendor[v.name]||0)>0 ? 'vt-amount-due' : 'vt-amount-nil'">
                   {{ (balancesByVendor[v.name]||0)>0 ? fmtCur(balancesByVendor[v.name]) : '—' }}
                 </span>
               </td>
-              <td class="vt-td vt-td-secondary">
+              <td v-if="false" class="vt-td vt-td-secondary">
                 <template v-if="lastBillByVendor[v.name]">
                   <div class="vt-lastinv-ref" @click.stop><DocLink doctype="Purchase Invoice" :name="lastBillByVendor[v.name].name" /></div>
                   <div class="vt-lastinv-date">{{ fmtDate(lastBillByVendor[v.name].date) }} · {{ fmtCur(lastBillByVendor[v.name].amount) }}</div>
@@ -177,7 +177,7 @@
                 <span>{{ v.mobile_no || '—' }}</span>
               </div>
               <div class="ven-mc-meta">
-                <span :style="(balancesByVendor[v.name]||0)>0 ? 'color:#E67700;font-weight:600' : ''">
+                <span v-if="false" :style="(balancesByVendor[v.name]||0)>0 ? 'color:#E67700;font-weight:600' : ''">
                   {{ (balancesByVendor[v.name]||0)>0 ? fmtCur(balancesByVendor[v.name])+' payable' : 'No balance' }}
                 </span>
                 <span>{{ v.tax_id || 'No KRA PIN' }}</span>
@@ -234,7 +234,7 @@
               </span>
             </div>
             <div v-if="v.supplier_group" style="font-size:11.5px;color:#374151;font-weight:600">{{ v.supplier_group }}</div>
-            <div style="font-size:11.5px;color:#9ca3af">
+            <div v-if="false" style="font-size:11.5px;color:#9ca3af">
               <span>{{ lastBillByVendor[v.name] ? 'Last: '+lastBillByVendor[v.name].name : '—' }}</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #f3f4f6;padding-top:10px">
@@ -316,7 +316,7 @@
                 {{v.supplier_name||v.name}}
               </div>
               <div style="font-size:11.5px;color:#6B7280;margin-top:2px">
-                <span :style="balancesByVendor[v.name]>0?'color:#E67700;font-weight:600':''">{{ fmtCur(balancesByVendor[v.name] || 0) }}</span> outstanding
+                <span v-if="false"><span :style="balancesByVendor[v.name]>0?'color:#E67700;font-weight:600':''">{{ fmtCur(balancesByVendor[v.name] || 0) }}</span> outstanding</span>
                 <span v-if="v.disabled" style="margin-left:6px;font-size:10px;font-weight:600;color:#6B7280;background:#F3F4F6;padding:1px 5px;border-radius:10px">Disabled</span>
               </div>
             </div>
@@ -370,14 +370,14 @@
               borderBottom:activeVendorTab==='overview'?'2px solid #E67700':'2px solid transparent',marginBottom:'-2px'}">
             Overview
           </button>
-          <button @click="activeVendorTab='transactions'"
+          <button v-if="false" @click="activeVendorTab='transactions'"
             :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',display:'flex',
               color:activeVendorTab==='transactions'?'#E67700':'#6B7280',
               borderBottom:activeVendorTab==='transactions'?'2px solid #E67700':'2px solid transparent',marginBottom:'-2px'}">
             Transactions
             <span v-if="vendorTxnsActive.length" style="background:#E67700;color:#fff;padding:1px 7px;border-radius:999px;font-size:11px;margin-left:4px">{{vendorTxnsActive.length}}</span>
           </button>
-          <button @click="activeVendorTab='statement'; loadStatement()"
+          <button v-if="false" @click="activeVendorTab='statement'; loadStatement()"
             :style="{padding:'8px 16px',fontSize:'13.5px',fontWeight:600,border:'none',background:'none',cursor:'pointer',
               color:activeVendorTab==='statement'?'#E67700':'#6B7280',
               borderBottom:activeVendorTab==='statement'?'2px solid #E67700':'2px solid transparent',marginBottom:'-2px'}">
@@ -446,7 +446,7 @@
               <div style="font-size:14px;font-weight:600;color:#111827">{{selectedVendor.payment_terms||'Due on Receipt'}}</div>
             </div>
 
-            <div style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
+            <div v-if="false" style="background:#fff;border:1px solid #E5E7EB;border-radius:10px;overflow:hidden">
               <div style="padding:12px 16px;border-bottom:1px solid #F3F4F6">
                 <span style="font-size:11px;font-weight:700;color:#9CA3AF;letter-spacing:0.8px">PAYABLES</span>
               </div>
@@ -761,7 +761,7 @@
         </div>
 
         <div class="inv-view-tabs">
-          <button v-for="t in [{k:'overview',l:'Overview'},{k:'address',l:'Address'},{k:'other',l:'Other Details'},{k:'remarks',l:'Remarks'}]"
+          <button v-for="t in [{k:'overview',l:'Overview'},{k:'address',l:'Address'},{k:'remarks',l:'Remarks'}]"
             :key="t.k" @click="drawerTab=t.k"
             class="inv-vtab" :class="{active: drawerTab===t.k}">
             {{t.l}}
