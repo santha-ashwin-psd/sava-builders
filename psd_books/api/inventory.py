@@ -1892,8 +1892,22 @@ def get_mrn_remaining(material_request, exclude_po=None):
     assert_can("Purchase Order", "read")
     required = mrn_required_qty(material_request)
     ordered = mrn_ordered_qty(material_request, exclude_po or None)
+    moved = _mrn_transferred_qty([material_request])
     return [{"item_code": it, "item_name": frappe.db.get_value("Item", it, "item_name") or it, "mrn_qty": q, "ordered": flt(ordered.get(it, 0)),
+             "transferred": flt(moved.get((material_request, it), 0)),
              "remaining": max(0.0, q - flt(ordered.get(it, 0)))} for it, q in required.items()]
+
+
+def _mrn_transferred_qty(names):
+    """{(MRN, item_code): qty} moved out by submitted Material Issue / Material Transfer stock entries."""
+    names = [n for n in names if n]
+    if not names:
+        return {}
+    return {(r[0], r[1]): flt(r[2]) for r in frappe.db.sql("""SELECT s.material_request, d.item_code, SUM(d.qty)
+        FROM `tabStock Entry Detail` d JOIN `tabStock Entry` s ON s.name = d.parent
+        WHERE s.docstatus = 1 AND s.material_request IN %(n)s
+        AND s.stock_entry_type IN ('Material Issue', 'Material Transfer')
+        GROUP BY s.material_request, d.item_code""", {"n": tuple(names)})}
 
 
 @frappe.whitelist(allow_guest=False)
@@ -1911,16 +1925,20 @@ def get_open_mrns_for_po(material_request_type="Purchase", project=None, company
     if q:
         filters["name"] = ["like", "%" + q + "%"]
     out = []
-    for r in frappe.get_all("Material Request", filters=filters,
-                            fields=["name", "project", "posting_date", "status"],
-                            order_by="creation desc", limit=200):
+    mrs = frappe.get_all("Material Request", filters=filters,
+                         fields=["name", "project", "posting_date", "status"],
+                         order_by="creation desc", limit=200)
+    moved = _mrn_transferred_qty([r.name for r in mrs])
+    for r in mrs:
         left = mrn_remaining_qty(r.name)
         if r.status in ("Ordered", "Partially Ordered") and not any(v > 0.0005 for v in left.values()):
             continue
         # Items still to order, shown under the MRN in the PO screen's dropdown.
+        # Stock already moved out of the store against this MRN (submitted Delivery Notes) is flagged per item.
         r["items"] = ", ".join(
             "{0} × {1:g}".format(frappe.db.get_value("Item", it, "item_name") or it, flt(v))
-            for it, v in left.items() if v > 0.0005)
+            + (" (transferred {0:g})".format(moved[(r.name, it)]) if moved.get((r.name, it), 0) > 0.0005 else "")
+            for it, v in left.items() if v > 0.0005 or moved.get((r.name, it), 0) > 0.0005)
         out.append(r)
         if len(out) >= 50:
             break

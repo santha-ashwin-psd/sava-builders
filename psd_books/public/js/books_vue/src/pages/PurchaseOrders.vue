@@ -232,30 +232,30 @@
               </label>
             </div>
             <div class="add-details-grid">
-              <div style="grid-column:1/-1">
+              <div>
                 <label class="inv-lbl">Project <span v-if="!assetOnly" class="inv-req">*</span></label>
                 <SearchableSelect v-model="form.project" :options="projectChoices" :placeholder="assetOnly ? 'Select project (optional)…' : 'Select project…'" @search="q => fetchProjects(q, form.project)" @select="onProjectPick" />
               </div>
-              <div style="grid-column:1/-1">
+              <div>
                 <label class="inv-lbl">MRN <span class="inv-req">*</span></label>
                 <SearchableSelect v-model="form.material_request" :options="mrnOptions"
                   :placeholder="assetOnly ? 'Select approved Asset MRN…' : 'Select approved Purchase MRN…'"
                   @search="q => fetchMrns(q, form.material_request)" @select="onMrnPick" />
               </div>
-              <div style="grid-column:1/-1">
+              <div>
                 <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
                 <SearchableSelect v-model="form.supplier" :options="vendors" placeholder="Select vendor…"
                   :createable="true" createDoctype="Supplier" @search="fetchVendors" />
               </div>
-              <div style="grid-column:1/-1">
+              <div>
                 <label class="inv-lbl">Employee</label>
                 <SearchableSelect v-model="form.employee" :options="employeeOpts" placeholder="Select employee…" @select="onEmployeePick" />
               </div>
-              <div style="grid-column:1/-1">
+              <div>
                 <label class="inv-lbl">Entry Date <span class="inv-req">*</span></label>
                 <input v-model="form.entry_date" type="date" class="inv-fi" />
               </div>
-              <div style="grid-column:1/-1">
+              <div>
                 <label class="inv-lbl">Order Date <span class="inv-req">*</span></label>
                 <input v-model="form.transaction_date" type="date" class="inv-fi" />
               </div>
@@ -349,7 +349,8 @@
                 <div class="po-lines-row po-lines-head">
                   <span>#</span><span>Item</span><span>Tax Template</span><span>UOM</span><span>Qty</span><span>Rate (KES)</span><span class="po-lines-num">Amount</span><span></span>
                 </div>
-                <div v-for="(line, idx) in lines" :key="line.id" class="po-lines-row">
+                <template v-for="(line, idx) in lines" :key="line.id">
+                <div class="po-lines-row">
                   <span class="po-lines-idx">{{ idx + 1 }}</span>
                   <SearchableSelect v-model="line.item_code" :options="items" :disabled="!!form.material_request"
                     placeholder="Select item…" :createable="true" createDoctype="Item"
@@ -365,12 +366,12 @@
                   <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999}" @input="calcLine(line)" />
                   <span class="po-lines-num">{{ fmtCur(line.amount) }}</span>
                   <button @click.stop="removeLine(line.id)" class="po-item-card-rm" title="Remove line"><span v-html="icon('x',16)"></span></button>
+                  <div v-if="form.material_request && mrnBalanceFor(line)" style="grid-column:2 / -1;margin-top:-2px;font-size:12px;color:#6b7280">
+                  MRN {{ mrnBalanceFor(line).mrn_qty }}, ordered elsewhere {{ mrnBalanceFor(line).ordered }}, balance {{ mrnBalanceFor(line).remaining }}<span v-if="mrnBalanceFor(line).transferred > 0" style="color:#dc2626;font-weight:600"> · Stock transferred: {{ mrnBalanceFor(line).transferred }}</span>
+                  </div>
                 </div>
+                </template>
               </div>
-            </div>
-            <div v-if="form.material_request && mrnBalance.length" style="margin-top:10px;font-size:12px;color:#6b7280">
-              <div style="font-weight:600;margin-bottom:2px">Balance on this MRN (you can order less now and the rest later)</div>
-              <div v-for="b in mrnBalance" :key="b.item_code">{{ b.item_name || b.item_code }} — MRN {{ b.mrn_qty }}, ordered elsewhere {{ b.ordered }}, balance {{ b.remaining }}</div>
             </div>
             <button v-if="false" class="inv-add-line-btn" style="margin-top:10px" :disabled="!poCanSave" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
 
@@ -1712,6 +1713,7 @@ function applyMrDraft(d) {
 }
 // Partial ordering: balance per item on the picked MRN (other POs deducted, this PO excluded).
 const mrnBalance = ref([]);
+function mrnBalanceFor(line) { return mrnBalance.value.find(b => b.item_code === line.item_code) || null; }
 async function loadMrnBalance(mrn, excludePo, applyToLines = false) {
   mrnBalance.value = [];
   if (!mrn) return;

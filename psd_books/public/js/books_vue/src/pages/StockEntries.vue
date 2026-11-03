@@ -953,15 +953,12 @@ async function fetchMrns(q = "", keep = "") {
     const co = await resolveCompany();
     // Stock going out (Material Issue) never uses Asset MRNs; other entry types use Asset MRNs only
     const assetMrn = form.stock_entry_type === "Material Issue" ? ["material_request_type", "!=", "Asset"] : ["material_request_type", "=", "Asset"];
-    // Only MRNs whose Purchase Order is Closed or Partially Received (goods have reached the store)
-    const pos = await apiList("Purchase Order", { fields: ["material_request"], filters: [["docstatus", "=", 1], ["status", "in", ["Closed", "Partially Received"]], ["material_request", "!=", ""]], limit: 1000 });
-    const mrnNames = [...new Set((pos || []).map(p => p.material_request).filter(Boolean))];
-    if (!mrnNames.length) { mrnOptions.value = keep ? [{ label: keep, value: keep }] : []; return; }
-    const f = [["docstatus", "=", 1], ["name", "in", mrnNames], assetMrn];
+    // All approved (submitted) MRNs, never drafts / pending approval / cancelled
+    const f = [["docstatus", "=", 1], ["status", "!=", "Cancelled"], assetMrn];
     if (co) f.push(["company", "=", co]);
     if (form.project) f.push(["project", "=", form.project]);
     if (q) f.push(["name", "like", "%" + q + "%"]);
-    const r = await apiList("Material Request", { fields: ["name", "project", "posting_date"], filters: f, limit: 50, order: "creation desc" });
+    const r = await apiList("Material Request", { fields: ["name", "project", "posting_date"], filters: f, limit: 200, order: "creation desc" });
     // Items still pending on each MRN, shown under it in the dropdown (as on the Purchase Order screen)
     let itemsBy = {};
     try { itemsBy = await apiPOST("psd_books.api.inventory.get_mrn_pending_items_text", { names: JSON.stringify((r || []).map(x => x.name)) }) || {}; } catch {}

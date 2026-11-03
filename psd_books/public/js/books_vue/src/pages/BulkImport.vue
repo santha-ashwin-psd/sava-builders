@@ -514,13 +514,13 @@ const TYPES = [
 const ALL_CATEGORIES = [
   { key: "contacts",  label: "Contacts",  icon: "users" },
   { key: "sales",     label: "Sales",     icon: "fileplus" },
-  { key: "purchases", label: "Purchases", icon: "purchase" },
+  { key: "purchases", label: "Inventory", icon: "purchase" },
   { key: "assets",    label: "Assets",    icon: "box" },
 ];
 
 // Sava: Sales category and Customers import are hidden
-const HIDDEN_CATEGORIES = ["sales"];
-const HIDDEN_TYPES = ["Customer", "Expense", "Purchase Invoice"]; // Purchase Invoice = Bills
+const HIDDEN_CATEGORIES = ["sales", "assets"];
+const HIDDEN_TYPES = ["Customer", "Expense", "Purchase Invoice", "Purchase Order", "Asset"]; // Purchase Invoice = Bills
 const CATEGORIES = ALL_CATEGORIES.filter(c => !HIDDEN_CATEGORIES.includes(c.key));
 
 const CATEGORY_MAP = {
