@@ -31,11 +31,10 @@
     </div>
 
     <!-- ── KPI Cards ── -->
-    <div class="bk-kpi-grid">
+    <div class="bk-kpi-grid bk-kpi-grid-4">
       <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total POs</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="poTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ poTrends.total.up?'↑':'↓' }} {{ poTrends.total.pct }}% vs last month</div></div></div></div>
       <div class="bk-kpi-card clickable" @click="activeTab='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#e2e8f0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Draft</div><div class="bk-kpi-value">{{ counts.draft }}</div><div class="bk-kpi-trend" :class="poTrends.draft.up?'bk-trend-up':'bk-trend-down'">{{ poTrends.draft.up?'↑':'↓' }} {{ poTrends.draft.pct }}% vs last month</div></div></div></div>
       <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeTab='toReceive'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">To Receive</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.toReceive }}</div><div class="bk-kpi-trend" :class="poTrends.receive.up?'bk-trend-up':'bk-trend-down'">{{ poTrends.receive.up?'↑':'↓' }} {{ poTrends.receive.pct }}% vs last month</div></div></div></div>
-      <div class="bk-kpi-card bk-kpi-info clickable" @click="activeTab='toBill'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#cffafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">To Bill</div><div class="bk-kpi-value bk-kpi-blue">{{ counts.toBill }}</div><div class="bk-kpi-trend" :class="poTrends.bill.up?'bk-trend-up':'bk-trend-down'">{{ poTrends.bill.up?'↑':'↓' }} {{ poTrends.bill.pct }}% vs last month</div></div></div></div>
       <div class="bk-kpi-card bk-kpi-danger clickable" @click="activeTab='cancelled'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fee2e2"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Cancelled</div><div class="bk-kpi-value bk-kpi-red">{{ counts.cancelled }}</div><div class="bk-kpi-trend" :class="poTrends.cancelled.up?'bk-trend-down':'bk-trend-up'">{{ poTrends.cancelled.up?'↑':'↓' }} {{ poTrends.cancelled.pct }}% vs last month</div></div></div></div>
     </div>
     <div class="bk-stat-grid">
@@ -598,29 +597,27 @@
                 <div class="inv-sec-lbl">Line Items <span class="po-item-count">{{ viewItems.length }} item{{ viewItems.length !== 1 ? 's' : '' }}</span></div>
                 <div class="vi-line-cards">
                   <div v-for="(it, idx) in viewItems" :key="it.name" class="vi-line-card">
-                    <div class="vi-line-card-header">
-                      <span class="vi-line-num">#{{ idx + 1 }}</span>
+                    <span class="vi-line-num">#{{ idx + 1 }}</span>
+                    <div class="vi-line-title" :title="it.description || ''">
                       <span class="vi-line-name">{{ it.item_name || it.item_code }}</span>
-                      <span class="vi-line-amount">{{ fmtCur(it.amount) }}</span>
+                      <span v-if="it.description" class="vi-line-desc-inline">{{ it.description }}</span>
                     </div>
-                    <div v-if="it.description" class="vi-line-desc">{{ it.description }}</div>
-                    <div class="vi-line-meta">
-                      <div class="vi-line-meta-item">
-                        <span class="vi-meta-lbl">Qty</span>
-                        <span class="vi-meta-val">{{ it.qty }}</span>
-                      </div>
-                      <div class="vi-line-meta-item">
-                        <span class="vi-meta-lbl">Rate</span>
-                        <span class="vi-meta-val">{{ fmtCur(it.rate) }}</span>
-                      </div>
-                      <div class="vi-line-meta-item vi-line-tax" v-if="it.tax_code">
-                        <span class="vi-tax-badge">TAX</span>
-                        <span class="vi-meta-val" style="color:#4f46e5">{{ it.tax_code }}</span>
-                      </div>
-                      <div class="vi-line-meta-item vi-line-tax" v-else>
-                        <span class="vi-notax-badge">NO TAX</span>
-                      </div>
+                    <div class="vi-line-meta-item vi-line-qty">
+                      <span class="vi-meta-lbl">Qty</span>
+                      <span class="vi-meta-val">{{ it.qty }}</span>
                     </div>
+                    <div class="vi-line-meta-item vi-line-rate">
+                      <span class="vi-meta-lbl">Rate</span>
+                      <span class="vi-meta-val">{{ fmtCur(it.rate) }}</span>
+                    </div>
+                    <div class="vi-line-meta-item vi-line-tax" v-if="it.tax_code">
+                      <span class="vi-tax-badge">TAX</span>
+                      <span class="vi-meta-val" style="color:#4f46e5">{{ it.tax_code }}</span>
+                    </div>
+                    <div class="vi-line-meta-item vi-line-tax" v-else>
+                      <span class="vi-notax-badge">NO TAX</span>
+                    </div>
+                    <span class="vi-line-amount">{{ fmtCur(it.amount) }}</span>
                   </div>
                 </div>
               </template>
@@ -719,14 +716,13 @@
                 <div class="po-fulfill-tbl po-fulfill-desktop">
                   <div class="po-fulfill-head">
                     <span>Item</span><span class="ta-r">Ordered</span><span class="ta-r">Received</span>
-                    <span class="ta-r">Billed</span><span class="ta-r">Remaining</span>
+                    <span class="ta-r">Remaining</span>
                   </div>
                   <div v-for="l in fulfill.lines" :key="l.name" class="po-fulfill-row">
                     <span>{{ l.item_name || l.item_code }}</span>
                     <span class="ta-r mono-sm">{{ l.qty }}</span>
                     <span class="ta-r mono-sm" :class="l.received_qty>=l.qty?'text-success':'text-muted'">{{ l.received_qty }}</span>
-                    <span class="ta-r mono-sm" :class="l.billed_qty>=l.qty?'text-success':'text-muted'">{{ l.billed_qty }}</span>
-                    <span class="ta-r mono-sm text-danger">{{ l.remaining_to_receive }} / {{ l.remaining_to_bill }}</span>
+                    <span class="ta-r mono-sm text-danger">{{ l.remaining_to_receive }}</span>
                   </div>
                 </div>
 
@@ -744,12 +740,8 @@
                         <span class="po-fulfill-card-val" :class="l.received_qty>=l.qty?'text-success':'text-muted'">{{ l.received_qty }}</span>
                       </div>
                       <div class="po-fulfill-card-cell">
-                        <span class="po-fulfill-card-lbl">Billed</span>
-                        <span class="po-fulfill-card-val" :class="l.billed_qty>=l.qty?'text-success':'text-muted'">{{ l.billed_qty }}</span>
-                      </div>
-                      <div class="po-fulfill-card-cell">
                         <span class="po-fulfill-card-lbl">Remaining</span>
-                        <span class="po-fulfill-card-val text-danger">{{ l.remaining_to_receive }} / {{ l.remaining_to_bill }}</span>
+                        <span class="po-fulfill-card-val text-danger">{{ l.remaining_to_receive }}</span>
                       </div>
                     </div>
                   </div>
@@ -2391,8 +2383,8 @@ watch(() => form.supplier, (val) => {
 
 /* ── Fulfillment table ── */
 .po-fulfill-tbl { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
-.po-fulfill-head { display: grid; grid-template-columns: 2fr 80px 100px 90px 110px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-.po-fulfill-row { display: grid; grid-template-columns: 2fr 80px 100px 90px 110px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
+.po-fulfill-head { display: grid; grid-template-columns: 2fr 80px 100px 110px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
+.po-fulfill-row { display: grid; grid-template-columns: 2fr 80px 100px 110px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
 
 /* ── Misc view helpers ── */
 .po-terms { padding: 10px 12px; background: #f8fafc; border-radius: 6px; overflow: hidden; word-break: break-word; overflow-wrap: anywhere; }
@@ -2489,11 +2481,16 @@ watch(() => form.supplier, (val) => {
 
 /* ── View drawer line item cards ── */
 .vi-line-cards { display:flex; flex-direction:column; gap:10px; }
-.vi-line-card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; }
+.vi-line-card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; display:flex; align-items:center; gap:16px; padding:10px 16px; }
+.vi-line-title { flex:1; min-width:0; display:flex; align-items:baseline; gap:8px; overflow:hidden; white-space:nowrap; }
+.vi-line-title .vi-line-name { flex:0 1 auto; }
+.vi-line-desc-inline { font-size:12px; color:#6b7280; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.vi-line-qty, .vi-line-rate { flex-shrink:0; }
+.vi-line-tax { margin-left:0; flex-shrink:0; }
 .vi-line-card-header { display:flex; align-items:center; gap:10px; padding:11px 16px; background:linear-gradient(135deg,#f0f4ff 0%,#f8fafc 100%); border-bottom:1px solid #e8edf5; }
 .vi-line-num { font-size:10.5px; font-weight:800; color:#4f46e5; background:#e0e7ff; border-radius:5px; padding:2px 7px; letter-spacing:.02em; flex-shrink:0; }
 .vi-line-name { font-size:14px; font-weight:700; color:#1e293b; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.vi-line-amount { font-size:16px; font-weight:800; color:#111827; font-variant-numeric:tabular-nums; flex-shrink:0; }
+.vi-line-amount { text-align:right; min-width:100px; font-size:16px; font-weight:800; color:#111827; font-variant-numeric:tabular-nums; flex-shrink:0; }
 .vi-line-desc { padding:8px 16px; font-size:12px; color:#6b7280; line-height:1.55; border-bottom:1px solid #f0f2f5; background:#fafbfc; word-break:break-word; overflow-wrap:anywhere; }
 .vi-line-meta { display:flex; align-items:center; gap:12px; padding:10px 16px; flex-wrap:wrap; }
 .vi-line-meta-item { display:flex; flex-direction:column; gap:2px; }
@@ -2521,7 +2518,7 @@ watch(() => form.supplier, (val) => {
   .po-view-items-row { grid-template-columns: 2fr 70px 80px 90px; }
 
   .po-fulfill-head,
-  .po-fulfill-row { grid-template-columns: 2fr 70px 90px 80px 90px; }
+  .po-fulfill-row { grid-template-columns: 2fr 70px 90px 90px; }
 }
 
 /* ── Tablet (≤ 768px) ── */
@@ -2625,7 +2622,9 @@ watch(() => form.supplier, (val) => {
   .po-type-btn    { flex: 1; justify-content: center; }
 
   /* View item card meta */
-  .vi-line-meta { gap: 8px; }
+  .vi-line-card { flex-wrap: wrap; gap: 8px 12px; }
+  .vi-line-num { order: -2; }
+  .vi-line-title { flex-basis: calc(100% - 40px); order: -1; }
   .vi-meta-val  { font-size: 12px; }
 
   /* Totals panel */
