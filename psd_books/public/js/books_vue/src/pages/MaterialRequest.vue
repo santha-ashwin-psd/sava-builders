@@ -15,7 +15,6 @@
           <option value="">All Types</option>
           <option value="Purchase">Purchase</option>
           <option value="Asset">Asset</option>
-<option value="Material Transfer">Material Transfer</option>
         </select>
         <button class="mrl-btn" @click="reloadList" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
         <button class="mrl-btn" @click="exportCSV" :disabled="!sorted.length"><span v-html="icon('download',14)"></span> CSV</button>
