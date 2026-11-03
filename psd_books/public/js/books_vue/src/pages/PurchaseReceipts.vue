@@ -421,7 +421,7 @@
               <div class="pr-lines-wrap">
                 <div class="pr-lines-tbl">
                   <div class="pr-lines-row pr-lines-head">
-                    <span>#</span><span>Item</span><span>Qty</span><span>Accepted Qty</span><span>UOM</span><span></span>
+                    <span>#</span><span>Item</span><span>Qty</span><span>Accepted Qty</span><span>UOM</span><span>PO Rate</span><span></span>
                   </div>
                   <template v-for="(it,i) in form.items" :key="i">
                     <div class="pr-lines-row">
@@ -432,6 +432,7 @@
                       <select class="inv-fi" v-model="it.uom">
                         <option v-for="u in uomOptionsFor(it)" :key="u" :value="u">{{ u }}</option>
                       </select>
+                      <span class="pr-lines-rate">{{ it.po_rate != null ? fmtRate(it.po_rate) : '—' }}</span>
                       <button @click.stop="askRemoveLine(i)" class="po-item-card-rm" title="Remove line"><span v-html="icon('x',16)"></span></button>
                     </div>
                     <div v-if="it.po_qty || it.qc_locked" class="pr-lines-sub">
@@ -894,6 +895,13 @@ async function openEdit(r) {
       collapsedUI:        false,
     }));
     form.items.forEach(l => { if (l.has_batch_no) fetchBatches(l, ""); });
+    if (doc.purchase_order) {
+      try {
+        const fres = await apiGET("psd_books.api.docs.get_purchase_order_fulfillment", { purchase_order: doc.purchase_order });
+        const rateMap = Object.fromEntries((fres?.lines || []).map(x => [x.name, flt(x.rate)]));
+        form.items.forEach(l => { if (l.po_item && rateMap[l.po_item] != null) l.po_rate = rateMap[l.po_item]; });
+      } catch {}
+    }
     if (!form.items.length) addItem();
   } catch (e) {
     toast.error(e.message || "Failed to load GRN for editing");
@@ -1009,6 +1017,8 @@ async function fillHeaderFromPO(poName) {
   } catch {}
 }
 
+function fmtRate(v) { return Number(v || 0).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
 // ── PO select: pull remaining-to-receive lines from the Purchase Order ───────
 async function onPOSelect(opt) {
   const poName = opt?.value ?? opt;
@@ -1033,7 +1043,7 @@ async function onPOSelect(opt) {
         qty:          flt(it.remaining_to_receive) || flt(it.qty) || 1,
         accepted_qty: flt(it.remaining_to_receive) || flt(it.qty) || 1,
         uom:          it.uom || "Nos",
-        po_qty: flt(it.qty), po_received: flt(it.received_qty), po_pending: flt(it.remaining_to_receive),
+        po_qty: flt(it.qty), po_received: flt(it.received_qty), po_pending: flt(it.remaining_to_receive), po_rate: flt(it.rate),
         has_batch_no: 0, batch_no: "", manufacturing_date: "", expiry_date: "", batchOptions: [], collapsedUI: false,
       }));
       // Resolve has_batch_no per item so the Batch No field shows up for
@@ -1322,11 +1332,12 @@ onMounted(async () => {
 /* GRN form drawer: wider, single-line item rows */
 .inv-drawer-panel.pr-form-drawer { width: 1040px; max-width: 96vw; }
 .pr-lines-wrap { overflow-x: auto; }
-.pr-lines-tbl { min-width: 640px; display: flex; flex-direction: column; border: 1px solid #dde3f0; border-radius: 10px; background: #fff; }
-.pr-lines-row { display: grid; grid-template-columns: 28px minmax(220px, 1fr) 100px 120px 110px 32px; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #eef0f6; }
+.pr-lines-tbl { min-width: 780px; display: flex; flex-direction: column; border: 1px solid #dde3f0; border-radius: 10px; background: #fff; }
+.pr-lines-row { display: grid; grid-template-columns: 28px minmax(220px, 1fr) 100px 120px 110px 110px 32px; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #eef0f6; }
 .pr-lines-head { background: #eef2ff; border-radius: 10px 10px 0 0; font-size: 10.5px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: .06em; }
 .pr-lines-idx { font-size: 12px; font-weight: 700; color: #4f46e5; text-align: center; }
 .pr-lines-row .inv-fi { font-size: 13px; width: 100%; }
+.pr-lines-rate { font-size: 13px; font-weight: 600; color: #374151; text-align: right; font-variant-numeric: tabular-nums; }
 .pr-lines-sub { padding: 0 12px 8px 48px; border-bottom: 1px solid #eef0f6; }
 .pr-lines-batch { display: grid; grid-template-columns: minmax(220px, 1fr) 150px 150px; gap: 8px; }
 

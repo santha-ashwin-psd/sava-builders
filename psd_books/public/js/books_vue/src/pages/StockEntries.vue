@@ -331,7 +331,7 @@
             <div class="ta-r" style="font-weight:700;color:#0f172a">{{ fmtCur(lineTotal) }}</div>
             <div></div>
           </div>
-          <button v-if="!form.material_request && !mrnDone" class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+          <button v-if="!form.material_request && !mrnDone && canAddItem" class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
         </div>
 
         <!-- Mobile cards -->
@@ -397,7 +397,7 @@
           <div v-if="lines.length && !noRate" class="se-aic-total">
             <span>Total</span><strong>{{ fmtCur(lineTotal) }}</strong>
           </div>
-          <button v-if="!form.material_request && !mrnDone" class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+          <button v-if="!form.material_request && !mrnDone && canAddItem" class="se-add-line" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
         </div>
         <div class="se-field">
           <label class="se-label">Remarks</label>
@@ -1037,6 +1037,27 @@ async function fetchWarehouses(q = "") {
     warehouses.value = r.map(x => ({ label: x.name, value: x.name }));
   } catch { warehouses.value = []; }
 }
+// Add Item rules: hidden for Item Transfer (Material Issue); for Asset Transfer (Material Transfer)
+// shown only when From Warehouse role = Site Store and To Warehouse role = Project Main Store / Central Store.
+const whRoles = ref({});
+async function loadWhRole(name) {
+  if (!name || name in whRoles.value) return;
+  try {
+    const r = await apiList("Warehouse", { fields: ["name", "store_role"], filters: [["name", "=", name]], limit: 1 });
+    whRoles.value = { ...whRoles.value, [name]: r?.[0]?.store_role || "" };
+  } catch {}
+}
+watch(() => form.from_warehouse, loadWhRole, { immediate: true });
+watch(() => form.to_warehouse, loadWhRole, { immediate: true });
+const canAddItem = computed(() => {
+  const t = form.stock_entry_type;
+  if (t === "Material Issue") return false;
+  if (t === "Material Transfer") {
+    return whRoles.value[form.from_warehouse] === "Site Store" &&
+      ["Project Main Store", "Central Store"].includes(whRoles.value[form.to_warehouse]);
+  }
+  return true;
+});
 async function fetchSalesPersons(q = "") {
   try {
     const r = await apiList("Sales Person", {
