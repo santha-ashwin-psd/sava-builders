@@ -48,6 +48,9 @@ class Supplier(Document):
 
     def _kra_pin_required(self):
         f = frappe.flags
+        # Unregistered vendors do not need a KRA PIN (blank status on old records = Registered, as before)
+        if (self.get("registration_status") or "Registered") == "Unregistered":
+            return False
         if self.is_new():
             return not (self.flags.get("skip_kra_pin") or f.get("in_install") or f.get("in_patch")
                         or f.get("in_migrate") or f.get("in_test"))

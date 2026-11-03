@@ -793,6 +793,20 @@
             </div>
           </div>
 
+          <div style="margin-bottom:20px">
+            <label class="inv-lbl" style="margin-bottom:8px;display:block">Registration Status</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <button v-for="opt in ['Registered','Unregistered']" :key="opt" type="button"
+                @click="form.registration_status=opt; delete formErrors.tax_id"
+                :style="'padding:6px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;border:1.5px solid '+(form.registration_status===opt?'#E67700':'#e2e8f0')+';background:'+(form.registration_status===opt?'#fff7ed':'#fff')+';color:'+(form.registration_status===opt?'#C96200':'#6b7280')">
+                {{ opt }}
+              </button>
+            </div>
+            <div style="margin-top:8px;font-size:12px;color:#6b7280">
+              {{ form.registration_status==='Registered' ? 'Registered: KRA PIN is mandatory.' : 'Unregistered: KRA PIN is optional.' }}
+            </div>
+          </div>
+
           <div style="margin-bottom:20px" v-if="form.supplier_type==='Dealer' || form.supplier_type==='Distributor'">
             <label class="inv-lbl" style="margin-bottom:8px;display:block">
               {{ form.supplier_type }} Group
@@ -823,7 +837,7 @@
               </div>
             </div>
             <div class="inv-field">
-              <label class="inv-lbl">KRA PIN <span v-if="drawerMode==='add'" style="color:#dc2626">*</span></label>
+              <label class="inv-lbl">KRA PIN <span v-if="drawerMode==='add' && form.registration_status==='Registered'" style="color:#dc2626">*</span></label>
               <input v-model="form.tax_id" class="inv-fi"
                 :style="formErrors.tax_id?'border-color:#dc2626;background:#fff5f5':form.tax_id&&!formErrors.tax_id&&KRA_PIN_REGEX.test(form.tax_id)?'border-color:#2f9e44':''"
                 placeholder="A123456789Z" maxlength="11"
@@ -1243,7 +1257,7 @@ const form = reactive({
   name: "",
   supplier_name: "", supplier_type: "Company",
   supplier_group: "",
-  tax_id: "", default_currency: "KES", payment_terms: "",
+  tax_id: "", registration_status: "Registered", default_currency: "KES", payment_terms: "",
   email_id: "", mobile_code: "+254", mobile_no: "", phone: "", website: "",
   address_line1: "", address_line2: "",
   city: "", state: "", pincode: "", country: "Kenya",
@@ -1337,7 +1351,7 @@ function resetForm() {
     name: "", supplier_name: "", supplier_type: "Company",
     owner: "", creation: "", modified: "", modified_by: "",
     supplier_group: "",
-    tax_id: "", default_currency: "KES", payment_terms: "",
+    tax_id: "", registration_status: "Registered", default_currency: "KES", payment_terms: "",
     email_id: "", mobile_code: "+254", mobile_no: "", phone: "", website: "",
     address_line1: "", address_line2: "",
     city: "", state: "", pincode: "", country: "Kenya",
@@ -1393,6 +1407,7 @@ async function openEdit(name) {
       supplier_type: doc.supplier_type || "Company",
       supplier_group: doc.supplier_group || "",
       tax_id: doc.tax_id || "",
+      registration_status: doc.registration_status || (doc.tax_id ? "Registered" : "Unregistered"),
       default_currency: doc.default_currency || "KES",
       payment_terms: doc.payment_terms || "",
       email_id: doc.email_id || "",
@@ -1449,7 +1464,7 @@ function validateField(field) {
   if (field === "website" && s && !URL_REGEX.test(s))
     formErrors.website = "Website must start with http:// or https://";
   if (field === "tax_id") {
-    if (!s) { if (drawerMode.value === "add") formErrors.tax_id = "KRA PIN is required"; }
+    if (!s) { if (drawerMode.value === "add" && form.registration_status === "Registered") formErrors.tax_id = "KRA PIN is required for a Registered vendor"; }
     else if (!KRA_PIN_REGEX.test(s)) formErrors.tax_id = "Invalid KRA PIN (e.g. A123456789Z)";
   }
   if (field === "pincode" && s) {
@@ -1471,7 +1486,7 @@ function validateVendorForm() {
   }
   if (form.phone) { const err = validatePhone(form.phone); if (err) formErrors.phone = err; }
   if (form.website && !URL_REGEX.test(form.website.trim())) formErrors.website = "Website must start with http:// or https://";
-  if (!form.tax_id.trim()) { if (drawerMode.value === "add") formErrors.tax_id = "KRA PIN is required"; }
+  if (!form.tax_id.trim()) { if (drawerMode.value === "add" && form.registration_status === "Registered") formErrors.tax_id = "KRA PIN is required for a Registered vendor"; }
   else if (!KRA_PIN_REGEX.test(form.tax_id.trim())) formErrors.tax_id = "Invalid KRA PIN (e.g. A123456789Z)";
   if (form.pincode) { const err = validatePincode(form.pincode, form.country); if (err) formErrors.pincode = err; }
   if (form.opening_balance < 0) formErrors.opening_balance = "Opening balance cannot be negative";
@@ -1496,6 +1511,7 @@ async function saveVendor() {
       supplier_type: form.supplier_type,
       supplier_group: form.supplier_group,
       tax_id: form.tax_id.trim(),
+      registration_status: form.registration_status,
       default_currency: form.default_currency,
       payment_terms: form.payment_terms,
       email_id: form.email_id.trim(),
