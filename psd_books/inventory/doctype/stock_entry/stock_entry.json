@@ -22,6 +22,8 @@
   "employee_name",
   "driver_name",
   "vehicle_no",
+  "vendor_driver_name",
+  "vendor_truck_no",
   "sec_warehouses",
   "from_warehouse",
   "col2",
@@ -127,6 +129,16 @@
    "fieldname": "vehicle_no",
    "fieldtype": "Data",
    "label": "Vehicle No."
+  },
+  {
+   "fieldname": "vendor_driver_name",
+   "fieldtype": "Data",
+   "label": "Vendor's Driver"
+  },
+  {
+   "fieldname": "vendor_truck_no",
+   "fieldtype": "Data",
+   "label": "Vendor's Truck No."
   },
   {
    "fieldname": "sec_warehouses",
@@ -295,7 +307,7 @@
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2026-10-30 00:00:00.000000",
+ "modified": "2026-11-03 12:00:00.000000",
  "modified_by": "santhaashwin24@gmail.com",
  "module": "Inventory",
  "name": "Stock Entry",

@@ -1927,6 +1927,55 @@ def get_open_mrns_for_po(material_request_type="Purchase", project=None, company
     return out
 
 
+def _items_text(rows):
+    """rows: [(item_code, item_name, qty)] -> "Cement × 3, Binding Wire × 1" (qty > 0 only)."""
+    return ", ".join("{0} × {1:g}".format(n or c, flt(q)) for c, n, q in rows if flt(q) > 0.0005)
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def get_mrn_pending_items_text(names):
+    """{MRN: "Item × pending qty, ..."} for the MRN dropdown on Delivery Notes.
+    pending = required - (submitted Material Issue/Transfer entries + issued_qty), same as get_mrn_items."""
+    from psd_books.utils.access import assert_can
+    assert_can("Material Request", "read")
+    names = frappe.parse_json(names) if isinstance(names, str) else (names or [])
+    names = [n for n in names if n][:200]
+    if not names:
+        return {}
+    lines = frappe.get_all("Material Request Item",
+        filters={"parent": ["in", names], "parenttype": "Material Request"},
+        fields=["parent", "item_code", "item_name", "required_qty", "issued_qty"], order_by="idx asc")
+    moved = {}
+    for r in frappe.db.sql("""SELECT s.material_request, d.item_code, SUM(d.qty)
+        FROM `tabStock Entry Detail` d JOIN `tabStock Entry` s ON s.name = d.parent
+        WHERE s.docstatus = 1 AND s.material_request IN %(n)s
+        AND s.stock_entry_type IN ('Material Issue', 'Material Transfer')
+        GROUP BY s.material_request, d.item_code""", {"n": tuple(names)}):
+        moved[(r[0], r[1])] = flt(r[2])
+    per = {n: [] for n in names}
+    for l in lines:
+        pending = flt(l.required_qty) - moved.get((l.parent, l.item_code), 0) - flt(l.issued_qty)
+        per[l.parent].append((l.item_code, l.item_name, pending))
+    return {n: _items_text(v) for n, v in per.items()}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def get_po_receivable_items_text(names):
+    """{PO: "Item × qty still to receive, ..."} for the Purchase Order dropdown on GRN."""
+    from psd_books.utils.access import assert_can
+    assert_can("Purchase Order", "read")
+    names = frappe.parse_json(names) if isinstance(names, str) else (names or [])
+    names = [n for n in names if n][:200]
+    if not names:
+        return {}
+    lines = frappe.get_all("Purchase Order Item", filters={"parent": ["in", names]},
+        fields=["parent", "item_code", "item_name", "qty", "received_qty"], order_by="idx asc")
+    per = {n: [] for n in names}
+    for l in lines:
+        per[l.parent].append((l.item_code, l.item_name, flt(l.qty) - flt(l.received_qty)))
+    return {n: _items_text(v) for n, v in per.items()}
+
+
 @frappe.whitelist(allow_guest=False)
 def get_warehouse_projects():
     """Sava A13: {warehouse name: [project, ...]} from the Warehouse Project rows, in order."""

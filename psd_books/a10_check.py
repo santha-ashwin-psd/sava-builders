@@ -239,10 +239,6 @@ def scenario_c():
 		expect_block("setting status %s by editing a Draft" % target, lambda: as_user(RAISER, set_status), "sending")
 		reload()
 
-	# a PO with no value can't be sent
-	empty = make_po(0)
-	expect_block("sending a PO with no value", lambda: as_user(RAISER, lambda: api().send_for_approval(empty)), "no value")
-
 
 def scenario_d():
 	print("\n--- D: LPO from an approved comparison still goes through PO approval ---")

@@ -13,15 +13,11 @@
       </div>
       <div class="se-kpi" @click="activeTab='Material Issue'" :class="{active:activeTab==='Material Issue'}">
         <div class="se-kpi-ico" style="background:#fff7ed;color:#ea580c"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
-        <div><div class="se-kpi-lbl">Issues (Out)</div><div class="se-kpi-val" style="color:#ea580c">{{ kpi.issues }}</div></div>
+        <div><div class="se-kpi-lbl">Item Transfer</div><div class="se-kpi-val" style="color:#ea580c">{{ kpi.issues }}</div></div>
       </div>
       <div class="se-kpi" @click="activeTab='Material Transfer'" :class="{active:activeTab==='Material Transfer'}">
         <div class="se-kpi-ico" style="background:#f0f9ff;color:#0284c7"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M15 7l5 5-5 5"/></svg></div>
-        <div><div class="se-kpi-lbl">Transfers</div><div class="se-kpi-val" style="color:#0284c7">{{ kpi.transfers }}</div></div>
-      </div>
-      <div class="se-kpi se-kpi-value">
-        <div class="se-kpi-ico" style="background:#faf5ff;color:#7c3aed"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z"/><path d="M12 6v6l4 2"/></svg></div>
-        <div><div class="se-kpi-lbl">Net Value In</div><div class="se-kpi-val" style="color:#7c3aed;font-size:13px">{{ fmtCur(kpi.valueIn) }}</div></div>
+        <div><div class="se-kpi-lbl">Asset Transfer</div><div class="se-kpi-val" style="color:#0284c7">{{ kpi.transfers }}</div></div>
       </div>
     </div>
 
@@ -74,14 +70,12 @@
           <th @click="sort('posting_date')" class="sortable">Transfer Date <span v-html="sortArrow('posting_date')"></span></th>
           <th>Source</th>
           <th>Warehouse Flow</th>
-          <th class="ta-r">Items</th>
-          <th @click="sort('value_difference')" class="sortable ta-r">Value <span v-html="sortArrow('value_difference')"></span></th>
           <th>Status</th>
           <th style="width:44px"></th>
         </tr></thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 8" :key="n"><td colspan="9"><div class="se-shimmer"></div></td></tr>
+            <tr v-for="n in 8" :key="n"><td colspan="7"><div class="se-shimmer"></div></td></tr>
           </template>
           <template v-else>
             <tr v-for="e in paginated" :key="e.name" class="se-row" @click="openView(e)">
@@ -107,12 +101,6 @@
                   Issued to: {{ salesPersonLabel(e.sales_person) }}
                 </div>
               </td>
-              <td class="ta-r"><span class="se-item-cnt">{{ e._itemCount||'—' }}</span></td>
-              <td class="ta-r">
-                <span :style="'font-size:12.5px;font-weight:600;color:'+(flt(e.value_difference)>=0?'#16a34a':'#dc2626')">
-                  {{ flt(e.value_difference)>=0?'+':'' }}{{ fmtCur(e.value_difference) }}
-                </span>
-              </td>
               <td><span class="se-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span></td>
               <td @click.stop style="display:flex;gap:4px">
                 <button class="se-act-btn" @click="openView(e)" title="View"><span v-html="icon('eye',13)"></span></button>
@@ -123,7 +111,7 @@
               </td>
             </tr>
             <tr v-if="!sorted.length">
-              <td colspan="9" class="se-empty">
+              <td colspan="7" class="se-empty">
                 <div style="font-size:32px;margin-bottom:8px">📦</div>
                 <div style="font-weight:600;margin-bottom:4px">No stock entries found</div>
                 <div style="font-size:13px;color:#9ca3af;margin-bottom:12px">Try changing the filter or date range</div>
@@ -164,9 +152,6 @@
             </div>
             <div class="se-mc-meta">
               <span>{{ fmtDate(e.posting_date) }}</span>
-              <span :style="'font-weight:700;color:'+(flt(e.value_difference)>=0?'#16a34a':'#dc2626')">
-                {{ flt(e.value_difference)>=0?'+':'' }}{{ fmtCur(e.value_difference) }}
-              </span>
             </div>
             <div v-if="e.sales_person" style="font-size:11px;color:#9a3412;margin-top:4px">
               Issued to: {{ salesPersonLabel(e.sales_person) }}
@@ -251,6 +236,14 @@
           <div class="se-field">
             <label class="se-label">Truck No.</label>
             <SearchableSelect v-model="form.vehicle_no" :options="truckOpts" placeholder="Select truck…" @select="onTruckPick" />
+          </div>
+          <div class="se-field">
+            <label class="se-label">Vendor's Driver</label>
+            <input v-model="form.vendor_driver_name" class="se-input" type="text" maxlength="140" placeholder="Vendor's driver name (if the vendor delivers)" />
+          </div>
+          <div class="se-field">
+            <label class="se-label">Vendor's Truck No.</label>
+            <input v-model="form.vendor_truck_no" class="se-input" type="text" maxlength="140" placeholder="Vendor's truck number" />
           </div>
         </div>
 
@@ -499,8 +492,6 @@
                   <th v-if="!isPurchaseSrc(viewDoc)">From WH</th>
                   <th>To WH</th>
                   <th class="ta-r">Qty</th>
-                  <th class="ta-r">Rate</th>
-                  <th class="ta-r">Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -512,8 +503,6 @@
                   <td v-if="!isPurchaseSrc(viewDoc)" class="text-muted" style="font-size:12px">{{ it.s_warehouse||viewDoc.from_warehouse||'—' }}</td>
                   <td class="text-muted" style="font-size:12px">{{ it.t_warehouse||viewDoc.to_warehouse||'—' }}</td>
                   <td class="ta-r">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></td>
-                  <td class="ta-r">{{ fmtCur(it.basic_rate) }}</td>
-                  <td class="ta-r" style="font-weight:600">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -525,16 +514,11 @@
                   <div>
                     <div class="se-vic-name">{{ it.item_name || it.item_code }}</div>
                   </div>
-                  <div class="se-vic-amount">{{ fmtCur(flt(it.qty)*flt(it.basic_rate)) }}</div>
                 </div>
                 <div class="se-vic-grid">
                   <div class="se-vic-cell">
                     <span class="se-vic-lbl">Qty</span>
                     <span class="se-vic-val">{{ it.qty }} <span style="color:#9ca3af;font-size:10px">{{ it.uom||'' }}</span></span>
-                  </div>
-                  <div class="se-vic-cell">
-                    <span class="se-vic-lbl">Rate</span>
-                    <span class="se-vic-val">{{ fmtCur(it.basic_rate) }}</span>
                   </div>
                   <div class="se-vic-cell" v-if="isPurchaseSrc(viewDoc)">
                     <span class="se-vic-lbl">From</span>
@@ -548,27 +532,6 @@
                     <span class="se-vic-lbl">To WH</span>
                     <span class="se-vic-val">{{ it.t_warehouse||viewDoc.to_warehouse||'—' }}</span>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Value summary -->
-          <div class="se-view-section">
-            <div class="se-view-sec-lbl">Value Summary</div>
-            <div class="se-val-strip">
-              <div class="se-val-box se-val-in">
-                <div class="se-val-lbl">Incoming Value</div>
-                <div class="se-val-num">{{ fmtCur(viewDoc.total_incoming_value||0) }}</div>
-              </div>
-              <div class="se-val-box se-val-out">
-                <div class="se-val-lbl">Outgoing Value</div>
-                <div class="se-val-num">{{ fmtCur(viewDoc.total_outgoing_value||0) }}</div>
-              </div>
-              <div class="se-val-box se-val-diff">
-                <div class="se-val-lbl">Net Difference</div>
-                <div class="se-val-num" :style="'color:'+(flt(viewDoc.value_difference)>=0?'#16a34a':'#dc2626')">
-                  {{ flt(viewDoc.value_difference)>=0?'+':'' }}{{ fmtCur(viewDoc.value_difference||0) }}
                 </div>
               </div>
             </div>
@@ -621,7 +584,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
-import { apiList, apiGet, apiGET, apiSave, apiSubmit, apiCancel, apiDelete, resolveCompany, apiLinkValues } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiCancel, apiDelete, resolveCompany, apiLinkValues } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
@@ -673,7 +636,7 @@ const form = reactive({
   entry_date: new Date().toISOString().slice(0, 10),
   posting_date: new Date().toISOString().slice(0, 10),
   from_warehouse: "", to_warehouse: "",
-  adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", employee: "", employee_name: "", driver_name: "", vehicle_no: "",
+  adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", employee: "", employee_name: "", driver_name: "", vehicle_no: "", vendor_driver_name: "", vendor_truck_no: "",
 });
 
 const TYPE_META = {
@@ -712,12 +675,12 @@ function batchPlaceholder(line) {
 // Warehouse fields shown per entry type: a Receipt has no source, an Issue has
 // no destination; a Transfer/Manufacture uses both.
 const showFromWh     = computed(() => form.stock_entry_type !== "Material Receipt");
-// Material Issue shows an optional Receiving Warehouse: when set, the entry is saved as a Material Transfer
+// Material Issue (Item Transfer) needs a Receiving Warehouse: the entry is saved as a Material Transfer
 const showToWh       = computed(() => true);
 // Item / Asset Transfer only moves stock: no rate is entered (the server values it from the source warehouse).
 const noRate = computed(() => form.stock_entry_type === "Material Issue" || form.stock_entry_type === "Material Transfer");
 const fromWhRequired = computed(() => ["Material Issue", "Material Transfer", "Manufacture"].includes(form.stock_entry_type));
-const toWhRequired   = computed(() => ["Material Receipt", "Material Transfer", "Manufacture"].includes(form.stock_entry_type));
+const toWhRequired   = computed(() => ["Material Receipt", "Material Issue", "Material Transfer", "Manufacture"].includes(form.stock_entry_type));
 
 const tabs = computed(() => [
   { key: "all",               label: "All",       color: "#6b7280", cnt: list.value.length },
@@ -841,7 +804,7 @@ async function load() {
       fields: ["name", "stock_entry_type", "entry_date", "posting_date", "from_warehouse", "to_warehouse",
                "value_difference", "total_incoming_value", "total_outgoing_value",
                "docstatus", "remarks", "reference_doctype", "reference_name", "work_order",
-               "adjustment_reason", "sales_person", "material_request", "employee", "employee_name", "driver_name", "vehicle_no", "company", "owner", "creation"],
+               "adjustment_reason", "sales_person", "material_request", "employee", "employee_name", "driver_name", "vehicle_no", "vendor_driver_name", "vendor_truck_no", "company", "owner", "creation"],
       filters: [["company", "=", co]],
       limit: 100000, order: "posting_date desc, creation desc",
     });
@@ -859,8 +822,12 @@ const { printDoc } = useLivePreview();
 function printEntry(d) {
   const to = d.sales_person ? salesPersonLabel(d.sales_person) : (d.to_warehouse || "");
   const addr = [d.project ? "Project: " + d.project : "", d.from_warehouse ? "From: " + d.from_warehouse : ""].filter(Boolean).join("\n");
+  // When the vendor's own driver delivers, the sheet shows only the vendor's driver details (not ours)
+  const vDriver = (d.vendor_driver_name || "").trim(), vTruck = (d.vendor_truck_no || "").trim();
+  const byVendor = !!(vDriver || vTruck);
   printDoc({
     ...d,
+    ...(byVendor ? { driver_name: vDriver, vehicle_no: vTruck, truck_no: "", driver_id: "" } : {}),
     customer_name: to,
     shipping_address: addr,
     prepared_by_name: ownerName(d.owner),
@@ -995,7 +962,10 @@ async function fetchMrns(q = "", keep = "") {
     if (form.project) f.push(["project", "=", form.project]);
     if (q) f.push(["name", "like", "%" + q + "%"]);
     const r = await apiList("Material Request", { fields: ["name", "project", "posting_date"], filters: f, limit: 50, order: "creation desc" });
-    const opts = (r || []).map(x => ({ label: x.project ? `${x.name} — ${x.project}` : x.name, value: x.name }));
+    // Items still pending on each MRN, shown under it in the dropdown (as on the Purchase Order screen)
+    let itemsBy = {};
+    try { itemsBy = await apiPOST("psd_books.api.inventory.get_mrn_pending_items_text", { names: JSON.stringify((r || []).map(x => x.name)) }) || {}; } catch {}
+    const opts = (r || []).map(x => ({ label: x.project ? `${x.name} — ${x.project}` : x.name, value: x.name, sub: itemsBy[x.name] || "" }));
     if (keep && !opts.some(o => o.value === keep)) opts.unshift({ label: keep, value: keep });
     mrnOptions.value = opts;
   } catch { mrnOptions.value = keep ? [{ label: keep, value: keep }] : []; }
@@ -1205,7 +1175,7 @@ function openNew() {
     stock_entry_type: "Material Issue",
     entry_date: new Date().toISOString().slice(0, 10),
     posting_date: new Date().toISOString().slice(0, 10),
-    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", employee: "", employee_name: "", driver_name: "", vehicle_no: "",
+    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", employee: "", employee_name: "", driver_name: "", vehicle_no: "", vendor_driver_name: "", vendor_truck_no: "",
   });
   lines.value = [blankLine()];
   fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects(""); fetchMrns(""); fetchEmployees(); fetchDrivers();
@@ -1224,7 +1194,7 @@ async function openEdit(e, { force = false } = {}) {
     from_warehouse: e.from_warehouse || "", to_warehouse: e.to_warehouse || "",
     adjustment_reason: e.adjustment_reason || "", sales_person: e.sales_person || "", remarks: e.remarks || "",
     project: e.project || "",
-    material_request: e.material_request || "", employee: e.employee || "", employee_name: e.employee_name || "", driver_name: e.driver_name || "", vehicle_no: e.vehicle_no || "",
+    material_request: e.material_request || "", employee: e.employee || "", employee_name: e.employee_name || "", driver_name: e.driver_name || "", vehicle_no: e.vehicle_no || "", vendor_driver_name: e.vendor_driver_name || "", vendor_truck_no: e.vendor_truck_no || "",
   });
   fetchMrns("", form.material_request); fetchEmployees(); fetchDrivers();
   lines.value = [blankLine()];
@@ -1382,7 +1352,7 @@ async function saveEntry(submit) {
   const type = form.stock_entry_type;
   if (!form.entry_date) return toast.error("Entry Date is required");
   if (fromWhRequired.value && !form.from_warehouse) return toast.error("From Warehouse is required");
-  if (toWhRequired.value && !form.to_warehouse) return toast.error("To Warehouse is required");
+  if (toWhRequired.value && !form.to_warehouse) return toast.error(type === "Material Issue" ? "Receiving Warehouse is required" : "To Warehouse is required");
   // Issue with a Receiving Warehouse is saved as a transfer
   const saveType = (type === "Material Issue" && form.to_warehouse) ? "Material Transfer" : type;
   if (saveType === "Material Transfer" && form.from_warehouse && form.from_warehouse === form.to_warehouse)
@@ -1463,6 +1433,8 @@ async function saveEntry(submit) {
       employee_name: form.employee_name || "",
       driver_name: form.driver_name || "",
       vehicle_no: form.vehicle_no || "",
+      vendor_driver_name: (form.vendor_driver_name || "").trim(),
+      vendor_truck_no: (form.vendor_truck_no || "").trim(),
       items: usable.map(l => ({
         doctype: "Stock Entry Detail",
         item_code: l.item_code,
@@ -1524,7 +1496,7 @@ function salesPersonLabel(code) {
 .se-page { display:flex; flex-direction:column; gap:14px; padding:24px; }
 
 /* KPI strip */
-.se-kpi-strip { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+.se-kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
 .se-kpi { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:border-color .15s,box-shadow .15s; }
 .se-kpi:hover,.se-kpi.active { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.1); }
 .se-kpi-ico { width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }

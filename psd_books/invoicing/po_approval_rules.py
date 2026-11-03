@@ -52,8 +52,6 @@ def check_can_send(doc):
 		frappe.throw(_("Select the supplier before sending {0} for approval.").format(doc.name))
 	if not any(flt(i.qty) > 0 for i in (doc.get("items") or [])):
 		frappe.throw(_("{0} has no item with a quantity. Add items before sending it for approval.").format(doc.name))
-	if flt(doc.get("grand_total")) <= 0:
-		frappe.throw(_("{0} has no value. Check the rates before sending it for approval.").format(doc.name))
 
 
 def send_for_approval(doc, user):

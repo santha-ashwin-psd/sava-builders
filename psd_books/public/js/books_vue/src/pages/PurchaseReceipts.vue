@@ -73,7 +73,6 @@
           <th @click="sortBy('name')" class="sortable">GRN # <span v-html="sortArrow('name')"></span></th>
           <th @click="sortBy('supplier_name')" class="sortable">Supplier <span v-html="sortArrow('supplier_name')"></span></th>
             <th>Project</th>
-          <th @click="sortBy('posting_date')" class="sortable">Received Date <span v-html="sortArrow('posting_date')"></span></th>
           <th @click="sortBy('purchase_order')" class="sortable">Purchase Order <span v-html="sortArrow('purchase_order')"></span></th>
           <th @click="sortBy('total_qty')" class="sortable ta-r">Items <span v-html="sortArrow('total_qty')"></span></th>
           <th>Status</th>
@@ -82,10 +81,10 @@
       </thead>
       <tbody>
         <template v-if="loading">
-          <tr v-for="n in 5" :key="n"><td colspan="9" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
+          <tr v-for="n in 5" :key="n"><td colspan="8" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
         </template>
         <tr v-else-if="!sorted.length">
-          <td colspan="9" class="bk-empty-state">
+          <td colspan="8" class="bk-empty-state">
             <div class="bk-empty-inner">
               <template v-if="search||tab!=='all'">
                 <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -105,7 +104,6 @@
           <td @click="openView(r)"><DocLink doctype="Purchase Receipt" :name="r.name" /></td>
           <td class="fw-600" @click="openView(r)">{{r.supplier_name||r.supplier||'—'}}</td>
             <td class="c-muted" @click="openView(r)">{{projectLabel(r.project)||'—'}}</td>
-          <td class="c-muted mono-sm" @click="openView(r)">{{r.posting_date||'—'}}</td>
           <td class="c-muted mono-sm" @click="openView(r)">{{r.purchase_order||'—'}}</td>
           <td class="ta-r c-muted mono-sm" @click="openView(r)">{{r.total_qty||'—'}}</td>
           <td @click="openView(r)"><span class="inv-status-badge" :class="statusClass(r)">{{statusLabel(r)}}</span></td>
@@ -141,7 +139,6 @@
           </div>
           <div class="pr-mc-mid">{{r.supplier_name||r.supplier||'—'}}</div>
           <div class="pr-mc-meta">
-            <span>{{r.posting_date||'—'}}</span>
             <span class="pr-mc-po">{{r.purchase_order||'—'}}</span>
           </div>
           <div class="pr-mc-meta">
@@ -173,7 +170,7 @@
           <div class="inv-view-header">
             <div>
               <div class="inv-view-number">{{ viewDoc.name }}</div>
-              <div class="inv-view-subtitle">Purchase Receipt (GRN) · {{ viewDoc.posting_date }} · <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span></div>
+              <div class="inv-view-subtitle">Purchase Receipt (GRN) · <span class="inv-hdr-badge" :class="statusClass(viewDoc)">{{ statusLabel(viewDoc) }}</span></div>
             </div>
             <div class="pr-hdr-right">
 
@@ -217,10 +214,6 @@
                   <div class="pr-info-val pr-info-link">
                     <DocLink doctype="Supplier" :name="viewDoc.supplier" :mono-style="false">{{ viewDoc.supplier_name||viewDoc.supplier||'—' }}</DocLink>
                   </div>
-                </div>
-                <div class="pr-info-item">
-                  <div class="pr-info-lbl">Received Date</div>
-                  <div class="pr-info-val">{{ viewDoc.posting_date||'—' }}<span v-if="viewDoc.posting_time" style="margin-left:6px">{{ String(viewDoc.posting_time).slice(0, 8) }}</span></div>
                 </div>
                 <div class="pr-info-item">
                   <div class="pr-info-lbl">Receiving Warehouse</div>
@@ -351,10 +344,6 @@
                   <input class="inv-fi" type="date" v-model="form.entry_date"/>
                 </div>
                 <div>
-                  <label class="inv-lbl">Received Date <span class="inv-req">*</span></label>
-                  <input class="inv-fi" type="date" v-model="form.posting_date"/>
-                </div>
-                <div>
                   <label class="inv-lbl">Purchase Order <span class="inv-req">*</span></label>
                   <SearchableSelect v-model="form.purchase_order" :options="poOptions" placeholder="Select PO (filtered by supplier)…" @search="fetchPOs" @open="fetchPOs('')" @select="onPOSelect" />
                 </div>
@@ -437,7 +426,7 @@
                   <template v-for="(it,i) in form.items" :key="i">
                     <div class="pr-lines-row">
                       <span class="pr-lines-idx">{{ i+1 }}</span>
-                      <SearchableSelect v-model="it.item_code" :options="itemOptions" placeholder="Search item…" @search="fetchItems" @select="opt => onItemSelect(it, opt)" />
+                      <SearchableSelect v-model="it.item_code" :options="itemOptions" disabled style="pointer-events:none" placeholder="Search item…" @search="fetchItems" @select="opt => onItemSelect(it, opt)" />
                       <input class="inv-fi" type="number" v-model.number="it.qty" :disabled="!!it.qc_locked" placeholder="1" min="0.01" :max="it.po_pending || undefined" step="0.01"/>
                       <input class="inv-fi" type="number" v-model.number="it.accepted_qty" :disabled="!!it.qc_locked" placeholder="1" min="0" :max="it.qty" step="0.01"/>
                       <select class="inv-fi" v-model="it.uom">
@@ -545,7 +534,7 @@
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useOpenFromQuery } from "../composables/useOpenFromQuery.js";
-import { apiList, apiGet, apiGET, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
+import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCancel, resolveCompany } from "../api/client.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useProjectOptions } from "../composables/useProjectOptions.js";
 import DocLink from "../components/DocLink.vue";
@@ -994,9 +983,13 @@ async function fetchPOs(q = "") {
       fields: ["name", "supplier", "transaction_date", "grand_total"],
       filters, limit: 30, order: "transaction_date desc, creation desc",
     });
+    // Items still to receive on each PO, shown under it in the dropdown
+    let itemsBy = {};
+    try { itemsBy = await apiPOST("psd_books.api.inventory.get_po_receivable_items_text", { names: JSON.stringify(rows.map(r => r.name)) }) || {}; } catch {}
     poOptions.value = rows.map(r => ({
       label: `${r.name}  (${r.transaction_date || ""})`,
       value: r.name,
+      sub: itemsBy[r.name] || "",
     }));
   } catch { poOptions.value = []; }
 }
@@ -1197,7 +1190,8 @@ async function saveGRN(submit) {
       doctype: "Purchase Receipt",
       supplier: form.supplier,
       entry_date: form.entry_date,
-      posting_date: form.posting_date,
+      // Received Date field is hidden: new GRNs post on the Entry Date; an edited GRN keeps its saved date
+      posting_date: editingName.value ? (form.posting_date || form.entry_date) : form.entry_date,
       company,
       purchase_order: form.purchase_order || null,
       set_warehouse: form.set_warehouse || null,

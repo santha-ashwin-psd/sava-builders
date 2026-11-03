@@ -347,7 +347,7 @@
             <div class="po-lines-wrap">
               <div class="po-lines-tbl">
                 <div class="po-lines-row po-lines-head">
-                  <span>#</span><span>Item</span><span>Tax Template</span><span>UOM</span><span>Qty</span><span>Rate (KES) <span class="inv-req">*</span></span><span class="po-lines-num">Amount</span><span></span>
+                  <span>#</span><span>Item</span><span>Tax Template</span><span>UOM</span><span>Qty</span><span>Rate (KES)</span><span class="po-lines-num">Amount</span><span></span>
                 </div>
                 <div v-for="(line, idx) in lines" :key="line.id" class="po-lines-row">
                   <span class="po-lines-idx">{{ idx + 1 }}</span>
@@ -362,7 +362,7 @@
                     <option v-for="u in uomOptionsFor(line)" :key="u" :value="u">{{ u }}</option>
                   </select>
                   <input v-model.number="line.qty" type="number" min="0" :max="line.max ?? undefined" step="0.001" class="inv-fi" :title="line.max != null ? `Balance on MRN: ${line.max}` : ''" :class="{'field-error': line.qty > 999999999 || (line.max != null && flt(line.qty) > flt(line.max) + 0.0005)}" @input="onQtyInput(line)" />
-                  <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999 || (line.item_code && !(flt(line.rate) > 0))}" @input="calcLine(line)" />
+                  <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999}" @input="calcLine(line)" />
                   <span class="po-lines-num">{{ fmtCur(line.amount) }}</span>
                   <button @click.stop="removeLine(line.id)" class="po-item-card-rm" title="Remove line"><span v-html="icon('x',16)"></span></button>
                 </div>
@@ -372,7 +372,7 @@
               <div style="font-weight:600;margin-bottom:2px">Balance on this MRN (you can order less now and the rest later)</div>
               <div v-for="b in mrnBalance" :key="b.item_code">{{ b.item_name || b.item_code }} — MRN {{ b.mrn_qty }}, ordered elsewhere {{ b.ordered }}, balance {{ b.remaining }}</div>
             </div>
-            <button v-if="!form.material_request" class="inv-add-line-btn" style="margin-top:10px" :disabled="!poCanSave" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
+            <button v-if="false" class="inv-add-line-btn" style="margin-top:10px" :disabled="!poCanSave" @click="addLine"><span v-html="icon('plus',12)"></span> Add Item</button>
 
             <!-- Totals -->
             <div class="po-totals" style="margin-top:16px">
@@ -595,29 +595,30 @@
               <div v-if="viewLoading" style="text-align:center;padding:32px;color:#6b7280;font-size:13px">Loading…</div>
               <template v-else-if="viewItems.length">
                 <div class="inv-sec-lbl">Line Items <span class="po-item-count">{{ viewItems.length }} item{{ viewItems.length !== 1 ? 's' : '' }}</span></div>
-                <div class="vi-line-cards">
-                  <div v-for="(it, idx) in viewItems" :key="it.name" class="vi-line-card">
-                    <span class="vi-line-num">#{{ idx + 1 }}</span>
-                    <div class="vi-line-title" :title="it.description || ''">
-                      <span class="vi-line-name">{{ it.item_name || it.item_code }}</span>
-                      <span v-if="it.description" class="vi-line-desc-inline">{{ it.description }}</span>
+                <div class="vl-wrap">
+                  <div class="vl-tbl">
+                    <div class="vl-head">
+                      <span class="vl-c-num">#</span>
+                      <span>Item / Description</span>
+                      <span class="vl-c-qty">Qty</span>
+                      <span class="vl-c-rate">Rate</span>
+                      <span class="vl-c-tax">Tax</span>
+                      <span class="vl-c-amt">Amount</span>
                     </div>
-                    <div class="vi-line-meta-item vi-line-qty">
-                      <span class="vi-meta-lbl">Qty</span>
-                      <span class="vi-meta-val">{{ it.qty }}</span>
+                    <div v-for="(it, idx) in viewItems" :key="it.name" class="vl-row">
+                      <span class="vl-c-num"><span class="vl-num">{{ idx + 1 }}</span></span>
+                      <div class="vl-item">
+                        <div class="vl-item-name">{{ it.item_name || it.item_code }}</div>
+                        <div v-if="it.description" class="vl-item-desc">{{ it.description }}</div>
+                      </div>
+                      <span class="vl-c-qty"><span class="vl-qty">{{ it.qty }}</span></span>
+                      <span class="vl-c-rate vl-rate">{{ fmtCur(it.rate) }}</span>
+                      <span class="vl-c-tax">
+                        <span v-if="it.tax_code" class="vl-tax">{{ it.tax_code }}</span>
+                        <span v-else class="vl-notax">No Tax</span>
+                      </span>
+                      <span class="vl-c-amt"><span class="vl-amt">{{ fmtCur(it.amount) }}</span></span>
                     </div>
-                    <div class="vi-line-meta-item vi-line-rate">
-                      <span class="vi-meta-lbl">Rate</span>
-                      <span class="vi-meta-val">{{ fmtCur(it.rate) }}</span>
-                    </div>
-                    <div class="vi-line-meta-item vi-line-tax" v-if="it.tax_code">
-                      <span class="vi-tax-badge">TAX</span>
-                      <span class="vi-meta-val" style="color:#4f46e5">{{ it.tax_code }}</span>
-                    </div>
-                    <div class="vi-line-meta-item vi-line-tax" v-else>
-                      <span class="vi-notax-badge">NO TAX</span>
-                    </div>
-                    <span class="vi-line-amount">{{ fmtCur(it.amount) }}</span>
                   </div>
                 </div>
               </template>
@@ -1837,7 +1838,6 @@ async function savePO(newStatus, sendAfter = false) {
   for (const l of lines.value.filter(l => l.item_code)) {
     if (flt(l.qty) > 999999999) return toast.error(`Qty cannot exceed 9 digits for item "${l.item_code}"`);
     if (l.max != null && flt(l.qty) > flt(l.max) + 0.0005) return toast.error(`Qty for "${itemNameOf(l.item_code)}" is more than the balance on the MRN (${l.max})`);
-    if (!(flt(l.rate) > 0)) return toast.error(`Rate is required for item "${l.item_code}"`);
     if (flt(l.rate) > 999999999) return toast.error(`Rate cannot exceed 9 digits for item "${l.item_code}"`);
     if ((l.description || "").length > 500) return toast.error(`Description too long for item "${l.item_code}" (max 500 characters)`);
   }
@@ -2480,26 +2480,23 @@ watch(() => form.supplier, (val) => {
 .po-view-grand { font-weight: 800; font-size: 15px; color: #111827; border-top: 1.5px solid #e5e7eb; margin-top: 4px; padding-top: 8px; }
 
 /* ── View drawer line item cards ── */
-.vi-line-cards { display:flex; flex-direction:column; gap:10px; }
-.vi-line-card { background:#fff; border:1px solid #e2e8f0; border-radius:10px; overflow:hidden; display:flex; align-items:center; gap:16px; padding:10px 16px; }
-.vi-line-title { flex:1; min-width:0; display:flex; align-items:baseline; gap:8px; overflow:hidden; white-space:nowrap; }
-.vi-line-title .vi-line-name { flex:0 1 auto; }
-.vi-line-desc-inline { font-size:12px; color:#6b7280; overflow:hidden; text-overflow:ellipsis; min-width:0; }
-.vi-line-qty, .vi-line-rate { flex-shrink:0; }
-.vi-line-tax { margin-left:0; flex-shrink:0; }
-.vi-line-card-header { display:flex; align-items:center; gap:10px; padding:11px 16px; background:linear-gradient(135deg,#f0f4ff 0%,#f8fafc 100%); border-bottom:1px solid #e8edf5; }
-.vi-line-num { font-size:10.5px; font-weight:800; color:#4f46e5; background:#e0e7ff; border-radius:5px; padding:2px 7px; letter-spacing:.02em; flex-shrink:0; }
-.vi-line-name { font-size:14px; font-weight:700; color:#1e293b; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.vi-line-amount { text-align:right; min-width:100px; font-size:16px; font-weight:800; color:#111827; font-variant-numeric:tabular-nums; flex-shrink:0; }
-.vi-line-desc { padding:8px 16px; font-size:12px; color:#6b7280; line-height:1.55; border-bottom:1px solid #f0f2f5; background:#fafbfc; word-break:break-word; overflow-wrap:anywhere; }
-.vi-line-meta { display:flex; align-items:center; gap:12px; padding:10px 16px; flex-wrap:wrap; }
-.vi-line-meta-item { display:flex; flex-direction:column; gap:2px; }
-.vi-meta-lbl { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#9ca3af; }
-.vi-meta-val { font-size:13px; font-weight:600; color:#374151; font-variant-numeric:tabular-nums; }
-.vi-line-meta-sep { font-size:16px; color:#d1d5db; font-weight:300; margin-top:10px; }
-.vi-line-tax { margin-left:auto; flex-direction:row; align-items:center; gap:6px; }
-.vi-tax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#e0e7ff; color:#4f46e5; flex-shrink:0; }
-.vi-notax-badge { font-size:9px; font-weight:800; letter-spacing:.06em; padding:2px 6px; border-radius:4px; background:#f3f4f6; color:#9ca3af; }
+/* ── View drawer: line items table ── */
+.vl-wrap { overflow-x:auto; border:1px solid #dbe5f5; border-radius:12px; background:#fff; box-shadow:0 2px 8px rgba(37,99,235,.06); }
+.vl-tbl { min-width:560px; }
+.vl-head, .vl-row { display:grid; grid-template-columns:44px minmax(0,1fr) 70px 110px 90px 130px; gap:10px; align-items:center; padding:0 14px; }
+.vl-head { background:#eff6ff; color:#1e3a8a; font-size:12.5px; font-weight:700; padding-top:11px; padding-bottom:11px; }
+.vl-row { padding-top:12px; padding-bottom:12px; border-top:1px solid #e8eef9; font-size:13px; color:#1e293b; }
+.vl-c-num, .vl-c-qty, .vl-c-rate, .vl-c-tax, .vl-c-amt { text-align:center; }
+.vl-c-amt { text-align:right; }
+.vl-num { display:inline-flex; align-items:center; justify-content:center; min-width:26px; height:26px; padding:0 6px; border-radius:7px; background:#dbeafe; color:#1d4ed8; font-weight:700; font-size:12.5px; }
+.vl-item { min-width:0; }
+.vl-item-name { font-size:14px; font-weight:700; color:#0f172a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vl-item-desc { font-size:12.5px; color:#64748b; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.vl-qty { display:inline-block; min-width:34px; padding:4px 10px; border-radius:7px; background:#e0efff; color:#0f172a; font-weight:600; font-variant-numeric:tabular-nums; }
+.vl-rate { font-variant-numeric:tabular-nums; white-space:nowrap; }
+.vl-notax { display:inline-block; padding:4px 10px; border-radius:7px; background:#f1f5f9; color:#64748b; font-size:12px; font-weight:600; white-space:nowrap; }
+.vl-tax { display:inline-block; padding:4px 10px; border-radius:7px; background:#dbeafe; color:#1d4ed8; font-size:12px; font-weight:700; white-space:nowrap; }
+.vl-amt { display:inline-block; padding:6px 12px; border-radius:8px; background:#eff6ff; color:#1d4ed8; font-weight:800; font-size:14px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 
 /* ══════════════════════════════════════════════════
    RESPONSIVE MEDIA QUERIES
@@ -2620,12 +2617,6 @@ watch(() => form.supplier, (val) => {
   .po-type-toggle { flex-wrap: wrap; }
   .po-type-btns   { width: 100%; }
   .po-type-btn    { flex: 1; justify-content: center; }
-
-  /* View item card meta */
-  .vi-line-card { flex-wrap: wrap; gap: 8px 12px; }
-  .vi-line-num { order: -2; }
-  .vi-line-title { flex-basis: calc(100% - 40px); order: -1; }
-  .vi-meta-val  { font-size: 12px; }
 
   /* Totals panel */
   .po-view-totals-inner { min-width: unset; width: 100%; }
