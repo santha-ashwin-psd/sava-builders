@@ -24,13 +24,12 @@ SENDABLE = ("Draft", "Sent Back")
 
 def approval_block_reason(owner, user, pm, is_admin, readonly):
 	"""Why `user` can't approve, or "" if they can. Only a Director approves an MRN: callers pass
-	is_admin = (user holds the Director role). `pm` is no longer used."""
+	is_admin = (user holds the Director role). A Director may approve an MRN they raised themselves.
+	`pm` and `owner` are no longer used."""
 	if readonly:
 		return _("Read-only users can't approve.")
 	if not is_admin:
 		return _("Only a Director can approve this MRN.")
-	if user == owner:
-		return _("You raised this MRN, so someone else must approve it.")
 	return ""
 
 
