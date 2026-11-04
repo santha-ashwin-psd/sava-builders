@@ -97,7 +97,7 @@ def create_roles():
     for role in ["Books Admin", "Accountant", "Books Manager", "Books Viewer",
                  "Purchase Manager", "Finance", "Director",
                  "Store Keeper", "Site Engineer", "Purchase Officer", "Accounts Officer",
-                 "Project Manager"]:
+                 "Project Manager", "Admin"]:
         if not frappe.db.exists("Role", role):
             frappe.get_doc({"doctype": "Role", "role_name": role}).insert(ignore_permissions=True)
 

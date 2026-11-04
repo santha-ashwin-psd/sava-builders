@@ -23,16 +23,12 @@ SENDABLE = ("Draft", "Sent Back")
 
 
 def approval_block_reason(owner, user, pm, is_admin, readonly):
-	"""Why `user` can't approve, or "" if they can. A Books Admin can approve any MRN."""
-	if is_admin:
-		return ""
+	"""Why `user` can't approve, or "" if they can. Only a Director approves an MRN: callers pass
+	is_admin = (user holds the Director role). `pm` is no longer used."""
 	if readonly:
 		return _("Read-only users can't approve.")
-	if not pm:
-		return _("This project has no Project Manager. Ask a Books Admin to approve it "
-			"or to set a manager on the Projects screen.")
-	if user != pm:
-		return _("Only the Project Manager ({0}) or a Books Admin can approve this MRN.").format(pm)
+	if not is_admin:
+		return _("Only a Director can approve this MRN.")
 	if user == owner:
 		return _("You raised this MRN, so someone else must approve it.")
 	return ""
@@ -44,6 +40,10 @@ def _load(name):
 	doc = frappe.get_doc("Material Request", name)
 	assert_company(doc.company)
 	return doc
+
+
+def _is_director(user):
+	return "Director" in set(frappe.get_roles(user))
 
 
 def _project_manager(doc):
@@ -60,7 +60,7 @@ def get_approval_state(name):
 	m = _membership(user)
 	pm = _project_manager(doc)
 	waiting = doc.docstatus == 0 and doc.status == "Pending Approval"
-	reason = approval_block_reason(doc.owner, user, pm, m["admin"], m["readonly"]) if waiting else ""
+	reason = approval_block_reason(doc.owner, user, pm, _is_director(user), m["readonly"]) if waiting else ""
 	return {
 		"status": doc.status,
 		"project_manager": pm or "",
@@ -77,13 +77,10 @@ def send_for_approval(name):
 		frappe.throw(_("Requests made from a Production Plan are submitted directly, not approved."))
 	if doc.docstatus != 0 or doc.status not in SENDABLE:
 		frappe.throw(_("Only a draft or sent-back MRN can be sent for approval."))
-	# an Asset request may have no project; a Books Admin approves it
+	# an Asset request may have no project; a Director approves every MRN
 	if doc.material_request_type != "Asset":
 		if not doc.get("project"):
 			frappe.throw(_("Select a project and save the MRN before sending it for approval."))
-		if not _project_manager(doc):
-			frappe.throw(_("Project {0} has no Project Manager. Set one on the Projects screen first.")
-				.format(doc.project))
 
 	doc.status = "Pending Approval"
 	doc.flags.mrn_workflow = True
@@ -99,7 +96,7 @@ def approve_mrn(name):
 		frappe.throw(_("This MRN is not waiting for approval."))
 	user = frappe.session.user
 	m = _membership(user)
-	reason = approval_block_reason(doc.owner, user, _project_manager(doc), m["admin"], m["readonly"])
+	reason = approval_block_reason(doc.owner, user, _project_manager(doc), _is_director(user), m["readonly"])
 	if reason:
 		frappe.throw(reason, frappe.PermissionError)
 
@@ -118,7 +115,7 @@ def send_back_mrn(name, reason=None):
 		frappe.throw(_("This MRN is not waiting for approval."))
 	user = frappe.session.user
 	m = _membership(user)
-	block = approval_block_reason(doc.owner, user, _project_manager(doc), m["admin"], m["readonly"])
+	block = approval_block_reason(doc.owner, user, _project_manager(doc), _is_director(user), m["readonly"])
 	if block:
 		frappe.throw(block, frappe.PermissionError)
 	reason = (reason or "").strip()

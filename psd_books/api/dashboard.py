@@ -265,7 +265,7 @@ def get_projects_dashboard(company: str | None = None) -> dict:
         ORDER BY m.modified DESC LIMIT 8
     """, p, as_dict=True)
     for r in mr_pending:
-        r["for_me"] = bool(is_admin or (r.get("project_manager") == user and r.get("owner") != user))
+        r["for_me"] = bool("Director" in set(frappe.get_roles(user)) and r.get("owner") != user)
     po_pending = frappe.db.sql("""
         SELECT 'Purchase Order' AS doctype, name, project, transaction_date AS date,
                supplier_name AS party, grand_total AS amount

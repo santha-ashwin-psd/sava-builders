@@ -594,7 +594,7 @@ import SearchableSelect from "../components/SearchableSelect.vue";
 import { useProjectOptions } from "../composables/useProjectOptions.js";
 import JournalTab from "../components/JournalTab.vue";
 import DocLink from "../components/DocLink.vue";
-import { useLivePreview, DN_PRINT_CONFIG } from "../composables/useLivePreview.js";
+import { useLivePreview, DN_PRINT_CONFIG, printPreprintedDN } from "../composables/useLivePreview.js";
 
 const { toast } = useToast();
 const { confirm } = useConfirm();
@@ -825,14 +825,14 @@ function printEntry(d) {
   // When the vendor's own driver delivers, the sheet shows only the vendor's driver details (not ours)
   const vDriver = (d.vendor_driver_name || "").trim(), vTruck = (d.vendor_truck_no || "").trim();
   const byVendor = !!(vDriver || vTruck);
-  printDoc({
+  if (!printPreprintedDN({
     ...d,
     ...(byVendor ? { driver_name: vDriver, vehicle_no: vTruck, truck_no: "", driver_id: "" } : {}),
     customer_name: to,
     shipping_address: addr,
     prepared_by_name: ownerName(d.owner),
     items: (d.items || []).map(it => ({ ...it, item_name: it.item_name || it.item_code, uom: it.uom || it.stock_uom || "" })),
-  }, { ...DN_PRINT_CONFIG, companyName: d.company || "" });
+  }, { companyName: d.company || "" })) toast.error("Pop-up blocked \u2014 allow pop-ups to print");
 }
 
 // Material Receipts are auto-posted from GRNs: no edit / cancel from this screen.

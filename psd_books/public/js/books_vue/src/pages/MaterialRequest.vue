@@ -103,10 +103,10 @@
                 <button v-if="!isNew && mr.docstatus===1 && !isPurchaseLike && (mr.status==='Approved' || mr.status==='Partly Issued')" class="bomx-btn" style="background:var(--bx-blueS);color:var(--bx-blue)" @click="issueFromStore" :disabled="!canIssueStock" :title="!canIssueStock ? ISSUE_NOTE : ''">
                   Issue from Store
                 </button>
-                <button v-if="!isNew && mr.docstatus===0 && mr.production_plan" class="bomx-btn bomx-btn-light" @click="submitMR" :disabled="submitting || saving || !$canEdit('inventory')">
+                <button v-if="!isNew && mr.docstatus===0 && mr.production_plan" class="bomx-btn bomx-btn-light" @click="submitMR" :disabled="submitting || saving || !canEditMR">
                   {{ submitting ? 'Submitting…' : 'Submit' }}
                 </button>
-                <button v-if="!isNew && mr.docstatus===0 && !mr.production_plan && (mr.status==='Draft' || mr.status==='Sent Back')" class="bomx-btn bomx-btn-light" @click="sendForApproval" :disabled="submitting || saving || !$canEdit('inventory')">
+                <button v-if="!isNew && mr.docstatus===0 && !mr.production_plan && (mr.status==='Draft' || mr.status==='Sent Back')" class="bomx-btn bomx-btn-light" @click="sendForApproval" :disabled="submitting || saving || !canEditMR">
                   {{ submitting ? 'Sending…' : 'Send for Approval' }}
                 </button>
                 <button v-if="!isNew && mr.docstatus===0 && mr.status==='Pending Approval' && approval.can_approve && !showSendBack" class="bomx-btn bomx-btn-light" @click="approveMR" :disabled="submitting">

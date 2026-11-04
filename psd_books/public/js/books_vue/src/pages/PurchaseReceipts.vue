@@ -265,7 +265,7 @@
                     <th class="ta-r" style="width:76px">Accepted</th>
                     <th class="ta-r" style="width:76px">Rejected</th>
                     <th style="width:56px">UOM</th>
-                    <th style="width:120px">Batch No</th>
+                    <th class="ta-r" style="width:100px">Rate</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -276,7 +276,7 @@
                     <td class="ta-r mono" style="color:#2F9E44">{{ it.accepted_qty||it.qty }}</td>
                     <td class="ta-r mono" style="color:#C92A2A">{{ it.rejected_qty||0 }}</td>
                     <td class="c-muted">{{ it.uom||'Nos' }}</td>
-                    <td class="mono" style="font-size:11.5px;color:#2563eb">{{ it.batch_no||'—' }}</td>
+                    <td class="ta-r mono">{{ fmtRate(it.rate) }}</td>
                   </tr>
                   <tr v-if="!(viewDoc.items||[]).length">
                     <td colspan="7" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">No items</td>

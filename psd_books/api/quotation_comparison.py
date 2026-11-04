@@ -135,7 +135,7 @@ def reject_comparison(name, reason):
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def create_lpos(name, quantities=None):
 	doc = _load_for_approval(name)
-	if "Purchase Manager" not in frappe.get_roles():
+	if not {"Purchase Manager", "Admin", "Director"} & set(frappe.get_roles()):
 		_assert_can_po("create")
 	made = lpo.create_lpos(doc, _parse_quantities(quantities))
 	return {"comparison": doc.name, "status": doc.status, "lpos": made}

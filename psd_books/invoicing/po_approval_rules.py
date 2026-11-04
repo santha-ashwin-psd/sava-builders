@@ -72,8 +72,7 @@ def check_can_act(doc, user, roles, is_admin=False):
 	step = current_step(doc)
 	if step is None:
 		frappe.throw(_("No approval level is pending on {0}.").format(doc.name))
-	if is_admin:
-		return step
+	# Only a Director approves; is_admin (Books Admin) is ignored.
 	if any(s.status == STEP_APPROVED and s.approver == user for s in doc.get("approval_steps") or []):
 		frappe.throw(_("You already approved a level of this Purchase Order. Another person must approve the next level."))
 	if step.role not in roles:
@@ -141,8 +140,6 @@ def can_cancel_pending(status, raised_by, steps, user, roles, is_admin=False):
 	"""True when user may cancel a PO pending approval: the person who sent it, an approver (role) of the pending level, or a Books Admin."""
 	if status != PENDING_APPROVAL:
 		return False
-	if is_admin:
-		return True
 	if user and user == raised_by:
 		return True
 	step = next((s for s in steps or [] if _val(s, "status") == STEP_PENDING), None)
@@ -198,9 +195,7 @@ def action_state(status, raised_by, steps, user, roles, is_admin=False):
 		out["reason"] = _("No approval level is pending.")
 		return out
 	out["level"], out["role"] = step.get("level"), step.get("role")
-	if is_admin:
-		out["can_act"] = True
-	elif any(s.get("status") == STEP_APPROVED and s.get("approver") == user for s in steps or []):
+	if any(s.get("status") == STEP_APPROVED and s.get("approver") == user for s in steps or []):
 		out["reason"] = _("You already approved a level. Another person must approve the next level.")
 	elif step.get("role") not in (roles or []):
 		out["reason"] = _("Level {0} needs the {1} role.").format(step.get("level"), step.get("role"))

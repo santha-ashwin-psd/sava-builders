@@ -393,8 +393,8 @@ const routes = [
   { path: "/manufacturing/work-order/:name",      name: "manufacturing-work-order-view",       component: WorkOrder,           meta: { module: "inventory" } },
   { path: "/manufacturing/production-plan",       name: "manufacturing-production-plan",       component: ProductionPlan,      meta: { module: "inventory" } },
   { path: "/manufacturing/production-plan/:name", name: "manufacturing-production-plan-view",  component: ProductionPlan,      meta: { module: "inventory" } },
-  { path: "/manufacturing/material-request",       name: "manufacturing-material-request",       component: MaterialRequest,     meta: { module: "inventory" } },
-  { path: "/manufacturing/material-request/:name", name: "manufacturing-material-request-view",  component: MaterialRequest,     meta: { module: "inventory" } },
+  { path: "/manufacturing/material-request",       name: "manufacturing-material-request",       component: MaterialRequest,     meta: { module: "inventory", doctype: "Material Request" } },
+  { path: "/manufacturing/material-request/:name", name: "manufacturing-material-request-view",  component: MaterialRequest,     meta: { module: "inventory", doctype: "Material Request" } },
   { path: "/manufacturing/packing-slip",           name: "manufacturing-packing-slip",           component: PackingSlip,         meta: { module: "inventory" } },
   { path: "/manufacturing/packing-slip/:name",     name: "manufacturing-packing-slip-view",      component: PackingSlip,         meta: { module: "inventory" } },
   { path: "/manufacturing/alternative-item",       name: "manufacturing-alternative-item",       component: AlternativeItem,       meta: { module: "inventory" } },
@@ -428,6 +428,7 @@ const HIDDEN_PREFIXES = [
   "/gst/tds",
   "/settings/sso",
   "/settings/integrations",
+  "/settings/roles",
 ];
 // Still visible in the sidebar, so they must stay reachable.
 const HIDDEN_EXCEPTIONS = [

@@ -19,7 +19,10 @@ BOOKS_ROLES = ("Books Admin", "Books Manager", "Accountant", "Books Viewer")
 SAVA_ROLES = (
     "Store Keeper", "Site Engineer", "Purchase Officer", "Accounts Officer",
     "Purchase Manager", "Finance", "Director", "Project Manager",
+    "Admin",
 )
+# Job roles that may manage team members (Settings > Users) besides Books Admins.
+USER_MANAGER_ROLES = frozenset({"Purchase Manager", "Admin", "Director"})
 MODULE_FIELDS = (
     "mod_invoices", "mod_bills", "mod_payments", "mod_banking",
     "mod_inventory", "mod_accounts", "mod_reports", "mod_customers",
@@ -100,7 +103,9 @@ def _require_company_admin() -> str:
     )
     if not row:
         frappe.throw(_("Your user is not linked to any Books Company."), frappe.PermissionError)
-    if not (row.is_company_admin or row.books_role == "Books Admin"):
+    # Purchase Manager and Admin (job roles) manage team members too, like a company admin.
+    if not (row.is_company_admin or row.books_role == "Books Admin"
+            or set(frappe.get_roles(user)) & USER_MANAGER_ROLES):
         frappe.throw(_("Only the company admin can perform this action."), frappe.PermissionError)
     return row.company
 
@@ -466,6 +471,9 @@ def update_user_role(user, role):
         member.is_company_admin = 1
         for f in MODULE_FIELDS:
             member.set(f, 1)
+    elif member.user != frappe.session.user:
+        # moved away from Books Admin: drop the admin flag too (never your own, so you can't lock yourself out)
+        member.is_company_admin = 0
     member.save(ignore_permissions=True)
     frappe.db.commit()
     return {"success": True}

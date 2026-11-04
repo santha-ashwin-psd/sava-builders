@@ -1066,7 +1066,7 @@ import { useToast } from "../composables/useToast.js";
 import { useEmailDialog } from "../composables/useEmailDialog.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { usePrompt } from "../composables/usePrompt.js";
-import { useLivePreview, PO_PRINT_CONFIG, preparePOPrint } from "../composables/useLivePreview.js";
+import { useLivePreview, PO_PRINT_CONFIG, preparePOPrint, printPreprintedPO } from "../composables/useLivePreview.js";
 import { icon } from "../utils/icons.js";
 import { usePermissions } from "../composables/usePermissions.js";
 import { flt, fmtDate } from "../utils/format.js";
@@ -1097,7 +1097,8 @@ const { toast } = useToast();
 const { confirm } = useConfirm();
 const { prompt } = usePrompt();
 const { printDoc, renderDocument, setCompany, refreshBranding } = useLivePreview();
-async function printPO(d) { try { await refreshBranding(); } catch {} printDoc(await preparePOPrint({ ...d, items: viewItems.value, prepared_by_name: ownerName(d.owner) }), { ...PO_PRINT_CONFIG, companyName: d?.company || "" }); }
+// Print = data only, on the client's own pre-printed LPO stationery (PDF download and email keep the full drawn sheet).
+async function printPO(d) { try { await refreshBranding(); } catch {} if (!printPreprintedPO(await preparePOPrint({ ...d, items: viewItems.value, prepared_by_name: ownerName(d.owner) }), { companyName: d?.company || "" })) toast('Pop-up blocked \u2014 allow pop-ups to print', 'error'); }
 
 const showDownloadMenu = ref(false);
 
@@ -1108,16 +1109,18 @@ function downloadPOPdf(mode = 'pdf') {
   const base = { ...viewDoc.value, items: viewItems.value, currency: "KES" };
   const doc = viewPrint.value && viewPrint.value.name === base.name ? { ...viewPrint.value, items: viewItems.value } : base;
   if (!doc?.name) return;
+  if (mode === 'print') {
+    // data only, on the client's pre-printed LPO sheet; the window does not print by itself (check X / Y nudge, then Print)
+    if (!printPreprintedPO({ ...doc, prepared_by_name: doc.prepared_by_name || ownerName(doc.owner) }, { companyName: doc.company || window.__booksCompany || "" })) {
+      toast('Pop-up blocked \u2014 allow pop-ups to print', 'error');
+    }
+    return;
+  }
   const html = renderDocument(doc, {
     ...PO_PRINT_CONFIG,
     companyName: doc.company || window.__booksCompany || "",
   });
-  if (mode === 'print') {
-    const win = window.open('', '_blank');
-    if (!win) { toast('Pop-up blocked \u2014 allow pop-ups to print', 'error'); return; }
-    win.document.write(html); win.document.close();
-    setTimeout(() => { try { win.focus(); win.print(); } catch {} }, 600);
-  } else {
+  {
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const objectUrl = URL.createObjectURL(blob);
     const win = window.open(objectUrl, '_blank');

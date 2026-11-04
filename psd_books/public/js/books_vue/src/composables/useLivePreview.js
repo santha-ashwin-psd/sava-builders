@@ -840,6 +840,189 @@ function _renderSavaPO(doc, cfg) {
 </div></body></html>`;
 }
 
+// ── LPO printed onto the client's own pre-printed continuous stationery (cfg.savaPreprinted) ──
+// Only the DATA is printed. The form itself (logo, boxes, captions, column heads, footer notes) is already
+// on the paper, so nothing of it is drawn here. Every position is in mm, taken from the dimensions marked
+// on the client's form: paper 225 x 209 mm with 12 mm tractor strips each side; item table 197 mm wide =
+// Sr.No 16 + Description 80 + Qty 21 + Unit 20 + Rate 18 + Disc 18 + Amount 24; M/s box 83 x 29;
+// P.O No. cell 22 + 50; Total Amount box 24 wide; Amount in Words / Special Instructions / Payment Details lines ~115.
+// x / y below are measured from the top-left corner of the item table header (tx, ty place that corner on the paper).
+// ty is an ESTIMATE (the top of the paper was not on the sketch): use the X / Y nudge in the print window once.
+const _PP = {
+  pageW: 225, pageH: 209,
+  tx: 14.7,          // paper left edge -> left line of the item table
+  ty: 78,            // paper top edge  -> top line of the table header   (calibrate on the real sheet)
+  hdrH: 7.5,         // table header row height
+  bodyH: 72.6,       // item area height (header bottom -> bottom line of the table)
+  lineH: 4.8,        // one printed line
+  cols: { sr: [0, 16], desc: [16, 96], qty: [96, 117], unit: [117, 137], rate: [137, 155], disc: [155, 173], amt: [173, 197] },
+  ms:    { x: 0, y: -37.5, w: 83, h: 29 },                    // M/s box
+  poVal: { x: 145, w: 50, yPo: -28.8, yDate: -15.5 },          // P.O No. and DATE value cells (y = vertical centre)
+  total: { x: 173, w: 24, y: 88.5 },                           // Total Amount box (y = vertical centre)
+  words: { x: 30.3, w: 115, y: 89.5 },                         // dotted line baselines
+  special: { x: 32.4, w: 115, y: 96.7 },
+  payment: { x: 27, w: 118, y: 103.3 },
+  prepared: { x: 20.4, w: 62, y: 120.7 },
+  descChars: 41,     // characters that fit one line of the 80 mm Description column
+};
+
+function _renderSavaPOPreprinted(doc, cfg) {
+  const currency = cfg.currency || doc.currency || "KES";
+  const fmt = (v) => _fmtNumFor(v, currency);
+  const docDate = doc.transaction_date || doc.posting_date || "";
+  const lns = (t) => String(t || "").split("\n").map(x => x.trim()).filter(Boolean);
+  const msLines = [doc.supplier_name || doc.supplier || "", ...lns(doc.supplier_address)].filter(Boolean).slice(0, 4);
+  const words = doc.in_words || _kesWords(doc.grand_total);
+  const special = lns(doc.terms).join("; ");
+  const payment = (doc.payment_lines || []).filter(Boolean).join("; ");
+  const preparedBy = doc.prepared_by_name || doc.owner_name || doc.owner || "";
+  const mm = (v) => Number(v).toFixed(2) + "mm";
+  const num = (v) => String(+Number(v || 0).toFixed(3));
+
+  // word-wrap the description to the column width; at most 3 lines per item (…) so one item never overflows a page
+  const wrap = (text, max) => {
+    const out = []; let cur = "";
+    for (const w of String(text || "").split(/\s+/).filter(Boolean)) {
+      if (!cur) cur = w;
+      else if ((cur + " " + w).length <= max) cur += " " + w;
+      else { out.push(cur); cur = w; }
+      while (cur.length > max) { out.push(cur.slice(0, max)); cur = cur.slice(max); }
+    }
+    if (cur) out.push(cur);
+    if (out.length > 3) { out.length = 3; out[2] = out[2].slice(0, Math.max(0, max - 1)) + "…"; }
+    return out.length ? out : [""];
+  };
+
+  // split the items into pages by printed lines
+  const cap = Math.floor(_PP.bodyH / _PP.lineH);
+  const items = (doc.items || []).map((it, i) => {
+    const text = (it.item_name || it.item_code || "") +
+      (it.description && it.description !== it.item_name ? " - " + String(it.description).replace(/\s+/g, " ") : "");
+    return { it, no: i + 1, lines: wrap(text, _PP.descChars) };
+  });
+  const pages = [[]]; let used = 0;
+  for (const row of items) {
+    if (used + row.lines.length > cap && used > 0) { pages.push([]); used = 0; }
+    pages[pages.length - 1].push(row); used += row.lines.length;
+  }
+
+  // font size (pt) that lets `text` fit `w` mm on one line: em = average glyph width in em (digits .56, mixed text .52)
+  const autoPt = (text, w, maxPt = 9.5, minPt = 5.5, em = 0.52) => {
+    const need = String(text || "").length * em * 0.3528;   // mm per pt of font size
+    return Math.max(minPt, Math.min(maxPt, need ? w / need : maxPt)).toFixed(2) + "pt";
+  };
+  // one absolutely placed text box, positions relative to the table's top-left corner
+  const box = (x, y, w, h, html, style = "") =>
+    `<div class="t" style="left:${mm(_PP.tx + x)};top:${mm(_PP.ty + y)};width:${mm(w)};height:${mm(h)};line-height:${mm(h)};${style}">${html}</div>`;
+  // a single-line value on a dotted line: shrinks to fit the line (down to 5.5 pt), never wraps
+  const fit = (text, w) => box(w.x, w.y - 4.4, w.w, 4.4, _esc(text), `font-size:${autoPt(text, w.w)}`);
+
+  const pageHtml = pages.map((rows, pi) => {
+    const last = pi === pages.length - 1;
+    let y = _PP.hdrH + 0.4, body = "";
+    for (const { it, no, lines } of rows) {
+      const c = _PP.cols, h = _PP.lineH;
+      body += box(c.sr[0], y, c.sr[1] - c.sr[0], h, no, "text-align:center");
+      lines.forEach((ln, k) => { body += box(c.desc[0] + 1.5, y + k * h, c.desc[1] - c.desc[0] - 2, h, _esc(ln)); });
+      body += box(c.qty[0], y, c.qty[1] - c.qty[0] - 2.5, h, num(it.qty), `text-align:right;font-size:${autoPt(num(it.qty), c.qty[1] - c.qty[0] - 2.5, 9.5, 6, 0.56)}`);
+      body += box(c.unit[0], y, c.unit[1] - c.unit[0], h, _esc(it.uom || "Nos"), "text-align:center");
+      body += box(c.rate[0], y, c.rate[1] - c.rate[0] - 1.5, h, fmt(it.rate), `text-align:right;font-size:${autoPt(fmt(it.rate), c.rate[1] - c.rate[0] - 2, 9.5, 6, 0.56)}`);
+      if (Number(it.discount_percentage || 0) > 0)
+        body += box(c.disc[0], y, c.disc[1] - c.disc[0], h, Number(it.discount_percentage).toFixed(2), "text-align:center");
+      body += box(c.amt[0], y, c.amt[1] - c.amt[0] - 2, h, fmt(it.amount), `text-align:right;font-size:${autoPt(fmt(it.amount), c.amt[1] - c.amt[0] - 2.5, 9.5, 6, 0.56)}`);
+      y += lines.length * h;
+    }
+    const pager = pages.length > 1 ? ` <span class="pg-no">(${pi + 1}/${pages.length})</span>` : "";
+    return `<div class="pg"><div class="shift">
+      <div class="outline">${_ppOutline()}</div>
+      ${msLines.length ? box(_PP.ms.x + 9, _PP.ms.y + 8, _PP.ms.w - 11, _PP.ms.h - 9,
+          `<b>${_esc(msLines[0])}</b>${msLines.slice(1).map(l => `<br/>${_esc(l)}`).join("")}`, "line-height:4.3mm;height:auto;white-space:normal") : ""}
+      ${box(_PP.poVal.x + 2, _PP.poVal.yPo - 2.8, _PP.poVal.w - 3, 5.6, `<b>${_esc(doc.name || "")}</b>${pager}`, `font-size:${autoPt((doc.name || "") + (pages.length > 1 ? " (1/1)" : ""), _PP.poVal.w - 3, 9.5, 6, 0.58)}`)}
+      ${box(_PP.poVal.x + 2, _PP.poVal.yDate - 2.8, _PP.poVal.w - 3, 5.6, _esc(_fmtDocDate(docDate)))}
+      ${body}
+      ${last ? box(_PP.total.x, _PP.total.y - 2.8, _PP.total.w - 2, 5.6, `<b>${fmt(doc.grand_total)}</b>`, `text-align:right;font-size:${autoPt(fmt(doc.grand_total), _PP.total.w - 3, 10, 6, 0.6)}`)
+             : box(_PP.total.x, _PP.total.y - 2.8, _PP.total.w - 2, 5.6, "cont.", "text-align:right;font-size:8pt")}
+      ${last ? fit(words, _PP.words) + fit(special, _PP.special) + fit(payment, _PP.payment) : ""}
+      ${box(_PP.prepared.x, _PP.prepared.y - 4.4, _PP.prepared.w, 4.4, _esc(preparedBy))}
+    </div></div>`;
+  }).join("");
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<title>${_esc(cfg.title)} — ${_esc(doc.name)} (pre-printed sheet)</title>
+<style>
+  @page{size:${_PP.pageW}mm ${_PP.pageH}mm;margin:0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--dx:0mm;--dy:0mm}
+  html,body{font-family:Arial,Helvetica,sans-serif;color:#000;font-size:9.5pt;background:#e5e7eb}
+  .toolbar{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:12.5px}
+  .toolbar b{font-size:11.5px;letter-spacing:.04em}
+  .toolbar label{display:flex;align-items:center;gap:5px}
+  .toolbar input[type=number]{width:70px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;font:inherit}
+  .toolbar button{font:inherit;padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;cursor:pointer}
+  .toolbar .go{margin-left:auto;background:#1a6ef7;border-color:#1a6ef7;color:#fff;font-weight:700}
+  .toolbar .hint{flex-basis:100%;font-size:11.5px;color:#64748b}
+  .pg{position:relative;width:${_PP.pageW}mm;height:${_PP.pageH}mm;margin:14px auto;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.18);overflow:hidden;page-break-after:always;break-after:page}
+  .pg:last-child{page-break-after:auto;break-after:auto}
+  .shift{position:absolute;left:var(--dx);top:var(--dy);width:100%;height:100%}
+  .t{position:absolute;white-space:nowrap;overflow:hidden;text-overflow:clip}
+  .pg-no{font-size:7.5pt;font-weight:400}
+  .outline{display:none}
+  body.ol .outline{display:block}
+  .outline div{position:absolute;border:1px dashed #777;color:#777;font-size:6pt;line-height:1}
+  @media print{
+    html,body{background:#fff}
+    .toolbar{display:none!important}
+    .pg{margin:0;box-shadow:none}
+  }
+</style></head><body>
+<div class="toolbar">
+  <b>PRINT ON PRE-PRINTED LPO SHEET</b>
+  <label>X nudge (mm) <input id="dx" type="number" step="0.5" value="0"/></label>
+  <label>Y nudge (mm) <input id="dy" type="number" step="0.5" value="0"/></label>
+  <label><input id="ol" type="checkbox"/> Print form outline (for a test on plain paper)</label>
+  <button id="rs" type="button">Reset</button>
+  <button class="go" type="button" onclick="window.print()">Print</button>
+  <div class="hint">Printer: paper 225 x 209 mm, margins None, scale 100%. Positive X moves the text right, positive Y moves it down. The nudge is remembered on this computer.</div>
+</div>
+${pageHtml}
+<script>
+(function(){
+  var K='bv_po_pp_calib', root=document.documentElement;
+  var dx=document.getElementById('dx'), dy=document.getElementById('dy'), ol=document.getElementById('ol');
+  try{var c=JSON.parse(localStorage.getItem(K)||'{}'); dx.value=c.dx||0; dy.value=c.dy||0;}catch(e){}
+  function apply(){
+    root.style.setProperty('--dx',(parseFloat(dx.value)||0)+'mm');
+    root.style.setProperty('--dy',(parseFloat(dy.value)||0)+'mm');
+    document.body.classList.toggle('ol',ol.checked);
+    try{localStorage.setItem(K,JSON.stringify({dx:parseFloat(dx.value)||0,dy:parseFloat(dy.value)||0}));}catch(e){}
+  }
+  dx.oninput=dy.oninput=ol.onchange=apply;
+  document.getElementById('rs').onclick=function(){dx.value=0;dy.value=0;apply();};
+  apply();
+})();
+<\/script>
+</body></html>`;
+}
+
+// Dashed outline of every field of the pre-printed LPO sheet (hidden unless "Print form outline" is ticked).
+function _ppOutline() {
+  const mm = (v) => Number(v).toFixed(2) + "mm";
+  const r = (x, y, w, h, label = "") =>
+    `<div style="left:${mm(_PP.tx + x)};top:${mm(_PP.ty + y)};width:${mm(w)};height:${mm(h)}">${label}</div>`;
+  const c = _PP.cols;
+  let out = r(_PP.ms.x, _PP.ms.y, _PP.ms.w, _PP.ms.h, "M/s")
+    + r(_PP.poVal.x - 22, -34.5, 22 + _PP.poVal.w, 11, "P.O No.")
+    + r(_PP.poVal.x - 22, -23.5, 22 + _PP.poVal.w, 16, "DATE")
+    + r(0, 0, 197, _PP.hdrH + _PP.bodyH, "")
+    + r(_PP.total.x, 81, _PP.total.w, 15.5, "Total")
+    + r(_PP.words.x, _PP.words.y - 0.2, _PP.words.w, 0.1)
+    + r(_PP.special.x, _PP.special.y - 0.2, _PP.special.w, 0.1)
+    + r(_PP.payment.x, _PP.payment.y - 0.2, _PP.payment.w, 0.1)
+    + r(_PP.prepared.x, _PP.prepared.y - 0.2, 62, 0.1);
+  for (const k of Object.keys(c)) out += r(c[k][0], 0, c[k][1] - c[k][0], _PP.hdrH + _PP.bodyH, k);
+  return out;
+}
+
 // Delivery Note on the Sava Builders pre-printed sheet (cfg.savaDN): address box, D.N No./Date box,
 // Sr. No | Item Description | Qty | Intended Use, then Prepared By / Delivered By / Received By blocks.
 function _renderSavaDN(doc, cfg) {
@@ -913,6 +1096,169 @@ function _renderSavaDN(doc, cfg) {
     ${blk("Received By:", [["Name:", doc.received_by_name], ["I.D. No.", doc.received_by_id], ["Time:", ""], ["Signature:", ""]])}
   </div>
 </div></body></html>`;
+}
+
+// ── Delivery Note printed onto the client's own pre-printed D.N sheet: data only, no form drawn ──
+// All positions are in mm from the sheet's top-left corner (the line where the 12 mm tractor strip ends),
+// measured from the client's sheet (225 x 209 mm). Calibrate on the real sheet with the X / Y nudge.
+const _DP = {
+  pageW: 225, pageH: 209,
+  to:   { x: 10, y: 41, w: 83, h: 30 },                       // address box (83 x 30)
+  dn:   { x: 151.4, w: 56, yNo: 48.5, yDate: 63.5 },          // D.N No. / DATE value cells (y = vertical centre)
+  tbl:  { x: 10, hdrBottom: 87.7, bottom: 162.6 },            // table left edge, header bottom line, table bottom line
+  cols: { sr: [0, 14], desc: [14, 110], qty: [110, 128], use: [128, 196] },   // 14 + 96 + 18 + 68 mm, from the table's left edge
+  lineH: 4.8,
+  descChars: 46,     // characters that fit one line of the 96 mm Description column
+  useChars: 33,      // characters that fit one line of the 68 mm Intended Use column
+  // signature lines: y = the dotted line, x = where each line starts, end = right end of the block (lines are ~50 mm)
+  sigY: { name: 181, id: 188.7, third: 196.3 },
+  prepared:  { end: 74.6,  name: 24.6,  id: 29.5,  time: 23.4 },
+  delivered: { end: 142.9, name: 92.1,  id: 98.9,  truck: 102.5 },
+  received:  { end: 208,   name: 158.7, id: 164.5, time: 159 },
+};
+
+function _renderSavaDNPreprinted(doc, cfg) {
+  const lns = (t) => String(t || "").split("\n").map(x => x.trim()).filter(Boolean);
+  const mm = (v) => Number(v).toFixed(2) + "mm";
+  const num = (v) => String(+Number(v || 0).toFixed(3));
+  const toLines = [doc.customer_name || doc.customer || "", ...lns(doc.shipping_address)].filter(Boolean).slice(0, 6);
+  const docDate = doc.posting_date || doc.transaction_date || "";
+  const preparedBy = doc.prepared_by_name || doc.owner_name || doc.owner || "";
+  const time = doc.posting_time ? String(doc.posting_time).slice(0, 5) : "";
+  const truck = doc.truck_no || doc.vehicle_no || "";
+
+  const wrap = (text, max) => {
+    const out = []; let cur = "";
+    for (const w of String(text || "").split(/\s+/).filter(Boolean)) {
+      if (!cur) cur = w;
+      else if ((cur + " " + w).length <= max) cur += " " + w;
+      else { out.push(cur); cur = w; }
+      while (cur.length > max) { out.push(cur.slice(0, max)); cur = cur.slice(max); }
+    }
+    if (cur) out.push(cur);
+    if (out.length > 3) { out.length = 3; out[2] = out[2].slice(0, Math.max(0, max - 1)) + "…"; }
+    return out.length ? out : [""];
+  };
+  const autoPt = (text, w, maxPt = 9.5, minPt = 5.5, em = 0.52) => {
+    const need = String(text || "").length * em * 0.3528;
+    return Math.max(minPt, Math.min(maxPt, need ? w / need : maxPt)).toFixed(2) + "pt";
+  };
+  const box = (x, y, w, h, html, style = "") =>
+    `<div class="t" style="left:${mm(x)};top:${mm(y)};width:${mm(w)};height:${mm(h)};line-height:${mm(h)};${style}">${html}</div>`;
+  // a single-line value sitting on a dotted line: shrinks to fit, never wraps
+  const onLine = (text, x, end, y) => !text ? "" : box(x, y - 4.4, end - x, 4.4, _esc(text), `font-size:${autoPt(text, end - x)}`);
+
+  const T = _DP.tbl, C = _DP.cols;
+  const cap = Math.floor((T.bottom - T.hdrBottom - 1) / _DP.lineH);
+  const rows = (doc.items || []).map((it, i) => {
+    const text = (it.item_name || it.item_code || "") +
+      (it.description && it.description !== it.item_name ? " - " + String(it.description).replace(/\s+/g, " ") : "");
+    const d = wrap(text, _DP.descChars), u = wrap(it.intended_use || "", _DP.useChars);
+    return { it, no: i + 1, d, u, n: Math.max(d.length, it.intended_use ? u.length : 1) };
+  });
+  const pages = [[]]; let used = 0;
+  for (const r of rows) {
+    if (used + r.n > cap && used > 0) { pages.push([]); used = 0; }
+    pages[pages.length - 1].push(r); used += r.n;
+  }
+
+  const pageHtml = pages.map((prs, pi) => {
+    let y = T.hdrBottom + 0.5, body = "";
+    for (const { it, no, d, u, n } of prs) {
+      const h = _DP.lineH, qty = `${num(it.qty)} ${it.uom || ""}`.trim();
+      body += box(T.x + C.sr[0], y, C.sr[1] - C.sr[0], h, no, "text-align:center");
+      d.forEach((ln, k) => { body += box(T.x + C.desc[0] + 1.5, y + k * h, C.desc[1] - C.desc[0] - 2.5, h, _esc(ln)); });
+      body += box(T.x + C.qty[0], y, C.qty[1] - C.qty[0], h, _esc(qty), `text-align:center;font-size:${autoPt(qty, C.qty[1] - C.qty[0] - 1, 9.5, 6, 0.56)}`);
+      if (doc.items[no - 1].intended_use) u.forEach((ln, k) => { body += box(T.x + C.use[0] + 1.5, y + k * h, C.use[1] - C.use[0] - 2.5, h, _esc(ln)); });
+      y += n * h;
+    }
+    const pager = pages.length > 1 ? ` <span class="pg-no">(${pi + 1}/${pages.length})</span>` : "";
+    const S = _DP.sigY, P = _DP.prepared, D = _DP.delivered, R = _DP.received;
+    return `<div class="pg"><div class="shift">
+      <div class="outline">${_dpOutline()}</div>
+      ${toLines.length ? box(_DP.to.x + 4, _DP.to.y + 3.5, _DP.to.w - 7, _DP.to.h - 4,
+          `<b>${_esc(toLines[0])}</b>${toLines.slice(1).map(l => `<br/>${_esc(l)}`).join("")}`, "line-height:4.5mm;height:auto;white-space:normal") : ""}
+      ${box(_DP.dn.x + 2, _DP.dn.yNo - 2.8, _DP.dn.w - 3, 5.6, `<b>${_esc(doc.name || "")}</b>${pager}`, `font-size:${autoPt((doc.name || "") + (pages.length > 1 ? " (1/1)" : ""), _DP.dn.w - 3, 9.5, 6, 0.58)}`)}
+      ${box(_DP.dn.x + 2, _DP.dn.yDate - 2.8, _DP.dn.w - 3, 5.6, _esc(_fmtDocDate(docDate)))}
+      ${body}
+      ${onLine(preparedBy, P.name, P.end, S.name)}${onLine(time, P.time, P.end, S.third)}
+      ${onLine(doc.driver_name, D.name, D.end, S.name)}${onLine(doc.driver_id, D.id, D.end, S.id)}${onLine(truck, D.truck, D.end, S.third)}
+      ${onLine(doc.received_by_name, R.name, R.end, S.name)}${onLine(doc.received_by_id, R.id, R.end, S.id)}
+    </div></div>`;
+  }).join("");
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<title>${_esc(cfg.title)} — ${_esc(doc.name)} (pre-printed sheet)</title>
+<style>
+  @page{size:${_DP.pageW}mm ${_DP.pageH}mm;margin:0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--dx:0mm;--dy:0mm}
+  html,body{font-family:Arial,Helvetica,sans-serif;color:#000;font-size:9.5pt;background:#e5e7eb}
+  .toolbar{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:12.5px}
+  .toolbar b{font-size:11.5px;letter-spacing:.04em}
+  .toolbar label{display:flex;align-items:center;gap:5px}
+  .toolbar input[type=number]{width:70px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:5px;font:inherit}
+  .toolbar button{font:inherit;padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;cursor:pointer}
+  .toolbar .go{margin-left:auto;background:#1a6ef7;border-color:#1a6ef7;color:#fff;font-weight:700}
+  .toolbar .hint{flex-basis:100%;font-size:11.5px;color:#64748b}
+  .pg{position:relative;width:${_DP.pageW}mm;height:${_DP.pageH}mm;margin:14px auto;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.18);overflow:hidden;page-break-after:always;break-after:page}
+  .pg:last-child{page-break-after:auto;break-after:auto}
+  .shift{position:absolute;left:var(--dx);top:var(--dy);width:100%;height:100%}
+  .t{position:absolute;white-space:nowrap;overflow:hidden;text-overflow:clip}
+  .pg-no{font-size:7.5pt;font-weight:400}
+  .outline{display:none}
+  body.ol .outline{display:block}
+  .outline div{position:absolute;border:1px dashed #777;color:#777;font-size:6pt;line-height:1}
+  @media print{
+    html,body{background:#fff}
+    .toolbar{display:none!important}
+    .pg{margin:0;box-shadow:none}
+  }
+</style></head><body>
+<div class="toolbar">
+  <b>PRINT ON PRE-PRINTED DELIVERY NOTE SHEET</b>
+  <label>X nudge (mm) <input id="dx" type="number" step="0.5" value="0"/></label>
+  <label>Y nudge (mm) <input id="dy" type="number" step="0.5" value="0"/></label>
+  <label><input id="ol" type="checkbox"/> Print form outline (for a test on plain paper)</label>
+  <button id="rs" type="button">Reset</button>
+  <button class="go" type="button" onclick="window.print()">Print</button>
+  <div class="hint">Printer: paper 225 x 209 mm, margins None, scale 100%. Positive X moves the text right, positive Y moves it down. The nudge is remembered on this computer.</div>
+</div>
+${pageHtml}
+<script>
+(function(){
+  var K='bv_dn_pp_calib', root=document.documentElement;
+  var dx=document.getElementById('dx'), dy=document.getElementById('dy'), ol=document.getElementById('ol');
+  try{var c=JSON.parse(localStorage.getItem(K)||'{}'); dx.value=c.dx||0; dy.value=c.dy||0;}catch(e){}
+  function apply(){
+    root.style.setProperty('--dx',(parseFloat(dx.value)||0)+'mm');
+    root.style.setProperty('--dy',(parseFloat(dy.value)||0)+'mm');
+    document.body.classList.toggle('ol',ol.checked);
+    try{localStorage.setItem(K,JSON.stringify({dx:parseFloat(dx.value)||0,dy:parseFloat(dy.value)||0}));}catch(e){}
+  }
+  dx.oninput=dy.oninput=ol.onchange=apply;
+  document.getElementById('rs').onclick=function(){dx.value=0;dy.value=0;apply();};
+  apply();
+})();
+<\/script>
+</body></html>`;
+}
+
+// Dashed outline of every field of the pre-printed D.N sheet (hidden unless "Print form outline" is ticked).
+function _dpOutline() {
+  const mm = (v) => Number(v).toFixed(2) + "mm";
+  const r = (x, y, w, h, label = "") =>
+    `<div style="left:${mm(x)};top:${mm(y)};width:${mm(w)};height:${mm(h)}">${label}</div>`;
+  const T = _DP.tbl, C = _DP.cols, tH = T.bottom - (T.hdrBottom - 6.2);
+  let out = r(_DP.to.x, _DP.to.y, _DP.to.w, _DP.to.h, "To")
+    + r(_DP.dn.x - 26, _DP.to.y, 26 + _DP.dn.w, 15, "D.N No.")
+    + r(_DP.dn.x - 26, _DP.to.y + 15, 26 + _DP.dn.w, 15, "DATE")
+    + r(T.x, T.hdrBottom - 6.2, 198, tH, "");
+  for (const k of Object.keys(C)) out += r(T.x + C[k][0], T.hdrBottom - 6.2, C[k][1] - C[k][0], tH, k);
+  for (const [b, key] of [[_DP.prepared, "prepared"], [_DP.delivered, "delivered"], [_DP.received, "received"]])
+    for (const [f, y] of [["name", _DP.sigY.name], ["id", _DP.sigY.id], [b.time !== undefined ? "time" : "truck", _DP.sigY.third]])
+      out += r(b[f], y - 0.2, b.end - b[f], 0.1, f === "name" && key === "prepared" ? "" : "");
+  return out;
 }
 
 // Material Requisition on the Sava Builders pre-printed requisition sheet (cfg.savaMR): No. / Date / Project,
@@ -1121,6 +1467,15 @@ export async function prepareMRPrint(doc) {
 // Delivery Note print: rendered on the Sava Builders pre-printed D.N sheet layout.
 export const DN_PRINT_CONFIG = { title: "DELIVERY NOTE", savaDN: true };
 
+// Delivery Note printed onto the client's own pre-printed D.N stationery: data only, no form drawn.
+// Opens in a new window; the person checks the nudge and presses Print (so a misaligned print wastes no stationery).
+export function printPreprintedDN(doc, config) {
+  const w = window.open("", "_blank");
+  if (!w) return false;
+  w.document.open(); w.document.write(_renderSavaDNPreprinted(doc, { ...DN_PRINT_CONFIG, ...config })); w.document.close();
+  return true;
+}
+
 export const PO_PRINT_CONFIG = {
   title: "PURCHASE ORDER", partyLabel: "Vendor", partyField: "supplier_name",
   po: true, currency: "KES", taxIdLabel: "KRA PIN :", keepTaxLabel: true,
@@ -1129,6 +1484,18 @@ export const PO_PRINT_CONFIG = {
   showQr: false, includeHsn: false, includeDiscount: false,
   savaPaper: true,   // render on the Sava Builders pre-printed LPO sheet layout
 };
+
+// LPO printed onto the client's own pre-printed stationery: data only, no form drawn (see _renderSavaPOPreprinted).
+export const PO_PREPRINTED_CONFIG = { ...PO_PRINT_CONFIG, savaPreprinted: true };
+
+// Opens the pre-printed LPO in a new window. It does not print by itself: the person checks the nudge and
+// presses Print, so a misaligned print does not waste a sheet of the pre-printed stationery.
+export function printPreprintedPO(doc, config) {
+  const w = window.open("", "_blank");
+  if (!w) return false;
+  w.document.open(); w.document.write(_renderSavaPOPreprinted(doc, { ...PO_PREPRINTED_CONFIG, ...config })); w.document.close();
+  return true;
+}
 
 // Adds what the PO record doesn't carry: the supplier's KRA PIN, contact, address and payment terms.
 // Never throws: anything it can't read is simply left off the print.
@@ -1173,6 +1540,7 @@ export function useLivePreview() {
     if (cfg.savaMR) return _renderSavaMR(doc, cfg);
     if (cfg.savaGRN) return _renderSavaGRN(doc, cfg);
     if (cfg.savaDN) return _renderSavaDN(doc, cfg);
+    if (cfg.po && cfg.savaPreprinted) return _renderSavaPOPreprinted(doc, cfg);
     if (cfg.po && cfg.savaPaper) return _renderSavaPO(doc, cfg);
     if (_state.template === "modern")  return _renderModern(doc, cfg);
     if (_state.template === "minimal") return _renderMinimal(doc, cfg);

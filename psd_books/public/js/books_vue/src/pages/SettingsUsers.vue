@@ -37,11 +37,12 @@
           </button>
           <!-- Dropdown menu -->
           <div v-if="openMenu === u.name" class="su-dropdown" @click.stop>
-            <button class="su-dd-item" :disabled="!$canEdit('admin')" :title="!$canEdit('admin') ? 'Read-only access' : ''" @click="editUser=u;editRole=u.books_role;editSava=[...(u.sava_roles||[])];openMenu=null">
+            <button class="su-dd-item" :disabled="!$canEdit('admin')" :title="!$canEdit('admin') ? 'Read-only access' : ''" @click="editUser=u;editRole=u.books_role;editSava=[...(u.sava_roles||[])];editModules=null;openMenu=null">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               Change Role
             </button>
-            <button v-if="!u.is_company_admin" class="su-dd-item" :disabled="!$canEdit('admin')" :title="!$canEdit('admin') ? 'Read-only access' : ''" @click="openPerms(u);openMenu=null">
+            <!-- Module Access is hidden: modules now come from the job role (v-if="false"). -->
+            <button v-if="false" class="su-dd-item" :disabled="!$canEdit('admin')" :title="!$canEdit('admin') ? 'Read-only access' : ''" @click="openPerms(u);openMenu=null">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
               Module Access
             </button>
@@ -139,7 +140,7 @@
           <div v-for="s in stepsForRole" :key="s" :style="'flex:1;height:3px;border-radius:2px;margin:0 2px;background:'+(step>=s?'#2563eb':'#e4e8f0')"></div>
         </div>
         <div v-if="step===1" class="nim-body" style="display:grid;gap:12px">
-          <div style="font-size:13px;color:#4a5568">Select Books Admin, or pick one or more job roles for this member:</div>
+          <div style="font-size:13px;color:#4a5568">Pick a role for this member:</div>
           <div v-for="r in ROLES" :key="r" @click="selectRole(r)" :style="'padding:14px 16px;border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .15s;'+(inviteForm.role===r?'border:2px solid #2563eb;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
             <div :style="'width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+ROLE_COLORS[r]"></div>
             <div style="flex:1"><div style="font-weight:700;font-size:13px;color:#1a1a2e">{{r}}</div><div style="font-size:12px;color:#868e96;margin-top:2px">{{ROLE_DESC[r]}}</div></div>
@@ -219,12 +220,7 @@
       <div class="nim-dialog" style="width:420px">
         <div class="nim-header"><span style="font-weight:700;color:#fff;">Change Role — {{editUser.full_name||editUser.name}}</span><button class="nim-close" @click="editUser=null">✕</button></div>
         <div class="nim-body" style="display:grid;gap:10px">
-          <div v-for="r in CHANGEABLE_ROLES" :key="r" @click="editRole=r" :style="'padding:12px 14px;border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .15s;'+(editRole===r?'border:2px solid #2563eb;background:#f5f0ff':'border:2px solid #e4e8f0;background:#fff')">
-            <div :style="'width:8px;height:8px;border-radius:50%;background:'+ROLE_COLORS[r]"></div>
-            <div style="flex:1"><div style="font-weight:600;font-size:13px">{{r}}</div><div style="font-size:11.5px;color:#868e96">{{ROLE_DESC[r]}}</div></div>
-            <div v-if="editRole===r" style="color:#2563eb">✓</div>
-          </div>
-          <div style="font-size:12.5px;color:#4a5568;margin-top:4px">Sava job roles (module access is set separately under Module Access):</div>
+          <div style="font-size:12.5px;color:#4a5568">Select the job role(s) for this member:</div>
           <label v-for="r in SAVA_ROLES" :key="r" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid #e4e8f0;border-radius:8px;cursor:pointer">
             <input type="checkbox" :checked="editSava.includes(r)" @change="toggleEditSava(r)"/>
             <span style="font-weight:600;font-size:13px">{{r}}</span>
@@ -290,7 +286,7 @@ const LEVELS = ["None", "View", "Create", "Edit", "Delete"];
 
 // Add Member offers Books Admin plus the Sava job roles; the other Books roles are set automatically
 // from the job roles (see utils/savaRoles.js) and are no longer picked by hand.
-const ROLES = ["Books Admin"];
+const ROLES = [];   // Books Admin is no longer offered in Add Member; use the Admin job role
 const CHANGEABLE_ROLES = ["Books Admin", "Accountant", "Books Manager", "Books Viewer"];
 
 const ROLE_COLORS = {
@@ -301,9 +297,7 @@ const ROLE_COLORS = {
   "Custom":        "#E67700",
 };
 const SAVA_ROLE_COLORS = {
-  "Store Keeper": "#2F9E44", "Site Engineer": "#2F9E44", "Purchase Officer": "#1971C2",
-  "Accounts Officer": "#1971C2", "Purchase Manager": "#E67700", "Finance": "#E67700", "Director": "#E67700",
-  "Project Manager": "#2F9E44",
+  "Site Engineer": "#2F9E44", "Purchase Manager": "#E67700", "Admin": "#2563eb", "Director": "#E67700",
 };
 const ROLE_BG = {
   "Books Admin":   "#F3F0FF",
@@ -422,15 +416,20 @@ function toggleInviteSava(r) {
   else inviteForm.modules = defaultModulesFor(inviteForm.role);
 }
 
+// Ticking job roles sets the Books role and modules from them (same as Add Member).
+const editModules = ref(null);
 function toggleEditSava(r) {
   const i = editSava.value.indexOf(r);
   if (i >= 0) editSava.value.splice(i, 1); else editSava.value.push(r);
+  const pf = savaPrefill(editSava.value, MODULES.map((m) => m.key));
+  if (pf) { editRole.value = pf.role; editModules.value = pf.modules; }
+  else editModules.value = null;
 }
 
 function nextStep() {
   inviteError.value = "";
   if (step.value === 1) {
-    if (inviteForm.role !== "Books Admin" && !inviteForm.sava_roles.length) { inviteError.value = "Select Books Admin or at least one job role."; return; }
+    if (!inviteForm.sava_roles.length) { inviteError.value = "Select a role."; return; }
     step.value = 3;
   }
 }
@@ -519,6 +518,11 @@ async function changeRole() {
     await apiPOST("psd_books.api.admin.update_user_role", { user: editUser.value.name, role: editRole.value });
     if (!sameRoles(editSava.value, editUser.value.sava_roles)) {
       await apiPOST("psd_books.api.admin.set_user_sava_roles", { user: editUser.value.name, roles: editSava.value });
+    }
+    if (editModules.value && editRole.value !== "Books Admin") {
+      // job roles changed: give the modules and levels that go with them
+      const levels = Object.fromEntries(Object.entries(editModules.value).map(([k, v]) => [k, v ? "Edit" : "None"]));
+      await apiPOST("psd_books.api.admin.set_user_permissions", { user: editUser.value.name, modules: editModules.value, levels });
     }
     toast("Role updated"); editUser.value = null; load();
   } catch (e) { toast(e.message, "error"); }

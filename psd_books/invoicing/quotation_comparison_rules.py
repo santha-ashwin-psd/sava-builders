@@ -317,9 +317,7 @@ def action_state(status, raised_by, steps, user, roles, is_admin=False):
 		out["reason"] = _("No approval level is pending.")
 		return out
 	out["level"], out["role"] = step.get("level"), step.get("role")
-	if is_admin:
-		out["can_act"] = True
-	elif user == raised_by:
+	if user == raised_by:
 		out["reason"] = _("You raised this comparison, so another person must approve it.")
 	elif any(s.get("status") == STEP_APPROVED and s.get("approver") == user for s in steps or []):
 		out["reason"] = _("You already approved a level. Another person must approve the next level.")
@@ -403,7 +401,7 @@ def summary(doc):
 
 
 # --- approval (A9.4) -------------------------------------------------------
-APPROVAL_ROLES = ("Purchase Manager", "Finance", "Director")
+APPROVAL_ROLES = ("Director",)
 FINANCE_ABOVE = Decimal("200000")
 PENDING_APPROVAL = "Pending Approval"
 APPROVED = "Approved"
@@ -414,13 +412,8 @@ STEP_REJECTED = "Rejected"
 
 
 def required_roles(total):
-	"""Approval levels for a total incl. VAT. A total exactly on a threshold does not add a level.
-	Levels stop at Finance; a Director acts on any level as admin."""
-	value = Decimal(str(total or 0))
-	roles = ["Purchase Manager"]
-	if value > FINANCE_ABOVE:
-		roles.append("Finance")
-	return roles
+	"""Approval levels: one level, the Director, whatever the total. Only a Director approves."""
+	return ["Director"]
 
 
 def build_steps(total):
@@ -432,15 +425,14 @@ def current_step(doc):
 
 
 def check_can_act(doc, user, roles, is_admin=False):
-	"""The step that user may act on now, or a refusal. A Books Admin / Director (is_admin) may act on any pending level."""
+	"""The step that user may act on now, or a refusal. Only a Director may act (is_admin is ignored: a Books Admin
+	who is not a Director cannot approve)."""
 	if doc.status != PENDING_APPROVAL:
 		frappe.throw(_("{0} is {1}. Only a comparison pending approval can be approved or rejected.")
 			.format(doc.name, doc.status))
 	step = current_step(doc)
 	if step is None:
 		frappe.throw(_("No approval level is pending on {0}.").format(doc.name))
-	if is_admin:
-		return step
 	if user == doc.raised_by:
 		frappe.throw(_("The person who raised the comparison can't approve or reject it."))
 	if any(s.status == STEP_APPROVED and s.approver == user for s in doc.get("approval_steps") or []):

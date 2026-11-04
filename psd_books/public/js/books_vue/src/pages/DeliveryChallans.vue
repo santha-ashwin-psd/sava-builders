@@ -826,7 +826,7 @@ import { flt, fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useProjectOptions } from "../composables/useProjectOptions.js";
-import { useLivePreview, DN_PRINT_CONFIG } from "../composables/useLivePreview.js";
+import { useLivePreview, DN_PRINT_CONFIG, printPreprintedDN } from "../composables/useLivePreview.js";
 
 const { toast } = useToast();
 const route = useRoute();
@@ -855,7 +855,7 @@ const bulkBusy    = ref(false);
 const viewOpen    = ref(false);
 const viewDoc     = ref(null);
 const { printDoc } = useLivePreview();
-function printDN(d) { printDoc({ ...d, prepared_by_name: ownerName(d.owner) }, { ...DN_PRINT_CONFIG, companyName: d?.company || "" }); }
+function printDN(d) { if (!printPreprintedDN({ ...d, prepared_by_name: ownerName(d.owner) }, { companyName: d?.company || "" })) toast.error("Pop-up blocked \u2014 allow pop-ups to print"); }
 const submitting  = ref(false);
 const deleteTarget = ref(null);  // { row, mode: "delete"|"cancel" }
 const deleting     = ref(false);

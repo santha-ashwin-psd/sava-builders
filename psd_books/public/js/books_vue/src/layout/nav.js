@@ -31,7 +31,7 @@ export const NAV = [
   { section: "Purchases" },
   // { path: "/expenses",                      label: "Expenses",         icon: "expense",    module: "bills"      },  // hidden for Sava (Purchases)
   // { path: "/expenses/categories",           label: "Expense Categories", icon: "folder",   module: "bills"      },  // hidden for Sava (Purchases)
-  { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory" },
+  { path: "/manufacturing/material-request",  label: "Material Requests", icon: "purchase",   module: "inventory", doctype: "Material Request" },
   { path: "/rfqs",                          label: "Request for Quotation", icon: "purchase", module: "bills"    },
   { path: "/purchase-orders",               label: "Purchase Orders",  icon: "purchase",   module: "bills", doctype: "Purchase Order" }, 
     { path: "/purchase-receipts",             label: "GRN",              icon: "purchase",   module: "inventory"  }, // also shown to anyone who may read Purchase Orders (Store Keeper: marks goods received)
@@ -139,7 +139,7 @@ export const NAV = [
   // { path: "/settings/number-series",        label: "Number Series",    icon: "hash",       module: "admin"      },
   // { path: "/settings/payment-terms",        label: "Payment Terms",    icon: "calendar",   module: "admin"      },
   // { path: "/settings/currency-exchange", label: "Currency", icon: "currency", module: "admin" }, // KES-only: hidden
-  { path: "/settings/roles",                label: "Roles",            icon: "shield",     module: "admin"      },
+  // { path: "/settings/roles",                label: "Roles",            icon: "shield",     module: "admin"      },  // hidden for Sava: roles are the 4 job roles
   // { path: "/settings/organization",         label: "Organization",     icon: "org",        module: "admin"      },
   // { path: "/settings/security",             label: "Security",         icon: "lock",       module: null         },
   // { path: "/settings/sso",                  label: "Single Sign-On",   icon: "shield",     module: "admin"      },  // hidden for Sava

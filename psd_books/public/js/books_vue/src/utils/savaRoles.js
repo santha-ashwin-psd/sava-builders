@@ -1,33 +1,22 @@
-// Sava A17.3c: the 8 Sava job roles and the Books role / module pre-fill used by
+// Sava A17.3c: the 4 job roles and the Books role / module pre-fill used by
 // the Users screen. The Sava roles sit on top of the Books role; the admin can
 // still change the Books role and the modules afterwards.
 
-export const SAVA_ROLES = [
-  "Store Keeper", "Site Engineer", "Purchase Officer", "Accounts Officer",
-  "Purchase Manager", "Finance", "Director", "Project Manager",
-];
+export const SAVA_ROLES = ["Site Engineer", "Purchase Manager", "Admin", "Director"];
 
 export const SAVA_ROLE_DESC = {
-  "Store Keeper":     "Receives goods, issues and transfers stock",
-  "Site Engineer":    "Raises material requisitions for a project",
-  "Purchase Officer": "Runs RFQs, quotations and LPOs",
-  "Accounts Officer": "Enters supplier bills and payments",
-  "Purchase Manager": "Approves quotation comparisons and LPOs",
-  "Finance":          "Approves high-value LPOs, sees reports",
-  "Director":         "Approves the largest LPOs, sees reports",
-  "Project Manager":  "Creates projects and approves their material requests",
+  "Site Engineer":    "Raises material requests (MRN) only, approved by a Director",
+  "Purchase Manager": "Full access; sends for approval, cannot approve",
+  "Admin":            "Full access; sends for approval, cannot approve",
+  "Director":         "Full access, and the only one who approves (LPO, comparison, MRN)",
 };
 
-// Books role + module keys each Sava role needs to be able to work.
+// Books role + module keys each role needs to be able to work.
 export const SAVA_PREFILL = {
-  "Store Keeper":     { role: "Books Manager", modules: ["inventory"] },
-  "Site Engineer":    { role: "Books Manager", modules: ["inventory"] },
-  "Purchase Officer": { role: "Books Manager", modules: ["bills", "inventory", "customers"] },
-  "Accounts Officer": { role: "Accountant",    modules: ["bills", "payments", "reports", "customers"] },
-  "Purchase Manager": { role: "Books Manager", modules: ["bills", "inventory", "reports", "customers"] },
-  "Finance":          { role: "Accountant",    modules: ["bills", "payments", "reports"] },
-  "Director":         { role: "Books Admin",   modules: ["*"] },   // Director always has admin access: every module
-  "Project Manager":  { role: "Books Manager", modules: ["inventory"] },
+  "Site Engineer":    { role: "Books Manager", modules: [] },   // MRN only: the Material Requests screen comes from the server access rule, not a module
+  "Purchase Manager": { role: "Books Manager", modules: ["*"] },
+  "Admin":            { role: "Books Manager", modules: ["*"] },
+  "Director":         { role: "Books Admin",   modules: ["*"] },   // Director: every module, plus approvals
 };
 
 // When a user holds several Sava roles, the strongest Books role wins.

@@ -126,42 +126,29 @@ DOCTYPE_MODULE["Purchase Receipt"] = "inventory"
 # check for the listed doctypes and keys. "write" covers create, edit, submit and cancel.
 # A key that is left out falls back to the module check. Users with no Sava role, company admins
 # and bypass users are not affected. Approvals (LPO, comparison, MRN) have their own role checks.
-_ALL_SAVA = frozenset({"Store Keeper", "Site Engineer", "Purchase Officer", "Accounts Officer",
-                       "Purchase Manager", "Finance", "Director", "Project Manager"})
-_APPROVERS = frozenset({"Purchase Manager", "Finance", "Director"})
+_ALL_SAVA = frozenset({"Site Engineer", "Purchase Manager", "Admin", "Director"})
+# Purchase Manager and Admin: everything except approvals. Director: everything, and is the only approver.
+_FULL = frozenset({"Purchase Manager", "Admin", "Director"})
+_APPROVERS = frozenset({"Director"})
 SAVA_ACCESS = {
     "Project": {"read": _ALL_SAVA},
     "Warehouse": {"read": _ALL_SAVA},
     "Item": {"read": _ALL_SAVA},
-    # tax templates feed the purchase order tax dropdown, so every Sava role must see them (read only)
+    # tax templates feed the purchase order tax dropdown, so every role must see them (read only)
     "Tax Template": {"read": _ALL_SAVA},
-    "Material Request": {
-        "read": frozenset({"Site Engineer", "Store Keeper", "Purchase Officer", "Project Manager"}) | _APPROVERS,
-        "write": frozenset({"Site Engineer"}),
-        # who may cancel or delete one (a Books Admin always may); raising and editing stay with "write"
-        "cancel_delete": frozenset({"Site Engineer", "Purchase Officer", "Purchase Manager", "Director"})},
-    "Delivery Note": {
-        "read": frozenset({"Site Engineer", "Store Keeper", "Purchase Manager"}),
-        "write": frozenset({"Store Keeper"})},
-    "Purchase Receipt": {"read": _ALL_SAVA, "write": frozenset({"Store Keeper"})},
-    # QC (create, edit, readings, submit, cancel): Store Keeper, Director and Books Admin (admins pass above).
-    # No "read" key, so who can see inspections stays with the Inventory module check.
-    "QC Inspection": {"write": frozenset({"Store Keeper"})},
-    "Purchase Order": {
-        "read": _ALL_SAVA - {"Site Engineer", "Project Manager"},
-        "write": frozenset({"Purchase Officer"})},
-    "Request for Quotation": {
-        "read": frozenset({"Purchase Officer"}) | _APPROVERS, "write": frozenset({"Purchase Officer"})},
-    "Supplier Quotation": {
-        "read": frozenset({"Purchase Officer"}) | _APPROVERS, "write": frozenset({"Purchase Officer"})},
-    "Quotation Comparison": {
-        "read": frozenset({"Purchase Officer"}) | _APPROVERS, "write": frozenset({"Purchase Officer"})},
-    "Purchase Invoice": {
-        "read": frozenset({"Purchase Officer", "Accounts Officer"}) | _APPROVERS,
-        "write": frozenset({"Accounts Officer"})},
-    "Payment Entry": {
-        "read": frozenset({"Accounts Officer"}) | _APPROVERS,
-        "write": frozenset({"Accounts Officer", "Finance"})},
+    # the Employee dropdown on a Material Request (read only; Employee itself is an Admin-module doctype)
+    "Employee": {"read": _ALL_SAVA},
+    # Site Engineer works with Material Requests (MRN) only; the MRN is approved by a Director only
+    "Material Request": {"read": _ALL_SAVA, "write": _ALL_SAVA, "cancel_delete": _ALL_SAVA},
+    "Delivery Note": {"read": _FULL, "write": _FULL},
+    "Purchase Receipt": {"read": _FULL, "write": _FULL},
+    "QC Inspection": {"write": _FULL},
+    "Purchase Order": {"read": _FULL, "write": _FULL},
+    "Request for Quotation": {"read": _FULL, "write": _FULL},
+    "Supplier Quotation": {"read": _FULL, "write": _FULL},
+    "Quotation Comparison": {"read": _FULL, "write": _FULL},
+    "Purchase Invoice": {"read": _FULL, "write": _FULL},
+    "Payment Entry": {"read": _FULL, "write": _FULL},
 }
 
 
@@ -246,6 +233,13 @@ def _membership(user: str) -> dict:
             # Keep the original additive-only behavior so untouched members
             # don't lose access this field wasn't meant to affect.
             levels[m] = stored if _LEVEL_INDEX.get(stored, 0) > _LEVEL_INDEX.get(legacy, 0) else legacy
+
+    # Purchase Manager and Admin manage team members (Settings > Users): give them the
+    # Admin / Settings module at Delete level so the Users page buttons are enabled.
+    # (Not company-admin: Books Admin-only actions such as SMTP or company settings stay closed.)
+    if not admin and not readonly and {"Purchase Manager", "Admin"} & set(frappe.get_roles(user)):
+        mods["admin"] = True
+        levels["admin"] = "Delete"
 
     return {
         "bypass": False,
