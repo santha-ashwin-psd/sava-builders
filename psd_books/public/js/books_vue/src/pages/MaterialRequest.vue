@@ -36,7 +36,7 @@
     <div class="mrl-table-wrap">
       <table class="mrl-table">
         <thead><tr>
-          <th>Material Request No.</th><th>Request Type</th><th>Project</th><th>Requested Date</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
+          <th>MRN No</th><th>Request Type</th><th>Project</th><th>Requested Date</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
         </tr></thead>
         <tbody>
           <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="7"><div class="shimmer" style="height:26px;border-radius:6px"></div></td></tr></template>
@@ -46,7 +46,7 @@
             <td>{{ row.material_request_type || '—' }}</td>
             <td>{{ refLabel(row) }}</td>
             <td>{{ fmtDate(row.posting_date) }}</td>
-            <td>{{ row.owner ? ownerName(row.owner) : '—' }}</td>
+            <td>{{ empName(row) }}</td>
             <td><span class="bomx-badge" :class="statusClass(row)">{{ row.status }}</span></td>
             <td style="text-align:center" @click.stop><button class="mrl-act" title="Open" @click="selectMR(row.name)"><span v-html="icon('ext',13)"></span></button></td>
           </tr>
@@ -295,9 +295,14 @@ const statusOptions = ["Draft", "Pending Approval", "Sent Back", "Approved", "Pa
 
 const selectedName = computed(() => (route.params.name && route.params.name !== "new") ? route.params.name : (route.params.name === "new" ? "new" : null));
 
+// Employee name for the list; falls back to '-' when no employee is set
+function empName(r) {
+  return (r && (r.employee_name || r.employee)) || "-";
+}
+
 async function loadList() {
   try {
-    const fields = ["name", "material_request_type", "posting_date", "production_plan", "project", "owner", "status", "docstatus", "modified"];
+    const fields = ["name", "material_request_type", "posting_date", "production_plan", "project", "owner", "employee", "employee_name", "status", "docstatus", "modified"];
     const r = await apiList("Material Request", { fields, limit: 1000, order: "modified desc" });
     list.value = r || [];
   } catch (e) {
@@ -323,7 +328,7 @@ const sorted = computed(() => {
   else if (filterStatus.value) r = r.filter(i => i.status === filterStatus.value);
   if (filterType.value) r = r.filter(i => i.material_request_type === filterType.value);
   const q = search.value.toLowerCase().trim();
-  if (q) r = r.filter(i => [i.name, i.material_request_type, i.production_plan, refLabel(i), i.owner ? ownerName(i.owner) : ""].filter(Boolean).join(" ").toLowerCase().includes(q));
+  if (q) r = r.filter(i => [i.name, i.material_request_type, i.production_plan, refLabel(i), empName(i) === "-" ? "" : empName(i)].filter(Boolean).join(" ").toLowerCase().includes(q));
   return r;
 });
 const paged = computed(() => {
@@ -347,8 +352,8 @@ const kpis = computed(() => {
   ];
 });
 function exportCSV() {
-  const headers = ["Material Request No.", "Request Type", "Project", "Requested Date", "Requested By", "Status"];
-  const rows = sorted.value.map(r => [r.name, r.material_request_type || "", refLabel(r), r.posting_date || "", r.owner ? ownerName(r.owner) : "", r.status || ""]);
+  const headers = ["MRN No", "Request Type", "Project", "Requested Date", "Requested By", "Status"];
+  const rows = sorted.value.map(r => [r.name, r.material_request_type || "", refLabel(r), r.posting_date || "", empName(r) === "-" ? "" : empName(r), r.status || ""]);
   const csv = [headers, ...rows].map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
   const a = document.createElement("a");
