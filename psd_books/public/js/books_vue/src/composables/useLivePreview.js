@@ -948,11 +948,12 @@ function _renderSavaPOPreprinted(doc, cfg) {
   }).join("");
 
   return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
+<style id="pgsz">@page{size:${_PP.pageW}mm ${_PP.pageH}mm;margin:0}</style>
 <title>${_esc(cfg.title)} — ${_esc(doc.name)} (pre-printed sheet)</title>
 <style>
-  @page{size:${_PP.pageW}mm ${_PP.pageH}mm;margin:0}
+  @page{margin:0}
   *{box-sizing:border-box;margin:0;padding:0}
-  :root{--dx:0mm;--dy:0mm}
+  :root{--dx:0mm;--dy:0mm;--pw:${_PP.pageW}mm;--ph:${_PP.pageH}mm;--rot:translate(0,0)}
   html,body{font-family:Arial,Helvetica,sans-serif;color:#000;font-size:9.5pt;background:#e5e7eb}
   .toolbar{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;font-size:12.5px}
   .toolbar b{font-size:11.5px;letter-spacing:.04em}
@@ -961,9 +962,9 @@ function _renderSavaPOPreprinted(doc, cfg) {
   .toolbar button{font:inherit;padding:6px 12px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;cursor:pointer}
   .toolbar .go{margin-left:auto;background:#1a6ef7;border-color:#1a6ef7;color:#fff;font-weight:700}
   .toolbar .hint{flex-basis:100%;font-size:11.5px;color:#64748b}
-  .pg{position:relative;width:${_PP.pageW}mm;height:${_PP.pageH}mm;margin:14px auto;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.18);overflow:hidden;page-break-after:always;break-after:page}
+  .pg{position:relative;width:var(--pw);height:var(--ph);margin:14px auto;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.18);overflow:hidden;page-break-after:always;break-after:page}
   .pg:last-child{page-break-after:auto;break-after:auto}
-  .shift{position:absolute;left:var(--dx);top:var(--dy);width:100%;height:100%}
+  .shift{position:absolute;left:0;top:0;width:${_PP.pageW}mm;height:${_PP.pageH}mm;transform-origin:0 0;transform:var(--rot) translate(var(--dx),var(--dy))}
   .t{position:absolute;white-space:nowrap;overflow:hidden;text-overflow:clip}
   .pg-no{font-size:7.5pt;font-weight:400}
   .outline{display:none}
@@ -979,25 +980,30 @@ function _renderSavaPOPreprinted(doc, cfg) {
   <b>PRINT ON PRE-PRINTED LPO SHEET</b>
   <label>X nudge (mm) <input id="dx" type="number" step="0.5" value="0"/></label>
   <label>Y nudge (mm) <input id="dy" type="number" step="0.5" value="0"/></label>
+  <label>Orientation <select id="rt"><option value="0">Normal (225 x 209 landscape)</option><option value="90">Rotate 90° clockwise (portrait page)</option><option value="270">Rotate 90° anticlockwise (portrait page)</option><option value="180">Rotate 180°</option></select></label>
   <label><input id="ol" type="checkbox"/> Print form outline (for a test on plain paper)</label>
   <button id="rs" type="button">Reset</button>
   <button class="go" type="button" onclick="window.print()">Print</button>
-  <div class="hint">Printer: paper 225 x 209 mm, margins None, scale 100%. Positive X moves the text right, positive Y moves it down. The nudge is remembered on this computer.</div>
+  <div class="hint">Printer: paper 225 x 209 mm, margins None, scale 100%. If the text prints sideways, pick the matching Orientation here (and tick the outline to test on plain paper first). Positive X moves the text right, positive Y moves it down. The nudge is remembered on this computer.</div>
 </div>
 ${pageHtml}
 <script>
 (function(){
   var K='bv_po_pp_calib', root=document.documentElement;
-  var dx=document.getElementById('dx'), dy=document.getElementById('dy'), ol=document.getElementById('ol');
-  try{var c=JSON.parse(localStorage.getItem(K)||'{}'); dx.value=c.dx||0; dy.value=c.dy||0;}catch(e){}
+  var dx=document.getElementById('dx'), dy=document.getElementById('dy'), ol=document.getElementById('ol'), rt=document.getElementById('rt');
+  try{var c=JSON.parse(localStorage.getItem(K)||'{}'); dx.value=c.dx||0; dy.value=c.dy||0; rt.value=c.rot||'0';}catch(e){}
   function apply(){
     root.style.setProperty('--dx',(parseFloat(dx.value)||0)+'mm');
     root.style.setProperty('--dy',(parseFloat(dy.value)||0)+'mm');
+    var W=225,H=209,R=rt.value,sw=(R==='90'||R==='270'),pw=sw?H:W,ph=sw?W:H;
+    root.style.setProperty('--pw',pw+'mm'); root.style.setProperty('--ph',ph+'mm');
+    root.style.setProperty('--rot', R==='90'?'translate('+H+'mm,0) rotate(90deg)': R==='270'?'translate(0,'+W+'mm) rotate(-90deg)': R==='180'?'translate('+W+'mm,'+H+'mm) rotate(180deg)':'translate(0,0)');
+    document.getElementById('pgsz').textContent='@page{size:'+pw+'mm '+ph+'mm;margin:0}';
     document.body.classList.toggle('ol',ol.checked);
-    try{localStorage.setItem(K,JSON.stringify({dx:parseFloat(dx.value)||0,dy:parseFloat(dy.value)||0}));}catch(e){}
+    try{localStorage.setItem(K,JSON.stringify({dx:parseFloat(dx.value)||0,dy:parseFloat(dy.value)||0,rot:rt.value}));}catch(e){}
   }
-  dx.oninput=dy.oninput=ol.onchange=apply;
-  document.getElementById('rs').onclick=function(){dx.value=0;dy.value=0;apply();};
+  dx.oninput=dy.oninput=ol.onchange=rt.onchange=apply;
+  document.getElementById('rs').onclick=function(){dx.value=0;dy.value=0;rt.value='0';apply();};
   apply();
 })();
 <\/script>
