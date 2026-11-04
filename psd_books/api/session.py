@@ -86,6 +86,8 @@ def _doc_access(user: str) -> dict:
         if (SAVA_ACCESS.get(doctype) or {}).get("cancel_delete"):
             out[doctype]["cancel"] = bool(can_cancel_delete(doctype, "cancel", user))
             out[doctype]["delete"] = bool(can_cancel_delete(doctype, "delete", user))
+    # Who picks the manager when creating a project (Purchase Manager, Admin); a Books Admin / Director always can.
+    out.setdefault("Project", {})["pick_manager"] = bool({"Purchase Manager", "Admin"} & set(frappe.get_roles(user)))
     return out
 
 

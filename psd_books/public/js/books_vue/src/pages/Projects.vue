@@ -19,7 +19,7 @@
       </select>
       <button class="sales-btn-ghost" @click="load" title="Refresh" :disabled="loading"><span v-html="icon('refresh',14)"></span></button>
       <button class="sales-btn-ghost" @click="exportCSV" title="Export CSV" :disabled="!filtered.length"><span v-html="icon('download',14)"></span> CSV</button>
-      <button class="sales-btn-primary" :disabled="!canCreateProject" :title="!canCreateProject ? 'Only a Project Manager, Books Admin or Director can create projects' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Project</button>
+      <button class="sales-btn-primary" :disabled="!canCreateProject" :title="!canCreateProject ? 'Only a Purchase Manager, Admin, Books Admin or Director can create projects' : ''" @click="openNew"><span v-html="icon('plus',13)"></span> New Project</button>
     </div>
   </div>
 
@@ -109,18 +109,18 @@
           </div>
         </div>
         <div class="pj-group">
-          <label>Project Manager <span v-if="isAdmin && !isEdit" style="color:#e03131">*</span></label>
+          <label>Project Manager</label>
           <div class="pj-ctl">
             <span class="pj-ico" v-html="icon('user', 16)"></span>
-            <select v-if="isAdmin" v-model="form.project_manager" :disabled="formLocked" :required="!isEdit">
-              <option value="" :disabled="!isEdit">{{ isEdit ? '— None —' : '— Select Project Manager —' }}</option>
+            <select v-if="pickerShown" v-model="form.project_manager" :disabled="formLocked">
+              <option value="">— None —</option>
               <option v-for="m in managerOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
             </select>
             <input v-else :value="managerLabel" disabled />
           </div>
-          <div v-if="isAdmin" class="pj-hint">
-            Approves this project's material requests. Only users with the Project Manager role are listed.
-            <span v-if="!managerOptions.length"> No Project Manager exists yet: add one under Settings &gt; Users.</span>
+          <div v-if="pickerShown" class="pj-hint">
+            Optional. All employees except store users are listed.
+            <span v-if="!managerOptions.length"> No employee is available yet: add users under Settings &gt; Users.</span>
           </div>
           <div v-else class="pj-hint">
             {{ isEdit ? 'Only a Books Admin or Director can change the Project Manager.' : 'You will be the Project Manager of this project.' }}
@@ -189,6 +189,9 @@ const { isAdmin, flags } = usePermissions();
 // Only a Project Manager, Books Admin or Director can create or edit a project (the server
 // enforces this too; these flags only hide / disable the buttons).
 const canCreateProject = computed(() => isAdmin.value || !!flags.value.doc_access?.Project?.create);
+// Creating: a Books Admin / Director / Purchase Manager picks the manager; a Project Manager becomes it.
+const canPickManager = computed(() => isAdmin.value || !!flags.value.doc_access?.Project?.pick_manager);
+const pickerShown = computed(() => (isEdit.value ? isAdmin.value : canPickManager.value));
 const canEditProject = computed(() => isAdmin.value || !!flags.value.doc_access?.Project?.edit);
 
 const list = ref([]);
@@ -206,13 +209,13 @@ const closing = ref(false);
 const blockers = ref([]);
 const form = ref(blankForm());
 const members = ref({});
-const pmList = ref([]);  // users who hold the Project Manager role
+const pmList = ref([]);  // every active member except store users
 const managerOptions = computed(() => {
   const opts = pmList.value.map(u => ({ value: u.name, label: u.label || u.name }));
   const cur = form.value.project_manager;
-  // An older project may have a manager who has no Project Manager role: keep it visible.
+  // An older project may have a manager who is no longer in the list (e.g. a store user): keep it visible.
   if (cur && !opts.some(o => o.value === cur)) {
-    opts.unshift({ value: cur, label: (members.value[cur] || cur) + " (no Project Manager role)" });
+    opts.unshift({ value: cur, label: (members.value[cur] || cur) });
   }
   return opts.sort((a, b) => a.label.localeCompare(b.label));
 });
@@ -341,7 +344,7 @@ function openNew() {
   blockers.value = [];
   form.value = blankForm();
   // A Project Manager who creates a project becomes its manager; a Books Admin / Director picks one.
-  if (!isAdmin.value) form.value.project_manager = session.user;
+  if (!canPickManager.value) form.value.project_manager = session.user;
   showForm.value = true;
 }
 function openEdit(row) {
@@ -356,10 +359,6 @@ async function save() {
   const f = form.value;
   if (f.expected_end_date && f.start_date && f.expected_end_date < f.start_date) {
     toast.error("Expected End Date cannot be before Start Date");
-    return;
-  }
-  if (!isEdit.value && isAdmin.value && !f.project_manager) {
-    toast.error("Select a Project Manager for this project");
     return;
   }
   saving.value = true;

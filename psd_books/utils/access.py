@@ -284,11 +284,13 @@ def _can_at_level(doctype: str, threshold: str, user: str | None = None) -> bool
     m = _membership(user)
     if m["admin"]:
         return True
-    # Projects: only a Books Admin / Director (admin, handled above) or a Project Manager
-    # may create or edit one, whatever module level or other Sava role the user holds.
+    # Projects: a Books Admin / Director (admin, handled above) can do everything. A Project Manager
+    # or a Purchase Manager may create one; only a Project Manager may edit one, whatever module
+    # level or other Sava role the user holds. The Admin job role may create one too.
     if doctype == "Project" and threshold in ("Create", "Edit"):
+        allowed = ("Project Manager", "Purchase Manager", "Admin") if threshold == "Create" else ("Project Manager",)
         return (not m["no_member"] and not m["readonly"]
-                and "Project Manager" in set(frappe.get_roles(user)))
+                and bool(set(allowed) & set(frappe.get_roles(user))))
     rule = SAVA_ACCESS.get(doctype)
     if rule and not m["no_member"]:
         sava = _user_sava_roles(user)

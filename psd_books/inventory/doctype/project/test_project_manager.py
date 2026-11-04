@@ -105,15 +105,21 @@ class TestValidateManager(unittest.TestCase):
 		with self.assertRaises(Exception):
 			self.run_validate(fake("new@x.com", new=False), member=member_row("Books Viewer"), before="old@x.com")
 
-	def test_manager_without_role_blocked(self):
-		with self.assertRaises(Exception) as cm:
-			self.run_validate(fake("pm@x.com"), member=member_row(), roles=("Books Manager",))
-		self.assertIn("Project Manager role", str(cm.exception))
+	def test_manager_without_pm_role_allowed(self):
+		# any employee can be the manager now; the Project Manager role is no longer required
+		doc = fake("emp@x.com")
+		self.run_validate(doc, member=member_row(), roles=("Books Manager",))
+		self.assertEqual(doc.project_manager, "emp@x.com")
 
-	def test_admin_must_pick_manager_on_new(self):
+	def test_store_user_blocked(self):
 		with self.assertRaises(Exception) as cm:
-			self.run_validate(fake(None), caps=(True, False))
-		self.assertIn("Select a Project Manager", str(cm.exception))
+			self.run_validate(fake("store@x.com"), member=member_row(), roles=("Store Keeper",))
+		self.assertIn("store user", str(cm.exception))
+
+	def test_admin_may_leave_manager_blank_on_new(self):
+		doc = fake(None)
+		self.run_validate(doc, caps=(True, False))
+		self.assertIsNone(doc.project_manager)
 
 	def test_pm_creating_becomes_manager(self):
 		doc = fake("someone.else@x.com")
@@ -136,7 +142,25 @@ class TestValidateManager(unittest.TestCase):
 	def test_other_user_cannot_create(self):
 		with self.assertRaises(Exception) as cm:
 			self.run_validate(fake("pm@x.com"), member=member_row(), caps=(False, False))
-		self.assertIn("Only a Project Manager, Books Admin or Director can create", str(cm.exception))
+		self.assertIn("Purchase Manager, Admin, Books Admin or Director can create", str(cm.exception))
+
+	def test_purchase_manager_creates_and_picks_manager(self):
+		doc = fake("emp@x.com")
+		with mock.patch.object(pj, "_caller_is_buyer", return_value=True):
+			self.run_validate(doc, member=member_row(), caps=(False, False))
+		self.assertEqual(doc.project_manager, "emp@x.com")
+
+	def test_purchase_manager_may_leave_manager_blank(self):
+		doc = fake(None)
+		with mock.patch.object(pj, "_caller_is_buyer", return_value=True):
+			self.run_validate(doc, caps=(False, False))
+		self.assertIsNone(doc.project_manager)
+
+	def test_purchase_manager_cannot_change_manager_of_existing(self):
+		with mock.patch.object(pj, "_caller_is_buyer", return_value=True):
+			with self.assertRaises(Exception) as cm:
+				self.run_validate(fake("new@x.com", new=False), member=member_row(), before="old@x.com", caps=(False, False))
+		self.assertIn("Only a Books Admin or Director", str(cm.exception))
 
 	def test_status_change_save_skips_rules(self):
 		doc = fake("old@x.com", new=False)

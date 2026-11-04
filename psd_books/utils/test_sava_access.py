@@ -64,11 +64,12 @@ class TestSavaAccess(unittest.TestCase):
 		self.assertFalse(can({"Store Keeper"}, "Delivery Note", "create", readonly=True))
 		self.assertTrue(can({"Director"}, "Purchase Order", "read", readonly=True))
 
-	def test_only_project_manager_or_admin_creates_or_edits_a_project(self):
+	def test_project_manager_or_purchase_manager_creates_only_project_manager_edits_a_project(self):
 		full = {m: "Delete" for m in access.MODULES}  # modules on: only the Project rule may refuse
-		for role in ROLES:
-			for action in ("create", "write"):
-				self.assertEqual(can({role}, "Project", action, levels=full), role == "Project Manager", (role, action))
+		for role in ROLES + ("Admin",):
+			self.assertEqual(can({role}, "Project", "create", levels=full),
+				role in ("Project Manager", "Purchase Manager", "Admin"), (role, "create"))
+			self.assertEqual(can({role}, "Project", "write", levels=full), role == "Project Manager", (role, "write"))
 			self.assertTrue(can({role}, "Project", "read"), role)
 		# no Sava role, even with every module: still cannot create a project
 		self.assertFalse(can(set(), "Project", "create", levels=full))
@@ -78,6 +79,7 @@ class TestSavaAccess(unittest.TestCase):
 		# a read-only or non-member Project Manager cannot
 		self.assertFalse(can({"Project Manager"}, "Project", "create", readonly=True))
 		self.assertFalse(can({"Project Manager"}, "Project", "create", no_member=True))
+		self.assertFalse(can({"Purchase Manager"}, "Project", "create", readonly=True))
 
 	def test_project_manager_reads_mrn_not_purchase_orders(self):
 		self.assertTrue(can({"Project Manager"}, "Material Request", "read"))

@@ -41,25 +41,29 @@ def _edit_warehouse_projects(warehouse, add=None, remove=None):
 
 
 PM_ROLE = "Project Manager"
+STORE_ROLE = "Store Keeper"   # store users can't be picked as a project's manager
 
 
-def manager_rule_problem(is_new, is_admin, is_pm, user, old_manager, new_manager):
+def manager_rule_problem(is_new, is_admin, is_pm, user, old_manager, new_manager, is_buyer=False):
 	"""Who may set or change a project's manager. Returns (problem, manager_to_use).
 
-	New project: a Project Manager who is not an admin always becomes its manager; a Books
-	Admin or Director must pick one. Existing project: only a Books Admin or Director may
+	New project: a Books Admin, Director or Purchase Manager may pick the manager or leave it
+	blank; a Project Manager who is none of those always becomes its manager. Existing project: only a Books Admin or Director may
 	change the manager. `problem` is None when the change is allowed."""
 	if is_new:
-		if is_admin:
-			if not new_manager:
-				return _("Select a Project Manager for this project."), new_manager
+		if is_admin or is_buyer:
 			return None, new_manager
 		if is_pm:
 			return None, user
-		return _("Only a Project Manager, Books Admin or Director can create a project."), new_manager
+		return _("Only a Purchase Manager, Admin, Books Admin or Director can create a project."), new_manager
 	if (new_manager or None) != (old_manager or None) and not is_admin:
 		return _("Only a Books Admin or Director can change the Project Manager."), new_manager
 	return None, new_manager
+
+
+def _caller_is_buyer():
+	"""True when the logged-in user holds the Purchase Manager or Admin job role (may create a project and pick its manager)."""
+	return bool({"Purchase Manager", "Admin"} & set(frappe.get_roles(frappe.session.user)))
 
 
 def _caller_caps():
@@ -147,7 +151,7 @@ class Project(Document):
 		if not self.flags.allow_status_change:
 			is_admin, is_pm = _caller_caps()
 			problem, manager = manager_rule_problem(
-				self.is_new(), is_admin, is_pm, frappe.session.user, old, manager)
+				self.is_new(), is_admin, is_pm, frappe.session.user, old, manager, _caller_is_buyer())
 			if problem:
 				frappe.throw(problem, frappe.PermissionError)
 		self.project_manager = manager
@@ -156,8 +160,8 @@ class Project(Document):
 		# Only checked when new or changed, so existing projects stay editable.
 		if not self.is_new() and manager == old:
 			return
-		if PM_ROLE not in set(frappe.get_roles(manager)):
-			frappe.throw(_("{0} does not have the Project Manager role.").format(manager))
+		if STORE_ROLE in set(frappe.get_roles(manager)):
+			frappe.throw(_("{0} is a store user and cannot be a Project Manager.").format(manager))
 		if not self.company:
 			frappe.throw(_("Set the company before choosing a Project Manager"))
 		member = frappe.db.get_value(

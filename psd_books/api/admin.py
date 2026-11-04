@@ -194,28 +194,32 @@ def get_company_employees():
 
 @frappe.whitelist()
 def get_project_manager_options():
-    """Users who can be picked as a project's Project Manager: active members of the
-    caller's company who hold the Project Manager role. Not admin-gated, so the
-    project form can fill its dropdown for any user who may open it."""
+    """Users who can be picked as a project's Project Manager: every active member of the
+    caller's company except store users (Store Keeper role) and read-only Books Viewers.
+    Not admin-gated, so the project form can fill its dropdown for any user who may open it."""
     company = _resolve_company_for()
     if not company:
         return []
     members = frappe.get_all(
-        "Books Company Member", filters={"company": company}, fields=["user"],
+        "Books Company Member", filters={"company": company},
+        fields=["user", "books_role", "is_company_admin"],
         ignore_permissions=True, limit=500,
     )
-    names = [m["user"] for m in members]
+    # same rule the Project doctype enforces: a read-only Books Viewer can't be picked
+    names = [m["user"] for m in members
+             if not (m.get("books_role") == "Books Viewer" and not m.get("is_company_admin"))]
     if not names:
         return []
-    holders = set(frappe.get_all(
+    store_users = set(frappe.get_all(
         "Has Role",
-        filters={"parenttype": "User", "parent": ["in", names], "role": "Project Manager"},
+        filters={"parenttype": "User", "parent": ["in", names], "role": "Store Keeper"},
         pluck="parent", ignore_permissions=True, limit=5000,
     ))
+    holders = [n for n in names if n not in store_users]
     if not holders:
         return []
     users = frappe.get_all(
-        "User", filters=[["name", "in", list(holders)], ["enabled", "=", 1]],
+        "User", filters=[["name", "in", holders], ["enabled", "=", 1]],
         fields=["name", "full_name"], order_by="full_name asc", ignore_permissions=True,
     )
     # Show the linked Employee's name; fall back to the user's name when no employee exists.
