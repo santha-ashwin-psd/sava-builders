@@ -189,7 +189,7 @@
 
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
               <span class="bomx-section-lbl" style="margin-bottom:0">Items</span>
-              <button v-if="!readOnly" class="bomx-btn bomx-btn-sm bomx-btn-light" style="color:var(--bx-mfgB);border:1px solid var(--bx-mfg)" @click="addItem">
+              <button v-if="!readOnly" class="bomx-btn bomx-btn-sm bomx-btn-light" style="color:var(--bx-mfgB);border:1px solid var(--bx-mfg)" @click="addItem" :disabled="atItemLimit" :title="atItemLimit ? `At most ${MAX_MRN_ITEMS} items per Material Request` : ''">
                 <span v-html="icon('plus',12)"></span> Add Row
               </button>
             </div>
@@ -215,7 +215,7 @@
                   </button>
                 </div>
               </template>
-              <button v-if="!readOnly && mr.items && mr.items.length" class="mrx-add" @click="addItem">
+              <button v-if="!readOnly && mr.items && mr.items.length && !atItemLimit" class="mrx-add" @click="addItem">
                 <span v-html="icon('plus',12)"></span> Add another item
               </button>
             </div>
@@ -630,7 +630,11 @@ async function approveMR() {
   submitting.value = false;
 }
 
+// A Material Request carries at most 10 items (Production Plan requests are not limited).
+const MAX_MRN_ITEMS = 10;
+const atItemLimit = computed(() => !mr.value.production_plan && (mr.value.items || []).length >= MAX_MRN_ITEMS);
 function addItem() {
+  if (atItemLimit.value) { toast(`A Material Request can have at most ${MAX_MRN_ITEMS} items. Raise a second request for the rest.`, "error"); return; }
   mr.value.items.push({ item_code: "", item_name: "", required_qty: 1, uom: "", warehouse: "" });
 }
 

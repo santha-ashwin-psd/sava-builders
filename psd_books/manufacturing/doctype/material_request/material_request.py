@@ -17,6 +17,7 @@ class MaterialRequest(Document):
 			frappe.throw(_("Entry Date is required."))
 		if not self.items:
 			frappe.throw(_("Material Request must have at least one item."))
+		self._validate_max_items()
 		for row in self.items:
 			if not row.required_qty or row.required_qty <= 0:
 				frappe.throw(_("Row for {0}: Required Qty must be greater than zero.").format(row.item_code))
@@ -24,6 +25,21 @@ class MaterialRequest(Document):
 		self._keep_status_server_side()
 		self._default_row_warehouse()
 		self._validate_mrn_fields()
+
+	MAX_ITEMS = 10
+
+	def _validate_max_items(self):
+		"""A Material Request has at most 10 item rows. Not applied to Production Plan requests or to
+		install/patch/migrate/tests; an existing request that already has more is only blocked if rows are added."""
+		if self.get("production_plan") or any(frappe.flags.get(k) for k in ("in_install", "in_patch", "in_migrate", "in_test")):
+			return
+		count = len(self.items or [])
+		if count <= self.MAX_ITEMS:
+			return
+		before = self.get_doc_before_save()
+		if before is not None and count <= len(before.items or []):
+			return
+		frappe.throw(_("A Material Request can have at most {0} items. Raise a second request for the rest.").format(self.MAX_ITEMS))
 
 	def _approval_required(self):
 		"""Sava A5.3: an MRN is approved by the Project Manager, not submitted directly.
