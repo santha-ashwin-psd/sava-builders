@@ -8,6 +8,7 @@ Endpoints
 - get_project_close_status(project): what is still open, without changing anything
 - close_project(project): close it, recording closed_by / closed_on
 - reopen_project(project): Books Admin only, for mistakes
+- delete_project(project): Books Admin / Director only, Closed projects that no document refers to
 """
 import frappe
 from frappe import _
@@ -120,3 +121,60 @@ def reopen_project(project):
     doc.flags.ignore_permissions = True
     doc.save()
     return {"project": doc.name, "status": doc.status}
+
+
+# Doctypes whose rows don't count as "documents that use the project": the Warehouse's own
+# Projects table is just the other side of Project.warehouse and is unlinked on delete.
+_IGNORED_LINK_PARENTS = {"Project", "Warehouse Project"}
+
+
+def get_linked_documents(project):
+    """Return [{doctype, count}] for every doctype that has records pointing at `project`
+    (any status, cancelled included, so a project with history is never deleted)."""
+    fields = frappe.get_all("DocField", filters={"fieldtype": "Link", "options": "Project"},
+                            fields=["parent", "fieldname"], ignore_permissions=True)
+    fields += frappe.get_all("Custom Field", filters={"fieldtype": "Link", "options": "Project"},
+                             fields=["dt as parent", "fieldname"], ignore_permissions=True)
+    found, seen = [], set()
+    for f in fields:
+        key = (f["parent"], f["fieldname"])
+        if f["parent"] in _IGNORED_LINK_PARENTS or key in seen:
+            continue
+        seen.add(key)
+        try:
+            count = frappe.db.count(f["parent"], {f["fieldname"]: project})
+        except Exception:  # table missing / not migrated: nothing can point at it
+            continue
+        if count:
+            found.append({"doctype": f["parent"], "count": count})
+    return found
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def delete_project(project):
+    """Delete a Closed project that nothing refers to. Books Admin / Director only."""
+    if not _membership(frappe.session.user)["admin"]:
+        frappe.throw(_("Only a Books Admin or Director can delete a project."), frappe.PermissionError)
+    doc = _load_project(project)
+    if doc.status != "Closed":
+        frappe.throw(_("Only a Closed project can be deleted. Close {0} first.").format(doc.name))
+
+    linked = get_linked_documents(doc.name)
+    if linked:
+        frappe.throw(
+            _("Can't delete project {0}: these documents use it: {1}").format(
+                doc.name, "; ".join(f"{d['count']} {d['doctype']}" for d in linked)),
+            title=_("Project has documents"),
+        )
+
+    # drop the warehouse side of the link, then the project itself
+    from psd_books.inventory.doctype.project.project import _edit_warehouse_projects
+    stores = set(frappe.get_all("Warehouse Project", filters={"project": doc.name},
+                                pluck="parent", ignore_permissions=True))
+    if doc.get("warehouse"):
+        stores.add(doc.warehouse)
+    for wh in stores:
+        if frappe.db.exists("Warehouse", wh):
+            _edit_warehouse_projects(wh, remove=doc.name)
+    frappe.delete_doc("Project", doc.name, ignore_permissions=True)
+    return {"project": project, "deleted": True}

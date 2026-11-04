@@ -68,6 +68,7 @@
           <td @click="openEdit(row)" data-label="Status"><span class="inv-status-badge" :class="isOverdue(row) ? 'pj-badge-overdue' : (row.status === 'Closed' ? 'status-draft' : 'status-active')">{{ isOverdue(row) ? 'Overdue' : (row.status || 'Open') }}</span></td>
           <td style="text-align:center;white-space:nowrap" @click.stop>
             <button class="inv-act-btn" @click="openEdit(row)" :disabled="!canEditProject" title="Edit"><span v-html="icon('edit',13)"></span></button>
+            <button v-if="isAdmin && row.status === 'Closed'" class="inv-act-btn" style="color:#e03131" title="Delete closed project" @click="deleteProject(row)"><span v-html="icon('trash',13)"></span></button>
           </td>
         </tr>
       </tbody>
@@ -434,6 +435,23 @@ async function reopenProject() {
     toast.error("Failed to reopen project: " + e.message);
   } finally {
     closing.value = false;
+  }
+}
+
+async function deleteProject(row) {
+  const ok = await confirm({
+    title: "Delete project?",
+    body: `Delete closed project ${row.project_code || row.name}? This cannot be undone. A project that any document uses can't be deleted.`,
+    okLabel: "Delete",
+    okStyle: "danger",
+  });
+  if (!ok) return;
+  try {
+    await apiPOST("psd_books.api.projects.delete_project", { project: row.name });
+    toast.success("Project deleted");
+    await load();
+  } catch (e) {
+    toast.error(e.message || "Failed to delete project");
   }
 }
 
