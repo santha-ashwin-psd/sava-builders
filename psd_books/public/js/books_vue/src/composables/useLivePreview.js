@@ -874,7 +874,6 @@ function _renderSavaPOPreprinted(doc, cfg) {
   const msLines = [doc.supplier_name || doc.supplier || "", ...lns(doc.supplier_address)].filter(Boolean).slice(0, 4);
   const words = doc.in_words || _kesWords(doc.grand_total);
   const special = lns(doc.terms).join("; ");
-  const payment = (doc.payment_lines || []).filter(Boolean).join("; ");
   const preparedBy = doc.prepared_by_name || doc.owner_name || doc.owner || "";
   const mm = (v) => Number(v).toFixed(2) + "mm";
   const num = (v) => String(+Number(v || 0).toFixed(3));
@@ -942,7 +941,7 @@ function _renderSavaPOPreprinted(doc, cfg) {
       ${body}
       ${last ? box(_PP.total.x, _PP.total.y - 2.8, _PP.total.w - 2, 5.6, `<b>${fmt(doc.grand_total)}</b>`, `text-align:right;font-size:${autoPt(fmt(doc.grand_total), _PP.total.w - 3, 10, 6, 0.6)}`)
              : box(_PP.total.x, _PP.total.y - 2.8, _PP.total.w - 2, 5.6, "cont.", "text-align:right;font-size:8pt")}
-      ${last ? fit(words, _PP.words) + fit(special, _PP.special) + fit(payment, _PP.payment) : ""}
+      ${last ? fit(words, _PP.words) + fit(special, _PP.special) : ""}
       ${box(_PP.prepared.x, _PP.prepared.y - 4.4, _PP.prepared.w, 4.4, _esc(preparedBy))}
     </div></div>`;
   }).join("");
@@ -973,7 +972,7 @@ function _renderSavaPOPreprinted(doc, cfg) {
   @media print{
     html,body{background:#fff}
     .toolbar{display:none!important}
-    .pg{margin:0;box-shadow:none}
+    .pg{margin:0;box-shadow:none;height:calc(var(--ph) - 3mm)}
   }
 </style></head><body>
 <div class="toolbar">
