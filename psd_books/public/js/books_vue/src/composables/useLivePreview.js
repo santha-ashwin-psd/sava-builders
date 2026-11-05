@@ -963,7 +963,7 @@ function _renderSavaPOPreprinted(doc, cfg) {
   .toolbar .go{margin-left:auto;background:#1a6ef7;border-color:#1a6ef7;color:#fff;font-weight:700}
   .toolbar .hint{flex-basis:100%;font-size:11.5px;color:#64748b}
   .pg{position:relative;width:var(--pw);height:var(--ph);margin:14px auto;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.18);overflow:hidden;page-break-after:always;break-after:page}
-  .pg:last-child{page-break-after:auto;break-after:auto}
+  .pg:last-of-type{page-break-after:auto;break-after:auto}
   .shift{position:absolute;left:0;top:0;width:${_PP.pageW}mm;height:${_PP.pageH}mm;transform-origin:0 0;transform:var(--rot) translate(var(--dx),var(--dy))}
   .t{position:absolute;white-space:nowrap;overflow:hidden;text-overflow:clip}
   .pg-no{font-size:7.5pt;font-weight:400}

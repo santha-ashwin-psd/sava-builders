@@ -1,3 +1,5 @@
+import os
+
 import frappe
 from urllib.parse import quote_plus
 
@@ -14,3 +16,15 @@ def get_context(context):
             request_path = "/books"
         frappe.local.flags.redirect_location = f"/login?redirect-to={quote_plus(request_path)}"
         raise frappe.Redirect
+
+    # Cache-bust the Vue bundle by file modification time, so every rebuild gets a new
+    # URL and the browser never serves an old bundle (no more hard refresh needed).
+    context.bundle_v = _file_version("books.js")
+    context.style_v = _file_version("style.css")
+
+
+def _file_version(name):
+    try:
+        return int(os.path.getmtime(frappe.get_app_path("psd_books", "public", "js", name)))
+    except Exception:
+        return 0
