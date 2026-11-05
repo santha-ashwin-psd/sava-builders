@@ -230,7 +230,9 @@ def _build_doc(doctype, row, company):
             "item_name": iname,
             "item_code": (row.get("item_code") or iname).strip(),
             "item_group": _resolve_or_create_item_group(row.get("item_group")),
-            "item_type": row.get("item_type") or "Service",
+            # Asset items carry no Item Type: same rule as the Asset toggle on the Item form ("Product")
+            "item_type": "Product" if cint(row.get("is_asset_item") or 0) else (row.get("item_type") or "Service"),
+            "is_asset_item": cint(row.get("is_asset_item") or 0),
             "stock_uom": stock_uom,
             "purchase_uom": purchase_uom,
             "uom_conversions": uom_conversions,
@@ -680,8 +682,11 @@ def get_sample_csv(doctype):
             "sample":  [["Global Supplies","Company","supplier@example.com","0712345678","","A123456789Z","Nairobi","Nairobi","Kenya","Net 30"]],
         },
         "Item": {
-            "headers": ["item_code","item_name","item_group","item_type","stock_uom","standard_rate","standard_buying_rate","tax_code","hsn_code","description","is_sales_item","is_purchase_item","purchase_uom","purchase_conversion_factor","reorder_level","reorder_qty","inspection_required_before_purchase","default_purchase_tax_template"],
-            "sample":  [["ITEM-001","Widget A","All Item Groups","Product","Nos","100","60","GST 18%","8471","Standard Widget","1","1","Box","12","10","50","0","Input VAT 16%"]],
+            "headers": ["item_code","item_name","item_group","item_type","is_asset_item","stock_uom","description","is_purchase_item","purchase_uom","purchase_conversion_factor","default_purchase_tax_template"],
+            "sample":  [
+                ["CEM-50","Cement 50kg Bag","Raw Material","Raw Material","0","Bag","Portland cement 50kg","1","","","Input VAT 16%"],
+                ["MIX-01","Concrete Mixer","All Item Groups","","1","Nos","Diesel concrete mixer","1","","",""],
+            ],
         },
         "Sales Invoice": {
             "headers": ["customer","posting_date","due_date","item_code","qty","rate","tax_type","tax_rate","currency","remarks"],

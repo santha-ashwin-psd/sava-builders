@@ -1237,14 +1237,13 @@ const STYPE_META = {
   "Distributor": { bg: "#dcfce7", text: "#15803d", icon: "🚚", desc: "Regional distributor / stockist supplying stock" },
 };
 
-// Supplier groups seeded for Ayurvedic raw material sourcing, plus
+// Supplier groups for Sava Builders (construction), plus
 // distributor/dealer groups (Phase 2: Supplier & customer master setup
 // with distributor/dealer groups)
 const supplierGroups = ref([]);
 const supplierGroupOptions = [
-  "Raw Material Supplier", "Herb Supplier", "Mineral Supplier",
-  "Packing Material Supplier", "Service Provider",
-  "Equipment Supplier", "Contract Manufacturer", "Transporter",
+  "Raw Material Supplier", "Service Provider",
+  "Equipment Supplier", "Transporter",
 ];
 const DEFAULT_SUPPLIER_GROUPS = {
   "Dealer":      ["Dealer - Local", "Dealer - Regional", "Dealer - National"],
