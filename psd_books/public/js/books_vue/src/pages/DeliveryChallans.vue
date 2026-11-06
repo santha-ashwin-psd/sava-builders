@@ -1103,9 +1103,19 @@ async function openView(r) {
     if (r._source === "dn") {
       // Real Delivery Note — fetch full doc
       const doc = await apiGet("Delivery Note", r.name);
+      // Some Delivery Note lines were saved without a UOM: take it from the Item master so the print shows it.
+      const dnItems = doc?.items || [];
+      const noUom = [...new Set(dnItems.filter(i => !i.uom && i.item_code).map(i => i.item_code))];
+      if (noUom.length) {
+        try {
+          const ir = await apiList("Item", { fields: ["name", "stock_uom"], filters: [["name", "in", noUom]], limit: noUom.length });
+          const um = Object.fromEntries((ir || []).map(x => [x.name, x.stock_uom]));
+          dnItems.forEach(i => { if (!i.uom && um[i.item_code]) i.uom = um[i.item_code]; });
+        } catch { /* keep the lines as they are */ }
+      }
       viewDoc.value = {
         ...r,
-        items:                doc?.items || [],
+        items:                dnItems,
         remarks:              doc?.remarks || r.remarks || "",
         set_warehouse:        doc?.set_warehouse || "",
         project:              doc?.project || "",

@@ -851,14 +851,14 @@ function _renderSavaPO(doc, cfg) {
 const _PP = {
   pageW: 225, pageH: 209,
   tx: 14.7,          // paper left edge -> left line of the item table
-  ty: 78,            // paper top edge  -> top line of the table header   (calibrate on the real sheet)
+  ty: 72.5,          // paper top edge  -> top line of the table header   (calibrate on the real sheet)
   hdrH: 7.5,         // table header row height
   bodyH: 72.6,       // item area height (header bottom -> bottom line of the table)
   lineH: 4.8,        // one printed line
   cols: { sr: [0, 16], desc: [16, 96], qty: [96, 117], unit: [117, 137], rate: [137, 155], disc: [155, 173], amt: [173, 197] },
-  ms:    { x: 0, y: -37.5, w: 83, h: 29 },                    // M/s box
-  poVal: { x: 145, w: 50, yPo: -28.8, yDate: -15.5 },          // P.O No. and DATE value cells (y = vertical centre)
-  total: { x: 173, w: 24, y: 88.5 },                           // Total Amount box (y = vertical centre)
+  ms:    { x: 0, y: -32.0, w: 83, h: 29 },                    // M/s box
+  poVal: { x: 145, w: 50, yPo: -26.8, yDate: -12.0 },          // P.O No. and DATE value cells (y = vertical centre)
+  total: { x: 173, w: 24, y: 82.5 },                           // Total Amount box (y = vertical centre)
   words: { x: 32.3, w: 113, y: 88.0 },                         // dotted line baselines
   special: { x: 32.4, w: 115, y: 96.7 },
   payment: { x: 27, w: 118, y: 103.3 },
@@ -1158,8 +1158,9 @@ function _renderSavaDNPreprinted(doc, cfg) {
   const rows = (doc.items || []).map((it, i) => {
     const text = (it.item_name || it.item_code || "") +
       (it.description && it.description !== it.item_name ? " - " + String(it.description).replace(/\s+/g, " ") : "");
-    const d = wrap(text, _DP.descChars), u = wrap(it.intended_use || "", _DP.useChars);
-    return { it, no: i + 1, d, u, n: Math.max(d.length, it.intended_use ? u.length : 1) };
+    const useTxt = it.uom || it.stock_uom || "Nos";   // Intended Use column prints the item UOM
+    const d = wrap(text, _DP.descChars), u = wrap(useTxt, _DP.useChars);
+    return { it, no: i + 1, d, u, useTxt, n: Math.max(d.length, useTxt ? u.length : 1) };
   });
   const pages = [[]]; let used = 0;
   for (const r of rows) {
@@ -1169,19 +1170,19 @@ function _renderSavaDNPreprinted(doc, cfg) {
 
   const pageHtml = pages.map((prs, pi) => {
     let y = T.hdrBottom + 0.5, body = "";
-    for (const { it, no, d, u, n } of prs) {
-      const h = _DP.lineH, qty = `${num(it.qty)} ${it.uom || ""}`.trim();
-      body += box(T.x + C.sr[0], y, C.sr[1] - C.sr[0], h, no, "text-align:center");
+    for (const { it, no, d, u, useTxt, n } of prs) {
+      const h = _DP.lineH, qty = `${num(it.qty)}`;
+      body += box(T.x + C.sr[0] + 8.6, y, 5.4, h, no, "text-align:center");
       d.forEach((ln, k) => { body += box(T.x + C.desc[0] + 1.5, y + k * h, C.desc[1] - C.desc[0] - 2.5, h, _esc(ln)); });
       body += box(T.x + C.qty[0], y, C.qty[1] - C.qty[0], h, _esc(qty), `text-align:center;font-size:${autoPt(qty, C.qty[1] - C.qty[0] - 1, 9.5, 6, 0.56)}`);
-      if (doc.items[no - 1].intended_use) u.forEach((ln, k) => { body += box(T.x + C.use[0] + 1.5, y + k * h, C.use[1] - C.use[0] - 2.5, h, _esc(ln)); });
+      if (useTxt) u.forEach((ln, k) => { body += box(T.x + C.use[0], y + k * h, C.use[1] - C.use[0], h, _esc(ln), "text-align:center"); });   // UOM centred in the Intended Use column
       y += n * h;
     }
     const pager = pages.length > 1 ? ` <span class="pg-no">(${pi + 1}/${pages.length})</span>` : "";
     const S = _DP.sigY, P = _DP.prepared, D = _DP.delivered, R = _DP.received;
     return `<div class="pg"><div class="shift">
       <div class="outline">${_dpOutline()}</div>
-      ${toLines.length ? box(_DP.to.x + 4, _DP.to.y + 3.5, _DP.to.w - 7, _DP.to.h - 4,
+      ${toLines.length ? box(_DP.to.x + 12, _DP.to.y + 3.5, _DP.to.w - 19, _DP.to.h - 4,
           `<b>${_esc(toLines[0])}</b>${toLines.slice(1).map(l => `<br/>${_esc(l)}`).join("")}`, "line-height:4.5mm;height:auto;white-space:normal") : ""}
       ${box(_DP.dn.x + 2, _DP.dn.yNo - 2.8, _DP.dn.w - 3, 5.6, `<b>${_esc(doc.name || "")}</b>${pager}`, `font-size:${autoPt((doc.name || "") + (pages.length > 1 ? " (1/1)" : ""), _DP.dn.w - 3, 9.5, 6, 0.58)}`)}
       ${box(_DP.dn.x + 2, _DP.dn.yDate - 2.8, _DP.dn.w - 3, 5.6, _esc(_fmtDocDate(docDate)))}
@@ -1208,7 +1209,7 @@ function _renderSavaDNPreprinted(doc, cfg) {
   .toolbar .hint{flex-basis:100%;font-size:11.5px;color:#64748b}
   .pg{position:relative;width:${_DP.pageW}mm;height:${_DP.pageH}mm;margin:14px auto;background:#fff;box-shadow:0 2px 14px rgba(0,0,0,.18);overflow:hidden;page-break-after:always;break-after:page}
   .pg:last-child{page-break-after:auto;break-after:auto}
-  .shift{position:absolute;left:var(--dx);top:var(--dy);width:100%;height:100%}
+  .shift{position:absolute;left:var(--dx);top:var(--dy);width:100%;height:100%;transform-origin:0 0;transform:translateY(-1.8mm) scaleY(.943)}
   .t{position:absolute;white-space:nowrap;overflow:hidden;text-overflow:clip}
   .pg-no{font-size:7.5pt;font-weight:400}
   .outline{display:none}
