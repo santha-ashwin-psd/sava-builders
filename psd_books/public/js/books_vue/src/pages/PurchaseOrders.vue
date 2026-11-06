@@ -390,6 +390,25 @@
           </div>
         </div>
 
+        <!-- ══ CARD: Remarks ══ -->
+        <div class="add-card">
+          <div class="add-card-header" @click="poCollapsed.remarks=!poCollapsed.remarks">
+            <div class="add-card-title">
+              <span class="add-card-title-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </span>
+              Remarks
+            </div>
+            <span class="add-card-chevron" :class="{collapsed:poCollapsed.remarks}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </span>
+          </div>
+          <div class="add-card-body" :class="{collapsed:poCollapsed.remarks}">
+            <textarea v-model="form.remarks" rows="3" class="inv-fi" :class="{'field-error': form.remarks && form.remarks.length > 500}" maxlength="500" placeholder="Optional remarks for this purchase order…"></textarea>
+            <div class="exp-field-hint" :class="{'exp-field-hint-err': form.remarks && form.remarks.length >= 500}">{{ (form.remarks || '').length }}/500 characters</div>
+          </div>
+        </div>
+
         <!-- ══ CARD 4: Terms & Conditions ══ -->
         <div class="add-card">
           <div class="add-card-header" @click="poCollapsed.terms=!poCollapsed.terms">
@@ -690,6 +709,12 @@
                     <template v-if="approval.action && approval.action.level">Waiting for level {{ approval.action.level }} ({{ approval.action.role }}). </template>{{ (approval.action && approval.action.reason) || '' }}
                   </div>
                 </div>
+              </div>
+
+              <!-- Remarks -->
+              <div v-if="viewDoc.remarks" class="po-terms">
+                <div class="po-meta-lbl">Remarks</div>
+                <div style="white-space:pre-wrap;font-size:12.5px;color:#374151;margin-top:4px;word-break:break-word;overflow-wrap:anywhere">{{ viewDoc.remarks }}</div>
               </div>
 
               <!-- Terms -->
@@ -1170,7 +1195,7 @@ const poNoAccess = computed(() => `Read-only access. Only ${poWho.value} can do 
 // A10.3: approval state of the PO open in the view drawer (null until loaded)
 const approval = ref(null), approvalRemarks = ref(""), approvalBusy = ref(false);
 const viewPrint = ref(null);
-const poCollapsed = reactive({ details: false, address: true, lines: false, terms: true });
+const poCollapsed = reactive({ details: false, address: true, lines: false, remarks: false, terms: true });
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const viewLoading = ref(false), viewItems = ref([]);
 const fulfill = reactive({ lines: [], computed_status: "" });
@@ -1195,7 +1220,7 @@ const form = reactive({
   supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
   billing_address: "", delivery_address: "",
   billing_address_name: "", delivery_address_name: "",
-  set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "", employee: "", employee_name: "",
+  set_warehouse: "", purchase_type: "Goods", terms: "", remarks: "", material_request: "", project: "", employee: "", employee_name: "",
 });
 const { projects, fetchProjects } = useProjectOptions();
 
@@ -1473,7 +1498,7 @@ const threeWayMismatch = computed(() =>
 function openNew() {
   assetOnly.value = false;
   editingName.value = ""; editingStatus.value = "";
-  Object.assign(form, { supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", material_request: "", project: "", employee: "", employee_name: "" });
+  Object.assign(form, { supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", remarks: "", material_request: "", project: "", employee: "", employee_name: "" });
   whFromProject.value = false;
   fetchWarehouses(""); fetchProjects(""); fetchMrns(""); fetchEmployees();
   lines.value = [blankLine()];
@@ -1488,7 +1513,7 @@ async function openEdit(o) {
     expected_delivery_date: o.expected_delivery_date || expectedDefault(),
     billing_address: o.billing_address || "", delivery_address: o.delivery_address || "",
     billing_address_name: "", delivery_address_name: "",
-    set_warehouse: "", purchase_type: o.purchase_type || "Goods", terms: o.terms || "",
+    set_warehouse: "", purchase_type: o.purchase_type || "Goods", terms: o.terms || "", remarks: o.remarks || "",
     material_request: o.material_request || "", project: o.project || "",
   });
   lines.value = [blankLine()];
@@ -1511,6 +1536,7 @@ async function openEdit(o) {
     if (doc?.project) { form.project = doc.project; fetchProjects("", doc.project); }
     if (doc?.employee) { form.employee = doc.employee; form.employee_name = doc.employee_name || ""; }
     if (doc?.terms) form.terms = doc.terms;
+    if (doc?.remarks) form.remarks = doc.remarks;
     // Restore address link fields — wait for vendorAddresses to load first
     if (doc?.billing_address_name || doc?.delivery_address_name) {
       await fetchVendorAddresses(doc.supplier || o.supplier);
@@ -1840,6 +1866,7 @@ async function savePO(newStatus, sendAfter = false) {
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
   if (form.purchase_type === "Goods" && !form.set_warehouse) return toast.error("Receiving Warehouse is required for Goods orders");
   if ((form.terms || "").length > 500) return toast.error("Terms & Conditions cannot exceed 500 characters");
+  if ((form.remarks || "").length > 500) return toast.error("Remarks cannot exceed 500 characters");
   for (const l of lines.value.filter(l => l.item_code)) {
     if (flt(l.qty) > 999999999) return toast.error(`Qty cannot exceed 9 digits for item "${l.item_code}"`);
     if (l.max != null && flt(l.qty) > flt(l.max) + 0.0005) return toast.error(`Qty for "${itemNameOf(l.item_code)}" is more than the balance on the MRN (${l.max})`);
@@ -1889,6 +1916,7 @@ async function savePO(newStatus, sendAfter = false) {
       status: editingStatus.value === "Sent Back" ? "Sent Back" : "Draft",
       docstatus: 0,
       terms: form.terms || "",
+      remarks: form.remarks || "",
       items: lines.value.filter(l => l.item_code).map(l => ({
         doctype: "Purchase Order Item", item_code: l.item_code,
         description: l.description || l.item_code,

@@ -33,6 +33,7 @@
   "total_tax",
   "grand_total",
   "billed_amount",
+  "remarks",
   "terms",
   "approval_steps",
   "naming_series",
@@ -199,6 +200,11 @@
    "fieldname": "billed_amount",
    "fieldtype": "Currency",
    "label": "Billed Amount"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
   },
   {
    "fieldname": "terms",
