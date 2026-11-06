@@ -579,14 +579,14 @@ Use the quick actions below or just type naturally.`,V2={__name:"AiPanel",props:
     <div class="s"><span>Prepared By:</span><span class="u">${ds(X)}</span></div>
     <div class="s"><span>Authorized by:</span><span class="u"></span></div>
   </div>
-</div></body></html>`}const vn={pageW:225,pageH:209,tx:14.7,ty:78,hdrH:7.5,bodyH:72.6,lineH:4.8,cols:{sr:[0,16],desc:[16,96],qty:[96,117],unit:[117,137],rate:[137,155],disc:[155,173],amt:[173,197]},ms:{x:0,y:-37.5,w:83,h:29},poVal:{x:145,w:50,yPo:-28.8,yDate:-15.5},total:{x:173,w:24,y:88.5},words:{x:30.3,w:115,y:89.5},special:{x:32.4,w:115,y:96.7},payment:{x:27,w:118,y:103.3},prepared:{x:20.4,w:62,y:120.7},descChars:41};function om(o,a){a.currency||o.currency;const i=E=>$d(E),l=o.transaction_date||o.posting_date||"",p=E=>String(E||"").split(`
-`).map(ee=>ee.trim()).filter(Boolean),_=[o.supplier_name||o.supplier||"",...p(o.supplier_address)].filter(Boolean).slice(0,4),b=o.in_words||lc(o.grand_total),w=p(o.terms).join("; "),$=o.prepared_by_name||o.owner_name||o.owner||"",C=E=>Number(E).toFixed(2)+"mm",T=E=>String(+Number(E||0).toFixed(3)),M=(E,ee)=>{const N=[];let x="";for(const I of String(E||"").split(/\s+/).filter(Boolean))for(x?(x+" "+I).length<=ee?x+=" "+I:(N.push(x),x=I):x=I;x.length>ee;)N.push(x.slice(0,ee)),x=x.slice(ee);return x&&N.push(x),N.length>3&&(N.length=3,N[2]=N[2].slice(0,Math.max(0,ee-1))+"…"),N.length?N:[""]},te=Math.floor(vn.bodyH/vn.lineH),U=(o.items||[]).map((E,ee)=>{const N=(E.item_name||E.item_code||"")+(E.description&&E.description!==E.item_name?" - "+String(E.description).replace(/\s+/g," "):"");return{it:E,no:ee+1,lines:M(N,vn.descChars)}}),q=[[]];let X=0;for(const E of U)X+E.lines.length>te&&X>0&&(q.push([]),X=0),q[q.length-1].push(E),X+=E.lines.length;const oe=(E,ee,N=9.5,x=5.5,I=.52)=>{const we=String(E||"").length*I*.3528;return Math.max(x,Math.min(N,we?ee/we:N)).toFixed(2)+"pt"},R=(E,ee,N,x,I,we="")=>`<div class="t" style="left:${C(vn.tx+E)};top:${C(vn.ty+ee)};width:${C(N)};height:${C(x)};line-height:${C(x)};${we}">${I}</div>`,A=(E,ee)=>R(ee.x,ee.y-4.4,ee.w,4.4,ds(E),`font-size:${oe(E,ee.w)}`),K=q.map((E,ee)=>{const N=ee===q.length-1;let x=vn.hdrH+.4,I="";for(const{it:He,no:le,lines:ie}of E){const de=vn.cols,O=vn.lineH;I+=R(de.sr[0],x,de.sr[1]-de.sr[0],O,le,"text-align:center"),ie.forEach((me,Le)=>{I+=R(de.desc[0]+1.5,x+Le*O,de.desc[1]-de.desc[0]-2,O,ds(me))}),I+=R(de.qty[0],x,de.qty[1]-de.qty[0]-2.5,O,T(He.qty),`text-align:right;font-size:${oe(T(He.qty),de.qty[1]-de.qty[0]-2.5,9.5,6,.56)}`),I+=R(de.unit[0],x,de.unit[1]-de.unit[0],O,ds(He.uom||"Nos"),"text-align:center"),I+=R(de.rate[0],x,de.rate[1]-de.rate[0]-1.5,O,i(He.rate),`text-align:right;font-size:${oe(i(He.rate),de.rate[1]-de.rate[0]-2,9.5,6,.56)}`),Number(He.discount_percentage||0)>0&&(I+=R(de.disc[0],x,de.disc[1]-de.disc[0],O,Number(He.discount_percentage).toFixed(2),"text-align:center")),I+=R(de.amt[0],x,de.amt[1]-de.amt[0]-2,O,i(He.amount),`text-align:right;font-size:${oe(i(He.amount),de.amt[1]-de.amt[0]-2.5,9.5,6,.56)}`),x+=ie.length*O}const we=q.length>1?` <span class="pg-no">(${ee+1}/${q.length})</span>`:"";return`<div class="pg"><div class="shift">
+</div></body></html>`}const vn={pageW:225,pageH:209,tx:14.7,ty:78,hdrH:7.5,bodyH:72.6,lineH:4.8,cols:{sr:[0,16],desc:[16,96],qty:[96,117],unit:[117,137],rate:[137,155],disc:[155,173],amt:[173,197]},ms:{x:0,y:-37.5,w:83,h:29},poVal:{x:145,w:50,yPo:-28.8,yDate:-15.5},total:{x:173,w:24,y:88.5},words:{x:32.3,w:113,y:88},special:{x:32.4,w:115,y:96.7},payment:{x:27,w:118,y:103.3},prepared:{x:22.4,w:60,y:119.2},descChars:41};function om(o,a){a.currency||o.currency;const i=E=>$d(E),l=o.transaction_date||o.posting_date||"",p=E=>String(E||"").split(`
+`).map(ee=>ee.trim()).filter(Boolean),_=[o.supplier_name||o.supplier||"",...p(o.supplier_address)].filter(Boolean).slice(0,4),b=o.in_words||lc(o.grand_total),w=p(o.terms).join("; "),$=o.prepared_by_name||o.owner_name||o.owner||"",C=E=>Number(E).toFixed(2)+"mm",T=E=>String(+Number(E||0).toFixed(3)),M=(E,ee)=>{const N=[];let x="";for(const I of String(E||"").split(/\s+/).filter(Boolean))for(x?(x+" "+I).length<=ee?x+=" "+I:(N.push(x),x=I):x=I;x.length>ee;)N.push(x.slice(0,ee)),x=x.slice(ee);return x&&N.push(x),N.length>3&&(N.length=3,N[2]=N[2].slice(0,Math.max(0,ee-1))+"…"),N.length?N:[""]},te=Math.floor(vn.bodyH/vn.lineH),U=(o.items||[]).map((E,ee)=>{const N=(E.item_name||E.item_code||"")+(E.description&&E.description!==E.item_name?" - "+String(E.description).replace(/\s+/g," "):"");return{it:E,no:ee+1,lines:M(N,vn.descChars)}}),q=[[]];let X=0;for(const E of U)X+E.lines.length>te&&X>0&&(q.push([]),X=0),q[q.length-1].push(E),X+=E.lines.length;const oe=(E,ee,N=9.5,x=5.5,I=.52)=>{const we=String(E||"").length*I*.3528;return Math.max(x,Math.min(N,we?ee/we:N)).toFixed(2)+"pt"},R=(E,ee,N,x,I,we="")=>`<div class="t" style="left:${C(vn.tx+E)};top:${C(vn.ty+ee)};width:${C(N)};height:${C(x)};line-height:${C(x)};${we}">${I}</div>`,A=(E,ee)=>R(ee.x,ee.y-4.4,ee.w,4.4,ds(E),`font-size:${oe(E,ee.w)}`),K=q.map((E,ee)=>{const N=ee===q.length-1;let x=vn.hdrH+.4,I="";for(const{it:He,no:le,lines:ie}of E){const de=vn.cols,O=vn.lineH;I+=R(de.sr[0],x,de.sr[1]-de.sr[0],O,le,"text-align:center"),ie.forEach((me,Le)=>{I+=R(de.desc[0]+1.5,x+Le*O,de.desc[1]-de.desc[0]-2,O,ds(me))}),I+=R(de.qty[0],x,de.qty[1]-de.qty[0]-4.5,O,T(He.qty),`text-align:right;font-size:${oe(T(He.qty),de.qty[1]-de.qty[0]-4.5,9.5,6,.56)}`),I+=R(de.unit[0],x,de.unit[1]-de.unit[0],O,ds(He.uom||"Nos"),"text-align:center"),I+=R(de.rate[0],x,de.rate[1]-de.rate[0]-3.5,O,i(He.rate),`text-align:right;font-size:${oe(i(He.rate),de.rate[1]-de.rate[0]-4,9.5,6,.56)}`),Number(He.discount_percentage||0)>0&&(I+=R(de.disc[0],x,de.disc[1]-de.disc[0],O,Number(He.discount_percentage).toFixed(2),"text-align:center")),I+=R(de.amt[0],x,de.amt[1]-de.amt[0]-4.5,O,i(He.amount),`text-align:right;font-size:${oe(i(He.amount),de.amt[1]-de.amt[0]-5,9.5,6,.56)}`),x+=ie.length*O}const we=q.length>1?` <span class="pg-no">(${ee+1}/${q.length})</span>`:"";return`<div class="pg"><div class="shift">
       <div class="outline">${Hk()}</div>
       ${_.length?R(vn.ms.x+9,vn.ms.y+8,vn.ms.w-11,vn.ms.h-9,`<b>${ds(_[0])}</b>${_.slice(1).map(He=>`<br/>${ds(He)}`).join("")}`,"line-height:4.3mm;height:auto;white-space:normal"):""}
       ${R(vn.poVal.x+2,vn.poVal.yPo-2.8,vn.poVal.w-3,5.6,`<b>${ds(o.name||"")}</b>${we}`,`font-size:${oe((o.name||"")+(q.length>1?" (1/1)":""),vn.poVal.w-3,9.5,6,.58)}`)}
       ${R(vn.poVal.x+2,vn.poVal.yDate-2.8,vn.poVal.w-3,5.6,ds(to(l)))}
       ${I}
-      ${N?R(vn.total.x,vn.total.y-2.8,vn.total.w-2,5.6,`<b>${i(o.grand_total)}</b>`,`text-align:right;font-size:${oe(i(o.grand_total),vn.total.w-3,10,6,.6)}`):R(vn.total.x,vn.total.y-2.8,vn.total.w-2,5.6,"cont.","text-align:right;font-size:8pt")}
+      ${N?R(vn.total.x,vn.total.y-2.8,vn.total.w-4.5,5.6,`<b>${i(o.grand_total)}</b>`,`text-align:right;font-size:${oe(i(o.grand_total),vn.total.w-5.5,10,6,.6)}`):R(vn.total.x,vn.total.y-2.8,vn.total.w-4.5,5.6,"cont.","text-align:right;font-size:8pt")}
       ${N?A(b,vn.words)+A(w,vn.special):""}
       ${R(vn.prepared.x,vn.prepared.y-4.4,vn.prepared.w,4.4,ds($))}
     </div></div>`}).join("");return`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/>
@@ -620,8 +620,8 @@ Use the quick actions below or just type naturally.`,V2={__name:"AiPanel",props:
 </style></head><body>
 <div class="toolbar">
   <b>PRINT ON PRE-PRINTED LPO SHEET</b>
-  <label>X nudge (mm) <input id="dx" type="number" step="0.5" value="0"/></label>
-  <label>Y nudge (mm) <input id="dy" type="number" step="0.5" value="0"/></label>
+  <label>X nudge (mm) <input id="dx" type="number" step="0.5" value="-7"/></label>
+  <label>Y nudge (mm) <input id="dy" type="number" step="0.5" value="-4"/></label>
   <label>Orientation <select id="rt"><option value="0">Normal (225 x 209 landscape)</option><option value="90">Rotate 90° clockwise (portrait page)</option><option value="270">Rotate 90° anticlockwise (portrait page)</option><option value="180">Rotate 180°</option></select></label>
   <label><input id="ol" type="checkbox"/> Print form outline (for a test on plain paper)</label>
   <button id="rs" type="button">Reset</button>
@@ -633,7 +633,7 @@ ${K}
 (function(){
   var K='bv_po_pp_calib', root=document.documentElement;
   var dx=document.getElementById('dx'), dy=document.getElementById('dy'), ol=document.getElementById('ol'), rt=document.getElementById('rt');
-  try{var c=JSON.parse(localStorage.getItem(K)||'{}'); dx.value=c.dx||0; dy.value=c.dy||0; rt.value=c.rot||'0';}catch(e){}
+  try{var c=JSON.parse(localStorage.getItem(K)||'{}'); dx.value=(c.dx===undefined?-7:c.dx); dy.value=(c.dy===undefined?-4:c.dy); rt.value=c.rot||'0';}catch(e){}
   function apply(){
     root.style.setProperty('--dx',(parseFloat(dx.value)||0)+'mm');
     root.style.setProperty('--dy',(parseFloat(dy.value)||0)+'mm');
@@ -645,7 +645,7 @@ ${K}
     try{localStorage.setItem(K,JSON.stringify({dx:parseFloat(dx.value)||0,dy:parseFloat(dy.value)||0,rot:rt.value}));}catch(e){}
   }
   dx.oninput=dy.oninput=ol.onchange=rt.onchange=apply;
-  document.getElementById('rs').onclick=function(){dx.value=0;dy.value=0;rt.value='0';apply();};
+  document.getElementById('rs').onclick=function(){dx.value=-7;dy.value=-4;rt.value='0';apply();};
   apply();
 })();
 <\/script>

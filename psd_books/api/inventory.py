@@ -1931,7 +1931,10 @@ def get_open_mrns_for_po(material_request_type="Purchase", project=None, company
     moved = _mrn_transferred_qty([r.name for r in mrs])
     for r in mrs:
         left = mrn_remaining_qty(r.name)
-        if r.status in ("Ordered", "Partially Ordered") and not any(v > 0.0005 for v in left.values()):
+        # Hide an MRN once every item is on a Purchase Order that is not cancelled (Draft,
+        # Pending Approval, Sent Back or approved). Status is not checked: an MRN still "Approved"
+        # whose PO is only waiting for approval has nothing left to order either.
+        if not any(v > 0.0005 for v in left.values()):
             continue
         # Items still to order, shown under the MRN in the PO screen's dropdown.
         # Stock already moved out of the store against this MRN (submitted Delivery Notes) is flagged per item.

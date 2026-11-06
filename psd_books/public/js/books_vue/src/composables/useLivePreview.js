@@ -859,10 +859,10 @@ const _PP = {
   ms:    { x: 0, y: -37.5, w: 83, h: 29 },                    // M/s box
   poVal: { x: 145, w: 50, yPo: -28.8, yDate: -15.5 },          // P.O No. and DATE value cells (y = vertical centre)
   total: { x: 173, w: 24, y: 88.5 },                           // Total Amount box (y = vertical centre)
-  words: { x: 30.3, w: 115, y: 89.5 },                         // dotted line baselines
+  words: { x: 32.3, w: 113, y: 88.0 },                         // dotted line baselines
   special: { x: 32.4, w: 115, y: 96.7 },
   payment: { x: 27, w: 118, y: 103.3 },
-  prepared: { x: 20.4, w: 62, y: 120.7 },
+  prepared: { x: 22.4, w: 60, y: 119.2 },
   descChars: 41,     // characters that fit one line of the 80 mm Description column
 };
 
@@ -923,12 +923,12 @@ function _renderSavaPOPreprinted(doc, cfg) {
       const c = _PP.cols, h = _PP.lineH;
       body += box(c.sr[0], y, c.sr[1] - c.sr[0], h, no, "text-align:center");
       lines.forEach((ln, k) => { body += box(c.desc[0] + 1.5, y + k * h, c.desc[1] - c.desc[0] - 2, h, _esc(ln)); });
-      body += box(c.qty[0], y, c.qty[1] - c.qty[0] - 2.5, h, num(it.qty), `text-align:right;font-size:${autoPt(num(it.qty), c.qty[1] - c.qty[0] - 2.5, 9.5, 6, 0.56)}`);
+      body += box(c.qty[0], y, c.qty[1] - c.qty[0] - 4.5, h, num(it.qty), `text-align:right;font-size:${autoPt(num(it.qty), c.qty[1] - c.qty[0] - 4.5, 9.5, 6, 0.56)}`);
       body += box(c.unit[0], y, c.unit[1] - c.unit[0], h, _esc(it.uom || "Nos"), "text-align:center");
-      body += box(c.rate[0], y, c.rate[1] - c.rate[0] - 1.5, h, fmt(it.rate), `text-align:right;font-size:${autoPt(fmt(it.rate), c.rate[1] - c.rate[0] - 2, 9.5, 6, 0.56)}`);
+      body += box(c.rate[0], y, c.rate[1] - c.rate[0] - 3.5, h, fmt(it.rate), `text-align:right;font-size:${autoPt(fmt(it.rate), c.rate[1] - c.rate[0] - 4, 9.5, 6, 0.56)}`);
       if (Number(it.discount_percentage || 0) > 0)
         body += box(c.disc[0], y, c.disc[1] - c.disc[0], h, Number(it.discount_percentage).toFixed(2), "text-align:center");
-      body += box(c.amt[0], y, c.amt[1] - c.amt[0] - 2, h, fmt(it.amount), `text-align:right;font-size:${autoPt(fmt(it.amount), c.amt[1] - c.amt[0] - 2.5, 9.5, 6, 0.56)}`);
+      body += box(c.amt[0], y, c.amt[1] - c.amt[0] - 4.5, h, fmt(it.amount), `text-align:right;font-size:${autoPt(fmt(it.amount), c.amt[1] - c.amt[0] - 5, 9.5, 6, 0.56)}`);
       y += lines.length * h;
     }
     const pager = pages.length > 1 ? ` <span class="pg-no">(${pi + 1}/${pages.length})</span>` : "";
@@ -939,8 +939,8 @@ function _renderSavaPOPreprinted(doc, cfg) {
       ${box(_PP.poVal.x + 2, _PP.poVal.yPo - 2.8, _PP.poVal.w - 3, 5.6, `<b>${_esc(doc.name || "")}</b>${pager}`, `font-size:${autoPt((doc.name || "") + (pages.length > 1 ? " (1/1)" : ""), _PP.poVal.w - 3, 9.5, 6, 0.58)}`)}
       ${box(_PP.poVal.x + 2, _PP.poVal.yDate - 2.8, _PP.poVal.w - 3, 5.6, _esc(_fmtDocDate(docDate)))}
       ${body}
-      ${last ? box(_PP.total.x, _PP.total.y - 2.8, _PP.total.w - 2, 5.6, `<b>${fmt(doc.grand_total)}</b>`, `text-align:right;font-size:${autoPt(fmt(doc.grand_total), _PP.total.w - 3, 10, 6, 0.6)}`)
-             : box(_PP.total.x, _PP.total.y - 2.8, _PP.total.w - 2, 5.6, "cont.", "text-align:right;font-size:8pt")}
+      ${last ? box(_PP.total.x, _PP.total.y - 2.8, _PP.total.w - 4.5, 5.6, `<b>${fmt(doc.grand_total)}</b>`, `text-align:right;font-size:${autoPt(fmt(doc.grand_total), _PP.total.w - 5.5, 10, 6, 0.6)}`)
+             : box(_PP.total.x, _PP.total.y - 2.8, _PP.total.w - 4.5, 5.6, "cont.", "text-align:right;font-size:8pt")}
       ${last ? fit(words, _PP.words) + fit(special, _PP.special) : ""}
       ${box(_PP.prepared.x, _PP.prepared.y - 4.4, _PP.prepared.w, 4.4, _esc(preparedBy))}
     </div></div>`;
@@ -977,8 +977,8 @@ function _renderSavaPOPreprinted(doc, cfg) {
 </style></head><body>
 <div class="toolbar">
   <b>PRINT ON PRE-PRINTED LPO SHEET</b>
-  <label>X nudge (mm) <input id="dx" type="number" step="0.5" value="0"/></label>
-  <label>Y nudge (mm) <input id="dy" type="number" step="0.5" value="0"/></label>
+  <label>X nudge (mm) <input id="dx" type="number" step="0.5" value="-7"/></label>
+  <label>Y nudge (mm) <input id="dy" type="number" step="0.5" value="-4"/></label>
   <label>Orientation <select id="rt"><option value="0">Normal (225 x 209 landscape)</option><option value="90">Rotate 90° clockwise (portrait page)</option><option value="270">Rotate 90° anticlockwise (portrait page)</option><option value="180">Rotate 180°</option></select></label>
   <label><input id="ol" type="checkbox"/> Print form outline (for a test on plain paper)</label>
   <button id="rs" type="button">Reset</button>
@@ -990,7 +990,7 @@ ${pageHtml}
 (function(){
   var K='bv_po_pp_calib', root=document.documentElement;
   var dx=document.getElementById('dx'), dy=document.getElementById('dy'), ol=document.getElementById('ol'), rt=document.getElementById('rt');
-  try{var c=JSON.parse(localStorage.getItem(K)||'{}'); dx.value=c.dx||0; dy.value=c.dy||0; rt.value=c.rot||'0';}catch(e){}
+  try{var c=JSON.parse(localStorage.getItem(K)||'{}'); dx.value=(c.dx===undefined?-7:c.dx); dy.value=(c.dy===undefined?-4:c.dy); rt.value=c.rot||'0';}catch(e){}
   function apply(){
     root.style.setProperty('--dx',(parseFloat(dx.value)||0)+'mm');
     root.style.setProperty('--dy',(parseFloat(dy.value)||0)+'mm');
@@ -1002,7 +1002,7 @@ ${pageHtml}
     try{localStorage.setItem(K,JSON.stringify({dx:parseFloat(dx.value)||0,dy:parseFloat(dy.value)||0,rot:rt.value}));}catch(e){}
   }
   dx.oninput=dy.oninput=ol.onchange=rt.onchange=apply;
-  document.getElementById('rs').onclick=function(){dx.value=0;dy.value=0;rt.value='0';apply();};
+  document.getElementById('rs').onclick=function(){dx.value=-7;dy.value=-4;rt.value='0';apply();};
   apply();
 })();
 <\/script>
