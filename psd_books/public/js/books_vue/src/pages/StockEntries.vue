@@ -693,15 +693,15 @@ const toWhRequired   = computed(() => ["Material Receipt", "Material Issue", "Ma
 const tabs = computed(() => [
   { key: "all",               label: "All",       color: "#6b7280", cnt: list.value.length },
   { key: "Material Receipt",  label: "Receipts",  color: "#16a34a", cnt: list.value.filter(e => e.stock_entry_type === "Material Receipt").length },
-  { key: "Material Issue",    label: "Issues",    color: "#ea580c", cnt: list.value.filter(e => e.stock_entry_type === "Material Issue").length },
-  { key: "Material Transfer", label: "Transfers", color: "#0284c7", cnt: list.value.filter(e => e.stock_entry_type === "Material Transfer").length },
+  { key: "Material Issue",    label: "Item Transfers",    color: "#ea580c", cnt: list.value.filter(e => tabOf(e) === "Material Issue").length },
+  { key: "Material Transfer", label: "Asset Transfers", color: "#0284c7", cnt: list.value.filter(e => tabOf(e) === "Material Transfer").length },
 ]);
 
 const kpi = computed(() => ({
   total:     list.value.length,
   receipts:  list.value.filter(e => e.stock_entry_type === "Material Receipt").length,
-  issues:    list.value.filter(e => e.stock_entry_type === "Material Issue").length,
-  transfers: list.value.filter(e => e.stock_entry_type === "Material Transfer").length,
+  issues:    list.value.filter(e => tabOf(e) === "Material Issue").length,
+  transfers: list.value.filter(e => tabOf(e) === "Material Transfer").length,
   valueIn:   list.value.filter(e => e.docstatus === 1).reduce((s, e) => s + flt(e.total_incoming_value), 0),
 }));
 
@@ -750,7 +750,7 @@ function sourceInfo(e) {
 
 const filtered = computed(() => {
   let r = list.value;
-  if (activeTab.value !== "all") r = r.filter(e => e.stock_entry_type === activeTab.value);
+  if (activeTab.value !== "all") r = r.filter(e => tabOf(e) === activeTab.value);
   if (sourceFilter.value !== "all") {
     r = r.filter(e => {
       const si = sourceInfo(e).label.toLowerCase();
@@ -804,6 +804,33 @@ function fmtCur(v) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "KES", minimumFractionDigits: 2 }).format(flt(v));
 }
 
+// A Material Transfer is an Asset Transfer only when it moves asset items. An Item Transfer is also saved as a
+// Material Transfer (it has a Receiving Warehouse), so the type alone cannot tell them apart: look at the items.
+async function tagTransferKinds(rows) {
+  const names = rows.filter(e => e.stock_entry_type === "Material Transfer").map(e => e.name);
+  if (!names.length) return;
+  try {
+    const lines = [];
+    for (let i = 0; i < names.length; i += 300) {
+      const part = await apiList("Stock Entry Detail", { fields: ["parent", "item_code"], filters: [["parent", "in", names.slice(i, i + 300)]], limit: 100000 });
+      lines.push(...(part || []));
+    }
+    const codes = [...new Set(lines.map(l => l.item_code).filter(Boolean))];
+    const assetCodes = new Set();
+    for (let i = 0; i < codes.length; i += 300) {
+      const part = await apiList("Item", { fields: ["name"], filters: [["name", "in", codes.slice(i, i + 300)], ["is_asset_item", "=", 1]], limit: 100000 });
+      (part || []).forEach(x => assetCodes.add(x.name));
+    }
+    const assetParents = new Set(lines.filter(l => assetCodes.has(l.item_code)).map(l => l.parent));
+    rows.forEach(e => { if (e.stock_entry_type === "Material Transfer") e._asset = assetParents.has(e.name); });
+  } catch { /* leave untagged: counted as before */ }
+}
+// Tab / card an entry belongs to: Item Transfer = Material Issue + non-asset Material Transfer; Asset Transfer = asset Material Transfer
+function tabOf(e) {
+  if (e.stock_entry_type === "Material Transfer") return e._asset === false ? "Material Issue" : "Material Transfer";
+  return e.stock_entry_type;
+}
+
 async function load() {
   loading.value = true;
   try {
@@ -817,6 +844,7 @@ async function load() {
       limit: 100000, order: "posting_date desc, creation desc",
     });
     // Attach item count from a separate list call (names only)
+    await tagTransferKinds(rows);
     list.value = rows;
   } catch (e) {
     toast.error(e.message || "Failed to load stock entries");
@@ -975,9 +1003,10 @@ async function fetchMrns(q = "", keep = "") {
     if (q) f.push(["name", "like", "%" + q + "%"]);
     const r = await apiList("Material Request", { fields: ["name", "project", "posting_date"], filters: f, limit: 200, order: "creation desc" });
     // Items still pending on each MRN, shown under it in the dropdown (as on the Purchase Order screen)
-    let itemsBy = {};
-    try { itemsBy = await apiPOST("psd_books.api.inventory.get_mrn_pending_items_text", { names: JSON.stringify((r || []).map(x => x.name)) }) || {}; } catch {}
-    const opts = (r || []).map(x => ({ label: x.project ? `${x.name} — ${x.project}` : x.name, value: x.name, sub: itemsBy[x.name] || "" }));
+    let itemsBy = {}, pendingKnown = false;
+    try { itemsBy = await apiPOST("psd_books.api.inventory.get_mrn_pending_items_text", { names: JSON.stringify((r || []).map(x => x.name)) }) || {}; pendingKnown = true; } catch {}
+    // An MRN with nothing left to transfer (empty pending text) is not offered; the picked one stays so the form can still show it
+    const opts = (r || []).filter(x => !pendingKnown || itemsBy[x.name] || x.name === keep).map(x => ({ label: x.project ? `${x.name} — ${x.project}` : x.name, value: x.name, sub: itemsBy[x.name] || "" }));
     if (keep && !opts.some(o => o.value === keep)) opts.unshift({ label: keep, value: keep });
     mrnOptions.value = opts;
   } catch { mrnOptions.value = keep ? [{ label: keep, value: keep }] : []; }
