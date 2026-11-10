@@ -571,6 +571,11 @@
           <button v-if="viewDoc.docstatus===1 && !isReceipt(viewDoc) && $canEdit('inventory')" class="se-btn-ghost" :disabled="actionBusy" @click="cancelSubmittedEntry(viewDoc)">
             <span v-html="icon('x',13)"></span> Cancel Entry
           </button>
+          <span v-if="viewDoc.docstatus===2 && isReceipt(viewDoc)" style="font-size:12px;color:#6b7280;align-self:center">Stock receipt of a GRN: amend the GRN to correct it</span>
+          <span v-else-if="viewDoc.docstatus===2 && amendedAs" class="se-btn-ghost" style="cursor:default;opacity:.8" :title="'Amended as ' + amendedAs">Amended</span>
+          <button v-else-if="viewDoc.docstatus===2 && seIsAdmin" class="se-btn-ghost" :disabled="actionBusy" @click="amendEntry(viewDoc)">
+            <span v-html="icon('edit',13)"></span> Amend
+          </button>
           <button v-if="viewDoc.docstatus===2 && $canDelete('inventory')" class="se-btn-ghost" :disabled="actionBusy" @click="deleteEntry(viewDoc)" title="Delete cancelled entry">
             <span v-html="icon('trash',13)"></span> Delete
           </button>
@@ -585,6 +590,7 @@
 import { ref, reactive, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiCancel, apiDelete, resolveCompany, apiLinkValues } from "../api/client.js";
+import { usePermissions } from "../composables/usePermissions.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
@@ -600,6 +606,7 @@ const { toast } = useToast();
 const { confirm } = useConfirm();
 const route = useRoute();
 const actionBusy = ref(false);
+const { isAdmin: seIsAdmin } = usePermissions();   // amend: Director or Books Admin only
 
 const activeTab  = ref("all");
 const sourceFilter = ref("all");
@@ -617,6 +624,7 @@ const drawerSaving = ref(false);
 const editingName = ref("");
 const viewOpen    = ref(false);
 const viewDoc     = ref(null);
+const amendedAs    = ref("");   // name of the Delivery Note that amended the cancelled one on view
 const viewLoading = ref(false);
 const warehouses  = ref([]);
 const salesPersons = ref([]);
@@ -869,6 +877,7 @@ async function loadViewProjectName(proj) {
   } catch { /* fall back to the code */ }
 }
 async function openView(e) {
+  amendedAs.value = "";
   viewDoc.value = { ...e, items: [] };
   vendorName.value = "";
   viewProjectName.value = "";
@@ -878,6 +887,12 @@ async function openView(e) {
     const full = await apiGet("Stock Entry", e.name);
     if (full) viewDoc.value = full;
   } catch { /* keep list-row data */ }
+  if (viewDoc.value?.docstatus === 2 && !isReceipt(viewDoc.value)) {
+    try {
+      const amd = await apiList("Stock Entry", { fields: ["name"], filters: [["amended_from", "=", e.name]], limit: 1 });
+      amendedAs.value = amd?.[0]?.name || "";
+    } catch {}
+  }
   viewLoading.value = false;
   loadVendor(viewDoc.value);
   loadViewProjectName(viewDoc.value?.project);
@@ -1343,6 +1358,20 @@ async function editSubmittedEntry(e) {
   } catch (err) {
     toast.error(err.message || "Failed to cancel entry for editing");
   } finally { actionBusy.value = false; }
+}
+
+// Amend a cancelled entry: server makes a Draft copy linked via amended_from, then it opens for editing.
+async function amendEntry(e) {
+  actionBusy.value = true;
+  try {
+    const r = await apiPOST("psd_books.api.docs.amend_stock_entry", { stock_entry: e.name });
+    const doc = r?.message ?? r;
+    toast.success(`Amended as ${doc.name}. Edit it and submit.`);
+    viewOpen.value = false;
+    await load();
+    await openEdit(doc);
+  } catch (err) { toast.error(err.message || "Amend failed"); }
+  finally { actionBusy.value = false; }
 }
 
 // Sum the requested qty per item, then verify the source warehouse holds enough.

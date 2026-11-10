@@ -594,6 +594,15 @@
    "translatable": 0,
    "unique": 0,
    "reqd": 0
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Link",
+   "label": "Amended From",
+   "options": "Purchase Receipt",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "permissions": [

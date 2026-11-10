@@ -10,7 +10,8 @@ from psd_books.db.validators import validate_fiscal_year, set_posting_time
 class PurchaseReceipt(Document):
     def autoname(self):
         # Plain sequential number (01, 02, ...), counter kept per doctype.
-        self.name = next_plain_name(self.doctype)
+        # If the latest one was deleted, its number is used again (a cancelled one still counts).
+        self.name = next_plain_name(self.doctype, reuse_deleted=True)
 
 
     def validate(self):
@@ -46,11 +47,27 @@ class PurchaseReceipt(Document):
             row.rejected_qty = flt(row.qty) - row.accepted_qty
             # amount is derived, never left to the client: stock valuation divides amount by qty
             # (inventory/stock_link.py), so an empty amount would value the receipt at zero.
+            # A row saved without a rate takes the Purchase Order's rate, so the receipt (and its
+            # stock valuation) isn't left at zero. Runs on save and on submit.
+            if not flt(row.rate):
+                row.rate = self._po_rate_for(row)
             row.amount = flt(row.qty) * flt(row.rate)
         self._lock_qc_inspected_rows()
         self.total_qty = sum(flt(r.qty) for r in self.items)
         self._block_over_receipt()
         self._warn_project_store()
+
+    def _po_rate_for(self, row):
+        """Rate of the Purchase Order line this receipt row belongs to (po_item, else first line of that item)."""
+        if not self.get("purchase_order"):
+            return 0
+        rate = None
+        if row.get("po_item"):
+            rate = frappe.db.get_value("Purchase Order Item", row.po_item, "rate")
+        if rate is None:
+            rate = frappe.db.get_value("Purchase Order Item",
+                {"parent": self.purchase_order, "item_code": row.item_code}, "rate")
+        return flt(rate)
 
     def _lock_qc_inspected_rows(self):
         """Once a QC Inspection for a line is submitted, its accepted/rejected

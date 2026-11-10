@@ -8,7 +8,8 @@ from frappe.utils import nowdate
 class MaterialRequest(Document):
 	def autoname(self):
 		# Plain sequential number (01, 02, ...), counter kept per doctype.
-		self.name = next_plain_name(self.doctype)
+		# MRN only: if the latest MRN was deleted, its number is used again (a cancelled one still counts).
+		self.name = next_plain_name(self.doctype, reuse_deleted=True)
 
 	def validate(self):
 		if not self.posting_date:

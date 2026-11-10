@@ -50,7 +50,8 @@ def _segregate_scrap_gl():
 class StockEntry(Document):
     def autoname(self):
         # Plain sequential number (01, 02, ...), counter kept per doctype.
-        self.name = next_plain_name(self.doctype)
+        # If the latest one was deleted, its number is used again (a cancelled one still counts).
+        self.name = next_plain_name(self.doctype, reuse_deleted=True)
 
 
     # ── Validate ──────────────────────────────────────────────────────────────
@@ -1027,4 +1028,4 @@ class StockEntry(Document):
                 WHERE voucher_type = 'Stock Entry' AND voucher_no = %s
             """, self.name)
 
-        frappe.db.commit()  
+        frappe.db.commit()

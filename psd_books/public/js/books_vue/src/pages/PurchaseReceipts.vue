@@ -112,6 +112,7 @@
               <button class="inv-act-btn" @click.stop="openView(r)" title="View"><span v-html="icon('eye',12)"></span></button>
               <button v-if="canEdit(r)" class="inv-act-btn" @click.stop="openEdit(r)" title="Edit"><span v-html="icon('edit',12)"></span></button>
               <button v-if="r.source==='real' && r.docstatus===1" class="inv-act-btn pr-act-cancel" @click.stop="confirmTarget={row:r,mode:'cancel'}" title="Cancel"><span v-html="icon('x',12)"></span></button>
+              <button v-if="r.source==='real' && r.docstatus===2" class="inv-act-btn pr-act-del" :disabled="!$canDelete('inventory')" @click.stop="confirmTarget={row:r,mode:'delete'}" title="Delete"><span v-html="icon('trash',12)"></span></button>
             </div>
           </td>
         </tr>
@@ -148,6 +149,7 @@
             <button class="pr-mc-btn" @click.stop="openView(r)">View</button>
             <button v-if="canEdit(r)" class="pr-mc-btn" @click.stop="openEdit(r)">Edit</button>
             <button v-if="r.source==='real' && r.docstatus===1" class="pr-mc-btn pr-mc-warn" @click.stop="confirmTarget={row:r,mode:'cancel'}">Cancel</button>
+            <button v-if="r.source==='real' && r.docstatus===2" class="pr-mc-btn pr-mc-danger" :disabled="!$canDelete('inventory')" @click.stop="confirmTarget={row:r,mode:'delete'}">Delete</button>
           </div>
         </div>
       </template>
@@ -191,7 +193,13 @@
             <button v-if="viewDoc.docstatus===1 && viewDoc.source==='real'" class="inv-ab-btn pr-act-cancel" :disabled="!$canDelete('inventory') || !prCanEdit" :title="!prCanEdit ? prNoAccess : (!$canDelete('inventory') ? 'Not permitted' : '')" @click="confirmTarget={row:viewDoc,mode:'cancel'}">
               <span v-html="icon('x',13)"></span> Cancel
             </button>
-            <button v-if="viewDoc.docstatus===0 && viewDoc.source==='real'" class="inv-ab-btn pr-act-del" :disabled="!$canDelete('inventory') || !prCanEdit" :title="!prCanEdit ? prNoAccess : (!$canDelete('inventory') ? 'Not permitted' : '')" @click="confirmTarget={row:viewDoc,mode:'delete'}">
+            <span v-if="viewDoc.docstatus===2 && viewDoc.source==='real' && amendedAs" class="inv-ab-btn" style="cursor:default;opacity:.8" :title="'Amended as ' + amendedAs">
+              <span class="ab-label">Amended</span>
+            </span>
+            <button v-else-if="viewDoc.docstatus===2 && viewDoc.source==='real' && prIsAdmin" class="inv-ab-btn" :disabled="amending || !$canCreate('inventory') || !prCanEdit" :title="!prCanEdit ? prNoAccess : (!$canCreate('inventory') ? 'Read-only access' : '')" @click="amendGRN(viewDoc)">
+              <span v-html="icon('edit',13)"></span> <span class="ab-label">{{ amending ? 'Amending…' : 'Amend' }}</span>
+            </button>
+            <button v-if="(viewDoc.docstatus===0 || viewDoc.docstatus===2) && viewDoc.source==='real'" class="inv-ab-btn pr-act-del" :disabled="!$canDelete('inventory') || !prCanEdit" :title="!prCanEdit ? prNoAccess : (!$canDelete('inventory') ? 'Not permitted' : '')" @click="confirmTarget={row:viewDoc,mode:'delete'}">
               <span v-html="icon('trash',13)"></span> Delete
             </button>
             </div>
@@ -271,7 +279,7 @@
                 <tbody>
                   <tr v-for="(it,i) in viewDoc.items||[]" :key="it.name||it.item_code" class="inv-row">
                     <td class="pr-row-num">{{ i+1 }}</td>
-                    <td style="font-weight:500;color:#111827">{{ it.item_name||it.item_code }}</td>
+                    <td style="font-weight:500;color:#111827">{{ viewItemNames[it.item_code]||it.item_name||it.item_code }}</td>
                     <td class="ta-r mono">{{ it.qty }}</td>
                     <td class="ta-r mono" style="color:#2F9E44">{{ it.accepted_qty||it.qty }}</td>
                     <td class="ta-r mono" style="color:#C92A2A">{{ it.rejected_qty||0 }}</td>
@@ -344,8 +352,17 @@
                   <input class="inv-fi" type="date" v-model="form.entry_date"/>
                 </div>
                 <div>
-                  <label class="inv-lbl">Purchase Order <span class="inv-req">*</span></label>
-                  <SearchableSelect v-model="form.purchase_order" :options="poOptions" placeholder="Select PO (filtered by supplier)…" @search="fetchPOs" @open="fetchPOs('')" @select="onPOSelect" />
+                  <label class="inv-lbl">{{ editingName ? 'Purchase Order' : 'Purchase Order(s)' }} <span class="inv-req">*</span></label>
+                  <template v-if="!editingName">
+                    <SearchableSelect v-model="poPick" :options="poOptionsAvail" :placeholder="selectedPOs.length ? 'Add another PO from this supplier…' : 'Select PO (filtered by supplier)…'" @search="fetchPOs" @open="fetchPOs('')" @select="onPOSelect" />
+                    <div v-if="selectedPOs.length" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+                      <span v-for="po in selectedPOs" :key="po" style="display:inline-flex;align-items:center;gap:6px;padding:3px 6px 3px 10px;border-radius:999px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:12px;font-weight:600">
+                        {{ po }}
+                        <button type="button" @click.stop="removePO(po)" title="Remove PO" style="border:0;background:transparent;color:#1d4ed8;cursor:pointer;font-size:14px;line-height:1;padding:0 2px">×</button>
+                      </span>
+                    </div>
+                  </template>
+                  <SearchableSelect v-else v-model="form.purchase_order" :options="poOptions" placeholder="Select PO (filtered by supplier)…" @search="fetchPOs" @open="fetchPOs('')" @select="onPOSelect" />
                 </div>
               </div>
             </div>
@@ -437,7 +454,7 @@
                     </div>
                     <div v-if="it.po_qty || it.qc_locked" class="pr-lines-sub">
                       <div v-if="it.po_qty" class="exp-field-hint" :class="{'exp-field-hint-err': flt(it.qty) > flt(it.po_pending) + 0.0001}">
-                        Ordered {{ it.po_qty }} · Received {{ it.po_received }} · Pending {{ it.po_pending }}
+                        <template v-if="it.po_name && selectedPOs.length > 1"><b>{{ it.po_name }}</b> · </template>Ordered {{ it.po_qty }} · Received {{ it.po_received }} · Pending {{ it.po_pending }}
                       </div>
                       <div v-if="it.qc_locked" class="exp-field-hint">Locked — final after QC {{ it.qc_locked }}</div>
                     </div>
@@ -509,7 +526,7 @@
       <div class="pr-confirm-icon" :class="confirmTarget.mode==='delete'?'danger':'warn'">
         <span v-html="icon(confirmTarget.mode==='delete'?'trash':'x', 20)"></span>
       </div>
-      <div class="pr-confirm-title">{{ confirmTarget.mode==='delete' ? 'Delete draft GRN?' : 'Cancel GRN?' }}</div>
+      <div class="pr-confirm-title">{{ confirmTarget.mode==='delete' ? (confirmTarget.row.docstatus===2 ? 'Delete cancelled GRN?' : 'Delete draft GRN?') : 'Cancel GRN?' }}</div>
       <div class="pr-confirm-sub">
         <template v-if="confirmTarget.mode==='delete'">
           <strong>{{ confirmTarget.row.name }}</strong> will be permanently deleted. This cannot be undone.
@@ -567,6 +584,9 @@ const search    = ref("");
 const tab       = ref("all");
 const viewOpen  = ref(false);
 const viewDoc   = ref(null);
+const amendedAs  = ref("");   // name of the GRN that amended the cancelled one on view
+const amending   = ref(false);
+const viewItemNames = ref({});  // item_code -> Item name, for the view drawer
 const { printDoc } = useLivePreview();
 async function printGRN(d) { printDoc(await preparePRPrint({ ...d, prepared_by_name: ownerName(d.owner) }), { ...GRN_PRINT_CONFIG, companyName: d?.company || "" }); }
 const formOpen  = ref(false);
@@ -594,6 +614,12 @@ const sortDir = ref(-1);
 const vendorOptions = ref([]);
 const itemOptions   = ref([]);
 const poOptions     = ref([]);
+const selectedPOs   = ref([]);   // new GRN: several POs of one supplier -> one GRN per PO on save
+const poPick        = ref("");
+const poMeta        = ref({});
+const savedGRN      = ref({});   // po -> draft GRN already saved in this form session (retry updates it, never duplicates)
+const doneGRN       = ref({});   // po -> true once that GRN has been submitted   // po name -> { project, set_warehouse }
+const poOptionsAvail = computed(() => poOptions.value.filter(o => !selectedPOs.value.includes(o.value)));
 const warehouses    = ref([]);
 const { projects, fetchProjects } = useProjectOptions();
 const collapsed = reactive({ details: false, receiving: false, items: false });
@@ -758,8 +784,34 @@ async function openView(r) {
     console.warn("PR lines load failed:", e.message);
     viewDoc.value = r;
   }
+  amendedAs.value = "";
+  if (r.source === "real" && viewDoc.value?.docstatus === 2) {
+    try {
+      const amd = await apiList("Purchase Receipt", { fields: ["name"], filters: [["amended_from", "=", r.name]], limit: 1 });
+      amendedAs.value = amd?.[0]?.name || "";
+    } catch {}
+  }
+  viewItemNames.value = {};
+  const codes = [...new Set((viewDoc.value?.items || []).filter(i => i.item_code).map(i => i.item_code))];
+  if (codes.length) {
+    apiList("Item", { fields: ["name", "item_name"], filters: [["name", "in", codes]], limit: codes.length })
+      .then(rows => { viewItemNames.value = Object.fromEntries((rows || []).map(x => [x.name, x.item_name])); })
+      .catch(() => {});
+  }
 }
 
+async function amendGRN(r) {
+  amending.value = true;
+  try {
+    const res = await apiPOST("psd_books.api.docs.amend_purchase_receipt", { purchase_receipt: r.name });
+    const doc = res?.message ?? res;
+    toast.success(`Amended as ${doc.name}. Edit it and submit.`);
+    viewOpen.value = false;
+    await load();
+    await openEdit({ name: doc.name, source: "real", docstatus: 0 });
+  } catch (e) { toast.error(e.message || "Amend failed"); }
+  finally { amending.value = false; }
+}
 async function submitGRN() {
   if (!viewDoc.value) return;
   if (viewDoc.value.source !== "real") {
@@ -783,11 +835,11 @@ async function confirmAction() {
   const { row, mode } = confirmTarget.value;
   if (row.source !== "real") { confirmTarget.value = null; return; } // safety: only real docs are actionable
   if (mode === "delete") {
-    if (row.docstatus !== 0) { confirmTarget.value = null; return; }
+    if (row.docstatus !== 0 && row.docstatus !== 2) { confirmTarget.value = null; return; }
     deleting.value = true;
     try {
       await apiDelete("Purchase Receipt", row.name);
-      toast.success(`Draft GRN ${row.name} deleted`);
+      toast.success(`${row.docstatus === 2 ? "Cancelled" : "Draft"} GRN ${row.name} deleted`);
       confirmTarget.value = null;
       viewOpen.value = false;
       await load();
@@ -812,6 +864,7 @@ function resetForm() {
     supplier: "", supplier_name: "", entry_date: new Date().toISOString().slice(0,10), posting_date: new Date().toISOString().slice(0,10),
     purchase_order: "", set_warehouse: "", project: "", employee: "", employee_name: "", remarks: "", supplier_delivery_note: "", vehicle_no: "", driver_name: "", driver_id_no: "", items: [],
   });
+  selectedPOs.value = []; poPick.value = ""; poMeta.value = {}; savedGRN.value = {}; doneGRN.value = {};
 }
 
 function openNew() {
@@ -882,6 +935,7 @@ async function openEdit(r) {
       qc_locked:          qcDone[it.quality_inspection] ? it.quality_inspection : "",
       quality_inspection: it.quality_inspection || "",
       po_item:            it.po_item || null,
+      saved_rate:         it.rate ?? 0,
       item_code:          it.item_code || "",
       item_name:          it.item_name || it.item_code || "",
       qty:                it.qty ?? 1,
@@ -943,7 +997,13 @@ function onSupSelect(opt) {
   // Reset PO and reload PO list for the new supplier
   form.purchase_order = "";
   poOptions.value = [];
+  if (!editingName.value) { selectedPOs.value = []; poPick.value = ""; form.items = form.items.filter(i => !i.po_name); }
   fetchPOs("");
+}
+function removePO(po) {
+  selectedPOs.value = selectedPOs.value.filter(x => x !== po);
+  form.items = form.items.filter(i => i.po_name !== po);
+  form.purchase_order = selectedPOs.value[0] || "";
 }
 // Employee dropdown: active Employee records only, by name.
 const employeeList = ref([]);
@@ -987,6 +1047,16 @@ async function fetchPOs(q = "") {
     ];
     if (form.supplier) filters.push(["supplier", "=", form.supplier]);
     if (q) filters.push(["name", "like", `%${q}%`]);
+    // A PO that already has a draft GRN is left out (finish or delete that draft first).
+    // The draft being edited does not count against its own PO.
+    const dFilters = [["docstatus", "=", 0], ["purchase_order", "is", "set"]];
+    if (editingName.value) dFilters.push(["name", "!=", editingName.value]);
+    let draftPOs = new Set();
+    try {
+      const drafts = await apiList("Purchase Receipt", { fields: ["purchase_order"], filters: dFilters, limit: 1000 });
+      draftPOs = new Set((drafts || []).map(d => d.purchase_order).filter(Boolean));
+    } catch {}
+    if (draftPOs.size) filters.push(["name", "not in", [...draftPOs]]);
     const rows = await apiList("Purchase Order", {
       fields: ["name", "supplier", "transaction_date", "grand_total"],
       filters, limit: 30, order: "transaction_date desc, creation desc",
@@ -1022,7 +1092,9 @@ function fmtRate(v) { return Number(v || 0).toLocaleString("en-KE", { minimumFra
 // ── PO select: pull remaining-to-receive lines from the Purchase Order ───────
 async function onPOSelect(opt) {
   const poName = opt?.value ?? opt;
-  form.purchase_order = poName;
+  const multi = !editingName.value;
+  if (multi) { poPick.value = ""; if (!poName || selectedPOs.value.includes(poName)) return; }
+  form.purchase_order = multi ? (selectedPOs.value[0] || poName) : poName;
   if (!poName) return;
   try {
     await fillHeaderFromPO(poName);
@@ -1036,7 +1108,8 @@ async function onPOSelect(opt) {
     const res = await apiGET("psd_books.api.docs.get_purchase_order_fulfillment", { purchase_order: poName });
     const lines = (res?.lines || []).filter(it => flt(it.remaining_to_receive) > 0);
     if (lines.length) {
-      form.items = lines.map(it => ({
+      const mapped = lines.map(it => ({
+        po_name:      poName,
         po_item:      it.name,
         item_code:    it.item_code,
         item_name:    it.item_name || it.item_code,
@@ -1046,6 +1119,17 @@ async function onPOSelect(opt) {
         po_qty: flt(it.qty), po_received: flt(it.received_qty), po_pending: flt(it.remaining_to_receive), po_rate: flt(it.rate),
         has_batch_no: 0, batch_no: "", manufacturing_date: "", expiry_date: "", batchOptions: [], collapsedUI: false,
       }));
+      if (multi) {
+        form.items = [...form.items.filter(i => i.item_code), ...mapped];
+        selectedPOs.value = [...selectedPOs.value, poName];
+        try {
+          const pm = await apiList("Purchase Order", { fields: ["name", "project", "set_warehouse"], filters: [["name", "=", poName]], limit: 1 });
+          if (pm?.[0]) poMeta.value = { ...poMeta.value, [poName]: { project: pm[0].project || "", set_warehouse: pm[0].set_warehouse || "" } };
+        } catch {}
+        if (selectedPOs.value.length === 2) toast.info("One GRN is created per PO, each using its own PO's project and warehouse.");
+      } else {
+        form.items = mapped;
+      }
       // Resolve has_batch_no per item so the Batch No field shows up for
       // batch-tracked items pulled in from the Purchase Order.
       const codes = [...new Set(form.items.map(l => l.item_code).filter(Boolean))];
@@ -1131,12 +1215,14 @@ function onBatchSelect(line, opt) {
 function onBatchCreate(line, val) { line.batch_no = val; }
 
 async function saveGRN(submit) {
+  if (saving.value) return;   // ignore double clicks while a save is running
   if (!form.supplier.trim()) { toast.error("Supplier is required"); return; }
   if (!form.entry_date) { toast.error("Entry Date is required"); return; }
-  if (!form.purchase_order) { toast.error("Purchase Order is required"); return; }
+  if (editingName.value ? !form.purchase_order : !selectedPOs.value.length) { toast.error("Purchase Order is required"); return; }
   const usable = form.items.filter(it => it.item_code.trim());
   if (!usable.length) { toast.error("Add at least one item"); return; }
 
+  if (!editingName.value && usable.some(it => !it.po_name)) { toast.error("Every item must come from one of the selected Purchase Orders"); return; }
   for (const [idx, it] of usable.entries()) {
     const rowQty = parseFloat(it.qty) || 0;
     const rowAccepted = parseFloat(it.accepted_qty);
@@ -1196,16 +1282,16 @@ async function saveGRN(submit) {
       }
     }
 
-    const doc = {
+    const buildDoc = (poName, rows) => ({
       doctype: "Purchase Receipt",
       supplier: form.supplier,
       entry_date: form.entry_date,
       // Received Date field is hidden: new GRNs post on the Entry Date; an edited GRN keeps its saved date
       posting_date: editingName.value ? (form.posting_date || form.entry_date) : form.entry_date,
       company,
-      purchase_order: form.purchase_order || null,
-      set_warehouse: form.set_warehouse || null,
-      project: form.project || null,
+      purchase_order: poName || null,
+      set_warehouse: (selectedPOs.value.length > 1 && poMeta.value[poName]?.set_warehouse) || form.set_warehouse || null,
+      project: (selectedPOs.value.length > 1 && poMeta.value[poName]?.project) || form.project || null,
       employee: form.employee || "",
       employee_name: form.employee_name || "",
       remarks: form.remarks || "",
@@ -1213,7 +1299,7 @@ async function saveGRN(submit) {
       vehicle_no: form.vehicle_no || "",
       driver_name: form.driver_name || "",
       driver_id_no: form.driver_id_no || "",
-      items: usable.map(it => {
+      items: rows.map(it => {
         const rowQty = parseFloat(it.qty) || 1;
         const rawAccepted = parseFloat(it.accepted_qty);
         const rowAccepted = Math.min(Math.max(isNaN(rawAccepted) ? rowQty : rawAccepted, 0), rowQty);
@@ -1230,18 +1316,41 @@ async function saveGRN(submit) {
         stock_uom: it.uom || "Nos",
         conversion_factor: 1,
         received_qty: rowQty,
-        rate: 0,
+        rate: flt(it.po_rate ?? it.saved_rate ?? 0),
         po_item: it.po_item || undefined,
         batch_no: it.has_batch_no ? (it.batch_no || null) : null,
         manufacturing_date: it.has_batch_no ? (it.manufacturing_date || null) : null,
         expiry_date: it.has_batch_no ? (it.expiry_date || null) : null,
       };}),
-    };
-    if (editingName.value) doc.name = editingName.value;
+    });
 
-    const saved = await apiSave(doc);
-    if (submit && saved?.name) await apiSubmit("Purchase Receipt", saved.name);
-    toast.success(`GRN ${saved?.name || ""} ${submit ? "submitted" : "saved"}`);
+    if (editingName.value) {
+      const doc = buildDoc(form.purchase_order, usable);
+      doc.name = editingName.value;
+      const saved = await apiSave(doc);
+      if (submit && saved?.name) await apiSubmit("Purchase Receipt", saved.name);
+      toast.success(`GRN ${saved?.name || ""} ${submit ? "submitted" : "saved"}`);
+    } else {
+      // One GRN per selected PO (each keeps its own PO's over-receipt, billing and status logic).
+      const created = [];
+      for (const po of selectedPOs.value) {
+        const rows = usable.filter(it => it.po_name === po);
+        if (!rows.length) continue;
+        if (doneGRN.value[po]) { created.push(savedGRN.value[po]); continue; }   // already submitted on an earlier attempt
+        try {
+          const d = buildDoc(po, rows);
+          if (savedGRN.value[po]) d.name = savedGRN.value[po];   // retry: update the draft saved earlier
+          const saved = await apiSave(d);
+          if (saved?.name) { savedGRN.value[po] = saved.name; created.push(saved.name); }
+          if (submit && saved?.name) { await apiSubmit("Purchase Receipt", saved.name); doneGRN.value[po] = true; }
+        } catch (e) {
+          toast.error(`${po}: ${e.message || "failed"}.${created.length || savedGRN.value[po] ? ` Saved as draft: ${[...new Set([...created, savedGRN.value[po]].filter(Boolean))].join(", ")} — fix the issue and save again; it will update, not duplicate.` : ""}`);
+          await load();
+          return;
+        }
+      }
+      toast.success(`GRN ${created.join(", ")} ${submit ? "submitted" : "saved"}`);
+    }
     formOpen.value = false;
     await load();
   } catch (e) { toast.error(e.message || "Failed to save GRN"); }

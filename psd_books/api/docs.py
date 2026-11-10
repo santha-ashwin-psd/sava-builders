@@ -913,8 +913,9 @@ def amend_doc(doctype, name):
     """
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
-    from psd_books.utils.access import assert_can
+    from psd_books.utils.access import assert_can, assert_can_amend
     assert_can(doctype, "create")
+    assert_can_amend(doctype)
 
     src = frappe.get_doc(doctype, name)
     if src.docstatus != 2:
@@ -4246,29 +4247,34 @@ def _po_linked_submitted_docs(purchase_order):
     return receipts, inspections
 
 
+def _po_linked_submitted_bills(purchase_order):
+    """Submitted (non-return) bills raised against this PO."""
+    return frappe.get_all("Purchase Invoice",
+        filters={"purchase_order": purchase_order, "docstatus": 1, "is_return": 0}, pluck="name")
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_purchase_order_linked_docs(purchase_order):
-    """What cancelling this PO would also cancel (GRNs and their QC Inspections)."""
+    """What cancelling this PO would also cancel (bills, GRNs and their QC Inspections)."""
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
     receipts, inspections = _po_linked_submitted_docs(purchase_order)
-    return {"purchase_receipts": receipts, "qc_inspections": inspections}
+    return {"bills": _po_linked_submitted_bills(purchase_order),
+            "purchase_receipts": receipts, "qc_inspections": inspections}
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def cancel_purchase_order_safe(purchase_order, cancel_linked=0):
-    from psd_books.utils.access import require_module
+    from psd_books.utils.access import require_module, assert_can
     require_module("bills", write=True)
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
-    submitted_bills = frappe.get_all("Purchase Invoice",
-        filters={"purchase_order": purchase_order, "docstatus": 1, "is_return": 0},
-        fields=["name"])
-    if submitted_bills:
-        names = ", ".join(b.name for b in submitted_bills)
+    assert_can("Purchase Order", "cancel")   # Purchase Manager, Admin, Director or a Books Admin
+    submitted_bills = _po_linked_submitted_bills(purchase_order)
+    if submitted_bills and not int(cancel_linked or 0):
         frappe.throw(
-            f"Cannot cancel — {len(submitted_bills)} submitted bill(s) exist: {names}. "
-            f"Cancel those bills first."
+            f"PO {purchase_order} has {len(submitted_bills)} submitted bill(s): {', '.join(submitted_bills)}. "
+            f"Confirm to cancel them along with the PO."
         )
     po = frappe.get_doc("Purchase Order", purchase_order)
     from psd_books.invoicing import po_approval_rules as _po_rules
@@ -4276,6 +4282,17 @@ def cancel_purchase_order_safe(purchase_order, cancel_linked=0):
         frappe.throw("This Purchase Order is pending approval. Cancel it with a reason from the "
                      "Purchase Order screen (the person who sent it, or an approver of the pending level).")
     if po.docstatus == 1:
+        # Bills first: a submitted bill blocks cancelling its GRN / PO. Payments on a bill are
+        # cancelled with it. No commit here, so any failure rolls the whole request back.
+        for bill_name in submitted_bills:
+            refs = frappe.get_all("Payment Entry Reference",
+                filters={"reference_name": bill_name}, pluck="parent")
+            for pe_name in sorted(set(refs)):
+                pe = frappe.get_doc("Payment Entry", pe_name)
+                if pe.docstatus == 1:
+                    pe.cancel()
+            bill = frappe.get_doc("Purchase Invoice", bill_name)
+            bill.cancel()
         receipts, inspections = _po_linked_submitted_docs(purchase_order)
         if (receipts or inspections) and not int(cancel_linked or 0):
             frappe.throw(
@@ -4300,6 +4317,10 @@ def cancel_purchase_order_safe(purchase_order, cancel_linked=0):
         po.reload()
         po.flags.ignore_permissions = True
         po.cancel()
+        # PO.on_cancel doesn't touch the status field, so it stayed "To Receive" with docstatus 2
+        # and a second Cancel click was needed (that hit the branch below). Set it here.
+        frappe.db.set_value("Purchase Order", purchase_order, "status", "Cancelled",
+                            update_modified=True)
     else:
         # A Sent Back PO still has untouched later levels: close them with the PO.
         for _row in _po_rules.cancel_open_steps(po):
@@ -4309,6 +4330,93 @@ def cancel_purchase_order_safe(purchase_order, cancel_linked=0):
                             update_modified=True)
     frappe.db.commit()
     return {"purchase_order": purchase_order, "status": "Cancelled"}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def amend_purchase_order(purchase_order):
+    """Amend a cancelled PO: a fresh Draft copy linked via amended_from. Unlike the generic
+    amend_doc, the status is reset to Draft (copy_doc would carry over "Cancelled"); approval
+    steps are no_copy, so the amended PO has to go through approval again."""
+    from psd_books.utils.access import require_module, assert_can, assert_can_amend
+    require_module("bills", write=True)
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    assert_can("Purchase Order", "create")
+    assert_can_amend("Purchase Order")
+    src = frappe.get_doc("Purchase Order", purchase_order)
+    if not (src.docstatus == 2 or (src.status or "") == "Cancelled"):
+        frappe.throw("Only a cancelled Purchase Order can be amended.")
+    existing = frappe.db.get_value("Purchase Order", {"amended_from": purchase_order}, "name")
+    if existing:
+        frappe.throw(f"{purchase_order} has already been amended as {existing}. Open that Purchase Order instead.")
+    new_doc = frappe.copy_doc(src)
+    new_doc.amended_from = src.name
+    new_doc.docstatus = 0
+    new_doc.status = "Draft"
+    new_doc.flags.ignore_permissions = True
+    new_doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return new_doc.as_dict()
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def amend_purchase_receipt(purchase_receipt):
+    """Amend a cancelled GRN: a fresh Draft copy linked via amended_from (same idea as
+    amend_purchase_order). Nothing is posted until the new GRN is submitted, so stock and the
+    PO received quantities only move again at that point. The copy never carries the old QC
+    Inspection links."""
+    from psd_books.utils.access import require_module, assert_can, assert_can_amend
+    require_module("inventory", write=True)
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    assert_can("Purchase Receipt", "create")
+    assert_can_amend("Purchase Receipt")
+    src = frappe.get_doc("Purchase Receipt", purchase_receipt)
+    if src.docstatus != 2:
+        frappe.throw("Only a cancelled GRN can be amended.")
+    existing = frappe.db.get_value("Purchase Receipt", {"amended_from": purchase_receipt}, "name")
+    if existing:
+        frappe.throw(f"{purchase_receipt} has already been amended as {existing}. Open that GRN instead.")
+    new_doc = frappe.copy_doc(src)
+    new_doc.amended_from = src.name
+    new_doc.docstatus = 0
+    new_doc.status = "Draft"
+    for row in new_doc.get("items") or []:
+        row.quality_inspection = None
+    new_doc.flags.ignore_permissions = True
+    new_doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return new_doc.as_dict()
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def amend_stock_entry(stock_entry):
+    """Amend a cancelled Delivery Note (Stock Entry): a fresh Draft copy linked via amended_from.
+    Material Receipts are the stock side of a GRN, so they are never amended here; amend the GRN
+    instead and its receipt is posted again when the new GRN is submitted."""
+    from psd_books.utils.access import require_module, assert_can, assert_can_amend
+    require_module("inventory", write=True)
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    assert_can("Stock Entry", "create")
+    assert_can_amend("Stock Entry")
+    src = frappe.get_doc("Stock Entry", stock_entry)
+    if src.docstatus != 2:
+        frappe.throw("Only a cancelled Delivery Note can be amended.")
+    if src.stock_entry_type == "Material Receipt" or src.get("reference_doctype") in ("Purchase Receipt", "Purchase Invoice"):
+        ref = src.get("reference_name")
+        frappe.throw("This entry is the stock receipt of a GRN" + (f" ({ref})" if ref else "")
+                     + ". Amend the GRN instead.")
+    existing = frappe.db.get_value("Stock Entry", {"amended_from": stock_entry}, "name")
+    if existing:
+        frappe.throw(f"{stock_entry} has already been amended as {existing}. Open that Delivery Note instead.")
+    new_doc = frappe.copy_doc(src)
+    new_doc.amended_from = src.name
+    new_doc.docstatus = 0
+    new_doc.flags.ignore_permissions = True
+    new_doc.insert(ignore_permissions=True)
+    frappe.db.commit()
+    return new_doc.as_dict()
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])

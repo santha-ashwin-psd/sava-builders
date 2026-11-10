@@ -36,7 +36,7 @@
     <div class="mrl-table-wrap">
       <table class="mrl-table">
         <thead><tr>
-          <th>MRN No</th><th>Request Type</th><th>Project</th><th>Requested Date</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
+          <th>MRN No</th><th>Request Type</th><th>Project</th><th>Required By</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
         </tr></thead>
         <tbody>
           <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="7"><div class="shimmer" style="height:26px;border-radius:6px"></div></td></tr></template>
@@ -87,7 +87,8 @@
                 <button v-if="!isNew && (mr.docstatus===0 || mr.docstatus===2)" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="deleteMR" :disabled="submitting || saving || !canDeleteMR" :title="!canDeleteMR ? MR_CANCEL_NOTE : 'Delete this Material Request'">
                   <span v-html="icon('trash',12)"></span> Delete
                 </button>
-                <button v-if="!isNew && mr.docstatus===2" class="bomx-btn bomx-btn-light" @click="amendMR" :disabled="submitting || !canRaiseMR">
+                <span v-if="!isNew && mr.docstatus===2 && amendedAs" class="bomx-btn bomx-btn-light" style="cursor:default;opacity:.8" :title="'Amended as ' + amendedAs">Amended</span>
+                <button v-else-if="!isNew && mr.docstatus===2 && isAdmin" class="bomx-btn bomx-btn-light" @click="amendMR" :disabled="submitting || !canRaiseMR">
                   {{ submitting ? 'Amending…' : 'Amend' }}
                 </button>
                 <button v-if="!isNew && mr.docstatus===1" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="cancelMR" :disabled="submitting || !canCancelMR" :title="!canCancelMR ? MR_CANCEL_NOTE : ''">
@@ -322,6 +323,20 @@ function refLabel(row) {
   return row.production_plan || "—";
 }
 
+// Sort by MRN number only, highest first. Plain numbers (25, 18-1) come first, then old
+// SB-MRN-YY-NNNN names; inside each group by the number, then by any "-n" amendment suffix.
+function mrnKey(name) {
+  const n = String(name || "");
+  let m = n.match(/^(\d+)(?:-(\d+))?$/);
+  if (m) return [1, +m[1], +(m[2] || 0)];
+  m = n.match(/(\d+)\D*$/);
+  return [0, m ? +m[1] : 0, 0];
+}
+function mrnCompare(a, b) {
+  const x = mrnKey(a.name), y = mrnKey(b.name);
+  return (y[0] - x[0]) || (y[1] - x[1]) || (y[2] - x[2]) || String(b.name).localeCompare(String(a.name));
+}
+
 const sorted = computed(() => {
   let r = list.value;
   if (filterStatus.value === ACTIVE_KEY) r = r.filter(i => ACTIVE_STATUSES.includes(i.status));
@@ -329,7 +344,7 @@ const sorted = computed(() => {
   if (filterType.value) r = r.filter(i => i.material_request_type === filterType.value);
   const q = search.value.toLowerCase().trim();
   if (q) r = r.filter(i => [i.name, i.material_request_type, i.production_plan, refLabel(i), empName(i) === "-" ? "" : empName(i)].filter(Boolean).join(" ").toLowerCase().includes(q));
-  return r;
+  return [...r].sort(mrnCompare);
 });
 const paged = computed(() => {
   const start = (page.value - 1) * pageSize.value;
@@ -352,7 +367,7 @@ const kpis = computed(() => {
   ];
 });
 function exportCSV() {
-  const headers = ["MRN No", "Request Type", "Project", "Requested Date", "Requested By", "Status"];
+  const headers = ["MRN No", "Request Type", "Project", "Required By", "Requested By", "Status"];
   const rows = sorted.value.map(r => [r.name, r.material_request_type || "", refLabel(r), r.posting_date || "", empName(r) === "-" ? "" : empName(r), r.status || ""]);
   const csv = [headers, ...rows].map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
@@ -403,6 +418,7 @@ function emptyMR() {
   };
 }
 const mr = ref(emptyMR());
+const amendedAs = ref("");   // name of the revision that amended this cancelled MRN
 const { projects, fetchProjects } = useProjectOptions();
 
 const companiesList = ref([]);
@@ -576,6 +592,13 @@ async function onProjectPicked(proj) {
 async function loadMR() {
   const data = await apiGet("Material Request", route.params.name);
   mr.value = data;
+  amendedAs.value = "";
+  if (data?.docstatus === 2) {
+    try {
+      const amd = await apiList("Material Request", { fields: ["name"], filters: [["amended_from", "=", data.name]], limit: 1 });
+      amendedAs.value = amd?.[0]?.name || "";
+    } catch {}
+  }
   if (!mr.value.items) mr.value.items = [];
   if (mr.value.project) fetchProjects("", mr.value.project);
   await loadApproval();

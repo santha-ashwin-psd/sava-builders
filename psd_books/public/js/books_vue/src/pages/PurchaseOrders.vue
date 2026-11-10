@@ -33,15 +33,15 @@
     <!-- ── KPI Cards ── -->
     <div class="bk-kpi-grid bk-kpi-grid-4">
       <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeTab='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total POs</div><div class="bk-kpi-value">{{ list.length }}</div><div class="bk-kpi-trend" :class="poTrends.total.up?'bk-trend-up':'bk-trend-down'">{{ poTrends.total.up?'↑':'↓' }} {{ poTrends.total.pct }}% vs last month</div></div></div></div>
-      <div class="bk-kpi-card clickable" @click="activeTab='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#e2e8f0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Draft</div><div class="bk-kpi-value">{{ counts.draft }}</div><div class="bk-kpi-trend" :class="poTrends.draft.up?'bk-trend-up':'bk-trend-down'">{{ poTrends.draft.up?'↑':'↓' }} {{ poTrends.draft.pct }}% vs last month</div></div></div></div>
-      <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeTab='toReceive'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">To Receive</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.toReceive }}</div><div class="bk-kpi-trend" :class="poTrends.receive.up?'bk-trend-up':'bk-trend-down'">{{ poTrends.receive.up?'↑':'↓' }} {{ poTrends.receive.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card clickable" @click="activeTab='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#e2e8f0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Pending Approval</div><div class="bk-kpi-value">{{ counts.draft }}</div><div class="bk-kpi-trend" :class="poTrends.draft.up?'bk-trend-up':'bk-trend-down'">{{ poTrends.draft.up?'↑':'↓' }} {{ poTrends.draft.pct }}% vs last month</div></div></div></div>
+      <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeTab='toReceive'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">To Collect</div><div class="bk-kpi-value bk-kpi-amber">{{ counts.toReceive }}</div><div class="bk-kpi-trend" :class="poTrends.receive.up?'bk-trend-up':'bk-trend-down'">{{ poTrends.receive.up?'↑':'↓' }} {{ poTrends.receive.pct }}% vs last month</div></div></div></div>
       <div class="bk-kpi-card bk-kpi-danger clickable" @click="activeTab='cancelled'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fee2e2"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Cancelled</div><div class="bk-kpi-value bk-kpi-red">{{ counts.cancelled }}</div><div class="bk-kpi-trend" :class="poTrends.cancelled.up?'bk-trend-down':'bk-trend-up'">{{ poTrends.cancelled.up?'↑':'↓' }} {{ poTrends.cancelled.pct }}% vs last month</div></div></div></div>
     </div>
     <div class="bk-stat-grid">
       <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month</div><div class="bk-stat-value">{{ poThisMonth.count }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
       <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">This Month Value</div><div class="bk-stat-value bk-kpi-blue" style="font-size:16px">{{ fmtCur(poThisMonth.value) }}</div></div><div class="bk-stat-icon" style="background:#cffafe;color:#0891b2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
       <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Procurement Value</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">{{ fmtCur(summary.totalValue) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3"/><path d="M9 13c6.667 0 6.667-10 0-10"/></svg></div></div></div>
-      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Closed</div><div class="bk-stat-value bk-kpi-green">{{ counts.closed }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div></div>
+      <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Collected</div><div class="bk-stat-value bk-kpi-green">{{ counts.closed }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div></div>
     </div>
 
     <!-- ── Bulk action bar ── -->
@@ -516,8 +516,14 @@
               <span v-html="icon('truck',13)"></span> <span class="ab-label">Mark Received</span>
             </button>
             <span class="inv-ab-spacer"></span>
-            <button v-if="canCancel(viewDoc) && (viewDoc?.status === 'Pending Approval' ? !!approval?.can_cancel : $canDelete('bills'))" class="inv-ab-btn inv-ab-danger" @click="cancelPO(viewDoc)">
+            <button v-if="canCancel(viewDoc) && (viewDoc?.status === 'Pending Approval' ? !!approval?.can_cancel : poCanCancel)" class="inv-ab-btn inv-ab-danger" @click="cancelPO(viewDoc)">
               Cancel
+            </button>
+            <span v-if="(viewDoc?.status||'').toLowerCase() === 'cancelled' && amendedAs" class="inv-ab-btn" style="cursor:default;opacity:.8" :title="'Amended as ' + amendedAs">
+              <span class="ab-label">Amended</span>
+            </span>
+            <button v-else-if="(viewDoc?.status||'').toLowerCase() === 'cancelled' && poIsAdmin" class="inv-ab-btn" :disabled="actionRunning || !$canCreate('bills')" :title="!$canCreate('bills') ? 'Read-only access' : ''" @click="amendPO(viewDoc)">
+              <span v-html="icon('edit',13)"></span> <span class="ab-label">Amend</span>
             </button>
             <button v-if="canDelete(viewDoc) && $canDelete('bills')" class="inv-ab-btn inv-ab-danger" @click="deletePO(viewDoc)">
               <span v-html="icon('trash',13)"></span> <span class="ab-label">Delete</span>
@@ -628,8 +634,7 @@
                     <div v-for="(it, idx) in viewItems" :key="it.name" class="vl-row">
                       <span class="vl-c-num"><span class="vl-num">{{ idx + 1 }}</span></span>
                       <div class="vl-item">
-                        <div class="vl-item-name">{{ it.item_name || it.item_code }}</div>
-                        <div v-if="it.description" class="vl-item-desc">{{ it.description }}</div>
+                        <div class="vl-item-name">{{ viewItemNames[it.item_code] || it.item_name || it.description || it.item_code }}</div>
                       </div>
                       <span class="vl-c-qty"><span class="vl-qty">{{ it.qty }}</span></span>
                       <span class="vl-c-rate vl-rate">{{ fmtCur(it.rate) }}</span>
@@ -1167,10 +1172,10 @@ const { openEmail } = useEmailDialog();
 const activeTab = ref("all");
 const tabs = [
   { key: "all",       label: "All" },
-  { key: "draft",     label: "Draft" },
-  { key: "toReceive", label: "To Receive" },
+  { key: "draft",     label: "Pending Approval" },
+  { key: "toReceive", label: "To Collect" },
   // { key: "toBill",    label: "To Bill" },   // hidden
-  { key: "closed",    label: "Closed" },
+  { key: "closed",    label: "Collected" },
   { key: "cancelled", label: "Cancelled" },
 ];
 
@@ -1186,6 +1191,8 @@ const poCanCreate = computed(() => poIsAdmin.value || !!poFlags.value.doc_access
 const poCanEdit = computed(() => poIsAdmin.value || !!poFlags.value.doc_access?.["Purchase Order"]?.edit);
 // Mark Received raises a GRN: Store Keeper, Director or a Books Admin (server rule: Purchase Receipt create).
 const poCanReceive = computed(() => poIsAdmin.value || !!poFlags.value.doc_access?.["Purchase Receipt"]?.create);
+// Cancel: Purchase Manager, Admin, Director or a Books Admin (server rule: Purchase Order cancel).
+const poCanCancel = computed(() => poIsAdmin.value || !!poFlags.value.doc_access?.["Purchase Order"]?.cancel);
 const poCanSave = computed(() => (editingName.value ? poCanEdit.value : poCanCreate.value));
 const poWho = computed(() => {
   const r = poFlags.value.doc_access?.["Purchase Order"]?.write_roles || [];
@@ -1207,6 +1214,8 @@ const vendors = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref(
 const taxTemplates = ref([]);
 const sortCol = ref("transaction_date"), sortDir = ref("desc");
 const actionRunning = ref(false);
+const amendedAs = ref("");
+const viewItemNames = ref({});  // item_code -> Item name, for the view drawer line items
 const vendorAddresses = ref([]);
 const addrModal = reactive({
   open: false, saving: false, forField: "",
@@ -1215,7 +1224,17 @@ const addrModal = reactive({
 });
 
 let _id = 1;
-const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, uom: "", amount: 0, tax_code: "", collapsed: false });
+// New lines default to the 16% VAT template (an item's own default purchase tax template wins).
+const defaultVatName = computed(() => {
+  const t16 = taxTemplates.value.filter(t => Number(t.rate) === 16);
+  return (t16.find(t => /vat/i.test(`${t.name} ${t.template_name || ""}`)) || t16[0] || {}).name || "";
+});
+const blankLine = () => ({ id: _id++, item_code: "", description: "", qty: 1, rate: 0, uom: "", amount: 0, tax_code: defaultVatName.value, collapsed: false });
+// Templates load after the form is first built: fill the default into empty lines of a NEW PO only.
+watch(defaultVatName, (v) => {
+  if (!v || editingName.value) return;
+  for (const l of lines.value) if (!l.tax_code) l.tax_code = v;
+});
 const form = reactive({
   supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
   billing_address: "", delivery_address: "",
@@ -1272,7 +1291,12 @@ function isPastExpected(o) {
   if (s === "closed" || s === "billed" || s === "cancelled" || s === "received") return false;
   return new Date(o.expected_delivery_date) < new Date();
 }
-function displayStatus(o) { return (o?.status || "Draft").toUpperCase(); }
+// Display names only: the stored status values (Draft / To Receive / Closed) are unchanged.
+const STATUS_LABELS = { "draft": "Pending Approval", "to receive": "To Collect", "closed": "Collected" };
+function displayStatus(o) {
+  const st = o?.status || "Draft";
+  return (STATUS_LABELS[st.toLowerCase()] || st).toUpperCase();
+}
 function badgeClass(o) {
   const s = (o?.status||"").toLowerCase();
   if (!s || s === "draft")  return "status-draft";
@@ -1483,7 +1507,7 @@ const timelineSteps = computed(() => {
     { key:"issued",   label:"Issued",   done:issuedUp, current:s==="to receive"||s==="sent"||s==="confirmed" },
     { key:"received", label:"Received", done:received && !billedBeforeReceipt, cross:billedBeforeReceipt, danger:billedBeforeReceipt, current:s==="received" && !billed },
     // { key:"billed",   label:"Billed",   done:billed, current:billed && !closed },   // hidden (Bills are not used for Sava)
-    { key:"closed",   label:"Closed",   done:closed, current:closed },
+    { key:"closed",   label:"Collected", done:closed, current:closed },
   ];
 });
 
@@ -1561,16 +1585,26 @@ async function openView(o) {
   viewItems.value = [];
   fulfill.lines = []; fulfill.computed_status = "";
   links.bills = []; links.purchase_receipts = []; links.qc_inspections = [];
-  approval.value = null; approvalRemarks.value = "";
+  approval.value = null; approvalRemarks.value = ""; amendedAs.value = "";
   try {
-    const [doc, ful, lnk, apr] = await Promise.all([
+    const [doc, ful, lnk, apr, amd] = await Promise.all([
       apiGet("Purchase Order", o.name),
       apiGET("psd_books.api.docs.get_purchase_order_fulfillment", { purchase_order: o.name }).catch(() => null),
       apiGET("psd_books.api.docs.get_purchase_order_links", { purchase_order: o.name }).catch(() => null),
       apiGET("psd_books.api.purchase_order_approval.get_approval_state", { name: o.name }).catch(() => null),
+      (o.status || "").toLowerCase() === "cancelled"
+        ? apiList("Purchase Order", { fields: ["name"], filters: [["amended_from", "=", o.name]], limit: 1 }).catch(() => [])
+        : Promise.resolve([]),
     ]);
     approval.value = apr || null;
+    amendedAs.value = amd?.[0]?.name || "";
     viewItems.value = doc?.items || [];
+    const _codes = [...new Set(viewItems.value.filter(i => i.item_code).map(i => i.item_code))];
+    if (_codes.length) {
+      apiList("Item", { fields: ["name", "item_name"], filters: [["name", "in", _codes]], limit: _codes.length })
+        .then(rows => { viewItemNames.value = Object.fromEntries((rows || []).map(r => [r.name, r.item_name])); })
+        .catch(() => {});
+    }
     viewDoc.value = { ...o, ...doc };
     viewPrint.value = null;
     preparePOPrint({ ...viewDoc.value, items: viewItems.value }).then(p => { if (viewDoc.value?.name === p.name) viewPrint.value = p; }).catch(() => {});
@@ -1734,7 +1768,8 @@ function applyMrDraft(d) {
     if (extra.length) items.value = [...items.value, ...extra];
     const rows = (d.items || []).map(r => ({
       id: _id++, item_code: r.item_code, description: r.description,
-      qty: r.qty, max: r.qty, rate: r.rate, uom: r.uom || "", amount: r.amount, tax_code: "", collapsed: false,
+      qty: r.qty, max: r.qty, rate: r.rate, uom: r.uom || "", amount: r.amount,
+      tax_code: items.value.find(i => i.value === r.item_code)?.tax_code || defaultVatName.value, collapsed: false,
     }));
     lines.value = rows.length ? rows : [blankLine()];
     loadMrnBalance(form.material_request, "");
@@ -1829,7 +1864,7 @@ async function onItemSelect(line, opt) {
   if (opt?.rate !== undefined) { line.rate = Number(opt.rate) || 0; }
   if (opt?.stock_uom) { setItemUoms(opt.value, opt.stock_uom, opt.purchase_uom); line.uom = opt.purchase_uom || opt.stock_uom; }
   if (opt?.item_name)   { line.item_name   = opt.item_name; }
-  if (opt?.tax_code !== undefined) { line.tax_code = opt.tax_code || ""; }
+  if (opt?.tax_code !== undefined) { line.tax_code = opt.tax_code || defaultVatName.value; }
   if (opt?.description) { line.description = opt.description; }
   else if (opt?.value) {
     // description not in option cache — fetch from Item doc directly
@@ -2123,33 +2158,49 @@ function stepClass(st) { return st === "Approved" ? "b-badge-green" : (st === "R
 async function cancelPO(o) {
   const pending = (o.status || "") === "Pending Approval";
   let reason = "";
+  let hadBills = false;
   if (pending) {
     // Pending approval: the sender or an approver of the pending level cancels, with a reason.
     reason = await prompt({ title: "Cancel Purchase Order", label: "Reason for cancelling (required):", okLabel: "Cancel PO" });
     if (!reason || !reason.trim()) return;
   } else {
-    // Submitted PO: GRNs and their QC inspections are cancelled together with it, after confirmation.
+    // Submitted PO: bills, GRNs and their QC inspections are cancelled together with it, after confirmation.
     const linkedRes = await apiPOST("psd_books.api.docs.get_purchase_order_linked_docs", { purchase_order: o.name });
     const linked = linkedRes?.message ?? linkedRes ?? {};
-    const grns = linked.purchase_receipts || [], qcis = linked.qc_inspections || [];
-    if (grns.length || qcis.length) {
+    const bills = linked.bills || [], grns = linked.purchase_receipts || [], qcis = linked.qc_inspections || [];
+    hadBills = bills.length > 0;
+    if (bills.length || grns.length || qcis.length) {
       const lines = [];
+      if (bills.length) lines.push(`Bill: <b>${bills.join(", ")}</b>`);
       if (grns.length) lines.push(`GRN: <b>${grns.join(", ")}</b>`);
       if (qcis.length) lines.push(`QC Inspection: <b>${qcis.join(", ")}</b>`);
-      if (!await confirm({
-        title: "Cancel linked documents?",
-        body: `${o.name} is linked to:<br>${lines.join("<br>")}<br><br>Cancelling will also cancel these, reverse their stock and PO received quantities, then cancel ${o.name}.`,
-        okLabel: "Yes, cancel all",
+      const ok = await confirm({
+        title: hadBills ? "Cancel linked bills?" : "Cancel linked documents?",
+        body: `${o.name} is linked to:<br>${lines.join("<br>")}<br><br>Cancelling will also cancel these${bills.length ? " (and any payments on the bills)" : ""}${grns.length ? ", reverse stock and PO received quantities" : ""}, then cancel ${o.name}.`,
+        okLabel: hadBills ? "Cancel linked bills" : "Yes, cancel all",
         okStyle: "danger",
-      })) return;
-    } else if (!await confirm({ title: "Cancel Purchase Order", body: `Cancel ${o.name}? Linked bills must be cancelled separately.`, okLabel: "Cancel PO" })) return;
+      });
+      if (!ok) return;
+    } else if (!await confirm({ title: "Cancel Purchase Order", body: `Cancel ${o.name}?`, okLabel: "Cancel PO" })) return;
   }
   try {
     if (pending) await apiPOST("psd_books.api.purchase_order_approval.cancel_po", { name: o.name, reason: reason.trim() });
     else await apiPOST("psd_books.api.docs.cancel_purchase_order_safe", { purchase_order: o.name, cancel_linked: 1 });
-    toast.success("Purchase Order cancelled");
+    toast.success(hadBills ? "Linked bills and Purchase Order cancelled" : "Purchase Order cancelled");
     await load(); if (viewDoc.value?.name === o.name) await openView(o);
   } catch (e) { toast.error(e.message || "Cancel failed"); }
+}
+async function amendPO(o) {
+  actionRunning.value = true;
+  try {
+    const r = await apiPOST("psd_books.api.docs.amend_purchase_order", { purchase_order: o.name });
+    const doc = r?.message ?? r;
+    toast.success(`Amended as ${doc.name}. Edit it and send for approval.`);
+    viewOpen.value = false;
+    await load();
+    await openEdit(doc);
+  } catch (e) { toast.error(e.message || "Amend failed"); }
+  finally { actionRunning.value = false; }
 }
 async function deletePO(o) {
   if (!await confirm({ title: "Delete Purchase Order", body: `Permanently delete ${o.name}?`, okLabel: "Delete" })) return;

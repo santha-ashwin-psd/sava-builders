@@ -143,7 +143,8 @@ SAVA_ACCESS = {
     "Delivery Note": {"read": _FULL, "write": _FULL},
     "Purchase Receipt": {"read": _FULL, "write": _FULL},
     "QC Inspection": {"write": _FULL},
-    "Purchase Order": {"read": _FULL, "write": _FULL},
+    # Purchase Manager, Admin and Director may cancel / delete a Purchase Order (Books Admin always can)
+    "Purchase Order": {"read": _FULL, "write": _FULL, "cancel_delete": _FULL},
     "Request for Quotation": {"read": _FULL, "write": _FULL},
     "Supplier Quotation": {"read": _FULL, "write": _FULL},
     "Quotation Comparison": {"read": _FULL, "write": _FULL},
@@ -412,6 +413,20 @@ def require_module(module: str, write: bool = False, user: str | None = None):
     threshold = "Edit" if write else "View"
     if not _level_at_least(m["levels"].get(module, "None"), threshold):
         frappe.throw(_("You don't have access to the {0} module.").format(module),
+                     frappe.PermissionError)
+
+
+# Doctypes whose amendment is limited to the Director (and any Books Admin).
+AMEND_DIRECTOR_ONLY = frozenset({"Material Request", "Purchase Order", "Purchase Receipt", "Stock Entry", "Delivery Note"})
+
+
+def assert_can_amend(doctype: str, user: str | None = None):
+    """Only the Director (admin access, see _membership) or a Books Admin may amend these documents."""
+    if doctype not in AMEND_DIRECTOR_ONLY:
+        return
+    user = user or frappe.session.user
+    if user == "Guest" or not _membership(user).get("admin"):
+        frappe.throw(_("Only the Director or a Books Admin can amend a {0}.").format(doctype),
                      frappe.PermissionError)
 
 
