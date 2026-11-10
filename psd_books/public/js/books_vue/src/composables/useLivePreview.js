@@ -1158,9 +1158,14 @@ function _renderSavaDNPreprinted(doc, cfg) {
   const rows = (doc.items || []).map((it, i) => {
     const text = (it.item_name || it.item_code || "") +
       (it.description && it.description !== it.item_name ? " - " + String(it.description).replace(/\s+/g, " ") : "");
-    const useTxt = it.uom || it.stock_uom || "Nos";   // Intended Use column prints the item UOM
-    const d = wrap(text, _DP.descChars), u = wrap(useTxt, _DP.useChars);
-    return { it, no: i + 1, d, u, useTxt, n: Math.max(d.length, useTxt ? u.length : 1) };
+    // Qty column prints "<qty> - <uom>" (e.g. "1 - Nos"); Intended Use is left blank on the pre-printed sheet.
+    // If it does not fit the 18 mm column on one line, it goes on two: "<qty> -" then "<uom>".
+    const qtyNum = num(it.qty), qtyUom = String(it.uom || it.stock_uom || "Nos").trim();
+    const qtyW = C.qty[1] - C.qty[0] - 1.5;
+    const oneLine = `${qtyNum} - ${qtyUom}`;
+    const q = oneLine.length * 0.56 * 9.5 * 0.3528 * (6 / 9.5) <= qtyW ? [oneLine] : [`${qtyNum} -`, qtyUom];
+    const d = wrap(text, _DP.descChars);
+    return { it, no: i + 1, d, q, n: Math.max(d.length, q.length) };
   });
   const pages = [[]]; let used = 0;
   for (const r of rows) {
@@ -1170,12 +1175,11 @@ function _renderSavaDNPreprinted(doc, cfg) {
 
   const pageHtml = pages.map((prs, pi) => {
     let y = T.hdrBottom + 0.5, body = "";
-    for (const { it, no, d, u, useTxt, n } of prs) {
-      const h = _DP.lineH, qty = `${num(it.qty)}`;
+    for (const { it, no, d, q, n } of prs) {
+      const h = _DP.lineH;
       body += box(T.x + C.sr[0] + 8.6, y, 5.4, h, no, "text-align:center");
       d.forEach((ln, k) => { body += box(T.x + C.desc[0] + 1.5, y + k * h, C.desc[1] - C.desc[0] - 2.5, h, _esc(ln)); });
-      body += box(T.x + C.qty[0], y, C.qty[1] - C.qty[0], h, _esc(qty), `text-align:center;font-size:${autoPt(qty, C.qty[1] - C.qty[0] - 1, 9.5, 6, 0.56)}`);
-      if (useTxt) u.forEach((ln, k) => { body += box(T.x + C.use[0], y + k * h, C.use[1] - C.use[0], h, _esc(ln), "text-align:center"); });   // UOM centred in the Intended Use column
+      q.forEach((ln, k) => { body += box(T.x + C.qty[0] + 0.5, y + k * h, C.qty[1] - C.qty[0] - 1, h, _esc(ln), `text-align:center;font-size:${autoPt(ln, C.qty[1] - C.qty[0] - 1.5, 9.5, 5.5, 0.56)}`); });
       y += n * h;
     }
     const pager = pages.length > 1 ? ` <span class="pg-no">(${pi + 1}/${pages.length})</span>` : "";
@@ -1183,7 +1187,7 @@ function _renderSavaDNPreprinted(doc, cfg) {
     return `<div class="pg"><div class="shift">
       <div class="outline">${_dpOutline()}</div>
       ${toLines.length ? box(_DP.to.x + 12, _DP.to.y + 3.5, _DP.to.w - 19, _DP.to.h - 4,
-          `<b>${_esc(toLines[0])}</b>${toLines.slice(1).map(l => `<br/>${_esc(l)}`).join("")}`, "line-height:4.5mm;height:auto;white-space:normal") : ""}
+          `<b>${_esc(toLines[0])}</b>${toLines.slice(1).map(l => `<br/>${_esc(l)}`).join("")}`, "line-height:4.5mm;height:22.5mm;white-space:normal;overflow-wrap:anywhere") : ""}
       ${box(_DP.dn.x + 2, _DP.dn.yNo - 2.8, _DP.dn.w - 3, 5.6, `<b>${_esc(doc.name || "")}</b>${pager}`, `font-size:${autoPt((doc.name || "") + (pages.length > 1 ? " (1/1)" : ""), _DP.dn.w - 3, 9.5, 6, 0.58)}`)}
       ${box(_DP.dn.x + 2, _DP.dn.yDate - 2.8, _DP.dn.w - 3, 5.6, _esc(_fmtDocDate(docDate)))}
       ${body}
