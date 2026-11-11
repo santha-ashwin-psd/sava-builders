@@ -407,14 +407,14 @@ const selectedGroup = ref(null);
 const expanded     = ref(new Set(["All Item Groups"]));
 const search       = ref("");
 const sortMode     = ref("name");
-const isMobile     = ref(window.innerWidth <= 480);
+const isMobile     = ref(window.innerWidth <= 768);
 
 const allItems     = ref([]);
 const itemsLoading = ref(false);
 
 const form = reactive({ name: "", parent_item_group: "All Item Groups", is_group: 0, description: "", allow_partial_issue: 0 });
 
-function onResize() { isMobile.value = window.innerWidth <= 480; }
+function onResize() { isMobile.value = window.innerWidth <= 768; }
 
 const GROUP_DEFAULTS = [
   { name: "All Item Groups",  parent_item_group: "",                is_group: 1, description: "Root", allow_partial_issue: 0 },
@@ -1064,9 +1064,9 @@ onUnmounted(() => window.removeEventListener("resize", onResize));
 }
 
 /* ══════════════════════════════════════
-   MOBILE (≤ 480 px)
+   MOBILE (≤ 768 px)
    ══════════════════════════════════════ */
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .ig-toolbar { padding: 10px 14px; }
   .ig-search-wrap { width: 100%; flex: 1; }
   .ig-btn-label { display: none; }
@@ -1078,8 +1078,9 @@ onUnmounted(() => window.removeEventListener("resize", onResize));
     width: 100% !important; min-width: 0 !important;
     border-right: none !important; border-bottom: 1px solid #e2e8f0; flex: 1;
   }
+  .ig-body { position: relative; }
   .ig-detail {
-    position: absolute; inset: 0; top: 56px; z-index: 50; background: #f1f4f8;
+    position: absolute; inset: 0; z-index: 50; background: #f1f4f8;
   }
   .ig-mob-hidden { display: none !important; }
 
@@ -1090,7 +1091,14 @@ onUnmounted(() => window.removeEventListener("resize", onResize));
   .ig-form-stats { gap: 14px; }
   .ig-form-stat-val { font-size: 18px; }
   .ig-view-card, .ig-form-card { padding: 14px 16px; }
-  .ig-view-lbl { width: 100px; }
+  .ig-view-row { flex-direction: column; gap: 4px; padding: 10px 0; }
+  .ig-view-lbl { width: auto; padding-top: 0; }
+  .ig-view-val { width: 100%; overflow-wrap: anywhere; }
+  .ig-type-pill { white-space: normal; max-width: 100%; }
+  .ig-form-header-title { white-space: normal; overflow-wrap: anywhere; }
+  .ig-view-header, .ig-form-header { align-items: flex-start; }
+  .ig-form-stats { width: 100%; }
+  .ig-form-actions .ig-action-btn { flex: 1 1 auto; justify-content: center; }
   .ig-form-grid { grid-template-columns: 1fr; }
   .ig-form-actions { gap: 8px; }
   .ig-action-btn { padding: 8px 14px; font-size: 12.5px; }

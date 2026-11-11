@@ -657,6 +657,16 @@ const iconCheck    = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none
   .ov-hero-btns { width: 100%; }
   .ov-primary-btn { flex: 1; justify-content: center; }
   .ov-qc-tiles { grid-template-columns: 1fr; }
+
+  /* KPI tiles: keep label clear of the arrow, value inside the tile, sparkline off the text */
+  .ov-kpi { padding: 14px 14px 14px; gap: 12px; }
+  .ov-kpi-label { padding-right: 30px; }
+  .ov-kpi-value { font-size: 22px; overflow-wrap: anywhere; }
+  .ov-kpi-foot { max-width: 62%; }
+  .ov-spark { width: 34%; height: 30px; }
+}
+@media (max-width: 600px) {
+  .ov-kpi-grid { grid-template-columns: 1fr; gap: 10px; }
 }
 @media (max-width: 480px) {
   .ov-wrap { padding: 12px 10px; gap: 12px; }

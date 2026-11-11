@@ -111,8 +111,8 @@
       <template v-else-if="procError"><div class="empty-msg">{{ procError }}</div></template>
       <template v-else-if="procRows.length">
         <div class="iws-body">
-          <div class="iws-table-wrap">
-            <table class="iws-table">
+          <div class="iws-table-wrap iws-cards-wrap">
+            <table class="iws-table iws-cards">
               <thead>
                 <tr>
                   <th v-for="c in procColumns" :key="c" :class="{ 'ta-r': procIsNumber(c) }">{{ procLabel(c) }}</th>
@@ -120,7 +120,7 @@
               </thead>
               <tbody>
                 <tr v-for="(row, i) in procRows" :key="i">
-                  <td v-for="c in procColumns" :key="c" :class="{ 'ta-r': procIsNumber(c) }">{{ procCell(row[c], c) }}</td>
+                  <td v-for="c in procColumns" :key="c" :data-label="procLabel(c)" :class="{ 'ta-r': procIsNumber(c) }">{{ procCell(row[c], c) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -7720,6 +7720,53 @@ function tabColor(i) {
 @media (max-width: 768px) {
   .date-range-bar { padding: 12px 14px; gap: 8px; }
   .report-card { overflow-x: auto; }
+
+  /* Date range bar: inputs share the row, Run Report full width */
+  .date-range-bar .dr-input { flex: 1 1 130px; min-width: 0; }
+  .date-range-bar .books-btn-primary { flex: 1 1 100%; justify-content: center; }
+  .dr-spacer { display: none; }
+
+  /* Report card header: title gets the full row, filter + Export go underneath */
+  .bs-page-head { flex-wrap: wrap; }
+  .bs-page-head-text { flex: 1 1 calc(100% - 52px); }
+  .bs-page-head-actions { flex: 1 1 100%; flex-wrap: wrap; }
+  .bs-page-head-actions .dr-input { flex: 1 1 140px; min-width: 0; }
+
+  /* Report tables: scroll sideways instead of being cut off */
+  .iws-table-wrap { overflow: auto; max-height: 70vh; -webkit-overflow-scrolling: touch; }
+  .iws-table { min-width: 680px; }
+  /* header stays on top and first column stays on the left while scrolling */
+  .iws-table thead th { position: sticky; top: 0; z-index: 2; }
+  .iws-table thead th:first-child, .iws-table tbody td:first-child {
+    position: sticky; left: 0; background: var(--surface); box-shadow: 1px 0 0 var(--border);
+  }
+  .iws-table tbody td:first-child { z-index: 1; }
+  .iws-table thead th:first-child { z-index: 3; background: var(--surface-2); }
+  .iws-table tbody tr:hover td:first-child { background: var(--surface-2); }
+
+  /* Procurement reports: each row becomes a card */
+  .iws-cards-wrap { max-height: none; overflow: visible; border: none; border-radius: 0; background: transparent; }
+  .iws-cards { display: block; min-width: 0; }
+  .iws-cards thead { display: none; }
+  .iws-cards tbody { display: flex; flex-direction: column; gap: 10px; }
+  .iws-cards tbody tr {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; padding: 12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .iws-cards tbody td {
+    display: block; min-width: 0; padding: 0; border: none; overflow-wrap: anywhere;
+    text-align: left !important; font-size: 13px;
+  }
+  .iws-cards tbody td::before {
+    content: attr(data-label); display: block; margin-bottom: 2px;
+    font-size: 10.5px; font-weight: 700; color: var(--text-3);
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .iws-cards tbody td:first-child {
+    grid-column: 1 / -1; position: static; background: transparent; box-shadow: none;
+    font-weight: 700; font-size: 14px;
+  }
+  .iws-cards tbody tr:hover td:first-child { background: transparent; }
 }
 @media (max-width: 480px) {
   .page-reports { padding: 12px; gap: 12px; }

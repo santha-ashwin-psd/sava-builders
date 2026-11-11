@@ -352,19 +352,30 @@
                 <template v-for="(line, idx) in lines" :key="line.id">
                 <div class="po-lines-row">
                   <span class="po-lines-idx">{{ idx + 1 }}</span>
-                  <SearchableSelect v-model="line.item_code" :options="items" :disabled="!!form.material_request"
-                    placeholder="Select item…" :createable="true" createDoctype="Item"
+                  <div class="po-lf po-lf--item" data-lbl="Item">
+                  <SearchableSelect v-model="line.item_code" :options="items" :disabled="true"
+                    placeholder="Items come from the MRN" :createable="false" createDoctype="Item"
                     @search="fetchItems" @select="v=>onItemSelect(line,v)" />
+                  </div>
+                  <div class="po-lf po-lf--tax" data-lbl="Tax Template">
                   <select v-model="line.tax_code" class="inv-fi">
                     <option value="">— No Tax —</option>
                     <option v-for="t in taxTemplates" :key="t.name" :value="t.name">{{ t.template_name || t.name }}</option>
                   </select>
-                  <select v-model="line.uom" class="inv-fi">
+                  </div>
+                  <div class="po-lf" data-lbl="UOM">
+                  <select v-model="line.uom" class="inv-fi" :disabled="!line.item_code">
+                    <option v-if="!uomOptionsFor(line).length" value="">{{ line.item_code ? '—' : 'Select item first' }}</option>
                     <option v-for="u in uomOptionsFor(line)" :key="u" :value="u">{{ u }}</option>
                   </select>
+                  </div>
+                  <div class="po-lf" data-lbl="Qty">
                   <input v-model.number="line.qty" type="number" min="0" :max="line.max ?? undefined" step="0.001" class="inv-fi" :title="line.max != null ? `Balance on MRN: ${line.max}` : ''" :class="{'field-error': line.qty > 999999999 || (line.max != null && flt(line.qty) > flt(line.max) + 0.0005)}" @input="onQtyInput(line)" />
+                  </div>
+                  <div class="po-lf" data-lbl="Rate (KES)">
                   <input v-model.number="line.rate" type="number" min="0" step="0.01" class="inv-fi" :class="{'field-error': line.rate > 999999999}" @input="calcLine(line)" />
-                  <span class="po-lines-num">{{ fmtCur(line.amount) }}</span>
+                  </div>
+                  <span class="po-lines-num po-lines-amt" data-lbl="Amount">{{ fmtCur(line.amount) }}</span>
                   <button @click.stop="removeLine(line.id)" class="po-item-card-rm" title="Remove line"><span v-html="icon('x',16)"></span></button>
                   <div v-if="form.material_request && mrnBalanceFor(line)" style="grid-column:2 / -1;margin-top:-2px;font-size:12px;color:#6b7280">
                   MRN {{ mrnBalanceFor(line).mrn_qty }}, ordered elsewhere {{ mrnBalanceFor(line).ordered }}, balance {{ mrnBalanceFor(line).remaining }}<span v-if="mrnBalanceFor(line).transferred > 0" style="color:#dc2626;font-weight:600"> · Stock transferred: {{ mrnBalanceFor(line).transferred }}</span>
@@ -2441,6 +2452,37 @@ watch(() => form.supplier, (val) => {
 .po-lines-idx { font-size: 12px; font-weight: 700; color: #4f46e5; text-align: center; }
 .po-lines-num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
 .po-lines-row .inv-fi { font-size: 13px; width: 100%; }
+.po-lf { min-width: 0; }
+.po-lf::before { display: none; }
+
+/* Mobile: each line item becomes a card (no sideways scrolling) */
+@media (max-width: 768px) {
+  .po-lines-wrap { overflow-x: visible; }
+  .po-lines-tbl { min-width: 0; border: none; background: transparent; gap: 10px; }
+  .po-lines-head { display: none; }
+  .po-lines-row:not(.po-lines-head) {
+    grid-template-columns: 1fr 1fr; gap: 10px 12px; padding: 12px; align-items: start;
+    border: 1px solid #dde3f0; border-radius: 10px; background: #fff;
+  }
+  .po-lines-row:not(.po-lines-head):last-child { border-bottom: 1px solid #dde3f0; }
+  .po-lines-row .po-lines-idx { grid-column: 1; grid-row: 1; text-align: left; align-self: center; }
+  .po-lines-row .po-item-card-rm { grid-column: 2; grid-row: 1; justify-self: end; margin-left: 0; }
+  .po-lines-row .po-lf--item { grid-column: 1 / -1; grid-row: 2; }
+  .po-lines-row .po-lf--tax  { grid-column: 1 / -1; }
+  .po-lf::before, .po-lines-amt::before {
+    display: block; content: attr(data-lbl); margin-bottom: 4px;
+    font-size: 10.5px; font-weight: 700; color: #6b7280;
+    text-transform: uppercase; letter-spacing: .06em; text-align: left;
+  }
+  .po-lines-row .po-lines-amt { display: flex; flex-direction: column; text-align: left; font-size: 14px; line-height: 34px; }
+  .po-lines-row .po-lines-amt::before { margin-bottom: 4px; line-height: 1.2; }
+  .po-lines-row .po-lines-amt { padding-top: 0; }
+  .po-lines-row .po-lf .inv-fi { min-height: 34px; }
+  .po-lines-row .po-lines-amt { min-height: 34px; }
+  .po-lines-row > div[style*="grid-column"] { grid-column: 1 / -1 !important; }
+  .po-totals { flex-direction: column; align-items: stretch; }
+  .po-totals-right { min-width: 0; width: 100%; }
+}
 /* ---- Line Item Cards (old, unused) ---- */
 .po-item-cards { display: flex; flex-direction: column; gap: 12px; }
 .po-item-card { background: #fff; border: 1px solid #dde3f0; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(99,102,241,.07); }
