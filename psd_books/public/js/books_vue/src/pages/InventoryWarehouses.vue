@@ -2717,9 +2717,9 @@ onMounted(() => { load(); loadItems(); });
 }
 
 /* ════════════════════════════════════════════
-   MOBILE  (≤ 480 px)
+   MOBILE  (≤ 640 px)
    ════════════════════════════════════════════ */
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .wh-toolbar { flex-wrap: wrap; padding: 10px 12px; gap: 8px; }
   .wh-group-wrap {order: 0; }
   .wh-filter-dd-menu{ right: 0; left: auto; }
@@ -2992,5 +2992,14 @@ onMounted(() => { load(); loadItems(); });
     border-bottom: 1.5px solid #e8edf5;
   }
   .wh-tree-body { max-height: 150px; }
+}
+/* ── Warehouses: mobile (≤640px) — filters and stock header ── */
+@media (max-width: 640px) {
+  .wh-card-name { white-space: normal; word-break: break-word; }
+  .wh-stock-header { padding: 14px 12px 12px; }
+  .wh-stock-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
+  .wh-stock-actions .wh-item-search-wrap { grid-column: 1 / -1; flex: none; order: 0; width: 100%; max-width: none; box-sizing: border-box; }
+  .wh-stock-actions .sales-select { width: 100%; min-width: 0; }
+  .wh-stock-actions .wh-action-btn { width: 100%; justify-content: center; }
 }
 </style>

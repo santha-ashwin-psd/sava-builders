@@ -2892,4 +2892,41 @@ watch(() => form.supplier, (val) => {
   .po-bills-desktop { display: none !important; }
   .po-bills-mobile  { display: block; }
 }
+/* ── PO view drawer: mobile (≤640px) — line items as cards, tidy header and meta ── */
+@media (max-width: 640px) {
+  /* header: title left, Close right (instead of Close dropping below) */
+  .po-view-drawer .inv-view-header { flex-direction: row !important; align-items: flex-start !important; justify-content: space-between; flex-wrap: nowrap !important; }
+  .po-view-drawer .inv-view-header-left { flex: 1 1 auto; min-width: 0; }
+  .po-view-drawer .inv-view-title-row { gap: 6px; }
+
+  /* meta cards: one per row, no stray vertical dividers */
+  .po-view-drawer .inv-details-meta { grid-template-columns: 1fr !important; gap: 0; padding: 0; }
+  .po-view-drawer .inv-details-meta-col { border-right: none !important; border-bottom: 1px solid #e5e7eb !important; padding: 12px 14px; }
+  .po-view-drawer .inv-details-meta-col:last-child { border-bottom: none !important; }
+
+  /* line items: card per item, nothing hidden off to the right */
+  .po-view-drawer .vl-wrap { overflow: visible; border: none; background: transparent; box-shadow: none; }
+  .po-view-drawer .vl-tbl { min-width: 0; }
+  .po-view-drawer .vl-head { display: none; }
+  .po-view-drawer .vl-row {
+    grid-template-columns: 30px auto minmax(0, 1fr) auto; column-gap: 8px; row-gap: 6px;
+    padding: 12px; margin-bottom: 10px; border: 1px solid #dbe5f5; border-radius: 12px; background: #fff;
+  }
+  .po-view-drawer .vl-row > :nth-child(1) { grid-column: 1; grid-row: 1; text-align: left; }
+  .po-view-drawer .vl-row > :nth-child(2) { grid-column: 2 / 4; grid-row: 1; min-width: 0; }
+  .po-view-drawer .vl-row > :nth-child(6) { grid-column: 4; grid-row: 1; text-align: right; }
+  .po-view-drawer .vl-row > :nth-child(3) { grid-column: 2; grid-row: 2; text-align: left; }
+  .po-view-drawer .vl-row > :nth-child(4) { grid-column: 3 / 5; grid-row: 2; text-align: left; }
+  .po-view-drawer .vl-row > :nth-child(5) { grid-column: 2 / 5; grid-row: 3; text-align: left; }
+  .po-view-drawer .vl-item-name { white-space: normal; overflow: visible; word-break: break-word; }
+  .po-view-drawer .vl-c-qty::before, .po-view-drawer .vl-c-rate::before {
+    display: inline-block; margin-right: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #9ca3af;
+  }
+  .po-view-drawer .vl-c-qty::before { content: "Qty"; }
+  .po-view-drawer .vl-c-rate::before { content: "Rate"; }
+  .po-view-drawer .vl-tax, .po-view-drawer .vl-notax { white-space: normal; max-width: 100%; }
+  .po-view-drawer .vl-amt { padding: 4px 10px; font-size: 13px; }
+
+  .po-view-drawer .po-view-totals-inner { min-width: 0; width: 100%; box-sizing: border-box; }
+}
 </style>

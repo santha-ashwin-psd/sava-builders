@@ -2,7 +2,7 @@
 <div class="list-page">
 
   <!-- Toolbar -->
-  <div class="sales-toolbar">
+  <div class="sales-toolbar pj-toolbar">
     <div class="sales-search">
       <span v-html="icon('search',13)" style="color:#9ca3af;flex-shrink:0"></span>
       <input v-model="search" placeholder="Search projects..." class="sales-search-input"/>
@@ -37,7 +37,7 @@
 
   <!-- Table -->
   <div class="inv-table-wrap">
-    <table class="inv-table pj-tbl">
+    <table class="inv-table pj-tbl bk-card-table">
       <thead><tr>
         <th class="sortable" @click="sortBy('project_code')">Code <span v-html="sortArrow('project_code')"></span></th>
         <th class="sortable" @click="sortBy('project_name')">Project Name <span v-html="sortArrow('project_name')"></span></th>
@@ -547,4 +547,17 @@ onMounted(() => { load(); loadMembers(); loadWarehouses(); });
 .pj-badge-overdue { background: #fee2e2; color: #b91c1c; }
 @media (max-width: 1024px) { .pj-kpis { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 768px) { .pj-tbl { min-width: 0; } .pj-row { grid-template-columns: 1fr; } }
+
+/* Mobile: tidy toolbar — search, then filter/refresh/CSV on one row, then New Project, then status pills */
+@media (max-width: 768px) {
+  .pj-toolbar { display: flex !important; flex-direction: column !important; align-items: stretch !important; gap: 10px !important; padding: 12px !important; }
+  .pj-toolbar .sales-search { order: 1 !important; flex: none !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; }
+  .pj-toolbar .sales-actions { order: 2 !important; display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 8px !important; width: 100% !important; margin: 0 !important; }
+  .pj-toolbar .sales-actions .sales-select { flex: 1 1 0 !important; min-width: 0 !important; height: 38px !important; box-sizing: border-box; }
+  .pj-toolbar .sales-actions .sales-btn-ghost { flex: 0 0 auto !important; height: 38px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 6px; box-sizing: border-box; }
+  .pj-toolbar .sales-actions .sales-btn-primary { flex: 1 1 100% !important; order: 5 !important; height: 42px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 6px; box-sizing: border-box; }
+  .pj-toolbar .sales-pills { order: 3 !important; display: flex !important; flex-wrap: nowrap !important; gap: 8px !important; overflow-x: auto !important; width: 100% !important; padding-bottom: 2px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .pj-toolbar .sales-pills::-webkit-scrollbar { display: none; }
+  .pj-toolbar .sales-pill { flex: 0 0 auto !important; white-space: nowrap; }
+}
 </style>

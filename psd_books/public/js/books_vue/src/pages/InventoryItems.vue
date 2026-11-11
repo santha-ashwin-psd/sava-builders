@@ -1,5 +1,5 @@
 <template>
-<div class="list-page">
+<div class="list-page ii-page">
 
   <!-- ── Toolbar ── -->
   <div class="sales-toolbar">
@@ -309,7 +309,7 @@ const tabs = [
   { key: "pm",        label: "Packing Materials" },
   { key: "stock",     label: "Stock Items" },
   { key: "services",  label: "Services" },
-  { key: "fixed_asset", label: "Fixed Assets" },
+  { key: "asset",     label: "Asset" },
 ];
 
 const list       = ref([]);
@@ -393,7 +393,7 @@ const filtered = computed(() => {
   if (filterTab.value === "fg")       r = r.filter((i) => i.item_type === "Finished Good");
   if (filterTab.value === "pm")       r = r.filter((i) => i.item_type === "Packing Material");
   if (filterTab.value === "scrap")    r = r.filter((i) => i.item_type === "Scrap Item");
-  if (filterTab.value === "fixed_asset") r = r.filter((i) => i.is_fixed_asset);
+  if (filterTab.value === "asset")    r = r.filter((i) => i.is_asset_item);
   if (filterGroup.value) r = r.filter((i) => i.item_group === filterGroup.value);
   const q = search.value.toLowerCase().trim();
   if (q) r = r.filter((i) => ((i.item_name || "") + (i.item_code || "") + (i.item_group || "") + (typeOf(i))).toLowerCase().includes(q));
@@ -411,7 +411,7 @@ const counts = computed(() => ({
   fg:       list.value.filter(i => i.item_type === "Finished Good").length,
   pm:       list.value.filter(i => i.item_type === "Packing Material").length,
   scrap:    list.value.filter(i => i.item_type === "Scrap Item").length,
-  fixed_asset: list.value.filter(i => i.is_fixed_asset).length,
+  asset:    list.value.filter(i => i.is_asset_item).length,
 }));
 
 // ── Secondary stats ──
@@ -696,7 +696,7 @@ onUnmounted(() => { window.removeEventListener("hashchange", onHashChange); });
   .items-tbl-wrap .b-table { min-width: 460px; }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .it-group-filter-wrap { display: none; }
   .view-toggle-btn { display: none !important; }
   /* Switch table → cards on mobile */
@@ -952,4 +952,27 @@ onUnmounted(() => { window.removeEventListener("hashchange", onHashChange); });
 .it-tpl-badge--link:hover { background:#4f46e5; color:#fff; }
 .it-var-badge { margin-left:7px; padding:1px 7px; border-radius:11px; font-size:10px; font-weight:700; background:#f0fdf4; color:#16a34a; vertical-align:middle; }
 
+/* ── Items page: mobile (≤640px) — toolbar, pills, KPIs, type strip ── */
+@media (max-width: 640px) {
+  .ii-page .sales-toolbar { gap: 10px; }
+  .ii-page .sales-search { max-width: 100%; width: 100%; box-sizing: border-box; flex: 0 0 auto; }
+  .ii-page .sales-pills { flex-wrap: nowrap !important; overflow-x: auto; width: 100%; padding-bottom: 4px; scrollbar-width: none; }
+  .ii-page .sales-pills::-webkit-scrollbar { display: none; }
+  .ii-page .sales-pill { flex-shrink: 0; white-space: nowrap; }
+  .ii-page .sales-actions { display: grid !important; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; width: 100%; justify-content: stretch !important; }
+  .ii-page .sales-actions .sales-select { width: 100%; min-width: 0; }
+  .ii-page .sales-actions .sales-btn-primary { grid-column: 1 / -1; justify-content: center; height: 40px; font-size: 13.5px; }
+
+  .ii-page .bk-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 8px; }
+  .ii-page .bk-kpi-inner { padding: 12px !important; gap: 10px; }
+  .ii-page .bk-kpi-icon { width: 34px !important; height: 34px !important; flex-shrink: 0; }
+  .ii-page .bk-kpi-value { font-size: 20px !important; }
+  .ii-page .bk-kpi-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+  .ii-page .bk-mat-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding: 12px; }
+  .ii-page .bk-mat-sep { display: none; }
+  .ii-page .bk-mat-item { justify-content: flex-start; padding: 4px 2px; min-width: 0; }
+  .ii-page .bk-mat-label { flex: 1; min-width: 0; }
+  .ii-page .bk-mat-actions { grid-column: 1 / -1; margin-left: 0; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid #f1f5f9; }
+}
 </style>

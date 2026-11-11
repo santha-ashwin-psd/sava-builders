@@ -43,7 +43,9 @@
         <input type="date" v-model="toDate" class="dr-input" />
       </template>
       <button class="books-btn books-btn-primary" @click="runReport">▷ Run Report</button>
+      <!-- Reset hidden (all reports)
       <button class="books-btn dr-reset" @click="resetDateRange">⟳ Reset</button>
+      -->
       <span class="dr-spacer"></span>
       <button v-if="['ar','ap'].includes(activeReport) && (arAging.length||apAging.length)"
         class="books-btn" style="background:#EBFBEE;color:#2F9E44;border:1px solid #8CE99A"
@@ -73,7 +75,7 @@
     </div>
 
     <!-- P&L -->
-    <div v-if="['mrn_lpo','lpo_grn','proj_summary','supp_analysis'].includes(activeReport)" class="books-card report-card bs-card">
+    <div v-if="['mrn_lpo','lpo_grn','proj_summary','supp_analysis','asset_reg'].includes(activeReport)" class="books-card report-card bs-card">
       <div class="bs-page-head">
         <div class="bs-page-head-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
@@ -83,7 +85,7 @@
           <div class="bs-page-head-sub">{{ procSubtitle }}</div>
         </div>
         <div class="bs-page-head-actions">
-          <select v-model="procProject" class="dr-input">
+          <select v-if="activeReport !== 'asset_reg'" v-model="procProject" class="dr-input">
             <option value="">All projects</option>
             <option v-for="p in procProjects" :key="p" :value="p">{{ p }}</option>
           </select>
@@ -5132,6 +5134,7 @@ const activeReport = ref("mrn_lpo");
 // Sava procurement reports (A15): loaded from psd_books.api.procurement_reports
 const PROC_METHODS = {
   mrn_lpo: "mrn_vs_lpo", lpo_grn: "lpo_vs_grn", proj_summary: "project_summary", supp_analysis: "supplier_analysis",
+  asset_reg: "asset_register",
 };
 const procProject = ref("");
 const procProjects = ref([]);
@@ -5146,7 +5149,9 @@ async function loadProcurement() {
   procLoading.value = true;
   procError.value = "";
   try {
-    const params = procProject.value ? { project: procProject.value } : {};
+    const params = activeReport.value === "asset_reg"
+      ? { from_date: fromDate.value, to_date: toDate.value }
+      : (procProject.value ? { project: procProject.value } : {});
     const r = await apiGET("psd_books.api.procurement_reports." + method, params);
     procRows.value = Array.isArray(r) ? r : (r?.message || []);
     procCache.value = { ...procCache.value, [activeReport.value]: { rows: procRows.value, project: procProject.value } };
@@ -5162,20 +5167,33 @@ async function loadProcurement() {
     procLoading.value = false;
   }
 }
+// Columns kept in the data (and used for filtering) but not shown
+const PROC_HIDDEN = {
+  asset_reg: ["item_code", "adjustment_qty", "closing_qty", "issued_qty"],
+  supp_analysis: ["supplier", "billed_value"],
+  proj_summary: ["project", "billed_value"],
+  lpo_grn: ["supplier", "project", "billed_qty"],
+  mrn_lpo: ["project"],
+};
+const PROC_COL_LABELS = { project_name: "Project" };
 const procColumns = computed(() => {
   const first = procRows.value[0];
-  return first ? Object.keys(first) : [];
+  if (!first) return [];
+  const hidden = PROC_HIDDEN[activeReport.value] || [];
+  return Object.keys(first).filter(c => !hidden.includes(c));
 });
 const PROC_TITLES = {
   mrn_lpo: ["MRN vs LPO", "How much of each material requisition has been ordered on LPOs"],
   lpo_grn: ["LPO vs GRN", "How much of each LPO has been received on goods receipts"],
   proj_summary: ["Project Summary", "Requisitions, LPOs, value received and billed for each project"],
   supp_analysis: ["Supplier Analysis", "LPOs, value and receipts for each supplier"],
+  asset_reg: ["Asset Register", "Opening stock, purchases and total quantity of asset items"],
 };
 const procTitle = computed(() => (PROC_TITLES[activeReport.value] || [""])[0]);
 const procSubtitle = computed(() => (PROC_TITLES[activeReport.value] || ["", ""])[1]);
 const PROC_LABELS = { mrn: "MRN", lpo: "LPO", grn: "GRN", uom: "UOM" };
 function procLabel(col) {
+  if (PROC_COL_LABELS[col]) return PROC_COL_LABELS[col];
   return col.split("_").map(w => PROC_LABELS[w] || (w.charAt(0).toUpperCase() + w.slice(1))).join(" ");
 }
 function procIsNumber(col) {
@@ -7156,9 +7174,10 @@ const allReports = [
   { key: "lpo_grn", label: "LPO vs GRN", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
   { key: "proj_summary", label: "Project Summary", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
   { key: "supp_analysis", label: "Supplier Analysis", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
+  { key: "asset_reg", label: "Asset Register", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
 ];
 // Sava: only the procurement reports are shown; the others stay defined but hidden
-const SAVA_REPORT_KEYS = ["mrn_lpo", "lpo_grn", "proj_summary", "supp_analysis"];
+const SAVA_REPORT_KEYS = ["mrn_lpo", "lpo_grn", "proj_summary", "supp_analysis", "asset_reg"];
 const reports = allReports.filter(r => SAVA_REPORT_KEYS.includes(r.key));
 
 const tabPalette = ["c-blue","c-slate","c-cyan","c-amber","c-pink","c-slate","c-emerald","c-violet","c-blue","c-blue"];
@@ -7226,6 +7245,15 @@ function tabColor(i) {
 }
 .dr-input:focus { border-color: var(--accent); }
 .dr-reset { background: var(--surface); border: 1px solid var(--border); color: var(--text-3); }
+.date-range-bar .books-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px;
+  border: 1px solid transparent; border-radius: 8px; font-size: 13px; font-weight: 600;
+  font-family: var(--font); line-height: 1; cursor: pointer; white-space: nowrap;
+}
+.date-range-bar .books-btn-primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+.date-range-bar .books-btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+.date-range-bar .books-btn.dr-reset { background: var(--surface); border-color: var(--border); color: var(--text-3); }
+.date-range-bar .books-btn.dr-reset:hover { background: var(--surface-2); }
 .dr-spacer { flex: 1; }
 
 /* Profit & Loss dashboard */

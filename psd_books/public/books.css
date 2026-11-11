@@ -1,10 +1,98 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 /* ============================================================
    BOOKS — Light Professional UI
-   Font: Inter + JetBrains Mono (Google Fonts)
+   Font: Inter (Zoho CDN) + JetBrains Mono
    ============================================================ */
+
+/* ── Inter via Zoho CDN (@font-face, mirrors Zoho Books) ── */
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("//static.zohocdn.com/webfonts/interregular/font_latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("//static.zohocdn.com/webfonts/interregular/font_latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url("/public/fonts/font_greek.woff2") format("woff2");
+  unicode-range: U+0370-377, U+37A-37F, U+384-38A, U+38C, U+38E-3A1, U+3A3-3A8, U+3AA-3E1, U+3F0-3FF;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("//static.zohocdn.com/webfonts/intermedium/font_latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url("//static.zohocdn.com/webfonts/intermedium/font_latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("//static.zohocdn.com/webfonts/intersemibold/font_latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url("//static.zohocdn.com/webfonts/intersemibold/font_latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("//static.zohocdn.com/webfonts/interbold/font_latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("//static.zohocdn.com/webfonts/interbold/font_latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url("//static.zohocdn.com/webfonts/interextrabold/font_latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url("//static.zohocdn.com/webfonts/interextrabold/font_latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
   --bg:          #f0f2f5;
@@ -91,74 +179,35 @@ input { font-family: inherit; }
 .b-brand-sub  { font-size: 11px; color: rgba(255,255,255,.4); white-space: nowrap; }
 #books-root.collapsed .b-brand-info { opacity: 0; width: 0; }
 
-.b-nav { flex: 1; padding: 8px 10px 12px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.1) transparent; }
-.b-nav::-webkit-scrollbar { width: 4px; }
-.b-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
-
-/* ── Section header (collapseable group toggle) ── */
+.b-nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
 .b-nav-section {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 10px; font-weight: 700; letter-spacing: .09em;
-  text-transform: uppercase; color: rgba(255,255,255,.28);
-  padding: 14px 8px 5px; white-space: nowrap; overflow: hidden;
-  cursor: pointer; border-radius: 6px; margin: 0 0 1px;
-  transition: color .15s, background .15s;
-  user-select: none;
+  font-size: 10px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: rgba(255,255,255,.3);
+  padding: 12px 8px 6px; white-space: nowrap; overflow: hidden;
 }
-.b-nav-section:hover { color: rgba(255,255,255,.55); background: rgba(255,255,255,.04); }
-.b-nav-section-active { color: rgba(255,255,255,.5) !important; }
-.b-nav-section-label { flex: 1; }
-.b-nav-section-chevron {
-  display: flex; align-items: center; opacity: .5;
-  transition: transform .22s cubic-bezier(.4,0,.2,1), opacity .15s;
-  flex-shrink: 0;
-}
-.b-nav-section-open .b-nav-section-chevron { transform: rotate(0deg); opacity: .7; }
-.b-nav-section:not(.b-nav-section-open) .b-nav-section-chevron { transform: rotate(-90deg); }
+#books-root.collapsed .b-nav-section { opacity: 0; }
 
-/* ── Group body (collapseable) ── */
-.b-nav-group-body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height .28s cubic-bezier(.4,0,.2,1), opacity .22s ease;
-  opacity: 0;
-}
-.b-nav-group-body.b-nav-group-open {
-  max-height: 600px;
-  opacity: 1;
-}
-
-/* ── Nav items ── */
 .b-nav-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; border-radius: var(--radius-xs);
-  color: rgba(255,255,255,.52); font-size: 13px; font-weight: 500;
+  padding: 9px 10px; border-radius: var(--radius-xs);
+  color: rgba(255,255,255,.55); font-size: 13.5px; font-weight: 500;
   cursor: pointer; transition: all .15s; white-space: nowrap;
-  overflow: hidden; position: relative; margin-bottom: 1px;
+  overflow: hidden; position: relative; margin-bottom: 2px;
   border: 1px solid transparent;
 }
 .b-nav-item:hover { background: rgba(255,255,255,.07); color: rgba(255,255,255,.85); }
-.b-nav-item.active {
-  background: linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 80%, #7c3aed));
-  color: #fff; border-color: transparent;
-  box-shadow: 0 2px 8px rgba(37,99,235,.35);
-}
+.b-nav-item.active { background: var(--accent); color: #fff; border-color: transparent; }
 .b-nav-item.active svg { color: #fff; }
 .b-nav-badge {
   margin-left: auto; background: var(--red); color: #fff;
   font-size: 10px; font-weight: 700; padding: 1px 6px;
   border-radius: 10px; flex-shrink: 0;
 }
-.b-nav-icon { flex-shrink: 0; display: flex; align-items: center; opacity: .65; transition: opacity .15s; }
-.b-nav-item:hover .b-nav-icon { opacity: .9; }
+.b-nav-icon { flex-shrink: 0; display: flex; align-items: center; opacity: .7; }
 .b-nav-item.active .b-nav-icon { opacity: 1; }
-.b-nav-label { overflow: hidden; transition: opacity .2s, width .2s; white-space: nowrap; }
-
-/* ── Collapsed sidebar (icon-only mode) ── */
+.b-nav-label { overflow: hidden; transition: opacity .2s, width .2s; }
 #books-root.collapsed .b-nav-label { opacity: 0; width: 0; }
 #books-root.collapsed .b-nav-badge { display: none; }
-#books-root.collapsed .b-nav-section { opacity: 0; height: 0; padding: 0; margin: 0; pointer-events: none; }
-#books-root.collapsed .b-nav-group-body { max-height: 600px !important; opacity: 1 !important; }
 
 .b-sidebar-footer {
   padding: 12px 10px;
@@ -236,7 +285,7 @@ input { font-family: inherit; }
   display: flex; align-items: center; justify-content: center;
 }
 .b-kpi-label { font-size: 12px; font-weight: 600; color: var(--text-3); margin-bottom: 4px; }
-.b-kpi-value { font-family: var(--mono); font-size: 26px; font-weight: 600; color: var(--text); letter-spacing: -.03em; line-height: 1; margin-bottom: 10px; }
+.b-kpi-value {font-size: 26px; font-weight: 600; color: var(--text); letter-spacing: -.03em; line-height: 1; margin-bottom: 10px; }
 .b-kpi-trend { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
 .b-kpi-trend-up   { color: var(--green-text); }
 .b-kpi-trend-down { color: var(--red-text); }
@@ -261,7 +310,10 @@ input { font-family: inherit; }
 /* ── Table ── */
 .b-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .b-table th {
-  padding:10px 14px; border-bottom:2px solid #e8ecf0; font-size:11px; font-weight:600; letter-spacing:normal; color:#6b7280; text-align:left; white-space:nowrap; background:#f9f9fb; user-select:none;
+  text-align: left; padding: 11px 16px;
+  font-size: 11px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--text-3);
+  background: var(--surface-2); border-bottom: 1px solid var(--border);
 }
 .b-table td {
   padding: 13px 16px; border-bottom: 1px solid var(--border);
@@ -312,7 +364,7 @@ input { font-family: inherit; }
 .b-aging-rows { display: flex; flex-direction: column; gap: 14px; }
 .b-aging-row  { display: flex; justify-content: space-between; align-items: center; }
 .b-aging-lbl  { font-size: 13px; color: var(--text-2); font-weight: 500; min-width: 80px; }
-.b-aging-amt  { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--text); }
+.b-aging-amt  {font-size: 13px; font-weight: 600; color: var(--text); }
 
 /* ── Filter bar ── */
 .b-action-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -355,7 +407,7 @@ input[type=date].b-input { color-scheme: light; }
 .b-bs-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
 .b-bs-block { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 18px; }
 .b-bs-lbl   { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-3); margin-bottom: 8px; }
-.b-bs-amt   { font-family: var(--mono); font-size: 20px; font-weight: 600; }
+.b-bs-amt   {font-size: 20px; font-weight: 600; }
 
 /* ── Bank ── */
 .b-bank-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 12px; }
@@ -368,10 +420,10 @@ input[type=date].b-input { color-scheme: light; }
 .b-bank-card.selected { border-color: var(--accent); background: var(--accent-soft); }
 .b-bank-name    { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
 .b-bank-sub     { font-size: 12px; color: var(--text-3); margin-bottom: 12px; }
-.b-bank-balance { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--green-text); }
+.b-bank-balance { font-size: 20px; font-weight: 700; color: var(--green-text); }
 
 /* ── Utils ── */
-.mono   { font-family: var(--mono); }
+.mono   {font-family: var(--font); }
 .ta-r   { text-align: right; }
 .c-green { color: var(--green-text); }
 .c-red   { color: var(--red-text); }
@@ -523,12 +575,38 @@ input[type=date].b-input { color-scheme: light; }
   .nim-table-wrap{overflow-x:auto;}
   .nim-table{min-width:480px;}
 
-  /* Pill tabs scrollable */
+  /* Pill tabs scrollable — overridden at ≤480px below */
   .zb-split-pills,.b-filter-row{flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;}
   .zb-split-pill,.b-pill{flex-shrink:0;}
 
   /* Invoice list page toolbar */
   .no-sidebar-pad > div:first-child{flex-wrap:wrap;gap:6px;}
+}
+
+/* ══ Filter pills — Grid layout at ≤480px (no scroll) ══
+   Override the nowrap/scroll set at ≤640px above.
+   Pills keep their existing design; just wrap into a grid.
+   5 pills → 3-col grid: [All][Draft][Unpaid] / [Overdue][Paid]
+   ════════════════════════════════════════════════ */
+@media(max-width:480px){
+  .b-filter-row {
+    display:grid!important;
+    grid-template-columns:repeat(3, 1fr)!important;
+    gap:6px!important;
+    flex-wrap:unset!important;
+    overflow-x:visible!important;
+    padding-bottom:0!important;
+    width:100%!important;
+  }
+  .b-filter-row .b-pill {
+    flex-shrink:unset!important;
+    white-space:nowrap!important;
+    text-align:center!important;
+    justify-content:center!important;
+    width:100%!important;
+    padding:7px 8px!important;
+    font-size:12.5px!important;
+  }
 }
 
 /* ══ Very small (≤ 400px) ══ */
@@ -538,554 +616,29 @@ input[type=date].b-input { color-scheme: light; }
   .nim-modal-body{padding:12px!important;}
 }
 
-/* ══ Settings / List page scaffold ══ */
-.cust-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
-.cust-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
-.cust-toolbar-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-.cust-toolbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.cust-filters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-.cust-table-card{background:#fff;border:1px solid #e4e8f0;border-radius:12px;overflow:hidden;text-transform:uppercase;}
-.cust-table-wrap{overflow-x:auto;}
-.cust-table{width:100%;border-collapse:collapse;font-size:13px;}
-.cust-table th{background:#f8f9fb;border-bottom:1px solid #e4e8f0;padding:10px 14px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
-.cust-table td{padding:11px 14px;border-bottom:1px solid #f3f4f6;color:#111827;vertical-align:middle;}
-.cust-table tr:last-child td{border-bottom:none;}
-.cust-table tr:hover td{background:#f9fafb;}
+/* ══════════════════════════════════════════════════════
+   LINE ITEMS TABLE → CARD LAYOUT  (≤ 425px)
+   Uses structural selector (no :has()) for broad browser support
+   ══════════════════════════════════════════════════════ */
+@media (max-width:425px){
 
-/* ══ Modal Overlay & Dialog (fallback — also injected via JS) ══ */
-.nim-overlay{
-  position:fixed;inset:0;z-index:9000;
-  display:flex;align-items:center;justify-content:center;
-  background:rgba(15,23,42,.5);padding:20px 16px;
-  backdrop-filter:blur(3px);
-}
-.nim-dialog{
-  background:#fff;border-radius:14px;width:100%;max-width:840px;
-  box-shadow:0 24px 80px rgba(0,0,0,.2);overflow:hidden;
-  display:flex;flex-direction:column;
-  max-height:92vh;
-}
-.nim-header{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:18px 24px;
-  background:linear-gradient(135deg,#2563eb,#4f46e5);
-  flex-shrink:0;
-}
-.nim-header-title{font-size:16px;font-weight:700;color:#fff;letter-spacing:-.01em;}
-.nim-close{
-  background:rgba(255,255,255,.15);border:none;cursor:pointer;
-  color:#fff;width:30px;height:30px;border-radius:8px;
-  display:grid;place-items:center;transition:.15s;
-}
-.nim-close:hover{background:rgba(255,255,255,.28);}
-.nim-body{padding:22px 24px;overflow-y:auto;flex:1;}
-.nim-section-label{
-  font-size:10.5px;font-weight:700;letter-spacing:.08em;
-  text-transform:uppercase;color:#9ca3af;margin-bottom:10px;
-}
-.nim-mb{margin-bottom:18px;}
-.nim-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.nim-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
-.nim-label{font-size:11.5px;font-weight:600;color:#6b7280;letter-spacing:.01em;}
-.nim-req{color:#ef4444;}
-.nim-input{
-  height:36px;padding:0 11px;
-  border:1.5px solid #e4e8f0;border-radius:7px;
-  font-size:13.5px;color:#111827;background:#fff;
-  outline:none;width:100%;box-sizing:border-box;
-  transition:border-color .15s,box-shadow .15s;font-family:inherit;
-}
-.nim-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);}
-.nim-footer{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:14px 75px 14px 24px;border-top:1.5px solid #e4e8f0;
-  background:#f8f9fc;flex-shrink:0;
-}
-.nim-btn{
-  height:37px;padding:0 18px;border-radius:8px;
-  font-size:13.5px;font-weight:600;cursor:pointer;
-  font-family:inherit;border:none;transition:all .15s;
-  display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
-}
-.nim-btn:disabled{opacity:.55;cursor:not-allowed;}
-.nim-btn-ghost{background:#fff;border:1.5px solid #e4e8f0;color:#374151;}
-.nim-btn-ghost:hover:not(:disabled){background:#f1f3f7;}
-.nim-btn-primary{background:#2563eb;color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.3);}
-.nim-btn-primary:hover:not(:disabled){background:#1d4ed8;box-shadow:0 4px 12px rgba(37,99,235,.4);}
-
-/* ══ nim extras — used by Vendors / Customers drawers ══ */
-.nim-header-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0;}
-.nim-header-icon{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.nim-field{display:flex;flex-direction:column;gap:4px;margin-bottom:16px;}
-.nim-select{height:36px;padding:0 11px;border:1.5px solid #e4e8f0;border-radius:7px;font-size:13.5px;color:#111827;background:#fff;outline:none;width:100%;box-sizing:border-box;transition:border-color .15s;font-family:inherit;cursor:pointer;}
-.nim-select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);}
-.nim-grid-1{display:grid;grid-template-columns:1fr;gap:14px;}
-
-/* ══ Toolbar buttons — used across list pages ══ */
-.zb-tb-btn{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #e4e8f0;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:500;color:#374151;cursor:pointer;font-family:inherit;transition:all .15s;white-space:nowrap;}
-.zb-tb-btn:hover{background:#f8f9fb;border-color:#d1d5db;color:#111827;}
-.zb-tb-primary{background:#2563eb!important;border-color:#2563eb!important;color:#fff!important;font-weight:600!important;}
-.zb-tb-primary:hover{background:#1d4ed8!important;border-color:#1d4ed8!important;box-shadow:0 2px 8px rgba(37,99,235,.25)!important;}
-
-/* ══ Filter pills — used across list pages ══ */
-.zb-inv-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:12.5px;font-weight:600;border:1px solid #e4e8f0;background:#fff;color:#6b7280;cursor:pointer;font-family:inherit;transition:all .15s;}
-.zb-inv-pill:hover{border-color:#2563eb;color:#2563eb;}
-.zb-inv-pill-active{background:#eff6ff!important;border-color:#2563eb!important;color:#2563eb!important;}
-.zb-pill-cnt{font-size:11px;font-weight:700;background:#e5e7eb;color:#374151;border-radius:10px;padding:1px 6px;min-width:18px;text-align:center;transition:all .15s;}
-.zb-inv-pill-active .zb-pill-cnt,.zb-inv-pill:hover .zb-pill-cnt{background:#dbeafe;color:#1d4ed8;}
-.zb-pc-muted{background:#f3f4f6!important;color:#9ca3af!important;}
-
-/* ══ Search box — list pages ══ */
-.cust-search{display:flex;align-items:center;gap:8px;background:#ffffff;border-radius:8px;padding:6px 12px;min-width:200px;border:1px solid transparent;transition:.15s;}
-.cust-search:focus-within{background:#fff;border-color:#2563eb;}
-.cust-search-input{border:none;background:transparent;outline:none;font:inherit;color:#111827;width:100%;font-size:13px;}
-
-/* ══ Table row & action buttons ══ */
-.cust-row{cursor:pointer;}
-.cust-row:hover td{background:#f9fafb!important;}
-.cust-row-disabled td{opacity:.6;}
-.cust-row-count{padding:10px 14px;font-size:12px;color:#9ca3af;border-top:1px solid #f3f4f6;background:#fafafa;}
-.cust-act-btn{background:transparent;border:1px solid #e4e8f0;border-radius:6px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
-.cust-act-edit:hover{background:#eff6ff;border-color:#bfdbfe;color:#2563eb;}
-.cust-act-del:hover{background:#fef2f2;border-color:#fecaca;color:#dc2626;}
-
-/* ══ Empty state ══ */
-.cust-empty{padding:48px 14px;text-align:center;}
-.cust-empty-icon{display:flex;justify-content:center;margin-bottom:10px;}
-.cust-empty-title{font-size:14px;font-weight:600;color:#374151;margin-bottom:4px;}
-.cust-empty-sub{font-size:13px;color:#9ca3af;}
-
-/* ══ Table cell helpers ══ */
-.cust-name{font-size:13px;font-weight:600;color:#111827;}
-.cust-id{font-size:11.5px;color:#9ca3af;margin-top:2px;}
-.cust-mono{font-size:12.5px;color:#374151;}
-.cust-secondary{font-size:13px;color:#6b7280;}
-
-/* ══ Section label inside drawer ══ */
-.cust-sec-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;margin-bottom:12px;margin-top:20px;}
-
-/* ══ Drawer backdrop & panel ══ */
-.cust-backdrop{position:fixed;inset:0;z-index:9000;background:rgba(15,23,42,.45);display:flex;align-items:stretch;justify-content:flex-end;}
-.cust-drawer{display:flex;flex-direction:column;background:#fff;height:100%;box-shadow:-12px 0 40px rgba(0,0,0,.15);overflow:hidden;}
-.cust-drawer-header{display:flex;align-items:center;gap:12px;flex-shrink:0;color:#fff;}
-.cust-drawer-header-left{display:flex;align-items:center;gap:12px;flex:1;min-width:0;}
-.cust-drawer-icon{width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.cust-drawer-title{font-size:16px;font-weight:700;color:#fff;}
-.cust-drawer-sub{font-size:12px;color:rgba(255,255,255,.7);margin-top:1px;}
-.cust-drawer-body{flex:1;overflow-y:auto;}
-.cust-disable-box{padding:14px 16px;background:#fff5f5;border-radius:8px;border:1px solid #fecaca;display:flex;align-items:center;gap:10px;cursor:pointer;margin-top:4px;}
-
-/* ══ Master-detail split layout ══ */
-.zb-master-detail{display:flex;align-items:stretch;overflow:hidden;}
-.zb-list-pane{display:flex;flex-direction:column;overflow:hidden;}
-.zb-split-list{flex:1;overflow-y:auto;}
-
-/* ══ books-* aliases used by Reports page ══ */
-.books-card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:20px;}
-.books-card-title{font-size:15px;font-weight:700;color:var(--text);margin-bottom:16px;}
-.books-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-xs);font-size:13px;font-weight:600;border:1.5px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer;font-family:inherit;transition:all .15s;}
-.books-btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.25);}
-.books-btn-primary:hover{background:var(--accent-text);border-color:var(--accent-text);}
-.books-table{width:100%;border-collapse:collapse;font-size:13px;}
-.books-table th{background:#f8f9fb;border-bottom:1px solid #e4e8f0;padding:10px 14px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;}
-.books-table td{padding:10px 14px;border-bottom:1px solid #f3f4f6;color:#111827;vertical-align:middle;}
-.books-table tr:last-child td{border-bottom:none;}
-.books-table tr:hover td{background:#f9fafb;}
-
-/* ╔═══════════════════════════════════════════════════════════════╗
-   ║  FULL RESPONSIVE — correct file public/books.css             ║
-   ║  Refresh browser — no rebuild needed.                        ║
-   ╚═══════════════════════════════════════════════════════════════╝ */
-
-/* ══ Make Recurring Dialog — responsive 375px & 425px ══ */
-@media(max-width:425px){
-  /* Drawer: full screen slide-in */
-  .mr-drawer {
-    width:100vw!important;
-    max-width:100vw!important;
-    border-left:none!important;
+  /* Hide the column headers */
+  .add-card-body > div:first-child > table thead {
+    display:none!important;
   }
-  /* Header: compact */
-  .mr-header { padding:12px 14px!important; }
-  .mr-title  { font-size:14px!important; }
-  .mr-sub    { font-size:11px!important; }
-  /* Body: tighter */
-  .mr-body { padding:12px 12px!important; gap:10px!important; }
-  /* Grid: 1-column so all fields get full width */
-  .mr-grid { grid-template-columns:1fr!important; gap:10px!important; }
-  /* Input: readable on small screen */
-  .mr-input { font-size:14px!important; padding:9px 12px!important; }
-  /* Footer: buttons fill full width */
-  .mr-footer {
-    padding:10px 12px!important;
-    gap:8px!important;
-    justify-content:stretch!important;
-  }
-  .mr-btn-ghost   { flex:1!important; justify-content:center!important; }
-  .mr-btn-primary { flex:2!important; justify-content:center!important; font-size:13px!important; }
-}
 
-/* ── Download dropdown: fix overflow on mobile (375px & 425px) ── */
-@media(max-width:425px){
-  /*
-   * The dropdown div has inline style="position:absolute;right:0"
-   * It is the adjacent sibling of .inv-ab-dropdown inside the same
-   * position:relative wrapper.
-   * !important overrides the inline right:0 so the dropdown
-   * opens to the RIGHT of the button (left-aligned) instead of
-   * overflowing off the left edge of the screen.
-   */
-  .inv-ab-btn.inv-ab-dropdown + div {
-    right: auto !important;   /* cancel the inline right:0       */
-    left:  0    !important;   /* align left edge to button       */
-    min-width: 150px !important;
-    max-width: calc(100vw - 32px) !important;  /* never wider than screen */
-  }
-}
-
-/* ── 1024px ── */
-@media(max-width:1024px){
-  .kpi-grid{grid-template-columns:repeat(3,1fr)!important;}
-  .mid-grid{grid-template-columns:1fr 380px!important;}
-  .bot-grid{grid-template-columns:1fr 1fr!important;}
-  .bk-kpi-grid{grid-template-columns:repeat(3,1fr)!important;}
-  .bk-kpi-grid-4{grid-template-columns:repeat(2,1fr)!important;}
-  .bk-kpi-grid-3{grid-template-columns:repeat(3,1fr)!important;}
-  .bk-stat-grid{grid-template-columns:repeat(2,1fr)!important;}
-  .coa-type-strip{grid-template-columns:repeat(3,1fr)!important;}
-  .jen-sum-strip{grid-template-columns:repeat(2,1fr)!important;}
-  .jen-fg4{grid-template-columns:1fr 1fr!important;}
-  .jen-tpl-grid{grid-template-columns:1fr 1fr!important;}
-  .sc-fg{grid-template-columns:1fr 1fr!important;}
-  .rec-summary,.ew-summary{grid-template-columns:repeat(3,1fr)!important;}
-  .pmt-summary,.ei-summary,.g1-summary,.tds-summary,.ra-summary,.cp-stats{grid-template-columns:repeat(2,1fr)!important;}
-  .bs-grid{grid-template-columns:repeat(2,1fr)!important;}
-  .inv-preview-pane{width:360px!important;}
-  .inv-fg3{grid-template-columns:1fr 1fr!important;}
-  .inv-tmpl-bar{gap:14px!important;padding:8px 18px!important;}
-}
-
-/* ── 900px ── */
-@media(max-width:900px){
-  .kpi-grid{grid-template-columns:repeat(3,1fr)!important;gap:12px!important;}
-  .mid-grid{grid-template-columns:1fr!important;}
-  .aging-pair{grid-template-columns:1fr 1fr!important;}
-  .bot-grid{grid-template-columns:1fr 1fr!important;}
-  .bk-kpi-grid{grid-template-columns:repeat(3,1fr)!important;}
-  .bk-kpi-grid-4{grid-template-columns:repeat(2,1fr)!important;}
-  .bk-stat-grid{grid-template-columns:repeat(2,1fr)!important;}
-  .coa-type-strip{grid-template-columns:repeat(3,1fr)!important;}
-  .jen-sum-strip{grid-template-columns:repeat(2,1fr)!important;}
-  .sc-fg{grid-template-columns:1fr 1fr!important;}
-  .sales-toolbar{flex-wrap:wrap!important;padding:10px 14px!important;gap:8px!important;}
-  .sales-search{flex:1 1 55%!important;}
-  .sales-actions{flex-wrap:wrap!important;gap:6px!important;}
-  .sales-select{max-width:130px!important;}
-  .rec-summary,.ew-summary{grid-template-columns:repeat(3,1fr)!important;}
-  .pmt-summary,.ei-summary,.g1-summary,.tds-summary,.ra-summary,.cp-stats{grid-template-columns:1fr 1fr!important;}
-  .rec-view-stats,.ew-view-stats,.cp-contact-card{grid-template-columns:1fr 1fr!important;}
-}
-
-/* ╔═══════════════════════════════════════════════════════════════╗
-   ║  INVOICE VIEW DRAWER — from src/styles/view.css              ║
-   ║  Copied here so it works without a Vite rebuild              ║
-   ╚═══════════════════════════════════════════════════════════════╝ */
-
-/* ── ≤ 1023px: tablet landscape ── */
-@media(max-width:1023px){
-  .inv-view-header { padding:16px 16px 10px!important; }
-  .inv-view-body   { margin:0 16px 16px!important; }
-  .inv-tl-wrap     { padding:16px 20px!important; }
-  .inv-tab-body    { padding:16px!important; }
-  .inv-bottom-grid { padding:0 16px 16px!important; gap:12px!important; }
-  /* Meta: 2-up grid */
-  .inv-details-meta     { flex-wrap:wrap!important; }
-  .inv-details-meta-col { flex:1 1 45%!important; border-bottom:1px solid #e5e7eb!important; }
-  .inv-details-meta-col:nth-child(odd)  { border-right:1px solid #e5e7eb!important; }
-  .inv-details-meta-col:nth-child(even) { border-right:none!important; }
-  .inv-details-meta-col:last-child      { border-bottom:none!important; }
-}
-
-/* ── ≤ 767px: tablet portrait ── */
-@media(max-width:767px){
-  .inv-view-header  { padding:12px 12px 8px!important; gap:10px!important; }
-  .inv-view-number  { font-size:17px!important; }
-  .inv-view-body    { margin:0 12px 12px!important; border-radius:8px!important; }
-  /* Timeline */
-  .inv-tl-wrap      { padding:14px 12px!important; }
-  .inv-tl-dot       { width:30px!important; height:30px!important; }
-  .inv-tl-label     { font-size:11px!important; }
-  .inv-tl-date      { font-size:10px!important; }
-  /* Action bar */
-  .inv-action-bar   { padding:10px 12px!important; gap:6px!important; }
-  .inv-ab-btn       { padding:6px 10px!important; font-size:12px!important; }
-  /* Tabs */
-  .inv-view-tabs    { padding:0 12px!important; }
-  .inv-vtab         { padding:10px 12px!important; font-size:13px!important; }
-  /* Meta: single column */
-  .inv-tab-body     { padding:12px!important; gap:12px!important; }
-  .inv-details-meta { flex-direction:column!important; }
-  .inv-details-meta-col {
-    flex:1 1 100%!important;
-    border-right:none!important;
-    border-bottom:1px solid #e5e7eb!important;
-  }
-  .inv-details-meta-col:last-child { border-bottom:none!important; }
-  .inv-balance-val  { font-size:18px!important; }
-  /* Bottom grid: stack */
-  .inv-bottom-grid  { grid-template-columns:1fr!important; padding:0 12px 12px!important; }
-  /* Items: scroll */
-  .inv-items-wrap   { overflow-x:auto!important; -webkit-overflow-scrolling:touch; }
-  .inv-items-table  { min-width:540px!important; }
-  .inv-totals-inner { min-width:240px!important; padding-right:10px!important; }
-  .inv-grand-amt    { font-size:16px!important; }
-}
-
-/* ── ≤ 599px: large mobile ── */
-@media(max-width:599px){
-  .inv-view-header  { flex-direction:column!important; align-items:flex-start!important; }
-  .inv-view-cta     { width:100%!important; justify-content:center!important; }
-  /* Timeline: hide dates */
-  .inv-tl-date      { display:none!important; }
-  .inv-tl-dot       { width:26px!important; height:26px!important; }
-  .inv-tl-label     { font-size:10px!important; }
-  /* Action bar: icon-only (hide labels) */
-  .inv-ab-btn .ab-label            { display:none!important; }
-  .inv-ab-btn                      { padding:7px 9px!important; }
-  /* Keep Cancel/Delete label visible */
-  .inv-ab-btn.inv-ab-danger .ab-label { display:inline!important; }
-  .inv-view-body    { margin:0 8px 8px!important; border-radius:8px!important; }
-  .inv-tab-body     { padding:10px!important; }
-  .inv-bottom-grid  { padding:0 10px 10px!important; }
-}
-
-/* ── ≤ 479px: small mobile ── */
-@media(max-width:479px){
-  .inv-view-number  { font-size:15px!important; }
-  .inv-hdr-badge    { font-size:10px!important; padding:2px 8px!important; }
-  .inv-tl-wrap      { padding:12px 8px!important; }
-  .inv-tl-label     { font-size:9.5px!important; }
-  .inv-dmeta-date-val { font-size:14px!important; }
-  .inv-balance-val  { font-size:16px!important; }
-  .inv-grand-lbl    { font-size:13px!important; }
-  .inv-grand-amt    { font-size:14px!important; }
-  .rp-row           { grid-template-columns:1fr!important; }
-  /* Record Payment dialog full screen */
-  .rp-dialog        { width:100vw!important; max-width:100vw!important; border-radius:0!important; max-height:100dvh!important; }
-}
-
-/* ── 768px ── */
-@media(max-width:768px){
-  .kpi-grid{grid-template-columns:1fr 1fr!important;gap:10px!important;}
-  .mid-grid{grid-template-columns:1fr!important;}
-  .aging-pair{grid-template-columns:1fr!important;}
-  .bot-grid{grid-template-columns:1fr!important;}
-  .bot-grid>*:last-child{grid-column:1!important;}
-  .dashboard{padding:16px!important;gap:14px!important;}
-  .bk-kpi-grid{grid-template-columns:1fr 1fr!important;gap:10px!important;}
-  .bk-kpi-grid-4{grid-template-columns:1fr 1fr!important;}
-  .bk-kpi-grid-3{grid-template-columns:1fr 1fr 1fr!important;}
-  .bk-stat-grid{grid-template-columns:1fr 1fr!important;}
-  .bk-kpi-value{font-size:22px!important;}
-  .inv-table-wrap,.vt-table-wrap{overflow-x:auto!important;-webkit-overflow-scrolling:touch;}
-  .inv-table{min-width:560px!important;}
-  .vt-table{min-width:480px!important;}
-  .inv-view-actions{flex-wrap:wrap!important;gap:6px!important;}
-  .inv-view-meta{grid-template-columns:1fr 1fr!important;}
-  .inv-bulk-bar{flex-wrap:wrap!important;gap:6px!important;}
-  .sales-toolbar{flex-direction:column!important;align-items:stretch!important;padding:10px 12px!important;gap:8px!important;}
-  .sales-search{width:100%!important;order:1;}
-  .sales-pills{order:2;width:100%!important;overflow-x:auto!important;flex-wrap:nowrap!important;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
-  .sales-pills::-webkit-scrollbar{display:none;}
-  .sales-actions{order:3;flex-wrap:wrap!important;width:100%!important;gap:6px!important;}
-  .sales-btn-primary{flex:1!important;justify-content:center!important;}
-  .sales-select{flex:1!important;max-width:none!important;}
-  .sales-btn-ghost{padding:6px 8px!important;font-size:12px!important;}
-  .sales-custom-date{flex-wrap:wrap!important;gap:6px!important;padding:8px 12px!important;}
-  .sales-date-input{flex:1!important;min-width:0!important;}
-  .coa-type-strip{grid-template-columns:1fr 1fr!important;gap:8px!important;}
-  .coa-drawer-panel{width:97vw!important;max-width:97vw!important;}
-  .jen-sum-strip{grid-template-columns:1fr 1fr!important;}
-  .jen-drawer-panel{width:97vw!important;max-width:97vw!important;}
-  .jen-lines-wrap{overflow-x:auto!important;}
-  .jen-lines-tbl{min-width:480px!important;}
-  .sc-fg{grid-template-columns:1fr!important;}
-  .sc-full{grid-column:1!important;}
-  .sc-tabs{overflow-x:auto!important;flex-wrap:nowrap!important;scrollbar-width:none;}
-  .sc-tabs::-webkit-scrollbar{display:none;}
-  .sc-tab{flex-shrink:0!important;}
-  .sc-header{flex-wrap:wrap!important;gap:8px!important;}
-  .nim-grid-2{grid-template-columns:1fr!important;}
-  .nim-grid-3{grid-template-columns:1fr 1fr!important;}
-  .ssm-strip{grid-template-columns:repeat(2,1fr)!important;}
-  .b-report-tabs{flex-wrap:wrap!important;gap:4px!important;}
-  .b-rtab{flex:1!important;text-align:center!important;}
-  .b-bs-grid{grid-template-columns:1fr 1fr!important;}
-  .b-card{overflow-x:auto!important;}
-  .books-card{overflow-x:auto!important;}
-  .books-table{min-width:480px!important;}
-  .rec-page,.br-page,.bt-page,.btr-page,.chq-page,.cash-page,.pmt-page,.exp-page,.bill-page,.so-page,.po-page,.cn-page,.dn-page,.dc-page,.ew-page,.ei-page,.g1-page,.g3-page,.tds-page,.ia-page,.se-page,.sl-page,.sv-page,.ra-page,.cp-page,.r-page,.i-page,.page-reports{padding:16px!important;}
-  .rec-summary,.ew-summary{grid-template-columns:repeat(3,1fr)!important;}
-  .pmt-summary,.ei-summary,.g1-summary,.tds-summary,.ra-summary,.cp-stats{grid-template-columns:1fr 1fr!important;}
-  .rec-view-stats,.ew-view-stats,.ia-qty-grid,.cp-contact-card,.bs-grid{grid-template-columns:1fr 1fr!important;}
-  .chq-life-row{grid-template-columns:1fr 1fr!important;}
-  .rec-drawer,.bt-drawer,.btr-drawer,.chq-drawer,.cash-drawer,.pmt-drawer,.exp-drawer,.bill-drawer,.so-drawer-panel,.po-drawer,.cn-drawer,.dn-drawer,.dc-drawer,.ew-drawer,.ei-drawer,.ia-drawer,.se-drawer,.sl-drawer,.rec-view-drawer,.bt-view-drawer,.btr-view-drawer,.cash-view-drawer,.pmt-view-drawer,.exp-view-drawer,.bill-view-drawer,.po-view-drawer,.cn-view-drawer,.dn-view-drawer,.dc-view-drawer,.ew-view-drawer,.ia-view-drawer,.se-view-drawer{width:97vw!important;max-width:97vw!important;}
-  .nim-dialog{width:95vw!important;max-width:95vw!important;}
-  .rec-search-wrap,.br-search-wrap,.bt-search-wrap,.btr-search-wrap,.chq-search-wrap,.cash-search-wrap,.pmt-search-wrap,.exp-search-wrap,.ia-search-wrap,.se-search-wrap,.sl-search-wrap,.sv-search-wrap,.ra-search-wrap,.ew-search-wrap,.ei-search-wrap,.tds-search-wrap{min-width:0!important;flex:1!important;}
-  .report-tabs{flex-wrap:wrap!important;gap:4px!important;}
-  .report-tab{flex:1!important;text-align:center!important;font-size:12px!important;}
-  .date-range-bar{flex-wrap:wrap!important;gap:8px!important;}
-  .br-suggest-card{grid-template-columns:1.5fr 2fr 100px!important;overflow-x:auto!important;}
-  .br-toolbar{flex-wrap:wrap!important;gap:8px!important;}
-  .br-filter-pills{overflow-x:auto!important;flex-wrap:nowrap!important;}
-  .br-reconcile-bar{flex-wrap:wrap!important;gap:6px!important;}
-  .ob-acct-row{grid-template-columns:1fr 110px 100px!important;}
-  /* Invoice drawer 768px */
-  .inv-drawer-panel,.inv-split{width:100vw!important;max-width:100vw!important;border-radius:0!important;}
-  .inv-content-row{flex-direction:column!important;}
-  .inv-preview-pane{width:100%!important;height:260px!important;border-left:none!important;border-top:1px solid #e8ecf0!important;flex-shrink:0!important;}
-  .inv-preview-iframe{height:260px!important;min-height:0!important;}
-  .inv-dh{padding:14px 18px!important;}
-  .inv-dh-title{font-size:15px!important;}
-  .inv-dbody{padding:16px 18px!important;}
-  .inv-tmpl-bar{padding:8px 14px!important;gap:12px!important;}
-  .inv-dfooter{padding:12px 18px!important;}
-}
-
-/* ── 640px ── */
-@media(max-width:640px){
-  .b-page,.cust-page,.page-banking{padding:14px 12px!important;}
-  .dashboard{padding:14px 12px!important;gap:12px!important;}
-  .sc-page{padding:0!important;}
-  .sc-body{padding:14px 12px!important;}
-  .kpi-grid{grid-template-columns:1fr 1fr!important;gap:10px!important;}
-  .aging-pair{grid-template-columns:1fr!important;}
-  .bot-grid{grid-template-columns:1fr!important;}
-  .bk-kpi-grid{grid-template-columns:1fr 1fr!important;gap:10px!important;}
-  .bk-kpi-grid-4{grid-template-columns:1fr 1fr!important;}
-  .bk-kpi-grid-3{grid-template-columns:1fr 1fr!important;}
-  .bk-stat-grid{grid-template-columns:1fr 1fr!important;gap:8px!important;}
-  .bk-kpi-value{font-size:20px!important;}
-  .bk-kpi-card{padding:12px 14px!important;}
-  .vt-table-card{overflow-x:auto!important;}
-  .cust-search{width:100%!important;}
-  .cust-toolbar-right{flex-wrap:wrap!important;}
-  .coa-type-strip{grid-template-columns:1fr 1fr!important;}
-  .coa-drawer-panel{width:100vw!important;max-width:100vw!important;border-radius:0!important;}
-  .coa-fg2{grid-template-columns:1fr!important;}
-  .jen-sum-strip{grid-template-columns:1fr 1fr!important;}
-  .jen-tpl-grid{grid-template-columns:1fr!important;}
-  .jen-drawer-panel{width:100vw!important;max-width:100vw!important;border-radius:0!important;}
-  .sc-fg{grid-template-columns:1fr!important;}
-  .sc-card{padding:14px!important;}
-  .sc-logo-row{flex-direction:column!important;}
-  .nim-grid-2,.nim-grid-3{grid-template-columns:1fr!important;}
-  .ssm-strip{grid-template-columns:1fr 1fr!important;}
-  .ssm-val{font-size:18px!important;}
-  .ssm-card{padding:12px 14px!important;}
-  .b-bs-grid{grid-template-columns:1fr!important;}
-  .b-report-tabs{flex-wrap:wrap!important;}
-  .b-rtab{flex:1!important;min-width:80px!important;text-align:center!important;}
-  .b-table{min-width:480px!important;}
-  .rec-page,.br-page,.bt-page,.btr-page,.chq-page,.cash-page,.pmt-page,.exp-page,.bill-page,.so-page,.po-page,.cn-page,.dn-page,.dc-page,.ew-page,.ei-page,.g1-page,.g3-page,.tds-page,.ia-page,.se-page,.sl-page,.sv-page,.ra-page,.cp-page,.r-page,.i-page,.page-reports{padding:14px 12px!important;}
-  .rec-summary,.ew-summary,.pmt-summary,.ei-summary,.g1-summary,.tds-summary,.ra-summary,.cp-stats{grid-template-columns:1fr 1fr!important;gap:10px!important;}
-  .rec-view-stats,.ew-view-stats,.ia-qty-grid,.cp-contact-card,.bs-grid{grid-template-columns:1fr!important;}
-  .rec-fields-grid,.rec-meta-grid,.bt-meta-grid,.btr-fields-grid,.btr-meta-grid,.chq-meta-grid,.cash-fields-grid,.cash-meta-grid,.pmt-fields-grid,.pmt-radio-group,.pmt-meta-grid,.exp-fields-grid,.exp-vgrid-2,.bill-fields-grid,.bill-meta-grid,.so-fg2,.so-meta-grid,.po-fields-grid,.po-meta-grid,.cn-fields-grid,.cn-meta-grid,.dn-fields-grid,.dn-meta-grid,.dc-grid,.dc-meta-grid,.ew-grid,.ew-meta-grid,.ia-fields-grid,.ia-meta-grid,.se-fields-grid,.se-meta-grid,.sl-meta-grid,.r-modules{grid-template-columns:1fr!important;}
-  .so-fg3,.po-fg3,.cn-fg3,.bill-fg3{grid-template-columns:1fr 1fr!important;}
-  .bill-items-head,.bill-items-row,.so-lines-head,.so-lines-row,.po-items-head,.po-items-row,.po-fulfill-head,.po-fulfill-row,.cn-items-head,.cn-items-row,.dn-items-head,.dn-items-row,.dc-items-head,.dc-item-row,.se-items-head,.se-items-row{min-width:440px!important;}
-  .po-link-row,.bill-pay-head,.bill-pay-row,.cn-app-head,.cn-app-row,.dn-app-head,.dn-app-row{grid-template-columns:1fr 1fr!important;}
-  .pmt-inv-head,.pmt-inv-row{min-width:380px!important;}
-  .rec-drawer,.bt-drawer,.btr-drawer,.chq-drawer,.cash-drawer,.pmt-drawer,.exp-drawer,.bill-drawer,.so-drawer-panel,.po-drawer,.cn-drawer,.dn-drawer,.dc-drawer,.ew-drawer,.ei-drawer,.ia-drawer,.se-drawer,.sl-drawer,.rec-view-drawer,.bt-view-drawer,.btr-view-drawer,.cash-view-drawer,.pmt-view-drawer,.exp-view-drawer,.bill-view-drawer,.po-view-drawer,.cn-view-drawer,.dn-view-drawer,.dc-view-drawer,.ew-view-drawer,.ia-view-drawer,.se-view-drawer{width:100vw!important;max-width:100vw!important;border-radius:0!important;}
-  .nim-dialog{width:100vw!important;max-width:100vw!important;border-radius:0!important;height:100dvh!important;}
-  .rec-search-wrap,.br-search-wrap,.bt-search-wrap,.btr-search-wrap,.chq-search-wrap,.cash-search-wrap,.pmt-search-wrap,.exp-search-wrap,.ia-search-wrap,.se-search-wrap,.sl-search-wrap,.sv-search-wrap,.ra-search-wrap,.ew-search-wrap,.ei-search-wrap,.tds-search-wrap{min-width:0!important;width:100%!important;}
-  .report-tabs{flex-wrap:wrap!important;gap:4px!important;}
-  .report-tab{flex:1!important;min-width:80px!important;text-align:center!important;font-size:12px!important;padding:7px 10px!important;}
-  .date-range-bar{flex-wrap:wrap!important;gap:8px!important;padding:12px!important;}
-  .dr-input{flex:1!important;min-width:0!important;}
-  .br-suggest-card{grid-template-columns:1fr!important;}
-  .br-toolbar{flex-direction:column!important;align-items:stretch!important;gap:8px!important;}
-  .br-filter-pills{overflow-x:auto!important;flex-wrap:nowrap!important;scrollbar-width:none;}
-  .br-reconcile-bar{flex-wrap:wrap!important;gap:6px!important;padding:8px 12px!important;}
-  .cp-stats{grid-template-columns:1fr 1fr!important;}
-  .ob-acct-row{grid-template-columns:1fr 100px!important;}
-}
-
-/* ── 480px ── */
-@media(max-width:480px){
-  .b-page,.cust-page,.page-banking{padding:12px 10px!important;}
-  .dashboard{padding:12px 10px!important;gap:10px!important;}
-  .kpi-grid{grid-template-columns:1fr 1fr!important;gap:8px!important;}
-  .bk-kpi-grid,.bk-kpi-grid-4,.bk-kpi-grid-3{grid-template-columns:1fr 1fr!important;}
-  .bk-stat-grid{grid-template-columns:1fr!important;}
-  .bk-kpi-value{font-size:18px!important;}
-  .bk-kpi-icon{width:38px!important;height:38px!important;}
-  .bk-kpi-card{padding:10px 12px!important;}
-  .inv-view-meta{grid-template-columns:1fr!important;}
-  .coa-type-strip{grid-template-columns:1fr 1fr!important;}
-  .jen-sum-strip{grid-template-columns:1fr 1fr!important;}
-  .ssm-strip{grid-template-columns:repeat(2,1fr)!important;}
-  .ssm-val{font-size:17px!important;}
-  .b-filter-row{overflow-x:auto!important;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch;}
-  .b-pill{flex-shrink:0!important;white-space:nowrap!important;}
-  .rec-summary,.ew-summary,.pmt-summary,.ei-summary,.g1-summary,.tds-summary,.ra-summary,.cp-stats{grid-template-columns:1fr!important;}
-  .chq-life-row{grid-template-columns:1fr!important;}
-  .so-fg3,.po-fg3,.cn-fg3,.bill-fg3{grid-template-columns:1fr!important;}
-  .report-tab{padding:6px 8px!important;font-size:11px!important;}
-  .br-reconcile-bar{flex-direction:column!important;align-items:stretch!important;}
-}
-
-/* ── 425px — Invoice drawer + Line Items Card Layout ── */
-@media(max-width:425px){
-  .inv-drawer-panel,.inv-split{width:100vw!important;max-width:100vw!important;height:100dvh!important;border-radius:0!important;}
-
-  /* Keep the "Live Preview" toggle button visible so user can tap it */
-  .inv-preview-toggle{display:inline-flex!important;font-size:11px!important;padding:4px 8px!important;}
-
-  /* Content row: scroll vertically through form then preview */
-  .inv-content-row{flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;}
-  /* Form panel: expand to natural height (no inner scroll) */
-  .inv-content-row .inv-dbody{flex:none!important;overflow-y:visible!important;}
-  /* Preview panel: appears BELOW form when toggled on */
-  .inv-preview-pane{width:100%!important;height:380px!important;flex-shrink:0!important;border-left:none!important;border-top:3px solid #2563eb!important;}
-  .inv-preview-iframe{height:380px!important;min-height:0!important;}
-
-  .inv-dh{padding:11px 14px!important;gap:8px!important;}
-  .inv-dh-title{font-size:14px!important;}
-  .inv-dbody{padding:14px!important;}
-  .inv-fg2{grid-template-columns:1fr!important;}
-  .inv-fg3{grid-template-columns:1fr!important;}
-  .inv-tmpl-bar{overflow-x:auto!important;flex-wrap:nowrap!important;padding:8px 12px!important;gap:14px!important;scrollbar-width:none!important;-webkit-overflow-scrolling:touch;}
-  .inv-tmpl-bar::-webkit-scrollbar{display:none;}
-  .inv-tmpl-group{flex-shrink:0!important;}
-
-  /* ── LINE ITEMS → CARD LAYOUT ─────────────────────────────
-     Uses table:has(.inv-ci) since compiled JS doesn't have
-     the .inv-lines-tbl class. .inv-ci IS present on inputs.
-     ──────────────────────────────────────────────────────── */
-
-  /* Container: stop horizontal scroll */
-  .inv-lines-wrap,
-  .add-card-body table:has(.inv-ci){ overflow:visible!important; }
-
-  /* Hide column headers — info lives inside each card */
-  .inv-lines-tbl thead,
-  .add-card-body table:has(.inv-ci) thead{display:none!important;}
-
-  /* Table + tbody: vertical flex column */
-  .inv-lines-tbl,
-  .inv-lines-tbl tbody,
-  .add-card-body table:has(.inv-ci),
-  .add-card-body table:has(.inv-ci) tbody{
+  /* Table and tbody: flex column of cards */
+  .add-card-body > div:first-child > table,
+  .add-card-body > div:first-child > table tbody {
     display:flex!important;
     flex-direction:column!important;
     gap:10px!important;
     width:100%!important;
-    min-width:0!important;
+    overflow:visible!important;
   }
 
-  /* Each <tr> = a card */
-  .inv-lines-tbl tbody tr,
-  .add-card-body table:has(.inv-ci) tbody tr{
+  /* Each row = a card */
+  .add-card-body > div:first-child > table tbody tr {
     display:grid!important;
     grid-template-columns:1fr 1fr!important;
     gap:8px!important;
@@ -1094,261 +647,422 @@ input[type=date].b-input { color-scheme: light; }
     border-radius:10px!important;
     padding:12px!important;
     box-shadow:0 1px 4px rgba(0,0,0,.06)!important;
-    min-width:0!important;
+    position:relative!important;
+    width:100%!important;
   }
 
-  /* All <td>: flex-column, reset padding/border */
-  .inv-lines-tbl tbody tr td,
-  .add-card-body table:has(.inv-ci) tbody tr td{
+  /* All td cells: flex column */
+  .add-card-body > div:first-child > table tbody tr td {
     display:flex!important;
     flex-direction:column!important;
     gap:3px!important;
     padding:0!important;
     border:none!important;
-    font-size:13px!important;
     min-width:0!important;
+    font-size:13px!important;
   }
 
-  /* Cell 1: row number — top-left */
-  .inv-lines-tbl tbody tr td:nth-child(1),
-  .add-card-body table:has(.inv-ci) tbody tr td:nth-child(1){
+  /* Row # — top-left, col 1 */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(1) {
     grid-column:1/2!important;
     flex-direction:row!important;
     align-items:center!important;
+    font-size:11px!important;
+    color:#6b7280!important;
+    font-weight:600!important;
+    grid-row:1!important;
   }
 
-  /* Cell 2: item name — full width */
-  .inv-lines-tbl tbody tr td:nth-child(2),
-  .add-card-body table:has(.inv-ci) tbody tr td:nth-child(2){
-    grid-column:1/3!important;
-  }
-
-  /* Last cell: delete button — top-right */
-  .inv-lines-tbl tbody tr td:last-child,
-  .add-card-body table:has(.inv-ci) tbody tr td:last-child{
+  /* Delete button — top-right, col 2 */
+  .add-card-body > div:first-child > table tbody tr td:last-child {
     grid-column:2/3!important;
     flex-direction:row!important;
     align-items:center!important;
     justify-content:flex-end!important;
+    grid-row:1!important;
   }
-  /* Always show delete icon on mobile */
-  .inv-lines-tbl tbody tr td:last-child .add-line-del,
-  .add-card-body table:has(.inv-ci) tbody tr td:last-child .add-line-del{opacity:1!important;}
+  .add-card-body > div:first-child > table tbody tr td:last-child .add-line-del {
+    opacity:1!important;
+  }
 
-  /* 2nd-to-last cell: amount — full-width footer strip */
-  .inv-lines-tbl tbody tr td:nth-last-child(2),
-  .add-card-body table:has(.inv-ci) tbody tr td:nth-last-child(2){
+  /* Item name (col 2) spans full row */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(2) {
+    grid-column:1/3!important;
+  }
+
+  /* Amount cell (second-to-last) spans full row, prominent */
+  .add-card-body > div:first-child > table tbody tr td:nth-last-child(2) {
     grid-column:1/3!important;
     flex-direction:row!important;
     justify-content:space-between!important;
     align-items:center!important;
-    border-top:1px solid #f0f3f7!important;
-    padding-top:8px!important;
-    margin-top:4px!important;
+    background:#f0f4ff!important;
+    border-radius:6px!important;
+    padding:8px 10px!important;
+    font-size:14px!important;
     font-weight:700!important;
     color:#1a1a2e!important;
   }
-  .inv-lines-tbl tbody tr td:nth-last-child(2)::before,
-  .add-card-body table:has(.inv-ci) tbody tr td:nth-last-child(2)::before{
+  .add-card-body > div:first-child > table tbody tr td:nth-last-child(2)::before {
     content:'Amount'!important;
     font-size:9.5px!important;
     font-weight:700!important;
     text-transform:uppercase!important;
     letter-spacing:.05em!important;
-    color:#9ca3af!important;
+    color:#6b7280!important;
   }
 
-  /* Inline inputs/selects: full width */
-  .inv-lines-tbl tbody tr td .inv-ci,
-  .inv-lines-tbl tbody tr td select.inv-ci,
-  .add-card-body table:has(.inv-ci) tbody tr td .inv-ci,
-  .add-card-body table:has(.inv-ci) tbody tr td select.inv-ci{
+  /* All inputs/selects inside cells fill width */
+  .add-card-body > div:first-child > table tbody tr td .inv-ci,
+  .add-card-body > div:first-child > table tbody tr td select.inv-ci {
     width:100%!important;
     font-size:13px!important;
     padding:6px 8px!important;
     box-sizing:border-box!important;
   }
 
-  /* Last <tr> = "+ Add new line" footer — no card styling */
-  .inv-lines-tbl tbody tr:last-child,
-  .add-card-body table:has(.inv-ci) tbody tr:last-child{
-    grid-template-columns:1fr!important;
-    background:transparent!important;
-    border:none!important;
-    box-shadow:none!important;
-    padding:4px 0!important;
-  }
-  .inv-lines-tbl tbody tr:last-child td,
-  .add-card-body table:has(.inv-ci) tbody tr:last-child td{
-    grid-column:1/2!important;
-    flex-direction:row!important;
-  }
+  /* Label pseudo-elements for each field */
+.b-card{overflow-x:auto;}
 
-  /* Totals panel: stack vertically */
-  .inv-totals-wrap{flex-direction:column!important;gap:12px!important;padding:12px!important;}
-  .inv-tax-section{min-width:0!important;width:100%!important;}
-  .inv-totals{width:100%!important;min-width:0!important;align-items:flex-start!important;}
-  .inv-total-row{width:100%!important;}
+  /* Toolbar stacking */
+  .cust-toolbar{flex-direction:column;align-items:stretch!important;gap:8px;}
+  .cust-toolbar-left,.cust-toolbar-right{width:100%;justify-content:space-between;}
+  .cust-filters{flex-wrap:wrap;}
 
-  .inv-dfooter{flex-wrap:wrap!important;gap:8px!important;padding:10px 14px!important;}
-  .inv-dfooter>div:first-child{width:100%!important;font-size:11px!important;}
-  .inv-dfooter>div:last-child{width:100%!important;display:flex!important;gap:6px!important;}
-  .inv-btn-primary,.inv-btn-ghost{flex:1!important;justify-content:center!important;font-size:12.5px!important;padding:8px!important;}
+  /* Modals / drawers full width */
+  .nim-modal{width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;border-radius:0!important;margin:0!important;}
+  .nim-modal-body{padding:16px!important;}
+  .nim-grid-3{grid-template-columns:1fr 1fr!important;}
+  .nim-grid-2{grid-template-columns:1fr!important;}
+  .nim-footer{flex-direction:column-reverse;gap:8px!important;padding:12px 16px!important;}
+  .nim-footer button,.nim-footer .nim-btn{width:100%!important;justify-content:center!important;}
+
+  /* Invoice list table — hide less important columns */
+  .zb-col-order,.zb-col-currency{display:none!important;}
+
+  /* Invoice detail split panel */
+  .zb-master-detail{flex-direction:column!important;}
+  .zb-split-list,.zb-list-pane{width:100%!important;max-height:45vh;border-right:none!important;border-bottom:1px solid #e4e8f0;}
+  .zb-detail-area{height:55vh;overflow-y:auto;}
+
+  /* PDF preview */
+  .zb-pdf-paper{padding:16px!important;}
+
+  /* Action bar */
+  .b-action-bar{flex-direction:column;align-items:stretch!important;}
+  .b-filter-row{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px;}
+  .b-pill{white-space:nowrap;flex-shrink:0;}
 }
 
-/* ── 380px ── */
-@media(max-width:380px){
-  .b-page,.cust-page,.page-banking{padding:10px 8px!important;}
-  .dashboard{padding:10px 8px!important;gap:8px!important;}
-  .sc-body{padding:10px 8px!important;}
-  .kpi-grid{grid-template-columns:1fr!important;}
-  .bk-kpi-grid,.bk-kpi-grid-4,.bk-kpi-grid-3{grid-template-columns:1fr!important;}
-  .bk-stat-grid{grid-template-columns:1fr!important;}
-  .coa-type-strip{grid-template-columns:1fr!important;}
-  .jen-sum-strip{grid-template-columns:1fr!important;}
-  .ssm-strip{grid-template-columns:1fr!important;}
-  .ssm-val{font-size:16px!important;}
-  .b-bs-grid{grid-template-columns:1fr!important;}
-  .sc-tabs{gap:2px!important;}
-  .sc-tab{padding:7px 10px!important;font-size:12px!important;}
-  .rec-page,.br-page,.bt-page,.btr-page,.chq-page,.cash-page,.pmt-page,.exp-page,.bill-page,.so-page,.po-page,.cn-page,.dn-page,.dc-page,.ew-page,.ei-page,.g1-page,.g3-page,.tds-page,.ia-page,.se-page,.sl-page,.sv-page,.ra-page,.cp-page,.r-page,.i-page,.page-reports{padding:10px 8px!important;}
-  .po-link-row,.bill-pay-head,.bill-pay-row,.cn-app-head,.cn-app-row,.dn-app-head,.dn-app-row{grid-template-columns:1fr!important;}
-  .report-tab{padding:5px 6px!important;font-size:11px!important;min-width:60px!important;}
+/* ══ Mobile (≤ 640px) ══ */
+@media (max-width:640px){
+  .b-search{display:none!important;}
+  .b-kpi-grid{grid-template-columns:1fr 1fr!important;gap:8px;}
+
+  /* Invoice list table — keep only essential columns */
+  .zb-col-order,.zb-col-currency,.zb-col-duedate{display:none!important;}
+
+  /* Nim form grids collapse to 1 col */
+  .nim-grid-3,.nim-grid-2{grid-template-columns:1fr!important;}
+
+  /* Drawers */
+  .nim-modal{border-radius:0!important;}
+  .nim-table-wrap{overflow-x:auto;}
+  .nim-table{min-width:480px;}
+
+  /* Pill tabs scrollable — overridden at ≤480px below */
+  .zb-split-pills,.b-filter-row{flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px;}
+  .zb-split-pill,.b-pill{flex-shrink:0;}
+
+  /* Invoice list page toolbar */
+  .no-sidebar-pad > div:first-child{flex-wrap:wrap;gap:6px;}
 }
 
-/* ── 375px — Invoice drawer + Line Items Card (same pattern as 425px) ── */
-@media(max-width:375px){
-  .inv-drawer-panel,.inv-split{width:100vw!important;max-width:100vw!important;height:100dvh!important;border-radius:0!important;}
+/* ══ Filter pills — Grid layout at ≤480px (no scroll) ══
+   Override the nowrap/scroll set at ≤640px above.
+   Pills keep their existing design; just wrap into a grid.
+   5 pills → 3-col grid: [All][Draft][Unpaid] / [Overdue][Paid]
+   ════════════════════════════════════════════════ */
+@media(max-width:480px){
+  .b-filter-row {
+    display:grid!important;
+    grid-template-columns:repeat(3, 1fr)!important;
+    gap:6px!important;
+    flex-wrap:unset!important;
+    overflow-x:visible!important;
+    padding-bottom:0!important;
+    width:100%!important;
+  }
+  .b-filter-row .b-pill {
+    flex-shrink:unset!important;
+    white-space:nowrap!important;
+    text-align:center!important;
+    justify-content:center!important;
+    width:100%!important;
+    padding:7px 8px!important;
+    font-size:12.5px!important;
+  }
+}
 
-  /* Keep "Live Preview" button visible */
-  .inv-preview-toggle{display:inline-flex!important;font-size:10.5px!important;padding:3px 7px!important;}
+/* ══ Very small (≤ 400px) ══ */
+@media (max-width:400px){
+  .b-kpi-grid{grid-template-columns:1fr!important;}
+  .b-kpi-value{font-size:20px!important;}
+  .nim-modal-body{padding:12px!important;}
+}
 
-  /* Scroll form + preview vertically */
-  .inv-content-row{flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;}
-  .inv-content-row .inv-dbody{flex:none!important;overflow-y:visible!important;}
-  .inv-preview-pane{width:100%!important;height:350px!important;flex-shrink:0!important;border-left:none!important;border-top:3px solid #2563eb!important;}
-  .inv-preview-iframe{height:350px!important;min-height:0!important;}
+/* ══════════════════════════════════════════════════════
+   LINE ITEMS TABLE → CARD LAYOUT  (≤ 425px)
+   Uses structural selector (no :has()) for broad browser support
+   ══════════════════════════════════════════════════════ */
+@media (max-width:425px){
 
-  .inv-dh{padding:10px 12px!important;gap:6px!important;}
-  .inv-dh-title{font-size:13.5px!important;}
-  .inv-dclose{width:26px!important;height:26px!important;}
-  .inv-dbody{padding:12px!important;}
-  .inv-fg2{grid-template-columns:1fr!important;}
-  .inv-fg3{grid-template-columns:1fr!important;}
-  .inv-fg{gap:10px!important;margin-bottom:10px!important;}
-  .inv-tmpl-bar{overflow-x:auto!important;flex-wrap:nowrap!important;padding:7px 10px!important;gap:10px!important;scrollbar-width:none!important;-webkit-overflow-scrolling:touch;}
-  .inv-tmpl-bar::-webkit-scrollbar{display:none;}
-  .inv-tmpl-btn{padding:3px 8px!important;font-size:11.5px!important;}
-  .inv-tmpl-group{flex-shrink:0!important;}
+  /* Hide the column headers */
+  .add-card-body > div:first-child > table thead {
+    display:none!important;
+  }
 
-  /* ── LINE ITEMS CARD (375px) — structural selectors for compiled JS ── */
-  .inv-lines-wrap,
-  .add-card-body table:has(.inv-ci){overflow:visible!important;}
-  .inv-lines-tbl thead,
-  .add-card-body table:has(.inv-ci) thead{display:none!important;}
-  .inv-lines-tbl,
-  .inv-lines-tbl tbody,
-  .add-card-body table:has(.inv-ci),
-  .add-card-body table:has(.inv-ci) tbody{
+  /* Table and tbody: flex column of cards */
+  .add-card-body > div:first-child > table,
+  .add-card-body > div:first-child > table tbody {
     display:flex!important;
     flex-direction:column!important;
-    gap:8px!important;
+    gap:10px!important;
     width:100%!important;
-    min-width:0!important;
+    overflow:visible!important;
   }
-  .inv-lines-tbl tbody tr,
-  .add-card-body table:has(.inv-ci) tbody tr{
+
+  /* Each row = a card */
+  .add-card-body > div:first-child > table tbody tr {
     display:grid!important;
     grid-template-columns:1fr 1fr!important;
-    gap:6px!important;
+    gap:8px!important;
     background:#fff!important;
     border:1.5px solid #e3e8ef!important;
     border-radius:10px!important;
-    padding:10px!important;
+    padding:12px!important;
     box-shadow:0 1px 4px rgba(0,0,0,.06)!important;
-    min-width:0!important;
+    position:relative!important;
+    width:100%!important;
   }
-  .inv-lines-tbl tbody tr td,
-  .add-card-body table:has(.inv-ci) tbody tr td{
+
+  /* All td cells: flex column */
+  .add-card-body > div:first-child > table tbody tr td {
     display:flex!important;
     flex-direction:column!important;
     gap:3px!important;
     padding:0!important;
     border:none!important;
-    font-size:12.5px!important;
+    min-width:0!important;
+    font-size:13px!important;
+  }
+
+  /* Row # — top-left, col 1 */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(1) {
+    grid-column:1/2!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    font-size:11px!important;
+    color:#6b7280!important;
+    font-weight:600!important;
+    grid-row:1!important;
+  }
+
+  /* Delete button — top-right, col 2 */
+  .add-card-body > div:first-child > table tbody tr td:last-child {
+    grid-column:2/3!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    grid-row:1!important;
+  }
+  .add-card-body > div:first-child > table tbody tr td:last-child .add-line-del {
+    opacity:1!important;
+  }
+
+  /* Item name (col 2) spans full row */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(2) {
+    grid-column:1/3!important;
+  }
+
+  /* Amount cell (second-to-last) spans full row, prominent */
+  .add-card-body > div:first-child > table tbody tr td:nth-last-child(2) {
+    grid-column:1/3!important;
+    flex-direction:row!important;
+    justify-content:space-between!important;
+    align-items:center!important;
+    background:#f0f4ff!important;
+    border-radius:6px!important;
+    padding:8px 10px!important;
+    font-size:14px!important;
+    font-weight:700!important;
+    color:#1a1a2e!important;
+  }
+  .add-card-body > div:first-child > table tbody tr td:nth-last-child(2)::before {
+    content:'Amount'!important;
+    font-size:9.5px!important;
+    font-weight:700!important;
+    text-transform:uppercase!important;
+    letter-spacing:.05em!important;
+    color:#6b7280!important;
+  }
+
+  /* All inputs/selects inside cells fill width */
+  .add-card-body > div:first-child > table tbody tr td .inv-ci,
+  .add-card-body > div:first-child > table tbody tr td select.inv-ci {
+    width:100%!important;
+    font-size:13px!important;
+    padding:6px 8px!important;
+    box-sizing:border-box!important;
+  }
+
+  /* Label pseudo-elements for each field */
+  .add-card-body > div:first-child > table tbody tr td:nth-child(3)::before { content:'Description'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(4)::before { content:'HSN/SAC'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(5)::before { content:'Qty'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(6)::before { content:'UOM'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(7)::before { content:'Rate'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+  .add-card-body > div:first-child > table tbody tr td:nth-child(8)::before { content:'Disc %'!important; font-size:10px!important; color:#9ca3af!important; font-weight:600!important; margin-bottom:2px!important; display:block!important; }
+
+  /* Last row (+ Add new line) — transparent, no card styling */
+  .add-card-body > div:first-child > table tbody tr:last-child {
+    display:block!important;
+    background:transparent!important;
+    border:none!important;
+    box-shadow:none!important;
+    padding:4px 0!important;
+  }
+  .add-card-body > div:first-child > table tbody tr:last-child td {
+    grid-column:1/2!important;
+    flex-direction:row!important;
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   DELIVERY CHALLAN / NIM MODAL — 375px & 425px
+   Modern mobile layout — Zoho Books / Linear / Stripe style
+   ══════════════════════════════════════════════════════ */
+@media (max-width:425px) {
+
+  /* ── Full-screen modal panel ── */
+  .nim-modal,
+  .inv-drawer-panel,
+  .cust-drawer,
+  .coa-drawer-panel,
+  .jen-drawer-panel,
+  .bk-drawer-panel {
+    width:100vw!important;
+    max-width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    border-radius:0!important;
+    top:0!important; left:0!important; right:0!important;
+    transform:none!important;
+    margin:0!important;
+    position:fixed!important;
+    overflow:clip!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+
+  /* ── Scrollable body — box-sizing prevents left-clipping ── */
+  .nim-modal-body,
+  .nim-modal-scroll,
+  .nim-body,
+  .cust-drawer-body,
+  .coa-dbody,
+  .bk-d-body {
+    width:100%!important;
+    box-sizing:border-box!important;
+    padding:16px!important;
+    flex:1!important;
+    min-height:0!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    -webkit-overflow-scrolling:touch!important;
+  .nim-bottom-row {
+    flex-direction:column!important;
+    gap:12px!important;
+  }
+  .nim-totals {
+    width:100%!important;
     min-width:0!important;
   }
-  .inv-lines-tbl tbody tr td:nth-child(1),
-  .add-card-body table:has(.inv-ci) tbody tr td:nth-child(1){grid-column:1/2!important;flex-direction:row!important;align-items:center!important;}
-  .inv-lines-tbl tbody tr td:nth-child(2),
-  .add-card-body table:has(.inv-ci) tbody tr td:nth-child(2){grid-column:1/3!important;}
-  .inv-lines-tbl tbody tr td:last-child,
-  .add-card-body table:has(.inv-ci) tbody tr td:last-child{grid-column:2/3!important;flex-direction:row!important;align-items:center!important;justify-content:flex-end!important;}
-  .inv-lines-tbl tbody tr td:last-child .add-line-del,
-  .add-card-body table:has(.inv-ci) tbody tr td:last-child .add-line-del{opacity:1!important;}
-  .inv-lines-tbl tbody tr td:nth-last-child(2),
-  .add-card-body table:has(.inv-ci) tbody tr td:nth-last-child(2){grid-column:1/3!important;flex-direction:row!important;justify-content:space-between!important;align-items:center!important;border-top:1px solid #f0f3f7!important;padding-top:7px!important;margin-top:3px!important;font-weight:700!important;color:#1a1a2e!important;}
-  .inv-lines-tbl tbody tr td:nth-last-child(2)::before,
-  .add-card-body table:has(.inv-ci) tbody tr td:nth-last-child(2)::before{content:'Amount'!important;font-size:9px!important;font-weight:700!important;text-transform:uppercase!important;letter-spacing:.05em!important;color:#9ca3af!important;}
-  .inv-lines-tbl tbody tr td .inv-ci,
-  .inv-lines-tbl tbody tr td select.inv-ci,
-  .add-card-body table:has(.inv-ci) tbody tr td .inv-ci,
-  .add-card-body table:has(.inv-ci) tbody tr td select.inv-ci{width:100%!important;font-size:12.5px!important;padding:5px 7px!important;box-sizing:border-box!important;}
-  .inv-lines-tbl tbody tr:last-child,
-  .add-card-body table:has(.inv-ci) tbody tr:last-child{grid-template-columns:1fr!important;background:transparent!important;border:none!important;box-shadow:none!important;padding:3px 0!important;}
-  .inv-lines-tbl tbody tr:last-child td,
-  .add-card-body table:has(.inv-ci) tbody tr:last-child td{grid-column:1/2!important;flex-direction:row!important;}
 
-  .inv-totals-wrap{flex-direction:column!important;padding:10px!important;gap:10px!important;}
-  .inv-tax-section{min-width:0!important;width:100%!important;}
-  .inv-totals{width:100%!important;min-width:0!important;}
-  .inv-total-row{width:100%!important;font-size:12.5px!important;}
-  .inv-dfooter{flex-wrap:wrap!important;gap:6px!important;padding:8px 12px!important;}
-  .inv-dfooter>div:first-child{width:100%!important;font-size:10.5px!important;}
-  .inv-dfooter>div:last-child{width:100%!important;display:flex!important;gap:5px!important;}
-  .inv-btn-primary,.inv-btn-ghost{flex:1!important;justify-content:center!important;font-size:11.5px!important;padding:7px 6px!important;}
-  .inv-sec-lbl{font-size:10px!important;margin-bottom:10px!important;}
-  .inv-fi{padding:6px 8px!important;font-size:12.5px!important;}
-  .inv-lbl{font-size:11px!important;}
+  /* ── Searchable select inside cards ── */
+  .nim-table .ss-trigger {
+    font-size:13px!important;
+    min-height:36px!important;
+    padding:6px 10px!important;
+    border-radius:6px!important;
+  }
+
+  /* ── Suppress horizontal scroll in modal ── */
+  .nim-modal,
+  .inv-drawer-panel {
+    overflow-x:hidden!important;
+  }
+}
+}
+/* ════════════════════════════════════
+   375px — tighter padding
+   ════════════════════════════════════ */
+@media (max-width:375px) {
+  .nim-modal-body, .nim-body, .nim-modal-scroll,
+  .cust-drawer-body, .coa-dbody { padding:12px!important; }
+
+  .nim-footer, .coa-dfooter { padding:10px 12px!important; gap:6px!important; }
+  .nim-footer .nim-btn, .nim-footer button {
+    font-size:12.5px!important; height:42px!important;
+    padding:0 8px!important; border-radius:8px!important;
+  }
+  .nim-table tbody tr.nim-tr { padding:12px!important; gap:10px 8px!important; }
+  .nim-table tbody tr.nim-tr td:last-child { top:10px!important; right:10px!important; }
+  .nim-input, .nim-select, .nim-textarea { font-size:13.5px!important; }
+  .nim-table tbody tr.nim-tr td .nim-cell,
+  .nim-table tbody tr.nim-tr td input.nim-cell,
+  .nim-table tbody tr.nim-tr td select.nim-cell { font-size:13.5px!important; }
+  .nim-header-title, .coa-dh-title, .cust-drawer-title { font-size:14px!important; }
 }
 
-/* ── Quick Actions card grid — 425px ── */
-@media(max-width:425px){
-  .b-qa-section{padding:14px 14px 12px!important;border-radius:10px!important;}
-  .b-qa-title{font-size:14px!important;margin-bottom:10px!important;}
-  .b-quick-actions{gap:10px!important;grid-template-columns:1fr 1fr!important;}
-  .b-qa-card{padding:12px 10px!important;gap:10px!important;border-radius:8px!important;}
-  .b-qa-icon-wrap{width:40px!important;height:40px!important;border-radius:8px!important;}
-  .b-qa-icon-wrap svg{width:19px!important;height:19px!important;}
-  .b-qa-label{font-size:12.5px!important;}
-  .b-qa-chevron{width:13px!important;height:13px!important;}
-}
+/* ══ More Actions Dropdown — Mobile Fix (≤480px) ══
+   Use position:fixed to pin dropdown inside the viewport regardless
+   of parent overflow or stacking contexts.
+   ══════════════════════════════════════════════════ */
+@media(max-width:480px){
+  /* Compact buttons so all 3 fit on one line */
+  .add-btn-cancel, .add-btn-draft, .add-btn-more {
+    font-size:12px!important;
+    padding:8px 10px!important;
+    white-space:nowrap!important;
+  }
 
-/* ── Quick Actions card grid — 375px ── */
-@media(max-width:375px){
-  .b-qa-section{padding:12px 12px 10px!important;border-radius:8px!important;}
-  .b-qa-title{font-size:13.5px!important;margin-bottom:8px!important;}
-  .b-quick-actions{gap:8px!important;grid-template-columns:1fr 1fr!important;}
-  .b-qa-card{padding:10px 8px!important;gap:8px!important;border-radius:8px!important;}
-  .b-qa-icon-wrap{width:36px!important;height:36px!important;border-radius:7px!important;}
-  .b-qa-icon-wrap svg{width:17px!important;height:17px!important;}
-  .b-qa-label{font-size:11.5px!important;}
-  .b-qa-footer{gap:2px!important;}
-  .b-qa-chevron{width:12px!important;height:12px!important;}
-}
+  /* Drawer panel: must not clip overflow so fixed child renders over it */
+  .inv-drawer-panel { overflow-x:visible!important; }
+  .inv-drawer-panel > *:not(:last-child) { overflow-x:hidden!important; }
 
-/* ── 320px ── */
-@media(max-width:320px){
-  .b-page,.cust-page,.page-banking{padding:8px 6px!important;}
-  .dashboard{padding:8px 6px!important;}
-  .bk-kpi-value{font-size:15px!important;}
-  .ssm-val{font-size:14px!important;}
-  .b-kpi-value{font-size:16px!important;}
-  .inv-bulk-btn{padding:3px 5px!important;font-size:11px!important;min-width:50px!important;}
-  .sales-btn-ghost{padding:5px 6px!important;font-size:11px!important;}
-  .b-btn{padding:6px 10px!important;font-size:11px!important;}
-  .rec-page,.br-page,.bt-page,.btr-page,.chq-page,.cash-page,.pmt-page,.exp-page,.bill-page,.so-page,.po-page,.cn-page,.dn-page,.dc-page,.ew-page,.ei-page,.g1-page,.g3-page,.tds-page,.ia-page,.se-page,.sl-page,.sv-page,.ra-page,.cp-page,.r-page,.i-page,.page-reports{padding:8px 6px!important;}
-  .report-tab{font-size:10px!important;padding:4px 5px!important;}
+  /* ===== KEY FIX: use position:fixed so dropdown is always inside viewport ===== */
+  .add-btn-more + div,
+  div:has(> .add-more-menu-item) {
+    position:fixed!important;   /* relative to viewport — never clips */
+    left:8px!important;         /* 8px from left edge */
+    right:8px!important;        /* 8px from right edge */
+    width:auto!important;       /* stretch to fill between left+right */
+    max-width:none!important;
+    bottom:72px!important;      /* sit above the footer bar */
+    z-index:99999!important;
+    border-radius:12px!important;
+    box-shadow:0 8px 32px rgba(0,0,0,.18)!important;
+  }
+
+  /* Items: full width, bigger tap target */
+  .add-more-menu-item {
+    width:100%!important;
+    font-size:14px!important;
+    padding:14px 20px!important;
+    white-space:nowrap!important;
+    text-align:left!important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1427,7 +1141,344 @@ input[type=date].b-input { color-scheme: light; }
   .dc-items-head {
     min-width: 319px !important;
   }
-  .card-row-jen{
-  display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px
 }
+
+/* ─────────────────────────────────────────────
+   MOBILE INVOICE LIST — Card Layout
+   2-col grid | left: ID+customer+date+actions
+                right: amount+badge
+   Vertical divider via ::after pseudo-element.
+   ───────────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Wrapper: no horizontal scroll */
+  .inv-table-wrap {
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Kill native table layout */
+  .inv-table, .inv-table thead, .inv-table tbody,
+  .inv-table th, .inv-table td { display: block !important; }
+  .inv-table thead { display: none !important; }
+
+  /* Each row = card */
+  .inv-table tbody .inv-row {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    grid-template-rows: auto auto auto auto !important;
+    background: #fff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+    padding: 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06) !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+
+  /* Vertical divider */
+  .inv-table tbody .inv-row::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 12px !important;
+    bottom: 12px !important;
+    left: 50% !important;
+    width: 1px !important;
+    background: #e5e7eb !important;
+    pointer-events: none !important;
+  }
+
+  /* Hide: checkbox, balance */
+  .inv-table tbody .inv-row td:nth-child(1),
+  .inv-table tbody .inv-row td:nth-child(5),
+  .inv-table tbody .inv-row td:nth-child(8) { display: none !important; }
+
+  /* Base td */
+  .inv-table tbody .inv-row td {
+    display: flex !important;
+    align-items: flex-start !important;
+    padding: 0 !important;
+    font-size: 13px !important;
+    min-width: 0 !important;
+    border: none !important;
+    background: transparent !important;
+    cursor: pointer !important;
+  }
+
+  /* LEFT: Invoice ID — row 1 */
+  .inv-table tbody .inv-row td:nth-child(3) {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 14px 14px 2px 14px !important;
+  }
+  .inv-table tbody .inv-row td:nth-child(3) .inv-link,
+  .inv-table tbody .inv-row td:nth-child(3) a {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    color: #111827 !important;
+    text-decoration: none !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    max-width: 150px !important;
+    display: block !important;
+  }
+
+  /* LEFT: Customer — row 2 */
+  .inv-table tbody .inv-row td:nth-child(4) {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 2px 14px !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: #111827 !important;
+  }
+
+  /* LEFT: Date — row 3 */
+  .inv-table tbody .inv-row td:nth-child(2) {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    padding: 2px 14px 10px 14px !important;
+    font-size: 12px !important;
+    color: #6b7280 !important;
+    gap: 4px !important;
+    display: flex !important;
+  }
+  .inv-table tbody .inv-row td:nth-child(2) .inv-date-icon { display: none !important; }
+  .inv-table tbody .inv-row td:nth-child(2)::before {
+    font-size: 12px !important;
+    color: #6b7280 !important;
+  }
+
+  /* LEFT: Actions — row 4 */
+  .inv-table tbody .inv-row td:last-child,
+  .inv-table tbody .inv-row td:nth-child(9) {
+    grid-column: 1 !important;
+    grid-row: 4 !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 16px !important;
+    padding: 10px 14px 14px 14px !important;
+    background: transparent !important;
+    border-top: none !important;
+    min-height: unset !important;
+    cursor: default !important;
+  }
+  .inv-table tbody .inv-row td:last-child > div,
+  .inv-table tbody .inv-row td:nth-child(9) > div {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 16px !important;
+    justify-content: flex-start !important;
+    width: auto !important;
+  }
+
+  /* RIGHT: Amount — row 1 */
+  .inv-table tbody .inv-row td:nth-child(7) {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
+    justify-content: flex-start !important;
+    padding: 14px 14px 2px 14px !important;
+    font-size: 17px !important;
+    font-weight: 700 !important;
+    color: #111827 !important;
+    white-space: nowrap !important;
+    text-align: right !important;
+  }
+
+  /* RIGHT: Status badge — rows 2–4 */
+  .inv-table tbody .inv-row td:nth-child(6) {
+    grid-column: 2 !important;
+    grid-row: 2 / 5 !important;
+    display: block !important;
+    text-align: right !important;
+    padding: 2px 14px 10px 14px !important;
+  }
+
+  /* Badge visual styles */
+  .inv-table tbody .inv-row td:nth-child(6) .inv-status-badge,
+  .inv-table tbody .inv-row td:nth-child(6) [class*="badge"],
+  .inv-table tbody .inv-row td:nth-child(6) [class*="status"] {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+   
+    border-radius: 20px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    vertical-align: middle !important;
+    border: none !important;
+    white-space: nowrap !important;
+  }
+  .inv-table tbody .inv-row td:nth-child(6) .status-paid,
+  .inv-table tbody .inv-row td:nth-child(6) .status-active {
+    background: #dcfce7 !important; color: #166534 !important;
+  }
+  .inv-table tbody .inv-row td:nth-child(6) .status-unpaid,
+  .inv-table tbody .inv-row td:nth-child(6) .status-pending,
+  .inv-table tbody .inv-row td:nth-child(6) .status-open,
+  .inv-table tbody .inv-row td:nth-child(6) .status-partial {
+    background: #fff3dc !important; color: #92400e !important;
+  }
+  .inv-table tbody .inv-row td:nth-child(6) .status-draft {
+    background: transparent !important; color: #6b7280 !important;
+    border: 1px solid #9ca3af !important;
+  }
+  .inv-table tbody .inv-row td:nth-child(6) .status-overdue {
+    background: #fee2e2 !important; color: #991b1b !important;
+  }
+
+  /* Icon-only action buttons */
+  .inv-table .inv-act-btn,
+  .inv-table .inv-row-actions .inv-act-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: #374151 !important;
+    cursor: pointer !important;
+    font-family: inherit !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    min-width: 20px !important;
+    min-height: 20px !important;
+    transition: color .15s !important;
+  }
+  .inv-table .inv-act-btn svg { width: 18px !important; height: 18px !important; stroke-width: 1.5 !important; }
+  .inv-table .inv-act-btn[style*="dc2626"],
+  .inv-table .inv-act-btn[style*="#dc2626"],
+  .inv-table .inv-act-btn.text-danger { color: #dc2626 !important; }
+  .inv-table .inv-act-pay { color: #2563eb !important; }
+
+  /* KPI / Stat cards */
+  .bk-kpi-grid { display: none !important; }
+  .bk-stat-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
+  .inv-stat-count { display: none !important; }
+  .inv-stat-revenue { background: #dcf4e8 !important; border: none !important; }
+  .inv-stat-revenue .bk-stat-label { font-size: 0 !important; }
+  .inv-stat-revenue .bk-stat-label::after { content: "THIS MONTH REVENUE" !important; font-size: 10px !important; display: block !important; }
+  .inv-stat-receivable { background: #fff3dc !important; border: none !important; }
+  .inv-stat-receivable .bk-stat-label { font-size: 0 !important; }
+  .inv-stat-receivable .bk-stat-label::after { content: "TOTAL RECEIVABLE" !important; font-size: 10px !important; display: block !important; }
+  .inv-stat-average { background: #eaf1ff !important; border: none !important; }
+  .inv-stat-average .bk-stat-label { font-size: 0 !important; }
+  .inv-stat-average .bk-stat-label::after { content: "AVG INVOICE VALUE" !important; font-size: 10px !important; display: block !important; }
+  .bk-stat-icon { display: none !important; }
+
+  /* Shimmer */
+  .inv-table tbody .shimmer-row { display: block !important; height: 130px !important; border-radius: 12px !important; margin-bottom: 12px !important; }
+  .inv-table tbody .shimmer-row td { display: none !important; }
+}
+
+/* ─ 425px ─ */
+@media (max-width: 425px) {
+  .inv-table tbody .inv-row { border-radius: 12px !important; margin-bottom: 10px !important; }
+  .inv-table tbody .inv-row td:nth-child(3) { padding: 14px 12px 2px 12px !important; }
+  .inv-table tbody .inv-row td:nth-child(3) .inv-link,
+  .inv-table tbody .inv-row td:nth-child(3) a { font-size: 14px !important; max-width: 140px !important; }
+  .inv-table tbody .inv-row td:nth-child(4) { padding: 2px 12px !important; font-size: 14px !important; }
+  .inv-table tbody .inv-row td:nth-child(2) { padding: 2px 12px 8px 12px !important; font-size: 12px !important; }
+  .inv-table tbody .inv-row td:last-child,
+  .inv-table tbody .inv-row td:nth-child(9) { padding: 8px 12px 12px 12px !important; gap: 14px !important; }
+  .inv-table tbody .inv-row td:nth-child(7) { padding: 14px 12px 2px 12px !important; font-size: 17px !important; }
+  .inv-table tbody .inv-row td:nth-child(6) { padding: 4px 12px 10px 12px !important; }
+  .inv-table .inv-act-btn svg { width: 17px !important; height: 17px !important; }
+}
+
+/* ─ 375px ─ */
+@media (max-width: 375px) {
+  .inv-page, .list-page { padding: 6px !important; gap: 6px !important; }
+  .inv-table tbody .inv-row td:nth-child(3) { padding: 12px 10px 2px 10px !important; }
+  .inv-table tbody .inv-row td:nth-child(3) .inv-link,
+  .inv-table tbody .inv-row td:nth-child(3) a { font-size: 13.5px !important; max-width: 126px !important; }
+  .inv-table tbody .inv-row td:nth-child(4) { padding: 2px 10px !important; font-size: 13.5px !important; }
+  .inv-table tbody .inv-row td:nth-child(2) { padding: 2px 10px 8px 10px !important; font-size: 11.5px !important; }
+  .inv-table tbody .inv-row td:last-child,
+  .inv-table tbody .inv-row td:nth-child(9) { padding: 8px 10px 12px 10px !important; gap: 12px !important; }
+  .inv-table tbody .inv-row td:nth-child(7) { padding: 12px 10px 2px 10px !important; font-size: 16px !important; }
+  .inv-table tbody .inv-row td:nth-child(6) { padding: 4px 10px 10px 10px !important; }
+  .inv-table .inv-act-btn svg { width: 16px !important; height: 16px !important; }
+  .inv-table tbody .inv-row::after { top: 10px !important; bottom: 10px !important; }
+  .bk-kpi-grid { gap: 5px !important; }
+  .bk-kpi-inner { padding: 8px 10px !important; }
+  .bk-kpi-value { font-size: 14px !important; }
+  .bk-stat-grid { gap: 5px !important; }
+  .bk-stat-card { padding: 7px 8px !important; }
+}
+/* ─────────────────────────────────────────────
+   GENERIC MOBILE CARD TABLE (opt-in: add class "bk-card-table" next to "inv-table")
+   The invoice-list card layout above places cells by column position (nth-child),
+   which scrambles any other list. A table with .bk-card-table gets a plain
+   "label : value" card per row instead, using each cell's data-label.
+   ───────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .inv-table.bk-card-table tbody .inv-row {
+    display: block !important;
+    grid-template-columns: none !important;
+    grid-template-areas: none !important;
+    padding: 4px 0 !important;
+    margin-bottom: 10px !important;
+  }
+  .inv-table.bk-card-table tbody .inv-row::after { display: none !important; }
+  .inv-table.bk-card-table tbody .inv-row td,
+  .inv-table.bk-card-table tbody .inv-row td:nth-child(n) {
+    display: flex !important;
+    grid-area: auto !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    color: #374151 !important;
+    text-align: right !important;
+    border: none !important;
+    border-bottom: 1px solid #f0f2f5 !important;
+    min-width: 0 !important;
+    word-break: break-word;
+  }
+  .inv-table.bk-card-table tbody .inv-row td:nth-child(n)::before {
+    display: block !important;
+    content: attr(data-label) !important;
+    flex-shrink: 0;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #9ca3af !important;
+    text-align: left;
+  }
+  .inv-table.bk-card-table tbody .inv-row td .inv-link {
+    max-width: none !important;
+    color: #1a6ef7 !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+  }
+  .inv-table.bk-card-table tbody .inv-row td:last-child {
+    border-bottom: none !important;
+    justify-content: flex-end !important;
+    padding: 8px 14px 10px !important;
+  }
+  .inv-table.bk-card-table tbody .inv-row td:last-child:nth-child(n)::before { display: none !important; }
 }

@@ -42,13 +42,13 @@
           <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="7"><div class="shimmer" style="height:26px;border-radius:6px"></div></td></tr></template>
           <tr v-else-if="!sorted.length"><td colspan="7" class="mrl-empty">No Material Requests found</td></tr>
           <tr v-else v-for="row in paged" :key="row.name" class="mrl-row" @click="selectMR(row.name)">
-            <td><span class="mrl-link">{{ row.name }}</span></td>
-            <td>{{ row.material_request_type || '—' }}</td>
-            <td>{{ refLabel(row) }}</td>
-            <td>{{ fmtDate(row.posting_date) }}</td>
-            <td>{{ empName(row) }}</td>
-            <td><span class="bomx-badge" :class="statusClass(row)">{{ row.status }}</span></td>
-            <td style="text-align:center" @click.stop><button class="mrl-act" title="Open" @click="selectMR(row.name)"><span v-html="icon('ext',13)"></span></button></td>
+            <td class="mrl-c-no" data-label="MRN No"><span class="mrl-link">{{ row.name }}</span></td>
+            <td data-label="Type">{{ row.material_request_type || '—' }}</td>
+            <td data-label="Project">{{ refLabel(row) }}</td>
+            <td data-label="Required By">{{ fmtDate(row.posting_date) }}</td>
+            <td data-label="Requested By">{{ empName(row) }}</td>
+            <td class="mrl-c-status" data-label="Status"><span class="bomx-badge" :class="statusClass(row)">{{ row.status }}</span></td>
+            <td class="mrl-c-act" style="text-align:center" @click.stop><button class="mrl-act" title="Open" @click="selectMR(row.name)"><span v-html="icon('ext',13)"></span></button></td>
           </tr>
         </tbody>
       </table>
@@ -936,8 +936,14 @@ const ssOpts4 = computed(() => [{ value: '', label: '— Select —' }, ...(ware
 .mrx-add:hover { background:var(--bx-mfgS); }
 @media (max-width:640px) {
   .mrx-head { display:none; }
-  .mrx-row, .mrx-items.mrx-has-wh .mrx-row { grid-template-columns:28px minmax(0,1fr) 32px; row-gap:6px; padding:10px 12px; }
-  .mrx-row > :nth-child(3), .mrx-row > :nth-child(4), .mrx-row > :nth-child(5) { grid-column:2; }
+  /* two-line row: [#] [item ........] [x]  /  [qty] [uom]  (/ warehouse when present) */
+  .mrx-row, .mrx-items.mrx-has-wh .mrx-row { grid-template-columns:22px minmax(0,1fr) minmax(0,1fr) auto; column-gap:8px; row-gap:8px; padding:12px; align-items:center; }
+  .mrx-row > .mrx-c-no { grid-column:1; grid-row:1; text-align:left; }
+  .mrx-row > :nth-child(2) { grid-column:2 / 4; grid-row:1; min-width:0; }
+  .mrx-row > :nth-child(3) { grid-column:2; grid-row:2; min-width:0; }
+  .mrx-row > :nth-child(4) { grid-column:3; grid-row:2; min-width:0; }
+  .mrx-items.mrx-has-wh .mrx-row > :nth-child(5) { grid-column:2 / 4; grid-row:3; min-width:0; }
+  .mrx-row > .bomx-btn-icon { grid-column:4; grid-row:1; width:34px; height:34px; justify-content:center; align-items:center; }
 }
 
 /* ── Buttons / inputs ── */
@@ -1032,6 +1038,57 @@ select.bomx-fi:disabled { background-image: none; padding-right: 9px; }
 .mrl-foot { margin-top:14px; background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:8px 12px; }
 @media (max-width:1024px) { .mrl-kpis { grid-template-columns:repeat(2,1fr); } .mrl-actions { margin-left:0; } }
 
+/* ── List view: mobile (≤640px) — card per row, tidy toolbar and KPIs ── */
+@media (max-width:640px) {
+  .mrl-toolbar { gap:10px; }
+  .mrl-search { width:100%; min-width:0; box-sizing:border-box; }
+  .mrl-pills { flex-wrap:nowrap; overflow-x:auto; width:100%; padding-bottom:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .mrl-pills::-webkit-scrollbar { display:none; }
+  .mrl-pill { flex-shrink:0; white-space:nowrap; }
+  .mrl-actions { width:100%; margin-left:0; display:grid; grid-template-columns:1fr auto auto; gap:8px; }
+  .mrl-actions .mrl-select { width:100%; min-width:0; }
+  .mrl-actions .mrl-btn-pri { grid-column:1 / -1; justify-content:center; height:40px; font-size:13.5px; }
+  .mrl-kpis { gap:10px; margin-bottom:14px; }
+  .mrl-kpi { flex-direction:column; align-items:flex-start; gap:8px; padding:12px; border-radius:12px; min-width:0; }
+  .mrl-kpi-icon { width:34px; height:34px; border-radius:10px; }
+  .mrl-kpi-label { font-size:10.5px; letter-spacing:.04em; }
+  .mrl-kpi-value { font-size:22px; }
+  .mrl-kpi-sub { font-size:11px; }
+
+  .mrl-table-wrap { background:transparent; border:none; border-radius:0; overflow:visible; }
+  .mrl-table, .mrl-table tbody { display:block; min-width:0; width:100%; }
+  .mrl-table thead { display:none; }
+  .mrl-table tr { display:block; }
+  .mrl-table tr.mrl-row {
+    display:grid; grid-template-columns:minmax(0,1fr) auto; background:#fff;
+    border:1px solid #e5e7eb; border-radius:12px; margin-bottom:10px; overflow:hidden;
+    box-shadow:0 1px 2px rgba(16,24,40,.04);
+  }
+  .mrl-table tr.mrl-row:active { background:#f8fafc; }
+  .mrl-table tr.mrl-row td {
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    grid-column:1 / -1; padding:8px 14px; border:none; border-bottom:1px solid #f1f5f9;
+    font-size:13px; text-align:right; min-width:0; word-break:break-word;
+  }
+  .mrl-table tr.mrl-row td::before {
+    content:attr(data-label); flex-shrink:0; text-align:left;
+    font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#9ca3af;
+  }
+  /* header line of the card: MRN No (left) + Status (right) */
+  .mrl-table tr.mrl-row td.mrl-c-no, .mrl-table tr.mrl-row td.mrl-c-status {
+    grid-row:1; background:#f8fafc; border-bottom:1px solid #eef1f5; padding:11px 14px;
+  }
+  .mrl-table tr.mrl-row td.mrl-c-no { grid-column:1; }
+  .mrl-table tr.mrl-row td.mrl-c-status { grid-column:2; }
+  .mrl-table tr.mrl-row td.mrl-c-no::before, .mrl-table tr.mrl-row td.mrl-c-status::before { display:none; }
+  .mrl-table tr.mrl-row td.mrl-c-no .mrl-link { font-size:14px; }
+  .mrl-table tr.mrl-row td.mrl-c-act { display:none; }
+  .mrl-table tr.mrl-row td:nth-last-child(2) { border-bottom:none; }
+  /* loading / empty rows */
+  .mrl-table tr:not(.mrl-row) { background:#fff; border:1px solid #e5e7eb; border-radius:12px; margin-bottom:10px; }
+  .mrl-table tr:not(.mrl-row) td { display:block; }
+}
+
 /* ── New request drawer ── */
 .mr-drawer-overlay { position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:1000; display:flex; justify-content:flex-end; }
 .mr-drawer { width:min(960px,100vw); height:100%; background:#f4f6f9; overflow-y:auto; display:flex; flex-direction:column; box-shadow:-8px 0 30px rgba(0,0,0,.2); }
@@ -1050,4 +1107,19 @@ select.bomx-fi:disabled { background-image: none; padding-right: 9px; }
 .mr-btn-save { display:inline-flex; align-items:center; gap:6px; border:1.5px solid #1565c0; border-radius:7px; background:#1565c0; color:#fff; padding:8px 18px; font-size:13.5px; font-weight:700; cursor:pointer; font-family:inherit; }
 .mr-btn-save:hover { background:#1251a3; }
 .mr-btn-save:disabled, .mr-btn-cancel:disabled { opacity:.5; cursor:not-allowed; }
+/* ── Material Request drawer: mobile (≤640px) ── */
+@media (max-width:640px) {
+  .mr-drawer .bomx-detail-hdr { padding:12px 14px; }
+  .mr-drawer .bomx-detail-title { font-size:18px; }
+  .mr-drawer .bomx-detail-hdr .bomx-btn { padding:7px 12px; font-size:12px; }
+  .mr-drawer .bomx-hdr-fields { padding:14px; gap:12px; }
+  .mr-drawer .bomx-body { padding:14px 14px 20px; }
+  .mr-drawer .bomx-toggle-row { padding:10px 14px; }
+  .mr-drawer .bomx-who-note { margin:10px 14px; }
+  .mr-drawer-foot { padding:12px 14px; flex-wrap:wrap; }
+  .mr-drawer-foot > * { min-width:0; }
+}
+@media (max-width:480px) {
+  .mr-drawer .bomx-hdr-fields { grid-template-columns:1fr; }
+}
 </style>
