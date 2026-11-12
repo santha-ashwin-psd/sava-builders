@@ -44,6 +44,16 @@ def mrn_vs_lpo(project=None):
 	return rows
 
 
+def _item_master_names(codes):
+	"""{item_code: item_name} from the Item master. Order/receipt lines often keep the code as their
+	name, so reports take the name from the master and fall back to the line's own value."""
+	codes = list({c for c in codes if c})
+	if not codes:
+		return {}
+	return {r.name: r.item_name for r in frappe.get_all(
+		"Item", filters={"name": ["in", codes]}, fields=["name", "item_name"], limit_page_length=0)}
+
+
 @frappe.whitelist(allow_guest=False)
 def lpo_vs_grn(project=None):
 	po_filters = _project_filter({"docstatus": 1}, project)
@@ -51,13 +61,17 @@ def lpo_vs_grn(project=None):
 		fields=["name", "project", "supplier", "supplier_name", "status"])
 	names = _project_names()
 	rows = []
+	lines_by_po = {}
 	for p in pos:
-		for it in frappe.get_all("Purchase Order Item", filters={"parent": p.name},
-				fields=["item_code", "item_name", "qty", "received_qty", "billed_qty", "uom"]):
+		lines_by_po[p.name] = frappe.get_all("Purchase Order Item", filters={"parent": p.name},
+			fields=["item_code", "item_name", "qty", "received_qty", "billed_qty", "uom"])
+	item_names = _item_master_names(it.item_code for lines in lines_by_po.values() for it in lines)
+	for p in pos:
+		for it in lines_by_po[p.name]:
 			rows.append({
 				"lpo": p.name, "project": p.project or "", "project_name": names.get(p.project) or p.project or "", "supplier": p.supplier,
 				"supplier_name": p.supplier_name or p.supplier, "lpo_status": p.status,
-				"item_code": it.item_code, "item_name": it.item_name or it.item_code, "uom": it.uom or "",
+				"item_code": it.item_code, "item_name": item_names.get(it.item_code) or it.item_name or it.item_code, "uom": it.uom or "",
 				"ordered_qty": flt(it.qty), "received_qty": flt(it.received_qty),
 				"pending_qty": max(0.0, flt(it.qty) - flt(it.received_qty)),
 				"billed_qty": flt(it.billed_qty),
