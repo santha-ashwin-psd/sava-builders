@@ -972,7 +972,8 @@ function _renderSavaPOPreprinted(doc, cfg) {
   @media print{
     html,body{background:#fff}
     .toolbar{display:none!important}
-    .pg{margin:0;box-shadow:none;height:calc(var(--ph) - 3mm)}
+    .pg{margin:0;box-shadow:none;height:calc(var(--ph) - 12mm);overflow:visible}
+    .pg:last-of-type{page-break-after:avoid;break-after:avoid}
   }
 </style></head><body>
 <div class="toolbar">
