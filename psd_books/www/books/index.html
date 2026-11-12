@@ -2304,10 +2304,10 @@ window["__booksCompany"] = "";  // bracket form: dot + double-underscore is reje
 (function () {
   var forceLegacy = /[?&]legacy=1\b/.test(window.location.search);
 
-  function appendScript(src) {
+  function appendScript(src, isModule) {
     var el = document.createElement("script");
     el.src = src;
-    el.async = false;
+    if (isModule) el.type = "module"; else el.async = false;
     document.body.appendChild(el);
   }
 
@@ -2320,7 +2320,7 @@ window["__booksCompany"] = "";  // bracket form: dot + double-underscore is reje
     css.rel = "stylesheet";
     css.href = "/assets/psd_books/js/style.css?v={{ style_v }}";
     document.head.appendChild(css);
-    appendScript("/assets/psd_books/js/books.js?v={{ bundle_v }}");
+    appendScript("/assets/psd_books/js/books.js?v={{ bundle_v }}", true);
   }
 })();
 </script>

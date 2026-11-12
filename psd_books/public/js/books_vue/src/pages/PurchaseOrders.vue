@@ -1355,6 +1355,8 @@ function canDelete(o) {
 
 async function load() {
   loading.value = true;
+  // PO list and project names are independent: fetch them in parallel.
+  const projP = apiList("Project", { fields: ["name", "project_name"], limit: 1000 }).catch(() => null);
   try {
     const co = await resolveCompany();
     list.value = await apiList("Purchase Order", {
@@ -1364,11 +1366,9 @@ async function load() {
       order: "transaction_date desc, creation desc",
     });
   } catch (e) { toast.error(e.message || "Failed to load purchase orders"); }
-  try {
-    const pr = await apiList("Project", { fields: ["name", "project_name"], limit: 1000 });
-    projectNames.value = Object.fromEntries((pr || []).map(x => [x.name, x.project_name]));
-  } catch (e) { projectNames.value = {}; }
-  finally { loading.value = false; }
+  const pr = await projP;
+  projectNames.value = pr ? Object.fromEntries(pr.map(x => [x.name, x.project_name])) : {};
+  loading.value = false;
 }
 async function loadTaxAccount() {
   try {
@@ -2273,8 +2273,8 @@ const route = useRoute();
 onMounted(async () => {
   setCompany(window.__booksCompany || "");
   document.addEventListener('click', onDocClickForDownloadMenu);
+  loadTaxAccount();   // independent of the list: start it alongside load()
   await load();
-  loadTaxAccount();
   if (route.query.new_from_mr) {
     try {
       const draft = await apiPOST("psd_books.api.inventory.create_po_from_mr", { material_request: route.query.new_from_mr });

@@ -24,11 +24,12 @@ export default defineConfig({
       entry:    resolve(__dirname, "src/main.js"),
       name:     "BooksApp",
       fileName: () => "books.js",
-      formats:  ["iife"],
+      formats:  ["es"],   // ES module build so each page can be a lazy chunk (IIFE cannot code-split)
     },
     rollupOptions: {
       output: {
         assetFileNames: "[name][extname]",
+        chunkFileNames: "chunks/[name]-[hash].js",   // content-hashed => safe to cache
       },
     },
     minify:       true,

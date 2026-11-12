@@ -314,10 +314,6 @@ export async function apiList(dt, opts = {}) {
   const filters = [...(opts.filters || [])];
   const co = window.__booksCompany || "";
 
-  if ((_CO_SCOPED.has(dt) || _BOOKS_CO_SCOPED.has(dt))) {
-    console.log("[BooksCompany][client.js] apiList(", dt, ") using window.__booksCompany =", co);
-  }
-
   if (co && _CO_SCOPED.has(dt)) {
     if (!filters.some(f => Array.isArray(f) && f[0] === "company"))
       filters.push(["company", "=", co]);

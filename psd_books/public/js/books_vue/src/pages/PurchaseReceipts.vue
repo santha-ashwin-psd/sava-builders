@@ -659,7 +659,13 @@ async function load() {
   try {
     // No standalone Purchase Receipt doctype in this build. Synthesise the list
     // from Purchase Order lines with received_qty > 0.
-    const rows = await apiGET("psd_books.api.docs.get_purchase_receipt_list", { limit: 100000 }) || [];
+    // Fetch the list and the project names in parallel (project per row now comes from the backend list).
+    const [rows0, projRows] = await Promise.all([
+      apiGET("psd_books.api.docs.get_purchase_receipt_list", { limit: 100000 }),
+      apiList("Project", { fields: ["name", "project_name"], limit: 1000 }).catch(() => []),
+    ]);
+    const rows = rows0 || [];
+    projectNames.value = Object.fromEntries((projRows || []).map(x => [x.name, x.project_name]));
     const rawList = rows.map(r => ({
       // Real Purchase Receipts already have their own name from the backend —
       // don't overwrite it with the linked PO's name, or multiple GRNs against
@@ -678,20 +684,8 @@ async function load() {
       docstatus: r.docstatus,
       grand_total: r.grand_total,
       source: r.source || "derived",
+      project: r.project || "",
     }));
-    // Project: from the real Purchase Receipt, else from its Purchase Order.
-    try {
-      const pr = await apiList("Project", { fields: ["name", "project_name"], limit: 1000 });
-      projectNames.value = Object.fromEntries((pr || []).map(x => [x.name, x.project_name]));
-    } catch (e) { projectNames.value = {}; }
-    try {
-      const prRows = await apiList("Purchase Receipt", { fields: ["name", "project"], limit: 100000 }).catch(() => []);
-      const prMap = Object.fromEntries(prRows.map(x => [x.name, x.project]));
-      const poNames = [...new Set(rawList.map(r => r.purchase_order).filter(Boolean))];
-      const poRows = poNames.length ? await apiList("Purchase Order", { fields: ["name", "project"], filters: [["name", "in", poNames]], limit: poNames.length }).catch(() => []) : [];
-      const poMap = Object.fromEntries(poRows.map(x => [x.name, x.project]));
-      rawList.forEach(r => { r.project = prMap[r.name] || poMap[r.purchase_order] || ""; });
-    } catch (e) { /* project column stays blank */ }
     list.value = rawList;
     // Resolve missing supplier_name — backend may omit it
     const missing = [...new Set(rawList.filter(r => !r.supplier_name && r.supplier).map(r => r.supplier))];
@@ -988,13 +982,7 @@ async function fetchVendors(q = "") {
     const filters = [["disabled", "=", 0]];
     if (q) filters.push(["supplier_name", "like", `%${q}%`]);
     const rows = await apiList("Supplier", { fields: ["name", "supplier_name"], filters, limit: 30, order: "supplier_name asc" });
-    const opts = rows.map(r => ({ label: r.supplier_name || r.name, value: r.name }));
-    // Keep the currently selected supplier in the list even if it is outside the
-    // first 30 rows, otherwise the select falls back to showing the supplier code.
-    if (form.supplier && !opts.some(o => o.value === form.supplier)) {
-      opts.unshift({ label: form.supplier_name || form.supplier, value: form.supplier });
-    }
-    vendorOptions.value = opts;
+    vendorOptions.value = rows.map(r => ({ label: r.supplier_name || r.name, value: r.name }));
   } catch { vendorOptions.value = []; }
 }
 function onSupSelect(opt) {
@@ -1107,17 +1095,7 @@ async function onPOSelect(opt) {
     if (!form.supplier) {
       const ps = await apiList("Purchase Order", { fields: ["name", "supplier", "supplier_name"], filters: [["name", "=", poName]], limit: 1 });
       const sp = ps?.[0];
-      if (sp?.supplier) {
-        let sname = sp.supplier_name;
-        if (!sname || sname === sp.supplier) {
-          const sr = await apiList("Supplier", { fields: ["name", "supplier_name"], filters: [["name", "=", sp.supplier]], limit: 1 }).catch(() => []);
-          sname = sr?.[0]?.supplier_name || sp.supplier;
-        }
-        form.supplier_name = sname;
-        form.supplier = sp.supplier;
-        if (!vendorOptions.value.some(o => o.value === sp.supplier)) vendorOptions.value = [{ label: sname, value: sp.supplier }, ...vendorOptions.value];
-        fetchVendors("");
-      }
+      if (sp?.supplier) { form.supplier = sp.supplier; form.supplier_name = sp.supplier_name || sp.supplier; fetchVendors(""); }
     }
   } catch {}
   try {

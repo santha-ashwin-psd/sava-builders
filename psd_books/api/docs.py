@@ -6238,17 +6238,26 @@ def get_purchase_receipt_list(company=None, limit=200):
     # 1) Real Purchase Receipts
     prs = frappe.db.sql("""
         SELECT name, supplier, supplier_name, posting_date, purchase_order,
-               status, total_qty, supplier_delivery_note, docstatus
+               status, total_qty, supplier_delivery_note, docstatus, project
         FROM `tabPurchase Receipt`
         WHERE company = %(co)s
         ORDER BY posting_date DESC, creation DESC
         LIMIT %(lim)s
     """, {"co": company, "lim": int(limit)}, as_dict=True)
+    # Project fallback: a receipt without its own project uses its Purchase Order's project
+    # (one query here instead of a second full fetch from the browser).
+    _po_names = list({p.purchase_order for p in prs if p.purchase_order and not p.project})
+    _po_proj = {}
+    if _po_names:
+        _po_proj = {r.name: r.project for r in frappe.db.sql(
+            "SELECT name, project FROM `tabPurchase Order` WHERE name IN %(n)s",
+            {"n": tuple(_po_names)}, as_dict=True)}
     out = []
     pos_with_pr = set()
     for p in prs:
         if p.purchase_order: pos_with_pr.add(p.purchase_order)
         out.append({
+            "project":               p.project or _po_proj.get(p.purchase_order) or "",
             "name":                  p.name,
             "purchase_order":        p.purchase_order or "",
             "supplier":              p.supplier, "supplier_name": p.supplier_name,
@@ -6269,7 +6278,7 @@ def get_purchase_receipt_list(company=None, limit=200):
             po.name AS purchase_order,
             po.supplier, po.supplier_name,
             po.transaction_date, po.expected_delivery_date, po.status,
-            po.grand_total,
+            po.grand_total, po.project,
             SUM(poi.qty)           AS qty_ordered,
             SUM(poi.received_qty)  AS qty_received,
             SUM(poi.billed_qty)    AS qty_billed

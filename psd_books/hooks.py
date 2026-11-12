@@ -180,7 +180,8 @@ global_search_doctypes = {
 }
 
 app_include_css = ["/assets/psd_books/css/books.css"]
-app_include_js  = ["/assets/psd_books/js/books.js"]
+# books.js is now an ES-module bundle loaded by www/books/index.html; a classic desk include would throw a SyntaxError.
+app_include_js  = []
 
 after_install = "psd_books.books_setup.install.after_install"
 after_migrate = "psd_books.books_setup.install.after_migrate"
