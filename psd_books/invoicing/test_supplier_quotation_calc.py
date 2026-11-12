@@ -35,7 +35,7 @@ class TestLine(unittest.TestCase):
 
 	def test_discount_then_vat(self):
 		r = C.calc_line(10, 100, 10, 16)
-		self.assertEqual(r, {"net_rate": 90.0, "amount": 900.0, "tax_amount": 144.0})
+		self.assertEqual(r, {"net_rate": 90.0, "amount": 775.86, "tax_amount": 124.14})
 
 	def test_not_quoted(self):
 		for blank in (None, "", 0, "0"):
@@ -44,8 +44,8 @@ class TestLine(unittest.TestCase):
 	def test_rounding_half_up(self):
 		# 3 x 0.335 = 1.005 -> 1.01 (a float would give 1.0)
 		self.assertEqual(C.calc_line(3, 0.335)["amount"], 1.01)
-		# VAT 16% of 1.01 = 0.1616 -> 0.16
-		self.assertEqual(C.calc_line(3, 0.335, 0, 16)["tax_amount"], 0.16)
+		# rate includes VAT: 1.01 / 1.16 = 0.8707 -> amount 0.87, VAT 0.14
+		self.assertEqual(C.calc_line(3, 0.335, 0, 16)["tax_amount"], 0.14)
 
 	def test_blank_discount_and_vat(self):
 		self.assertEqual(C.calc_line(2, 50, None, None)["amount"], 100.0)
@@ -54,7 +54,7 @@ class TestLine(unittest.TestCase):
 class TestTotals(unittest.TestCase):
 	def test_totals(self):
 		lines = [C.calc_line(10, 100, 10, 16), C.calc_line(5, 20, 0, 16)]
-		self.assertEqual(C.calc_totals(lines), {"net_total": 1000.0, "total_tax": 160.0, "grand_total": 1160.0})
+		self.assertEqual(C.calc_totals(lines), {"net_total": 862.07, "total_tax": 137.93, "grand_total": 1000.0})
 
 	def test_unquoted_lines_ignored(self):
 		lines = [C.calc_line(10, 100), C.calc_line(5, None, 0, 16)]
@@ -68,9 +68,9 @@ class TestApplyToDoc(unittest.TestCase):
 	def test_fills_rows_and_header(self):
 		doc = _Doc(items=[row(rate=100, discount_percent=10, vat_percent=16), row(qty=4)])
 		C.apply_to_doc(doc)
-		self.assertEqual((doc.items[0].net_rate, doc.items[0].amount, doc.items[0].tax_amount), (90.0, 900.0, 144.0))
+		self.assertEqual((doc.items[0].net_rate, doc.items[0].amount, doc.items[0].tax_amount), (90.0, 775.86, 124.14))
 		self.assertEqual((doc.items[1].net_rate, doc.items[1].amount), (0.0, 0.0))
-		self.assertEqual((doc.net_total, doc.total_tax, doc.grand_total), (900.0, 144.0, 1044.0))
+		self.assertEqual((doc.net_total, doc.total_tax, doc.grand_total), (775.86, 124.14, 900.0))
 
 	def test_no_items(self):
 		doc = _Doc(items=[])

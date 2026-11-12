@@ -1,8 +1,11 @@
 """Supplier Quotation money maths (Sava A8.1). No database, no frappe: plain functions.
 
 A line with no rate is "not quoted": it has no amount and is ignored in the totals.
-amount     = qty x rate x (1 - discount%)          (before VAT)
-tax_amount = amount x VAT%
+The rate the supplier quotes INCLUDES VAT (same as the Purchase Order).
+net_rate   = rate x (1 - discount%)                  (still VAT-inclusive; this is what goes to the PO)
+gross      = qty x net_rate                          (VAT-inclusive line total)
+amount     = gross / (1 + VAT%)                      (before VAT)
+tax_amount = gross - amount
 Money is rounded to 2 decimals, half up. net_rate is rounded to 4.
 """
 from decimal import ROUND_HALF_UP, Decimal
@@ -27,8 +30,9 @@ def calc_line(qty, rate, discount_percent=0, vat_percent=0):
 	if not is_quoted(rate):
 		return {"net_rate": 0.0, "amount": 0.0, "tax_amount": 0.0}
 	net_rate = _d(rate) * (Decimal(100) - _d(discount_percent)) / Decimal(100)
-	amount = (_d(qty) * net_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-	tax = (amount * _d(vat_percent) / Decimal(100)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+	gross = (_d(qty) * net_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+	amount = (gross * Decimal(100) / (Decimal(100) + _d(vat_percent))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+	tax = gross - amount
 	return {"net_rate": _money(net_rate, "0.0001"), "amount": float(amount), "tax_amount": float(tax)}
 
 

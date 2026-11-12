@@ -150,3 +150,7 @@ psd_books.patches.v1_29.backfill_po_item_mrn
 
 # GRN lines get their own Purchase Order (one GRN can cover several POs): fill from the GRN header. Safe to re-run.
 psd_books.patches.v1_30.backfill_grn_line_po
+
+
+# GRN lines get the tax template of their Purchase Order line (shown next to the rate). Safe to re-run.
+psd_books.patches.v1_31.backfill_grn_line_tax

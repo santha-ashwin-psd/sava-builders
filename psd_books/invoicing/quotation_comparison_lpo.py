@@ -112,8 +112,10 @@ def round_row(row, qty):
 	same = abs(qty - float(row.get("order_qty") or 0)) < EPS
 	out["order_qty"] = qty
 	if not same:
-		out["amount"] = round(float(row.get("net_rate") or 0) * qty, 2)
-		out["tax_amount"] = round(out["amount"] * float(row.get("vat_percent") or 0) / 100.0, 2)
+		# net_rate includes VAT, so split the gross out into amount + VAT
+		gross = round(float(row.get("net_rate") or 0) * qty, 2)
+		out["amount"] = round(gross / (1 + float(row.get("vat_percent") or 0) / 100.0), 2)
+		out["tax_amount"] = round(gross - out["amount"], 2)
 	return out
 
 

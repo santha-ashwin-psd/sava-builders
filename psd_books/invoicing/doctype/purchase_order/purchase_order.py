@@ -150,7 +150,7 @@ class PurchaseOrder(Document):
         material_request field always holds the first MRN, so older screens and reports keep working.
         Checked while the PO is a draft / new, so saving a status change on an old submitted PO
         is never blocked. Items that are not on the MRN are left alone (substitutions)."""
-        if self.docstatus != 0 and not self.is_new():
+        if self.docstatus != 0 and not self.is_new() and not self.flags.get("force_mrn_check"):
             return
         line_mrns = [r.get("material_request") for r in (self.items or []) if r.get("material_request")]
         if line_mrns and (not self.get("material_request") or self.material_request not in line_mrns):
@@ -188,16 +188,23 @@ class PurchaseOrder(Document):
                         title="Quantity exceeds MRN")
 
     def _calculate_totals(self):
+        # Item rates are VAT-inclusive: sum(qty x rate) is the gross, i.e. the grand total.
+        # VAT is split out of it (gross x rate / (100 + rate)) and net_total = gross - VAT.
         for item in (self.items or []):
             item.amount = round(flt(item.qty) * flt(item.rate), 2)
-        net = sum(flt(i.amount) for i in (self.items or []))
+        gross = sum(flt(i.amount) for i in (self.items or []))
         for tax in (self.taxes or []):
             if flt(tax.rate) and not flt(tax.tax_amount):
-                tax.tax_amount = round(net * flt(tax.rate) / 100, 2)
+                # tax row description = the item's tax template; only those items fall under it.
+                # No item carries that template (e.g. a PO made from a comparison): whole gross.
+                matched = sum(flt(i.amount) for i in (self.items or [])
+                              if getattr(i, "tax_code", None) and i.tax_code == getattr(tax, "description", None))
+                base = matched if matched else gross
+                tax.tax_amount = round(base * flt(tax.rate) / (100 + flt(tax.rate)), 2)
         tax_total = sum(flt(t.tax_amount) for t in (self.taxes or []))
-        self.net_total   = round(net, 2)
+        self.net_total   = round(gross - tax_total, 2)
         self.total_tax   = round(tax_total, 2)
-        self.grand_total = round(net + tax_total, 2)
+        self.grand_total = round(gross, 2)
 
     def before_submit(self):
         # A10.2: a PO is only submitted once every approval level has approved it (the last approval

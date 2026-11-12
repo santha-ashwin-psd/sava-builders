@@ -204,5 +204,39 @@ def action_state(status, raised_by, steps, user, roles, is_admin=False):
 	return out
 
 
+DIRECTOR_ROLE = "Director"
+ISSUED_STATUS = "To Receive"
+
+
+def director_edit_block(status, docstatus, roles, grns, received_qty=0, billed_qty=0):
+	"""Why a Director can't edit this approved Purchase Order now, or None when they can.
+	A Director may edit an approved (issued) PO only while nothing has happened against it:
+	no GRN (Draft or Submitted), nothing received, nothing billed. grns: names of such GRNs."""
+	if DIRECTOR_ROLE not in (roles or []):
+		return _("Only the Director can edit an approved Purchase Order.")
+	if docstatus != 1:
+		return _("Only an approved (issued) Purchase Order can be edited this way.")
+	if status != ISSUED_STATUS:
+		return _("A Purchase Order that is {0} can't be edited. Only one still waiting to be received can.").format(status)
+	if grns:
+		return _("A GRN ({0}) already exists on this Purchase Order. Cancel it first to edit the Purchase Order.").format(", ".join(grns))
+	if flt(received_qty) > 0 or flt(billed_qty) > 0:
+		return _("Goods are already received or billed on this Purchase Order, so it can't be edited.")
+	return None
+
+
+def grns_on_po(po_name):
+	"""Draft and Submitted GRNs that sit on the PO (header PO or any line PO). Cancelled ones don't count."""
+	return frappe.db.sql_list("""SELECT DISTINCT pr.name FROM `tabPurchase Receipt` pr
+		LEFT JOIN `tabPurchase Receipt Item` pri ON pri.parent = pr.name
+		WHERE pr.docstatus < 2 AND (pr.purchase_order = %(po)s OR pri.purchase_order = %(po)s)
+		ORDER BY pr.name""", {"po": po_name})
+
+
+def levels_match_total(doc):
+	"""True when the levels this PO was approved at are still the levels its (new) total needs."""
+	return [s.role for s in (doc.get("approval_steps") or [])] == required_roles(doc.grand_total)
+
+
 def summary(doc):
 	return {"name": doc.name, "status": doc.status, "docstatus": doc.docstatus, "grand_total": doc.grand_total}

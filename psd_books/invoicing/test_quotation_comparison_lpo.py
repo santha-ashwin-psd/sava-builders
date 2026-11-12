@@ -110,7 +110,7 @@ class Rounds(unittest.TestCase):
 
 	def test_balance_round_scales_amount_and_vat_at_the_approved_rate(self):
 		out = lpo.plan_round("Partially Ordered", self.rows(), {"A": 40.0}, {"A": 50})
-		self.assertEqual((out[0]["order_qty"], out[0]["amount"], out[0]["tax_amount"]), (50, 5000.0, 800.0))
+		self.assertEqual((out[0]["order_qty"], out[0]["amount"], out[0]["tax_amount"]), (50, 4310.34, 689.66))
 
 	def test_above_balance_refused(self):
 		with self.assertRaises(ThrowError) as c:

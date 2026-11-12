@@ -16,9 +16,10 @@ membership themselves and save with ignore_permissions.
 """
 import frappe
 from frappe import _
-from frappe.utils import now_datetime
+from frappe.utils import flt, now_datetime
 
 from psd_books.invoicing import po_approval_rules as rules
+from psd_books.invoicing.doctype.purchase_order.purchase_order import po_material_requests, sync_material_request_status
 
 DOCTYPE = "Purchase Order"
 STEP_FIELDS = ["level", "role", "status", "approver", "approved_on", "remarks"]
@@ -43,6 +44,14 @@ def _load(name):
 	return doc
 
 
+def _director_edit_block(doc, roles):
+	"""None when the Director may edit this approved PO (nothing received, billed or on a GRN)."""
+	received = sum(flt(i.received_qty) for i in (doc.get("items") or []))
+	billed = sum(flt(i.billed_qty) for i in (doc.get("items") or []))
+	grns = rules.grns_on_po(doc.name) if doc.docstatus == 1 else []
+	return rules.director_edit_block(doc.status, doc.docstatus, roles, grns, received, billed)
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET"])
 def get_approval_state(name):
 	roles = frappe.get_roles()
@@ -55,7 +64,9 @@ def get_approval_state(name):
 		fields=STEP_FIELDS, order_by="idx asc")
 	steps = [dict(s) for s in steps]
 	user = frappe.session.user
+	edit_block = _director_edit_block(doc, roles)
 	return {
+		"can_director_edit": edit_block is None, "director_edit_reason": edit_block,
 		"name": doc.name, "status": doc.status, "docstatus": doc.docstatus, "grand_total": doc.grand_total,
 		"raised_by": doc.get("raised_by"), "rejection_reason": doc.get("rejection_reason"),
 		"approval_steps": steps,
@@ -116,3 +127,57 @@ def cancel_po(name, reason):
 	frappe.db.set_value(DOCTYPE, doc.name, "status", "Cancelled", update_modified=True)
 	frappe.db.commit()
 	return rules.summary(doc)
+
+
+# Header fields a Director may change on an approved PO (status, approval levels, totals and links stay as they are).
+EDITABLE_HEADER = [
+	"supplier", "entry_date", "transaction_date", "expected_delivery_date", "purchase_type", "set_warehouse",
+	"material_request", "project", "employee", "employee_name", "billing_address", "delivery_address",
+	"billing_address_name", "delivery_address_name", "terms", "remarks",
+]
+EDITABLE_ITEM = ["item_code", "description", "qty", "uom", "rate", "tax_code", "material_request"]
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def edit_approved_po(name, doc):
+	"""Director only: edit an approved (issued) Purchase Order while no GRN (Draft or Submitted) exists on it.
+
+	Takes the same shape the PO form saves (header fields, items, taxes). The stock "on order" quantity is
+	taken off for the old lines and added for the new ones, the MRN balance check runs again, the MRN statuses
+	are re-synced, and a comment records who edited it. If the new total needs different approval levels than
+	the PO was approved at, the edit is refused (cancel and amend instead)."""
+	data = frappe.parse_json(doc) if isinstance(doc, str) else (doc or {})
+	po = _load(name)
+	block = _director_edit_block(po, frappe.get_roles())
+	if block:
+		frappe.throw(block, frappe.PermissionError)
+	old_mrns = po_material_requests(po)
+	po._update_ordered_qty(direction=-1)
+	for f in EDITABLE_HEADER:
+		if f in data:
+			po.set(f, data.get(f))
+	po.set("items", [])
+	for row in (data.get("items") or []):
+		if not row.get("item_code"):
+			continue
+		po.append("items", {f: row.get(f) for f in EDITABLE_ITEM if f in row})
+	po.set("taxes", [])
+	for t in (data.get("taxes") or []):
+		po.append("taxes", {k: t.get(k) for k in ("account_head", "description", "rate", "tax_type") if k in t})
+	if not any(flt(i.qty) > 0 for i in po.items):
+		frappe.throw(_("{0} has no item with a quantity.").format(po.name))
+	po._calculate_totals()
+	if not rules.levels_match_total(po):
+		frappe.throw(_("The new total of {0} needs different approval levels than it was approved at. "
+			"Cancel it and amend it so it goes through approval again.").format(po.name))
+	po.flags.ignore_permissions = True
+	po.flags.ignore_validate_update_after_submit = True
+	po.flags.force_mrn_check = True
+	po.save()
+	po._update_ordered_qty(direction=+1)
+	for m in dict.fromkeys(old_mrns + po_material_requests(po)):
+		sync_material_request_status(m)
+	po.add_comment("Info", _("Edited by {0} (Director) after approval.").format(frappe.session.user))
+	frappe.db.commit()
+	po.reload()
+	return rules.summary(po)

@@ -53,6 +53,9 @@ class PurchaseReceipt(Document):
             if not flt(row.rate):
                 row.rate = self._po_rate_for(row)
             row.amount = flt(row.qty) * flt(row.rate)
+            # tax template of the PO line (display only: stock valuation stays on the net amount)
+            if not row.get("tax_code"):
+                row.tax_code = self._po_tax_for(row)
         self._lock_qc_inspected_rows()
         self.total_qty = sum(flt(r.qty) for r in self.items)
         self._block_over_receipt()
@@ -93,6 +96,19 @@ class PurchaseReceipt(Document):
             rate = frappe.db.get_value("Purchase Order Item",
                 {"parent": po, "item_code": row.item_code}, "rate")
         return flt(rate)
+
+    def _po_tax_for(self, row):
+        """Tax template of the Purchase Order line this receipt row belongs to (po_item, else first line of that item)."""
+        po = row.get("purchase_order") or self.get("purchase_order")
+        if not po:
+            return None
+        tax = None
+        if row.get("po_item"):
+            tax = frappe.db.get_value("Purchase Order Item", row.po_item, "tax_code")
+        if not tax:
+            tax = frappe.db.get_value("Purchase Order Item",
+                {"parent": po, "item_code": row.item_code}, "tax_code")
+        return tax or None
 
     def _lock_qc_inspected_rows(self):
         """Once a QC Inspection for a line is submitted, its accepted/rejected

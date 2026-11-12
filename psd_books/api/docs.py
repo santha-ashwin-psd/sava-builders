@@ -3990,7 +3990,7 @@ def get_purchase_order_fulfillment(purchase_order):
     rows = frappe.get_all("Purchase Order Item",
         filters={"parent": purchase_order},
         fields=["name", "item_code", "item_name", "qty", "uom", "rate", "amount",
-                "received_qty", "billed_qty"],
+                "received_qty", "billed_qty", "tax_code"],
         order_by="idx asc")
     # Qty already sitting on Draft Purchase Receipts (GRNs) is not "received" yet (received_qty only
     # moves on submit), but it must not be offered again for a new receipt.
@@ -4214,7 +4214,7 @@ def get_purchase_order_links(purchase_order):
         fields=["name", "posting_date", "grand_total", "outstanding_amount", "status", "docstatus"],
         order_by="posting_date desc")
     prs = frappe.get_all("Purchase Receipt",
-        filters={"purchase_order": purchase_order},
+        filters={"purchase_order": purchase_order, "docstatus": ["<", 2]},   # a cancelled GRN is no longer linked
         fields=["name", "posting_date", "total_qty", "status", "docstatus"],
         order_by="posting_date desc")
     qcs = []

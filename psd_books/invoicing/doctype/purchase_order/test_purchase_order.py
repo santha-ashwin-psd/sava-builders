@@ -57,13 +57,31 @@ def _make_po(items=None, taxes=None, company="VK Herbal",
 class TestCalculateTotals(unittest.TestCase):
 
     def test_row_amount_and_totals(self):
+        # rates are VAT-inclusive: 600 gross, VAT 600*18/118 = 91.53 split out
         row = _item(qty=3, rate=200)
         doc = _make_po(items=[row], taxes=[_tax(rate=18)])
         doc._calculate_totals()
         self.assertEqual(row.amount, 600)
-        self.assertEqual(doc.net_total, 600)
-        self.assertEqual(doc.total_tax, 108)
-        self.assertEqual(doc.grand_total, 708)
+        self.assertEqual(doc.total_tax, 91.53)
+        self.assertEqual(doc.net_total, 508.47)
+        self.assertEqual(doc.grand_total, 600)
+
+    def test_inclusive_16_percent_split(self):
+        doc = _make_po(items=[_item(qty=1, rate=1500), _item(qty=1, rate=1500)], taxes=[_tax(rate=16)])
+        doc._calculate_totals()
+        self.assertEqual(doc.net_total, 2586.21)
+        self.assertEqual(doc.total_tax, 413.79)
+        self.assertEqual(doc.grand_total, 3000)
+
+    def test_vat_only_on_items_with_that_tax_template(self):
+        vat = _item(qty=1, rate=1160); vat.tax_code = "Input VAT 16%"
+        exempt = _item(qty=1, rate=500)
+        tax = _tax(rate=16); tax.description = "Input VAT 16%"
+        doc = _make_po(items=[vat, exempt], taxes=[tax])
+        doc._calculate_totals()
+        self.assertEqual(doc.total_tax, 160)
+        self.assertEqual(doc.net_total, 1500)
+        self.assertEqual(doc.grand_total, 1660)
 
     def test_multiple_items_summed(self):
         doc = _make_po(items=[_item(qty=1, rate=300), _item(qty=2, rate=100)])
@@ -76,6 +94,7 @@ class TestCalculateTotals(unittest.TestCase):
         doc._calculate_totals()
         self.assertEqual(tax.tax_amount, 999)
         self.assertEqual(doc.total_tax, 999)
+        self.assertEqual(doc.grand_total, 1000)
 
     def test_no_items_gives_zero_totals(self):
         doc = _make_po(items=[])
