@@ -144,3 +144,9 @@ psd_books.patches.v1_26.backfill_project_warehouse
 
 # GRN lines saved with rate 0: fill the rate (and amount) from the Purchase Order line. Safe to re-run.
 psd_books.patches.v1_28.backfill_grn_rate
+
+# Purchase Order lines get their own MRN (a PO can cover several MRNs): fill from the PO. Safe to re-run.
+psd_books.patches.v1_29.backfill_po_item_mrn
+
+# GRN lines get their own Purchase Order (one GRN can cover several POs): fill from the GRN header. Safe to re-run.
+psd_books.patches.v1_30.backfill_grn_line_po

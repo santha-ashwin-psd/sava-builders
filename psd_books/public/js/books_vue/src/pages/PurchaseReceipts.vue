@@ -235,9 +235,9 @@
                   <div class="pr-info-lbl">Total Qty</div>
                   <div class="pr-info-val" style="font-weight:600">{{ (viewDoc.items||[]).reduce((s,i)=>s+flt(i.qty),0)||'—' }}</div>
                 </div>
-                <div v-if="viewDoc.purchase_order" class="pr-info-item pr-info-full">
-                  <div class="pr-info-lbl">Purchase Order</div>
-                  <div class="pr-info-val pr-info-link"><DocLink doctype="Purchase Order" :name="viewDoc.purchase_order" /></div>
+                <div v-if="viewPOs.length" class="pr-info-item pr-info-full">
+                  <div class="pr-info-lbl">{{ viewPOs.length > 1 ? 'Purchase Orders' : 'Purchase Order' }}</div>
+                  <div class="pr-info-val pr-info-link" style="display:flex;flex-wrap:wrap;gap:4px 14px"><DocLink v-for="po in viewPOs" :key="po" doctype="Purchase Order" :name="po" /></div>
                 </div>
                 <div v-if="viewDoc.supplier_delivery_note" class="pr-info-item">
                   <div class="pr-info-lbl">Supplier DN No.</div>
@@ -279,7 +279,7 @@
                 <tbody>
                   <tr v-for="(it,i) in viewDoc.items||[]" :key="it.name||it.item_code" class="inv-row">
                     <td class="pr-row-num">{{ i+1 }}</td>
-                    <td style="font-weight:500;color:#111827">{{ viewItemNames[it.item_code]||it.item_name||it.item_code }}</td>
+                    <td style="font-weight:500;color:#111827">{{ viewItemNames[it.item_code]||it.item_name||it.item_code }}<span v-if="viewPOs.length > 1" class="c-muted mono-sm" style="font-weight:400"> · {{ it.purchase_order||viewDoc.purchase_order }}</span></td>
                     <td class="ta-r mono">{{ it.qty }}</td>
                     <td class="ta-r mono" style="color:#2F9E44">{{ it.accepted_qty||it.qty }}</td>
                     <td class="ta-r mono" style="color:#C92A2A">{{ it.rejected_qty||0 }}</td>
@@ -362,6 +362,9 @@
                       </span>
                     </div>
                   </template>
+                  <div v-else-if="editPOs.length > 1" style="display:flex;flex-wrap:wrap;gap:6px">
+                    <span v-for="po in editPOs" :key="po" style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:12px;font-weight:600">{{ po }}</span>
+                  </div>
                   <SearchableSelect v-else v-model="form.purchase_order" :options="poOptions" placeholder="Select PO (filtered by supplier)…" @search="fetchPOs" @open="fetchPOs('')" @select="onPOSelect" />
                 </div>
               </div>
@@ -454,7 +457,7 @@
                     </div>
                     <div v-if="it.po_qty || it.qc_locked" class="pr-lines-sub">
                       <div v-if="it.po_qty" class="exp-field-hint" :class="{'exp-field-hint-err': flt(it.qty) > flt(it.po_pending) + 0.0001}">
-                        <template v-if="it.po_name && selectedPOs.length > 1"><b>{{ it.po_name }}</b> · </template>Ordered {{ it.po_qty }} · Received {{ it.po_received }} · Pending {{ it.po_pending }}
+                        <template v-if="it.po_name && poCount > 1"><b>{{ it.po_name }}</b> · </template>Ordered {{ it.po_qty }} · Received {{ it.po_received }} · Pending {{ it.po_pending }}
                       </div>
                       <div v-if="it.qc_locked" class="exp-field-hint">Locked — final after QC {{ it.qc_locked }}</div>
                     </div>
@@ -614,11 +617,18 @@ const sortDir = ref(-1);
 const vendorOptions = ref([]);
 const itemOptions   = ref([]);
 const poOptions     = ref([]);
-const selectedPOs   = ref([]);   // new GRN: several POs of one supplier -> one GRN per PO on save
+const selectedPOs   = ref([]);   // new GRN: several POs of one project -> ONE GRN, every line carries its PO
 const poPick        = ref("");
 const poMeta        = ref({});
-const savedGRN      = ref({});   // po -> draft GRN already saved in this form session (retry updates it, never duplicates)
-const doneGRN       = ref({});   // po -> true once that GRN has been submitted   // po name -> { project, set_warehouse }
+const savedGRN      = ref({});   // { grn: name } draft already saved in this form session (retry updates it, never duplicates)
+const doneGRN       = ref({});   // kept for form reset only
+const editPOs       = ref([]);   // POs of the GRN being edited (read-only chips when more than one)  // poMeta: po name -> { project, set_warehouse }
+const poCount = computed(() => new Set(form.items.map(i => i.po_name).filter(Boolean)).size);
+const viewPOs = computed(() => {
+  const d = viewDoc.value || {};
+  const fromLines = [...new Set((d.items || []).map(i => i.purchase_order).filter(Boolean))];
+  return fromLines.length ? fromLines : (d.purchase_order ? [d.purchase_order] : []);
+});
 const poOptionsAvail = computed(() => poOptions.value.filter(o => !selectedPOs.value.includes(o.value)));
 const warehouses    = ref([]);
 const { projects, fetchProjects } = useProjectOptions();
@@ -674,7 +684,8 @@ async function load() {
       supplier: r.supplier,
       supplier_name: r.supplier_name,
       posting_date: r.posting_date || r.expected_delivery_date || r.transaction_date,
-      purchase_order: r.purchase_order,
+      // one GRN can cover several POs: show them all (backend sends them in line order)
+      purchase_order: (r.purchase_orders && r.purchase_orders.length) ? r.purchase_orders.join(", ") : r.purchase_order,
       total_qty: r.qty_received,
       qty_ordered: r.qty_ordered,
       qty_received: r.qty_received,
@@ -858,7 +869,7 @@ function resetForm() {
     supplier: "", supplier_name: "", entry_date: new Date().toISOString().slice(0,10), posting_date: new Date().toISOString().slice(0,10),
     purchase_order: "", set_warehouse: "", project: "", employee: "", employee_name: "", remarks: "", supplier_delivery_note: "", vehicle_no: "", driver_name: "", driver_id_no: "", items: [],
   });
-  selectedPOs.value = []; poPick.value = ""; poMeta.value = {}; savedGRN.value = {}; doneGRN.value = {};
+  selectedPOs.value = []; poPick.value = ""; poMeta.value = {}; savedGRN.value = {}; doneGRN.value = {}; editPOs.value = [];
 }
 
 function openNew() {
@@ -929,6 +940,8 @@ async function openEdit(r) {
       qc_locked:          qcDone[it.quality_inspection] ? it.quality_inspection : "",
       quality_inspection: it.quality_inspection || "",
       po_item:            it.po_item || null,
+      po_name:            it.purchase_order || doc.purchase_order || "",
+      warehouse:          it.warehouse || "",
       saved_rate:         it.rate ?? 0,
       item_code:          it.item_code || "",
       item_name:          it.item_name || it.item_code || "",
@@ -943,12 +956,17 @@ async function openEdit(r) {
       collapsedUI:        false,
     }));
     form.items.forEach(l => { if (l.has_batch_no) fetchBatches(l, ""); });
-    if (doc.purchase_order) {
-      try {
-        const fres = await apiGET("psd_books.api.docs.get_purchase_order_fulfillment", { purchase_order: doc.purchase_order });
-        const rateMap = Object.fromEntries((fres?.lines || []).map(x => [x.name, flt(x.rate)]));
-        form.items.forEach(l => { if (l.po_item && rateMap[l.po_item] != null) l.po_rate = rateMap[l.po_item]; });
-      } catch {}
+    editPOs.value = [...new Set(form.items.map(l => l.po_name).filter(Boolean))];
+    if (!editPOs.value.length && doc.purchase_order) editPOs.value = [doc.purchase_order];
+    {
+      const rateMap = {};
+      for (const po of editPOs.value) {
+        try {
+          const fres = await apiGET("psd_books.api.docs.get_purchase_order_fulfillment", { purchase_order: po });
+          (fres?.lines || []).forEach(x => { rateMap[x.name] = flt(x.rate); });
+        } catch {}
+      }
+      form.items.forEach(l => { if (l.po_item && rateMap[l.po_item] != null) l.po_rate = rateMap[l.po_item]; });
     }
     if (!form.items.length) addItem();
   } catch (e) {
@@ -1041,14 +1059,18 @@ async function fetchPOs(q = "") {
     ];
     if (form.supplier) filters.push(["supplier", "=", form.supplier]);
     if (q) filters.push(["name", "like", `%${q}%`]);
+    // New GRN with POs already picked: offer only POs of the same project as the first one
+    if (!editingName.value && selectedPOs.value.length) {
+      const proj = poMeta.value[selectedPOs.value[0]]?.project || "";
+      filters.push(proj ? ["project", "=", proj] : ["project", "is", "not set"]);
+    }
     // A PO that already has a draft GRN is left out (finish or delete that draft first).
     // The draft being edited does not count against its own PO.
-    const dFilters = [["docstatus", "=", 0], ["purchase_order", "is", "set"]];
-    if (editingName.value) dFilters.push(["name", "!=", editingName.value]);
+    // (header PO or any line PO of a draft GRN counts)
     let draftPOs = new Set();
     try {
-      const drafts = await apiList("Purchase Receipt", { fields: ["purchase_order"], filters: dFilters, limit: 1000 });
-      draftPOs = new Set((drafts || []).map(d => d.purchase_order).filter(Boolean));
+      const drafts = await apiGET("psd_books.api.docs.get_draft_grn_pos", { exclude: editingName.value || "" });
+      draftPOs = new Set((drafts || []).filter(Boolean));
     } catch {}
     if (draftPOs.size) filters.push(["name", "not in", [...draftPOs]]);
     const rows = await apiList("Purchase Order", {
@@ -1120,7 +1142,8 @@ async function onPOSelect(opt) {
           const pm = await apiList("Purchase Order", { fields: ["name", "project", "set_warehouse"], filters: [["name", "=", poName]], limit: 1 });
           if (pm?.[0]) poMeta.value = { ...poMeta.value, [poName]: { project: pm[0].project || "", set_warehouse: pm[0].set_warehouse || "" } };
         } catch {}
-        if (selectedPOs.value.length === 2) toast.info("One GRN is created per PO, each using its own PO's project and warehouse.");
+        fetchPOs("");   // refresh the dropdown so only POs of this project remain
+        if (selectedPOs.value.length === 2) toast.info("All selected POs go into one GRN. Each line is received into its own PO's warehouse.");
       } else {
         form.items = mapped;
       }
@@ -1276,6 +1299,7 @@ async function saveGRN(submit) {
       }
     }
 
+    const multiPO = selectedPOs.value.length > 1;
     const buildDoc = (poName, rows) => ({
       doctype: "Purchase Receipt",
       supplier: form.supplier,
@@ -1284,8 +1308,8 @@ async function saveGRN(submit) {
       posting_date: editingName.value ? (form.posting_date || form.entry_date) : form.entry_date,
       company,
       purchase_order: poName || null,
-      set_warehouse: (selectedPOs.value.length > 1 && poMeta.value[poName]?.set_warehouse) || form.set_warehouse || null,
-      project: (selectedPOs.value.length > 1 && poMeta.value[poName]?.project) || form.project || null,
+      set_warehouse: form.set_warehouse || null,
+      project: form.project || null,
       employee: form.employee || "",
       employee_name: form.employee_name || "",
       remarks: form.remarks || "",
@@ -1312,6 +1336,10 @@ async function saveGRN(submit) {
         received_qty: rowQty,
         rate: flt(it.po_rate ?? it.saved_rate ?? 0),
         po_item: it.po_item || undefined,
+        // every line carries its own PO (a GRN can cover several); a line with no PO uses the header PO
+        purchase_order: it.po_name || poName || undefined,
+        // several POs: a line goes to its own PO's warehouse (the header warehouse is the default)
+        warehouse: it.warehouse || (multiPO && poMeta.value[it.po_name]?.set_warehouse) || undefined,
         batch_no: it.has_batch_no ? (it.batch_no || null) : null,
         manufacturing_date: it.has_batch_no ? (it.manufacturing_date || null) : null,
         expiry_date: it.has_batch_no ? (it.expiry_date || null) : null,
@@ -1325,25 +1353,21 @@ async function saveGRN(submit) {
       if (submit && saved?.name) await apiSubmit("Purchase Receipt", saved.name);
       toast.success(`GRN ${saved?.name || ""} ${submit ? "submitted" : "saved"}`);
     } else {
-      // One GRN per selected PO (each keeps its own PO's over-receipt, billing and status logic).
-      const created = [];
-      for (const po of selectedPOs.value) {
-        const rows = usable.filter(it => it.po_name === po);
-        if (!rows.length) continue;
-        if (doneGRN.value[po]) { created.push(savedGRN.value[po]); continue; }   // already submitted on an earlier attempt
-        try {
-          const d = buildDoc(po, rows);
-          if (savedGRN.value[po]) d.name = savedGRN.value[po];   // retry: update the draft saved earlier
-          const saved = await apiSave(d);
-          if (saved?.name) { savedGRN.value[po] = saved.name; created.push(saved.name); }
-          if (submit && saved?.name) { await apiSubmit("Purchase Receipt", saved.name); doneGRN.value[po] = true; }
-        } catch (e) {
-          toast.error(`${po}: ${e.message || "failed"}.${created.length || savedGRN.value[po] ? ` Saved as draft: ${[...new Set([...created, savedGRN.value[po]].filter(Boolean))].join(", ")} — fix the issue and save again; it will update, not duplicate.` : ""}`);
+      // ONE GRN for all selected POs: header PO = the first PO, every line carries its own PO
+      // (over-receipt, received qty, PO status and billing guard run per PO on the backend).
+      const d = buildDoc(selectedPOs.value[0], usable);
+      if (savedGRN.value.grn) d.name = savedGRN.value.grn;   // retry after a failed submit updates the draft, never duplicates
+      const saved = await apiSave(d);
+      if (saved?.name) savedGRN.value.grn = saved.name;
+      if (submit && saved?.name) {
+        try { await apiSubmit("Purchase Receipt", saved.name); }
+        catch (e) {
+          toast.error(`${e.message || "Submit failed"}. Saved as draft ${saved.name} — fix the issue and submit again; it will update, not duplicate.`);
           await load();
           return;
         }
       }
-      toast.success(`GRN ${created.join(", ")} ${submit ? "submitted" : "saved"}`);
+      toast.success(`GRN ${saved?.name || ""} ${submit ? "submitted" : "saved"}`);
     }
     formOpen.value = false;
     await load();

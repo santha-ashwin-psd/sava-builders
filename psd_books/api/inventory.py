@@ -1857,6 +1857,7 @@ def create_po_from_mr(material_request):
         item_doc = frappe.get_cached_doc("Item", row.item_code)
         rate = flt(item_doc.get("standard_buying_rate") or item_doc.get("standard_rate") or 0)
         po_items.append({
+            "material_request": mr.name,
             "item_code":   row.item_code,
             "item_name":   item_doc.item_name,
             "description": item_doc.description or item_doc.item_name,
@@ -1885,17 +1886,29 @@ def create_po_from_mr(material_request):
 
 @frappe.whitelist(allow_guest=False)
 def get_mrn_remaining(material_request, exclude_po=None):
-    """Per item: MRN qty, qty on other non-cancelled POs, and the balance still orderable."""
+    """Per item: MRN qty, qty on other non-cancelled POs, and the balance still orderable.
+    material_request: one MRN name, or a JSON list of names (rows then carry their MRN)."""
     from psd_books.utils.access import assert_can
     from psd_books.invoicing.doctype.purchase_order.purchase_order import (
         mrn_required_qty, mrn_ordered_qty)
     assert_can("Purchase Order", "read")
-    required = mrn_required_qty(material_request)
-    ordered = mrn_ordered_qty(material_request, exclude_po or None)
-    moved = _mrn_transferred_qty([material_request])
-    return [{"item_code": it, "item_name": frappe.db.get_value("Item", it, "item_name") or it, "mrn_qty": q, "ordered": flt(ordered.get(it, 0)),
-             "transferred": flt(moved.get((material_request, it), 0)),
-             "remaining": max(0.0, q - flt(ordered.get(it, 0)))} for it, q in required.items()]
+    if isinstance(material_request, str) and material_request.strip().startswith("["):
+        mrns = frappe.parse_json(material_request)
+    else:
+        mrns = [material_request]
+    mrns = [m for m in mrns if m][:50]
+    moved = _mrn_transferred_qty(mrns)
+    out = []
+    for mrn in mrns:
+        required = mrn_required_qty(mrn)
+        ordered = mrn_ordered_qty(mrn, exclude_po or None)
+        for it, q in required.items():
+            out.append({"material_request": mrn, "item_code": it,
+                        "item_name": frappe.db.get_value("Item", it, "item_name") or it, "mrn_qty": q,
+                        "ordered": flt(ordered.get(it, 0)),
+                        "transferred": flt(moved.get((mrn, it), 0)),
+                        "remaining": max(0.0, q - flt(ordered.get(it, 0)))})
+    return out
 
 
 def _mrn_transferred_qty(names):

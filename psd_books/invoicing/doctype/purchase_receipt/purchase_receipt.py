@@ -28,6 +28,7 @@ class PurchaseReceipt(Document):
 
         if not self.items:
             frappe.throw(_("Purchase Receipt must have at least one item row."))
+        self._normalise_po_links()
         for row in self.items:
             if flt(row.qty) <= 0:
                 frappe.throw(_("Row {0}: qty must be > 0").format(row.idx))
@@ -57,16 +58,40 @@ class PurchaseReceipt(Document):
         self._block_over_receipt()
         self._warn_project_store()
 
+    def _normalise_po_links(self):
+        """One GRN can receive against several Purchase Orders (all of one project).
+
+        Every line carries its own `purchase_order`; a line without one uses the header PO, and the
+        header PO keeps the first PO of the receipt (so old screens and reports still work)."""
+        if not self.get("purchase_order"):
+            first = next((r.purchase_order for r in self.items if r.get("purchase_order")), "")
+            if first:
+                self.purchase_order = first
+        header = self.get("purchase_order") or ""
+        for row in self.items:
+            if not row.get("purchase_order"):
+                row.purchase_order = header
+
+    def _po_groups(self):
+        """{purchase order: [receipt rows]} in line order. Rows with no PO at all are left out."""
+        groups = {}
+        for row in self.items:
+            po = row.get("purchase_order") or self.get("purchase_order")
+            if po:
+                groups.setdefault(po, []).append(row)
+        return groups
+
     def _po_rate_for(self, row):
         """Rate of the Purchase Order line this receipt row belongs to (po_item, else first line of that item)."""
-        if not self.get("purchase_order"):
+        po = row.get("purchase_order") or self.get("purchase_order")
+        if not po:
             return 0
         rate = None
         if row.get("po_item"):
             rate = frappe.db.get_value("Purchase Order Item", row.po_item, "rate")
         if rate is None:
             rate = frappe.db.get_value("Purchase Order Item",
-                {"parent": self.purchase_order, "item_code": row.item_code}, "rate")
+                {"parent": po, "item_code": row.item_code}, "rate")
         return flt(rate)
 
     def _lock_qc_inspected_rows(self):
@@ -103,8 +128,11 @@ class PurchaseReceipt(Document):
         The project is the receipt's own, else the LPO's. Warehouses with no project (company stores, plain
         warehouses) never warn."""
         project = self.get("project")
-        if not project and self.get("purchase_order"):
-            project = frappe.db.get_value("Purchase Order", self.purchase_order, "project")
+        if not project:
+            for po in self._po_groups():
+                project = frappe.db.get_value("Purchase Order", po, "project")
+                if project:
+                    break
         if not project or not frappe.db.has_column("Warehouse", "project"):
             return
         codes = {r.get("warehouse") or self.get("set_warehouse") for r in self.items} - {None, ""}
@@ -122,19 +150,18 @@ class PurchaseReceipt(Document):
         po_item are checked against that line; rows without it are pooled by
         item_code against the PO's remaining qty for that item.
         """
-        if not self.purchase_order:
-            return
-        po_rows = frappe.db.sql("""
-            SELECT name, item_code, item_name, qty, received_qty
-            FROM `tabPurchase Order Item` WHERE parent=%s ORDER BY idx
-        """, (self.purchase_order,), as_dict=True)
-        errors = over_receipt_errors(po_rows, self.items)
-        if errors:
-            frappe.throw(
-                _("Over-receipt blocked against {0}:").format(self.purchase_order)
-                + "<br>" + "<br>".join(errors),
-                title=_("Over-receipt"),
-            )
+        messages = []
+        for po, rows in self._po_groups().items():
+            po_rows = frappe.db.sql("""
+                SELECT name, item_code, item_name, qty, received_qty
+                FROM `tabPurchase Order Item` WHERE parent=%s ORDER BY idx
+            """, (po,), as_dict=True)
+            errors = over_receipt_errors(po_rows, rows)
+            if errors:
+                messages.append(_("Over-receipt blocked against {0}:").format(po)
+                                + "<br>" + "<br>".join(errors))
+        if messages:
+            frappe.throw("<br><br>".join(messages), title=_("Over-receipt"))
 
     def on_submit(self):
         self._adjust_po_received(direction=+1)
@@ -165,21 +192,20 @@ class PurchaseReceipt(Document):
         billed different items than this specific receipt. Cancel/amend the
         Purchase Invoice(s) first, then this receipt.
         """
-        if not self.purchase_order:
-            return
-        billed = frappe.get_all(
-            "Purchase Invoice",
-            filters={"purchase_order": self.purchase_order, "docstatus": 1},
-            fields=["name"],
-        )
-        if billed:
-            names = ", ".join(b.name for b in billed)
-            frappe.throw(_(
-                "Cannot cancel {0} — Purchase Order {1} already has a submitted "
-                "Purchase Invoice ({2}) that cleared Stock Received But Not "
-                "Billed (GR/IR) against it. Cancel/amend the Purchase Invoice "
-                "first, then cancel this receipt."
-            ).format(self.name, self.purchase_order, names))
+        for po in self._po_groups():
+            billed = frappe.get_all(
+                "Purchase Invoice",
+                filters={"purchase_order": po, "docstatus": 1},
+                fields=["name"],
+            )
+            if billed:
+                names = ", ".join(b.name for b in billed)
+                frappe.throw(_(
+                    "Cannot cancel {0} — Purchase Order {1} already has a submitted "
+                    "Purchase Invoice ({2}) that cleared Stock Received But Not "
+                    "Billed (GR/IR) against it. Cancel/amend the Purchase Invoice "
+                    "first, then cancel this receipt."
+                ).format(self.name, po, names))
 
     def _release_ordered_qty(self, direction: int):
         """
@@ -221,13 +247,15 @@ class PurchaseReceipt(Document):
         matching by item_code against the PO's remaining quantity so receipts
         still work even when the caller didn't set po_item.
         """
-        if not self.purchase_order:
-            return
+        for po, rows in self._po_groups().items():
+            self._adjust_po_received_for(po, rows, direction)
 
+    def _adjust_po_received_for(self, po, rows, direction):
+        """received_qty, PO status and MRN sync for ONE Purchase Order of this receipt."""
         po_items = frappe.db.sql("""
             SELECT name, item_code, qty, received_qty
             FROM `tabPurchase Order Item` WHERE parent=%s ORDER BY idx
-        """, (self.purchase_order,), as_dict=True)
+        """, (po,), as_dict=True)
         by_code = {}
         for r in po_items:
             by_code.setdefault(r.item_code, []).append(r)
@@ -238,7 +266,7 @@ class PurchaseReceipt(Document):
             frappe.db.set_value("Purchase Order Item", po_item_id, "received_qty",
                                 new_qty, update_modified=False)
 
-        for row in self.items:
+        for row in rows:
             if row.po_item:
                 _bump(row.po_item, row.qty)
                 continue
@@ -258,14 +286,14 @@ class PurchaseReceipt(Document):
                 remaining -= take
         try:
             from psd_books.api.docs import _po_status_from_fulfillment
-            new_status = _po_status_from_fulfillment(self.purchase_order)
-            frappe.db.set_value("Purchase Order", self.purchase_order, "status",
+            new_status = _po_status_from_fulfillment(po)
+            frappe.db.set_value("Purchase Order", po, "status",
                                 new_status, update_modified=True)
         except Exception:
             pass
         try:
-            from psd_books.invoicing.doctype.purchase_order.purchase_order import sync_material_request_status
-            sync_material_request_status(frappe.db.get_value("Purchase Order", self.purchase_order, "material_request"))
+            from psd_books.invoicing.doctype.purchase_order.purchase_order import sync_po_material_requests
+            sync_po_material_requests(po)
         except Exception:
             frappe.log_error(frappe.get_traceback(), "MRN status sync failed after receipt")
 

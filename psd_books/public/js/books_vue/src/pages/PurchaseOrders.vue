@@ -237,10 +237,16 @@
                 <SearchableSelect v-model="form.project" :options="projectChoices" :placeholder="assetOnly ? 'Select project (optional)…' : 'Select project…'" @search="q => fetchProjects(q, form.project)" @select="onProjectPick" />
               </div>
               <div>
-                <label class="inv-lbl">MRN <span class="inv-req">*</span></label>
-                <SearchableSelect v-model="form.material_request" :options="mrnOptions"
-                  :placeholder="assetOnly ? 'Select approved Asset MRN…' : 'Select approved Purchase MRN…'"
-                  @search="q => fetchMrns(q, form.material_request)" @select="onMrnPick" />
+                <label class="inv-lbl">MRN(s) <span class="inv-req">*</span></label>
+                <SearchableSelect v-model="mrnPick" :options="mrnOptionsAvail"
+                  :placeholder="form.mrns.length ? 'Add another MRN of this project…' : (assetOnly ? 'Select approved Asset MRN…' : 'Select approved Purchase MRN…')"
+                  @search="q => fetchMrns(q)" @select="onMrnPick" />
+                <div v-if="form.mrns.length" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+                  <span v-for="m in form.mrns" :key="m" style="display:inline-flex;align-items:center;gap:6px;padding:3px 6px 3px 10px;border-radius:999px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:12px;font-weight:600">
+                    {{ m }}
+                    <button type="button" @click.stop="removeMrn(m)" title="Remove MRN and its lines" style="border:0;background:transparent;color:#1d4ed8;cursor:pointer;font-size:14px;line-height:1;padding:0 2px">×</button>
+                  </span>
+                </div>
               </div>
               <div>
                 <label class="inv-lbl">Vendor <span class="inv-req">*</span></label>
@@ -377,8 +383,8 @@
                   </div>
                   <span class="po-lines-num po-lines-amt" data-lbl="Amount">{{ fmtCur(line.amount) }}</span>
                   <button @click.stop="removeLine(line.id)" class="po-item-card-rm" title="Remove line"><span v-html="icon('x',16)"></span></button>
-                  <div v-if="form.material_request && mrnBalanceFor(line)" style="grid-column:2 / -1;margin-top:-2px;font-size:12px;color:#6b7280">
-                  MRN {{ mrnBalanceFor(line).mrn_qty }}, ordered elsewhere {{ mrnBalanceFor(line).ordered }}, balance {{ mrnBalanceFor(line).remaining }}<span v-if="mrnBalanceFor(line).transferred > 0" style="color:#dc2626;font-weight:600"> · Stock transferred: {{ mrnBalanceFor(line).transferred }}</span>
+                  <div v-if="mrnBalanceFor(line)" style="grid-column:2 / -1;margin-top:-2px;font-size:12px;color:#6b7280">
+                  <b v-if="form.mrns.length > 1">{{ line.material_request }} · </b>MRN {{ mrnBalanceFor(line).mrn_qty }}, ordered elsewhere {{ mrnBalanceFor(line).ordered }}, balance {{ mrnBalanceFor(line).remaining }}<span v-if="mrnBalanceFor(line).transferred > 0" style="color:#dc2626;font-weight:600"> · Stock transferred: {{ mrnBalanceFor(line).transferred }}</span>
                   </div>
                 </div>
                 </template>
@@ -805,7 +811,7 @@
             <div class="inv-tab-body">
               <div v-if="viewLoading" style="text-align:center;padding:32px;color:#6b7280;font-size:13px">Loading…</div>
               <template v-else>
-                <template v-if="viewDoc?.material_request">
+                <template v-if="viewMrns.length">
                   <div class="inv-sec-lbl">Material Request (MRN)</div>
                   <div class="inv-items-wrap">
                     <table class="inv-items-table">
@@ -816,8 +822,8 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td><DocLink doctype="Material Request" :name="viewDoc.material_request" /></td>
+                        <tr v-for="m in viewMrns" :key="m">
+                          <td><DocLink doctype="Material Request" :name="m" /></td>
                           <td class="text-muted mono-sm">{{ projectLabel(viewDoc.project) || "—" }}</td>
                         </tr>
                       </tbody>
@@ -826,7 +832,7 @@
                 </template>
 
                 <template v-if="links.purchase_receipts.length">
-                  <div class="inv-sec-lbl" :style="viewDoc?.material_request ? 'margin-top:16px' : ''">Goods Receipt Notes (GRN)</div>
+                  <div class="inv-sec-lbl" :style="viewMrns.length ? 'margin-top:16px' : ''">Goods Receipt Notes (GRN)</div>
                   <div class="inv-items-wrap">
                     <table class="inv-items-table">
                       <thead>
@@ -1218,7 +1224,15 @@ const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const viewLoading = ref(false), viewItems = ref([]);
 const fulfill = reactive({ lines: [], computed_status: "" });
 const links = reactive({ bills: [], purchase_receipts: [], qc_inspections: [] });
-const linkedCount = computed(() => (viewDoc.value?.material_request ? 1 : 0) + links.bills.length + links.purchase_receipts.length + links.qc_inspections.length);
+// MRNs a viewed PO covers: its lines' MRNs, else the PO's own MRN
+const viewMrns = computed(() => {
+  const d = viewDoc.value; if (!d) return [];
+  const out = [];
+  for (const i of (d.items || [])) { const m = i.material_request || d.material_request; if (m && !out.includes(m)) out.push(m); }
+  if (!out.length && d.material_request) out.push(d.material_request);
+  return out;
+});
+const linkedCount = computed(() => viewMrns.value.length + links.bills.length + links.purchase_receipts.length + links.qc_inspections.length);
 function grnStatus(r) { return r.docstatus === 0 ? "Draft" : r.docstatus === 2 ? "Cancelled" : (r.status || "Submitted"); }
 function qcColor(st) { return st === "Pass" ? "#059669" : st === "Fail" ? "#dc2626" : "#d97706"; }
 const vendors = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref("");
@@ -1250,7 +1264,7 @@ const form = reactive({
   supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(),
   billing_address: "", delivery_address: "",
   billing_address_name: "", delivery_address_name: "",
-  set_warehouse: "", purchase_type: "Goods", terms: "", remarks: "", material_request: "", project: "", employee: "", employee_name: "",
+  set_warehouse: "", purchase_type: "Goods", terms: "", remarks: "", material_request: "", mrns: [], project: "", employee: "", employee_name: "",
 });
 const { projects, fetchProjects } = useProjectOptions();
 
@@ -1533,7 +1547,8 @@ const threeWayMismatch = computed(() =>
 function openNew() {
   assetOnly.value = false;
   editingName.value = ""; editingStatus.value = "";
-  Object.assign(form, { supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", remarks: "", material_request: "", project: "", employee: "", employee_name: "" });
+  Object.assign(form, { supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", remarks: "", material_request: "", mrns: [], project: "", employee: "", employee_name: "" });
+  mrnPick.value = ""; mrnBalance.value = [];
   whFromProject.value = false;
   fetchWarehouses(""); fetchProjects(""); fetchMrns(""); fetchEmployees();
   lines.value = [blankLine()];
@@ -1549,11 +1564,12 @@ async function openEdit(o) {
     billing_address: o.billing_address || "", delivery_address: o.delivery_address || "",
     billing_address_name: "", delivery_address_name: "",
     set_warehouse: "", purchase_type: o.purchase_type || "Goods", terms: o.terms || "", remarks: o.remarks || "",
-    material_request: o.material_request || "", project: o.project || "",
+    material_request: o.material_request || "", mrns: o.material_request ? [o.material_request] : [], project: o.project || "",
   });
+  mrnPick.value = ""; mrnBalance.value = [];
   lines.value = [blankLine()];
   whFromProject.value = false;
-  fetchVendors(""); fetchItems(""); fetchWarehouses(""); fetchProjects("", o.project || ""); fetchMrns("", o.material_request || ""); fetchEmployees();
+  fetchVendors(""); fetchItems(""); fetchWarehouses(""); fetchProjects("", o.project || ""); fetchMrns(""); fetchEmployees();
   if (o.supplier) fetchVendorAddresses(o.supplier);
   drawerOpen.value = true;
   try {
@@ -1564,9 +1580,16 @@ async function openEdit(o) {
         qty: i.qty || 1, rate: i.rate || 0, amount: i.amount || 0,
         uom: i.uom || "",
         tax_code: i.tax_code || "",
+        material_request: i.material_request || doc.material_request || "",
       }));
     }
-    if (doc?.material_request) loadMrnBalance(doc.material_request, o.name, true);
+    {
+      const ms = [];
+      for (const l of lines.value) if (l.material_request && !ms.includes(l.material_request)) ms.push(l.material_request);
+      if (!ms.length && doc?.material_request) ms.push(doc.material_request);
+      form.mrns = ms; form.material_request = ms[0] || "";
+      if (ms.length) loadMrnBalance(ms, o.name, true);
+    }
     if (doc?.set_warehouse) form.set_warehouse = doc.set_warehouse;
     if (doc?.project) { form.project = doc.project; fetchProjects("", doc.project); }
     if (doc?.employee) { form.employee = doc.employee; form.employee_name = doc.employee_name || ""; }
@@ -1733,46 +1756,65 @@ async function fetchVendors(q = "") {
 }
 // ── MRN: approved Purchase MRNs (Asset MRNs while the Asset toggle is on) ──
 const mrnOptions = ref([]);
-async function fetchMrns(q = "", keep = "") {
+const mrnPick = ref("");
+const mrnOptionsAvail = computed(() => mrnOptions.value.filter(o => !form.mrns.includes(o.value)));
+async function fetchMrns(q = "") {
   try {
     const co = await resolveCompany();
     // Approved MRNs plus partly ordered ones that still have qty left to order.
     const r = await apiPOST("psd_books.api.inventory.get_open_mrns_for_po", {
       material_request_type: assetOnly.value ? "Asset" : "Purchase",
       project: form.project || "", company: co || "", q: q || "" });
-    const opts = (r || []).map(x => ({ label: x.project ? `${x.name} — ${projectLabel(x.project)}` : x.name, value: x.name, sub: x.items || "" }));
-    if (keep && !opts.some(o => o.value === keep)) opts.unshift({ label: keep, value: keep });
-    mrnOptions.value = opts;
-  } catch { mrnOptions.value = keep ? [{ label: keep, value: keep }] : []; }
+    mrnOptions.value = (r || []).map(x => ({ label: x.project ? `${x.name} — ${projectLabel(x.project)}` : x.name, value: x.name, sub: x.items || "" }));
+  } catch { mrnOptions.value = []; }
 }
-// Picking a project narrows the MRN list to that project's MRNs. A picked MRN from another project no longer applies.
+// Picking a project narrows the MRN list to that project's MRNs. Picked MRNs from another project no longer apply.
 function onProjectPick(opt) {
   form.project = opt?.value || "";
-  if (form.material_request) {
-    form.material_request = ""; form.set_warehouse = "";
+  if (form.mrns.length) {
+    form.mrns = []; form.material_request = ""; form.set_warehouse = ""; mrnBalance.value = [];
     lines.value = [blankLine()];
   }
   fillWarehouseFromProject(form.project);
   fetchMrns("");
 }
+// Several MRNs of one project can go on one PO: each pick adds that MRN's remaining lines.
 async function onMrnPick(opt) {
   const name = opt?.value;
-  if (!name) return;
+  mrnPick.value = "";
+  if (!name || form.mrns.includes(name)) return;
   try {
     const d = await apiPOST("psd_books.api.inventory.create_po_from_mr", { material_request: name });
-    applyMrDraft(d);
+    const first = !form.mrns.length;
+    if (!first && (d.project || "") !== (form.project || "")) {
+      return toast.error(`MRN ${name} belongs to a different project. Only MRNs of one project can be on one PO.`);
+    }
+    form.mrns = [...form.mrns, name];
+    form.material_request = form.mrns[0];
+    applyMrDraft(d, !first);
+    if (form.mrns.length === 2) toast.info("Lines from each MRN are capped at that MRN's own balance.");
   } catch (e) {
-    form.material_request = "";
     toast.error(e.message || String(e));
   }
 }
+function removeMrn(name) {
+  form.mrns = form.mrns.filter(m => m !== name);
+  form.material_request = form.mrns[0] || "";
+  lines.value = lines.value.filter(l => l.material_request !== name);
+  if (!lines.value.length) lines.value = [blankLine()];
+  if (!form.mrns.length) { form.set_warehouse = ""; mrnBalance.value = []; }
+  else loadMrnBalance(form.mrns, editingName.value || "");
+}
 // Fill project, warehouse and lines from the draft that create_po_from_mr returns.
-function applyMrDraft(d) {
+// append = a further MRN on the same PO: only its lines are added.
+function applyMrDraft(d, append = false) {
   {
-    form.project = d.project || "";
-    fetchProjects("", form.project);
-    if (d.set_warehouse && form.purchase_type === "Goods") form.set_warehouse = d.set_warehouse;
-    fillWarehouseFromProject(form.project);
+    if (!append) {
+      form.project = d.project || "";
+      fetchProjects("", form.project);
+      if (d.set_warehouse && form.purchase_type === "Goods") form.set_warehouse = d.set_warehouse;
+      fillWarehouseFromProject(form.project);
+    }
     const known = new Set(items.value.map(i => i.value));
     const extra = (d.items || []).filter(r => r.item_code && !known.has(r.item_code))
       .map(r => ({ label: r.item_name || r.item_code, value: r.item_code, rate: r.rate || 0, description: r.description || "", tax_code: "" }));
@@ -1780,24 +1822,34 @@ function applyMrDraft(d) {
     const rows = (d.items || []).map(r => ({
       id: _id++, item_code: r.item_code, description: r.description,
       qty: r.qty, max: r.qty, rate: r.rate, uom: r.uom || "", amount: r.amount,
+      material_request: r.material_request || d.material_request || "",
       tax_code: items.value.find(i => i.value === r.item_code)?.tax_code || defaultVatName.value, collapsed: false,
     }));
-    lines.value = rows.length ? rows : [blankLine()];
-    loadMrnBalance(form.material_request, "");
+    if (append) {
+      const kept = lines.value.filter(l => l.item_code);   // drop an empty placeholder line
+      lines.value = [...kept, ...rows];
+    } else {
+      lines.value = rows.length ? rows : [blankLine()];
+    }
+    loadMrnBalance(form.mrns, editingName.value || "");
   }
 }
-// Partial ordering: balance per item on the picked MRN (other POs deducted, this PO excluded).
+// Partial ordering: balance per item on each picked MRN (other POs deducted, this PO excluded).
 const mrnBalance = ref([]);
-function mrnBalanceFor(line) { return mrnBalance.value.find(b => b.item_code === line.item_code) || null; }
-async function loadMrnBalance(mrn, excludePo, applyToLines = false) {
+function mrnBalanceFor(line) {
+  const m = line.material_request || form.material_request;
+  return mrnBalance.value.find(b => b.item_code === line.item_code && b.material_request === m) || null;
+}
+async function loadMrnBalance(mrns, excludePo, applyToLines = false) {
+  const list = (Array.isArray(mrns) ? mrns : [mrns]).filter(Boolean);
   mrnBalance.value = [];
-  if (!mrn) return;
+  if (!list.length) return;
   try {
-    const rows = await apiPOST("psd_books.api.inventory.get_mrn_remaining", { material_request: mrn, exclude_po: excludePo || "" });
+    const rows = await apiPOST("psd_books.api.inventory.get_mrn_remaining", { material_request: JSON.stringify(list), exclude_po: excludePo || "" });
     mrnBalance.value = rows || [];
     if (applyToLines) {
-      const left = Object.fromEntries((rows || []).map(b => [b.item_code, b.remaining]));
-      lines.value.forEach(l => { if (l.item_code in left) l.max = left[l.item_code]; });
+      const left = Object.fromEntries((rows || []).map(b => [`${b.material_request}|${b.item_code}`, b.remaining]));
+      lines.value.forEach(l => { const k = `${l.material_request || form.material_request}|${l.item_code}`; if (k in left) l.max = left[k]; });
     }
   } catch { mrnBalance.value = []; }
 }
@@ -1819,8 +1871,8 @@ const assetOnly = ref(false);
 async function onAssetToggle(on) {
   assetOnly.value = !!on;
   // The MRN list switches between Purchase and Asset MRNs, so a picked MRN (and what it filled in) no longer applies.
-  if (form.material_request) {
-    form.material_request = ""; form.project = ""; form.set_warehouse = ""; whFromProject.value = false;
+  if (form.mrns.length) {
+    form.mrns = []; form.material_request = ""; form.project = ""; form.set_warehouse = ""; whFromProject.value = false; mrnBalance.value = [];
     lines.value = [blankLine()];
   }
   fetchMrns("");
@@ -1906,7 +1958,7 @@ function calcLine(l) { l.amount = Math.round(flt(l.qty) * flt(l.rate) * 100) / 1
 
 async function savePO(newStatus, sendAfter = false) {
   if (!assetOnly.value && !form.project) return toast.error("Project is required");
-  if (!form.material_request) return toast.error("MRN is required");
+  if (!form.mrns.length) return toast.error("MRN is required");
   if (!form.supplier) return toast.error("Vendor is required");
   if (!form.entry_date) return toast.error("Entry Date is required");
   if (!lines.value.some(l => l.item_code && flt(l.qty) > 0)) return toast.error("At least one item required");
@@ -1954,7 +2006,7 @@ async function savePO(newStatus, sendAfter = false) {
       billing_address_name: form.billing_address_name || "",
       delivery_address_name: form.delivery_address_name || "",
       set_warehouse: form.set_warehouse || "",
-      material_request: form.material_request || "",
+      material_request: form.mrns[0] || "",
       project: form.project || null,
       employee: form.employee || "",
       employee_name: form.employee_name || "",
@@ -1969,6 +2021,7 @@ async function savePO(newStatus, sendAfter = false) {
         qty: flt(l.qty) || 1, rate: flt(l.rate), amount: flt(l.amount),
         uom: l.uom || "",
         tax_code: l.tax_code || "",
+        material_request: l.material_request || form.mrns[0] || "",
       })),
       taxes,
     };
@@ -2283,7 +2336,8 @@ onMounted(async () => {
         // An Asset MRN switches the form to Asset so its MRN is in the list and only asset items show.
         assetOnly.value = draft.material_request_type === "Asset";
         form.material_request = draft.material_request || "";
-        fetchMrns("", form.material_request);
+        form.mrns = draft.material_request ? [draft.material_request] : [];
+        fetchMrns("");
         fetchItems("");
         fetchWarehouses("");
         applyMrDraft(draft);

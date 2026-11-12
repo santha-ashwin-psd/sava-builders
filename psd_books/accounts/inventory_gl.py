@@ -201,10 +201,14 @@ def has_confirmed_receipt(doc) -> bool:
     purchase_order = getattr(doc, "purchase_order", None)
     if not purchase_order:
         return False
-    return bool(frappe.db.exists(
-        "Purchase Receipt",
-        {"purchase_order": purchase_order, "docstatus": 1},
-    ))
+    if frappe.db.exists("Purchase Receipt", {"purchase_order": purchase_order, "docstatus": 1}):
+        return True
+    # One GRN can cover several POs: the PO may sit on a line of a receipt whose header PO is another one.
+    return bool(frappe.db.sql(
+        """SELECT 1 FROM `tabPurchase Receipt Item` pri
+           JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
+           WHERE pri.purchase_order = %s AND pr.docstatus = 1 LIMIT 1""",
+        (purchase_order,)))
 
 
 def classify_purchase_item_amounts(doc) -> dict:

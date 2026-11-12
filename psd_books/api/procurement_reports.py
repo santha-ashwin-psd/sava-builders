@@ -33,7 +33,7 @@ def mrn_vs_lpo(project=None):
 			ordered = frappe.db.sql("""
 				SELECT COALESCE(SUM(poi.qty), 0) FROM `tabPurchase Order Item` poi
 				JOIN `tabPurchase Order` po ON po.name = poi.parent
-				WHERE po.material_request = %s AND po.docstatus = 1 AND poi.item_code = %s
+				WHERE ifnull(nullif(poi.material_request, ''), po.material_request) = %s AND po.docstatus = 1 AND poi.item_code = %s
 			""", (m.name, it.item_code))[0][0]
 			rows.append({
 				"mrn": m.name, "project": m.project or "", "project_name": names.get(m.project) or m.project or "", "mrn_status": m.status,

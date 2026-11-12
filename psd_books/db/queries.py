@@ -4948,12 +4948,18 @@ def get_supplier_mis(company: str, from_date: str, to_date: str) -> dict:
         SELECT
             pr.name AS receipt, pr.posting_date AS received_date,
             pr.supplier AS supplier, pr.supplier_name AS supplier_name,
-            pr.purchase_order AS purchase_order, po.expected_delivery_date AS expected_date,
+            lp.purchase_order AS purchase_order, po.expected_delivery_date AS expected_date,
             CASE WHEN po.expected_delivery_date IS NOT NULL
                  THEN DATEDIFF(pr.posting_date, po.expected_delivery_date)
                  ELSE NULL END AS delay_days
         FROM `tabPurchase Receipt` pr
-        LEFT JOIN `tabPurchase Order` po ON po.name = pr.purchase_order
+        LEFT JOIN (
+            SELECT DISTINCT pri.parent,
+                   COALESCE(NULLIF(pri.purchase_order, ''), prh.purchase_order) AS purchase_order
+            FROM `tabPurchase Receipt Item` pri
+            JOIN `tabPurchase Receipt` prh ON prh.name = pri.parent
+        ) lp ON lp.parent = pr.name
+        LEFT JOIN `tabPurchase Order` po ON po.name = lp.purchase_order
         WHERE pr.company = %(company)s AND pr.docstatus = 1
           AND pr.posting_date BETWEEN %(from_date)s AND %(to_date)s
         ORDER BY pr.posting_date DESC

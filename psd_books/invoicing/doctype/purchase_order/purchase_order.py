@@ -26,7 +26,7 @@ def mrn_ordered_qty(material_request, exclude_po=None, submitted_only=False):
         """select poi.item_code, sum(poi.qty) as qty
              from `tabPurchase Order Item` poi
              join `tabPurchase Order` po on po.name = poi.parent
-            where po.material_request = %(mr)s
+            where ifnull(nullif(poi.material_request, ''), po.material_request) = %(mr)s
               and po.docstatus """ + ("= 1" if submitted_only else "< 2") + """
               and ifnull(po.status, '') != 'Cancelled'""" + cond + """
          group by poi.item_code""",
@@ -56,8 +56,11 @@ def sync_material_request_status(material_request):
     mr = frappe.db.get_value("Material Request", material_request, ["docstatus", "status"], as_dict=True)
     if not mr or mr.docstatus != 1:
         return  # only touch status while the MR itself is a submitted doc
-    pos = frappe.get_all("Purchase Order",
-                         filters={"material_request": material_request, "docstatus": 1}, pluck="name")
+    pos = frappe.db.sql_list("""select distinct po.name
+          from `tabPurchase Order` po
+          join `tabPurchase Order Item` poi on poi.parent = po.name
+         where po.docstatus = 1
+           and ifnull(nullif(poi.material_request, ''), po.material_request) = %s""", material_request)
     if not pos:
         new_status = "Submitted"
     elif any(flt(v) > 0.0005 for v in mrn_remaining_qty(material_request, submitted_only=True).values()):
@@ -65,8 +68,12 @@ def sync_material_request_status(material_request):
     else:
         new_status = "Received"
         for po in pos:
-            rows = frappe.get_all("Purchase Order Item", filters={"parent": po},
-                                  fields=["qty", "received_qty"])
+            # a PO can cover several MRNs: only this MRN's lines count towards its status
+            rows = frappe.db.sql("""select poi.qty, poi.received_qty
+                  from `tabPurchase Order Item` poi join `tabPurchase Order` p on p.name = poi.parent
+                 where poi.parent = %s
+                   and ifnull(nullif(poi.material_request, ''), p.material_request) = %s""",
+                (po, material_request), as_dict=True)
             total = sum(flt(r.qty) for r in rows)
             received = sum(flt(r.received_qty) for r in rows)
             if total <= 0 or received < total - 0.001:
@@ -76,10 +83,32 @@ def sync_material_request_status(material_request):
         frappe.db.set_value("Material Request", material_request, "status", new_status)
 
 
+def po_material_requests(po):
+    """Distinct MRNs a Purchase Order covers: its lines' MRNs, else the PO's own MRN.
+    po: a Purchase Order doc or its name."""
+    doc = frappe.get_doc("Purchase Order", po) if isinstance(po, str) else po
+    out = []
+    for r in (doc.get("items") or []):
+        m = r.get("material_request") or doc.get("material_request")
+        if m and m not in out:
+            out.append(m)
+    if not out and doc.get("material_request"):
+        out.append(doc.get("material_request"))
+    return out
+
+
+def sync_po_material_requests(po):
+    """Re-run the MRN status sync for every MRN the Purchase Order covers."""
+    for m in po_material_requests(po):
+        sync_material_request_status(m)
+
+
 def backfill_received_material_requests():
     """One-off: re-run the sync for every MRN that already has a PO (bench execute)."""
-    names = frappe.get_all("Purchase Order", filters={"docstatus": 1, "material_request": ["!=", ""]},
-                           pluck="material_request", distinct=True)
+    names = set(frappe.db.sql_list("""select distinct ifnull(nullif(poi.material_request, ''), po.material_request)
+          from `tabPurchase Order` po join `tabPurchase Order Item` poi on poi.parent = po.name
+         where po.docstatus = 1"""))
+    names.discard(None); names.discard("")
     for n in names:
         sync_material_request_status(n)
     frappe.db.commit()
@@ -116,27 +145,47 @@ class PurchaseOrder(Document):
     def _validate_against_mrn(self):
         """A PO (or several, ordered in parts) may not order more of an item than the MRN asks for.
 
+        A PO can cover several MRNs of one project: each line carries its MRN (a line without one
+        belongs to the PO's own MRN) and is capped against that MRN's balance. The PO's own
+        material_request field always holds the first MRN, so older screens and reports keep working.
         Checked while the PO is a draft / new, so saving a status change on an old submitted PO
         is never blocked. Items that are not on the MRN are left alone (substitutions)."""
-        if not self.get("material_request") or (self.docstatus != 0 and not self.is_new()):
+        if self.docstatus != 0 and not self.is_new():
             return
-        if not frappe.db.exists("Material Request", self.material_request):
+        line_mrns = [r.get("material_request") for r in (self.items or []) if r.get("material_request")]
+        if line_mrns and (not self.get("material_request") or self.material_request not in line_mrns):
+            self.material_request = line_mrns[0]
+        if not self.get("material_request"):
             return
-        required = mrn_required_qty(self.material_request)
-        ordered = mrn_ordered_qty(self.material_request, None if self.is_new() else self.name)
-        this = {}
+        per_mrn = {}
         for row in (self.items or []):
-            if row.item_code in required:
-                this[row.item_code] = this.get(row.item_code, 0.0) + flt(row.qty)
-        for item, qty in this.items():
-            left = max(0.0, flt(required[item]) - flt(ordered.get(item, 0)))
-            if qty > left + 0.0005:
-                frappe.throw(
-                    "{0}: quantity {1} is more than the balance on Material Request {2}. "
-                    "MRN qty {3}, already ordered on other Purchase Orders {4}, balance {5}.".format(
-                        frappe.db.get_value("Item", item, "item_name") or item, flt(qty), self.material_request, flt(required[item]),
-                        flt(ordered.get(item, 0)), flt(left)),
-                    title="Quantity exceeds MRN")
+            m = row.get("material_request") or self.material_request
+            per_mrn.setdefault(m, []).append(row)
+        for m in per_mrn:
+            if m != self.material_request or any(r.get("material_request") for r in per_mrn[m]):
+                d = frappe.db.get_value("Material Request", m, ["docstatus", "project"], as_dict=True)
+                if not d:
+                    frappe.throw("Material Request {0} not found".format(m))
+                if self.get("project") and d.project and d.project != self.project:
+                    frappe.throw("Material Request {0} belongs to project {1}, not {2}".format(m, d.project, self.project))
+        for mrn, rows in per_mrn.items():
+            if not frappe.db.exists("Material Request", mrn):
+                continue
+            required = mrn_required_qty(mrn)
+            ordered = mrn_ordered_qty(mrn, None if self.is_new() else self.name)
+            this = {}
+            for row in rows:
+                if row.item_code in required:
+                    this[row.item_code] = this.get(row.item_code, 0.0) + flt(row.qty)
+            for item, qty in this.items():
+                left = max(0.0, flt(required[item]) - flt(ordered.get(item, 0)))
+                if qty > left + 0.0005:
+                    frappe.throw(
+                        "{0}: quantity {1} is more than the balance on Material Request {2}. "
+                        "MRN qty {3}, already ordered on other Purchase Orders {4}, balance {5}.".format(
+                            frappe.db.get_value("Item", item, "item_name") or item, flt(qty), mrn, flt(required[item]),
+                            flt(ordered.get(item, 0)), flt(left)),
+                        title="Quantity exceeds MRN")
 
     def _calculate_totals(self):
         for item in (self.items or []):
@@ -167,7 +216,7 @@ class PurchaseOrder(Document):
     def _sync_material_request_status(self):
         """Keep the source Material Request's status in step with its submitted
         Purchase Orders (Submitted -> Ordered -> Received)."""
-        sync_material_request_status(self.material_request)
+        sync_po_material_requests(self)
 
     def _update_ordered_qty(self, direction: int):
         """Increase (submit) or decrease (cancel) ordered_qty in Bin for each PO line.

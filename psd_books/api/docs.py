@@ -3967,6 +3967,23 @@ def _po_status_from_fulfillment(po_name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_draft_grn_pos(exclude=None):
+    """Purchase Orders that already sit on a Draft GRN (header PO or any line PO).
+
+    The GRN form leaves these out of its PO dropdown. `exclude` is a GRN being edited: it does
+    not count against its own POs."""
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    rows = frappe.db.sql(
+        """SELECT DISTINCT COALESCE(NULLIF(pri.purchase_order, ''), pr.purchase_order) AS po
+           FROM `tabPurchase Receipt` pr
+           LEFT JOIN `tabPurchase Receipt Item` pri ON pri.parent = pr.name
+           WHERE pr.docstatus = 0 AND (%(ex)s = '' OR pr.name != %(ex)s)""",
+        {"ex": exclude or ""}, as_dict=True)
+    return sorted({r.po for r in rows if r.po})
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_purchase_order_fulfillment(purchase_order):
     if frappe.session.user == "Guest":
         frappe.throw("Not permitted", frappe.PermissionError)
@@ -3981,7 +3998,7 @@ def get_purchase_order_fulfillment(purchase_order):
         """SELECT pri.po_item, SUM(pri.qty) AS qty
            FROM `tabPurchase Receipt Item` pri
            JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
-           WHERE pr.purchase_order = %s AND pr.docstatus = 0
+           WHERE COALESCE(NULLIF(pri.purchase_order, ''), pr.purchase_order) = %s AND pr.docstatus = 0
            GROUP BY pri.po_item""", (purchase_order,), as_dict=True)}
     for r in rows:
         r["remaining_to_receive"] = max(0.0, flt(r["qty"]) - flt(r["received_qty"]))
@@ -4038,8 +4055,8 @@ def mark_po_received(purchase_order, line_qtys=None):
     frappe.db.set_value("Purchase Order", purchase_order, "status", new_status,
                         update_modified=True)
     try:
-        from psd_books.invoicing.doctype.purchase_order.purchase_order import sync_material_request_status
-        sync_material_request_status(po.get("material_request"))
+        from psd_books.invoicing.doctype.purchase_order.purchase_order import sync_po_material_requests
+        sync_po_material_requests(purchase_order)
     except Exception:
         frappe.log_error(frappe.get_traceback(), "MRN status sync failed after mark received")
     frappe.db.commit()
@@ -6076,7 +6093,7 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
         """SELECT pri.po_item, SUM(pri.qty) AS qty, GROUP_CONCAT(DISTINCT pr.name) AS receipts
            FROM `tabPurchase Receipt Item` pri
            JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
-           WHERE pr.purchase_order = %s AND pr.docstatus = 0
+           WHERE COALESCE(NULLIF(pri.purchase_order, ''), pr.purchase_order) = %s AND pr.docstatus = 0
            GROUP BY pri.po_item""", (po.name,), as_dict=True)
     _in_draft = {str(r.po_item): flt(r.qty) for r in _draft_rows}
     _draft_names = sorted({n for r in _draft_rows for n in (r.receipts or "").split(",") if n})
@@ -6252,14 +6269,27 @@ def get_purchase_receipt_list(company=None, limit=200):
         _po_proj = {r.name: r.project for r in frappe.db.sql(
             "SELECT name, project FROM `tabPurchase Order` WHERE name IN %(n)s",
             {"n": tuple(_po_names)}, as_dict=True)}
+    # One GRN can cover several POs: collect the POs of each receipt's lines (in line order).
+    _pr_pos = {}
+    if prs:
+        for r in frappe.db.sql(
+                """SELECT parent, purchase_order FROM `tabPurchase Receipt Item`
+                   WHERE parent IN %(n)s AND IFNULL(purchase_order, '') != '' ORDER BY idx""",
+                {"n": tuple(p.name for p in prs)}, as_dict=True):
+            lst = _pr_pos.setdefault(r.parent, [])
+            if r.purchase_order not in lst:
+                lst.append(r.purchase_order)
     out = []
     pos_with_pr = set()
     for p in prs:
         if p.purchase_order: pos_with_pr.add(p.purchase_order)
+        pos_with_pr.update(_pr_pos.get(p.name, []))
+        _all_pos = _pr_pos.get(p.name) or ([p.purchase_order] if p.purchase_order else [])
         out.append({
             "project":               p.project or _po_proj.get(p.purchase_order) or "",
             "name":                  p.name,
             "purchase_order":        p.purchase_order or "",
+            "purchase_orders":       _all_pos,
             "supplier":              p.supplier, "supplier_name": p.supplier_name,
             "posting_date":          p.posting_date,
             "supplier_delivery_note":p.supplier_delivery_note,
