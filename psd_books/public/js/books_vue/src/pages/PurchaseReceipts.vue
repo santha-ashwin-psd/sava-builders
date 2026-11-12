@@ -988,7 +988,13 @@ async function fetchVendors(q = "") {
     const filters = [["disabled", "=", 0]];
     if (q) filters.push(["supplier_name", "like", `%${q}%`]);
     const rows = await apiList("Supplier", { fields: ["name", "supplier_name"], filters, limit: 30, order: "supplier_name asc" });
-    vendorOptions.value = rows.map(r => ({ label: r.supplier_name || r.name, value: r.name }));
+    const opts = rows.map(r => ({ label: r.supplier_name || r.name, value: r.name }));
+    // Keep the currently selected supplier in the list even if it is outside the
+    // first 30 rows, otherwise the select falls back to showing the supplier code.
+    if (form.supplier && !opts.some(o => o.value === form.supplier)) {
+      opts.unshift({ label: form.supplier_name || form.supplier, value: form.supplier });
+    }
+    vendorOptions.value = opts;
   } catch { vendorOptions.value = []; }
 }
 function onSupSelect(opt) {
@@ -1101,7 +1107,17 @@ async function onPOSelect(opt) {
     if (!form.supplier) {
       const ps = await apiList("Purchase Order", { fields: ["name", "supplier", "supplier_name"], filters: [["name", "=", poName]], limit: 1 });
       const sp = ps?.[0];
-      if (sp?.supplier) { form.supplier = sp.supplier; form.supplier_name = sp.supplier_name || sp.supplier; fetchVendors(""); }
+      if (sp?.supplier) {
+        let sname = sp.supplier_name;
+        if (!sname || sname === sp.supplier) {
+          const sr = await apiList("Supplier", { fields: ["name", "supplier_name"], filters: [["name", "=", sp.supplier]], limit: 1 }).catch(() => []);
+          sname = sr?.[0]?.supplier_name || sp.supplier;
+        }
+        form.supplier_name = sname;
+        form.supplier = sp.supplier;
+        if (!vendorOptions.value.some(o => o.value === sp.supplier)) vendorOptions.value = [{ label: sname, value: sp.supplier }, ...vendorOptions.value];
+        fetchVendors("");
+      }
     }
   } catch {}
   try {
