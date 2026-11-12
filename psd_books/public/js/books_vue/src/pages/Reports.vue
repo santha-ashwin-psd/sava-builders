@@ -42,7 +42,7 @@
         <span class="dr-to">To</span>
         <input type="date" v-model="toDate" class="dr-input" />
       </template>
-      <button class="books-btn books-btn-primary" @click="runReport">▷ Run Report</button>
+      <button v-if="!PROC_METHODS[activeReport]" class="books-btn books-btn-primary" @click="runReport">▷ Run Report</button>
       <!-- Reset hidden (all reports)
       <button class="books-btn dr-reset" @click="resetDateRange">⟳ Reset</button>
       -->
@@ -85,12 +85,17 @@
           <div class="bs-page-head-sub">{{ procSubtitle }}</div>
         </div>
         <div class="bs-page-head-actions">
+          <div v-if="procSearchable" class="proc-search">
+            <svg class="proc-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input v-model="procSearch" type="text" class="dr-input proc-search-input" :placeholder="procSearchHint" />
+            <button v-if="procSearch" type="button" class="proc-search-clear" title="Clear" @click="procSearch = ''">&times;</button>
+          </div>
           <select v-if="activeReport !== 'asset_reg'" v-model="procProject" class="dr-input">
             <option value="">All projects</option>
             <option v-for="p in procProjects" :key="p" :value="p">{{ p }}</option>
           </select>
           <div class="iws-export-wrap">
-            <button class="bs-export-btn" @click="procExportOpen = !procExportOpen" :disabled="!procRows.length">
+            <button class="bs-export-btn" @click="procExportOpen = !procExportOpen" :disabled="!procShown.length">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Export
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -109,6 +114,7 @@
       <template v-if="!procRan && !procLoading"><div class="empty-msg">Run the report to see results.</div></template>
       <template v-else-if="procLoading"><div class="loading-shimmer" style="height:200px;border-radius:8px"></div></template>
       <template v-else-if="procError"><div class="empty-msg">{{ procError }}</div></template>
+      <template v-else-if="procRows.length && !procShown.length"><div class="empty-msg">No rows match "{{ procSearch }}".</div></template>
       <template v-else-if="procRows.length">
         <div class="iws-body">
           <div class="iws-table-wrap iws-cards-wrap">
@@ -119,7 +125,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(row, i) in procRows" :key="i">
+                <tr v-for="(row, i) in procShown" :key="i">
                   <td v-for="c in procColumns" :key="c" :data-label="procLabel(c)" :class="{ 'ta-r': procIsNumber(c) }">{{ procCell(row[c], c) }}</td>
                 </tr>
               </tbody>
@@ -5142,29 +5148,35 @@ const procRows = ref([]);
 const procCache = ref({});
 const procRan = computed(() => !!procCache.value[activeReport.value]);
 const procLoading = ref(false);
+let procPending = 0;   // loads in flight (reports now load on open / tab switch)
 const procError = ref("");
 async function loadProcurement() {
-  const method = PROC_METHODS[activeReport.value];
+  const key = activeReport.value;
+  const method = PROC_METHODS[key];
   if (!method) return;
+  procPending++;
   procLoading.value = true;
   procError.value = "";
   try {
-    const params = activeReport.value === "asset_reg"
+    const params = key === "asset_reg"
       ? { from_date: fromDate.value, to_date: toDate.value }
       : (procProject.value ? { project: procProject.value } : {});
     const r = await apiGET("psd_books.api.procurement_reports." + method, params);
-    procRows.value = Array.isArray(r) ? r : (r?.message || []);
-    procCache.value = { ...procCache.value, [activeReport.value]: { rows: procRows.value, project: procProject.value } };
+    const rows = Array.isArray(r) ? r : (r?.message || []);
+    procCache.value = { ...procCache.value, [key]: { rows, project: procProject.value } };
+    if (activeReport.value === key) procRows.value = rows;
     if (!procProjects.value.length) {
       const all = await apiGET("psd_books.api.procurement_reports.project_summary", {});
       procProjects.value = (Array.isArray(all) ? all : (all?.message || [])).map(x => x.project);
     }
   } catch (e) {
-    procError.value = e.message || "Failed to load report";
-    procRows.value = [];
-    procCache.value = { ...procCache.value, [activeReport.value]: { rows: [], project: procProject.value } };
+    procCache.value = { ...procCache.value, [key]: { rows: [], project: procProject.value } };
+    if (activeReport.value === key) {
+      procError.value = e.message || "Failed to load report";
+      procRows.value = [];
+    }
   } finally {
-    procLoading.value = false;
+    procLoading.value = --procPending > 0;
   }
 }
 // Columns kept in the data (and used for filtering) but not shown
@@ -5176,6 +5188,26 @@ const PROC_HIDDEN = {
   mrn_lpo: ["project"],
 };
 const PROC_COL_LABELS = { project_name: "Project" };
+// Search box: matches MRN / LPO no., supplier name, project (code or name), item code and item name
+const PROC_SEARCH_KEYS = ["mrn", "lpo", "supplier_name", "project", "project_name", "item_code", "item_name"];
+const PROC_SEARCH_HINTS = {
+  mrn_lpo: "Search MRN, project, item code, item name",
+  lpo_grn: "Search LPO, supplier, project, item",
+  proj_summary: "Search project",
+  asset_reg: "Search item code, item name",
+};
+const procSearch = ref("");
+const procSearchable = computed(() => !!PROC_SEARCH_HINTS[activeReport.value]);
+const procSearchHint = computed(() => PROC_SEARCH_HINTS[activeReport.value] || "Search");
+const procShown = computed(() => {
+  const q = procSearch.value.trim().toLowerCase();
+  if (!q || !procSearchable.value) return procRows.value;
+  const terms = q.split(/\s+/);
+  return procRows.value.filter(r => {
+    const hay = PROC_SEARCH_KEYS.map(k => (r[k] == null ? "" : String(r[k]))).join(" ").toLowerCase();
+    return terms.every(t => hay.includes(t));
+  });
+});
 const procColumns = computed(() => {
   const first = procRows.value[0];
   if (!first) return [];
@@ -5230,18 +5262,18 @@ function saveCsvText(csv, filename) {
 }
 const procExportOpen = ref(false);
 function exportProcXlsx() {
-  if (!procRows.value.length) return;
+  if (!procShown.value.length) return;
   const cols = procColumns.value;
   const header = cols.map(c => procLabel(c));
-  const rows = procRows.value.map(r => cols.map(c => r[c]));
+  const rows = procShown.value.map(r => cols.map(c => r[c]));
   downloadXlsx(PROC_METHODS[activeReport.value] + "_" + new Date().toISOString().slice(0, 10) + ".xlsx", header, rows);
 }
 function exportProcCSV() {
-  if (!procRows.value.length) return;
+  if (!procShown.value.length) return;
   const cols = procColumns.value;
   const esc = v => { const t = v == null ? "" : String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
   const lines = [cols.map(c => esc(procLabel(c))).join(",")];
-  for (const row of procRows.value) lines.push(cols.map(c => esc(row[c])).join(","));
+  for (const row of procShown.value) lines.push(cols.map(c => esc(row[c])).join(","));
   const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -5253,8 +5285,16 @@ function exportProcCSV() {
 watch(activeReport, (k) => {
   const c = procCache.value[k];
   procError.value = "";
+  procSearch.value = "";
   procRows.value = c ? c.rows : [];
   if (c) procProject.value = c.project;
+  else loadProcurement();   // no Run Report button: load on open / first visit
+}, { immediate: true });
+// Asset Register is the only procurement report that uses the date range
+watch([fromDate, toDate], () => {
+  if (activeReport.value !== "asset_reg" || !procCache.value.asset_reg) return;
+  if (fromDate.value && toDate.value && fromDate.value > toDate.value) return;
+  loadProcurement();
 });
 watch(procProject, () => {
   const c = procCache.value[activeReport.value];
@@ -7354,6 +7394,10 @@ function tabColor(i) {
 .bs-page-head-title { font-size: 16px; font-weight: 700; color: var(--text); }
 .bs-page-head-sub { font-size: 12px; color: var(--text-3); margin-top: 1px; }
 .bs-page-head-actions { display: flex; align-items: center; gap: 10px; }
+.proc-search { position: relative; display: flex; align-items: center; }
+.proc-search-icon { position: absolute; left: 10px; color: var(--text-muted, #868e96); pointer-events: none; }
+.proc-search-input { width: 290px; padding-left: 30px; padding-right: 26px; }
+.proc-search-clear { position: absolute; right: 6px; border: 0; background: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--text-muted, #868e96); }
 .bs-asof {
   font-size: 12.5px; font-weight: 600; color: var(--text-2);
   border: 1px solid var(--border); border-radius: 8px; padding: 7px 12px;

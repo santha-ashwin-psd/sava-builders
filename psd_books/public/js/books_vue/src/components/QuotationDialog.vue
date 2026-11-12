@@ -58,7 +58,7 @@
               <div class="add-card-header">
                 <div class="add-card-title">
                   Items
-                  <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· rates before VAT; leave the rate blank for items the supplier did not quote</span>
+                  <span style="font-size:11.5px;color:#6b7280;font-weight:400;letter-spacing:0;text-transform:none">&nbsp;· rates include VAT; leave the rate blank for items the supplier did not quote</span>
                 </div>
               </div>
               <div class="add-card-body" style="padding:16px 16px 8px">
@@ -88,7 +88,7 @@
                       <div class="po-item-col po-item-col--right">
                         <div class="po-item-num-row">
                           <div class="po-item-field">
-                            <label>Rate (KES per {{ it.uom || 'unit' }})</label>
+                            <label>Rate incl. VAT (KES per {{ it.uom || 'unit' }})</label>
                             <input class="inv-fi" type="number" min="0" step="0.01" v-model="it.rate" placeholder="Not quoted"/>
                           </div>
                           <div class="po-item-field">
@@ -160,14 +160,15 @@ const form = reactive({
 });
 const isRevision = computed(() => !!form.active_quotation);
 
-// Same rules as invoicing/supplier_quotation_calc.py: no rate = not quoted;
-// amount = qty x rate x (1 - discount%), rounded to 2 places; VAT on that amount, rounded to 2 places.
+// Same rules as invoicing/supplier_quotation_calc.py: no rate = not quoted; the rate INCLUDES VAT.
+// gross = qty x rate x (1 - discount%); amount (before VAT) = gross / (1 + VAT%); VAT = gross - amount. All rounded to 2 places.
 const r2 = (x) => Math.round(x * 100 + 1e-9) / 100;
 function quoted(it) { return it.rate !== "" && it.rate != null && flt(it.rate) > 0; }
 function calc(it) {
   if (!quoted(it)) return { quoted: false, amount: 0, tax: 0 };
-  const amount = r2(flt(it.qty) * flt(it.rate) * (100 - flt(it.discount_percent)) / 100);
-  return { quoted: true, amount, tax: r2(amount * flt(it.vat_percent) / 100) };
+  const gross = r2(flt(it.qty) * flt(it.rate) * (100 - flt(it.discount_percent)) / 100);
+  const amount = r2(gross * 100 / (100 + flt(it.vat_percent)));
+  return { quoted: true, amount, tax: r2(gross - amount) };
 }
 const totals = computed(() => {
   let net = 0, tax = 0;

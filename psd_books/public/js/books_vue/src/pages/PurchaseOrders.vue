@@ -394,7 +394,7 @@
 
             <!-- Totals -->
             <div class="po-totals" style="margin-top:16px">
-              <div style="font-size:12px;color:#6b7280">Tax is applied per item via Item Tax Template.</div>
+              <div style="font-size:12px;color:#6b7280">Rates include VAT; VAT is split out per item via Item Tax Template.</div>
               <div class="po-totals-right">
                 <div class="po-total-row"><span>Subtotal</span><span>{{ fmtCur(subtotal) }}</span></div>
                 <template v-for="tl in taxLines" :key="tl.template">
@@ -453,10 +453,13 @@
         <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New purchase order — unsaved' }}</div>
         <div class="add-footer-actions">
           <button class="add-btn-cancel" @click="drawerOpen=false">Cancel</button>
-          <button class="add-btn-draft" :disabled="drawerSaving || !poCanSave" :title="!poCanSave ? 'Read-only access' : ''" @click="savePO('Draft')">
+          <button v-if="editingApproved" class="add-btn-more" :disabled="drawerSaving" @click="savePO('Draft')">
+            <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save changes' }}
+          </button>
+          <button v-if="!editingApproved" class="add-btn-draft" :disabled="drawerSaving || !poCanSave" :title="!poCanSave ? 'Read-only access' : ''" @click="savePO('Draft')">
             <span v-html="icon('save',13)"></span> {{ drawerSaving ? 'Saving…' : 'Save Draft' }}
           </button>
-          <button class="add-btn-more" :disabled="drawerSaving || !poCanSave" :title="!poCanSave ? 'Read-only access' : ''"
+          <button v-if="!editingApproved" class="add-btn-more" :disabled="drawerSaving || !poCanSave" :title="!poCanSave ? 'Read-only access' : ''"
             @click="savePO('Draft', true)">
             <span v-html="icon('check',13)"></span>
             {{ drawerSaving ? 'Saving…' : 'Send for approval' }}
@@ -515,6 +518,9 @@
               <button class="inv-ab-btn inv-ab-danger" :disabled="approvalBusy" @click="sendBackPO(viewDoc)"><span class="ab-label">Send back</span></button>
             </template>
             <button v-if="canEdit(viewDoc)" class="inv-ab-btn" :disabled="!poCanEdit" :title="!poCanEdit ? poNoAccess : ''" @click="openEdit(viewDoc);viewOpen=false">
+              <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
+            </button>
+            <button v-if="approval && approval.can_director_edit" class="inv-ab-btn" title="Director: edit this approved Purchase Order (no GRN yet)" @click="openEdit(viewDoc, true);viewOpen=false">
               <span v-html="icon('edit',13)"></span> <span class="ab-label">Edit</span>
             </button>
             <button v-if="canEdit(viewDoc)" class="inv-ab-btn" :style="poCanEdit ? 'color:#16a34a;border-color:rgba(22,163,106,.3)' : ''" :disabled="!poCanEdit" :title="!poCanEdit ? poNoAccess : ''" @click="submitPO(viewDoc)">
@@ -592,7 +598,7 @@
                     <span class="inv-dmeta-icon" v-html="icon('indianrupee',13)"></span>
                     <span class="inv-dmeta-lbl">Total Value</span>
                   </div>
-                  <div class="inv-balance-val">{{ fmtCur(viewDoc.grand_total) }}</div>
+                  <div class="inv-balance-val">{{ fmtCur(viewItems.length ? viewGrandTotal : viewDoc.grand_total) }}</div>
                 </div>
               </div>
 
@@ -1201,6 +1207,7 @@ const projectLabel = (code) => (code ? (projectNames.value[code] || code) : "");
 const list = ref([]), loading = ref(false), search = ref(""), selected = ref(new Set());
 const viewMode = ref("table"); // "table" | "grid"
 const drawerOpen = ref(false), drawerSaving = ref(false), editingName = ref(""), editingStatus = ref("");
+const editingApproved = ref(false);   // Director editing an approved PO (saved through edit_approved_po)
 // Rights come from the server (module level + Sava job role), the same rules the API enforces.
 // These only grey out the form and buttons; the server still checks every call.
 const { isAdmin: poIsAdmin, flags: poFlags } = usePermissions();
@@ -1469,9 +1476,11 @@ const allChecked = computed(() => sorted.value.length > 0 && sorted.value.every(
 function toggle(n) { const s = new Set(selected.value); s.has(n) ? s.delete(n) : s.add(n); selected.value = s; }
 function toggleAll(e) { selected.value = e.target.checked ? new Set(sorted.value.map(o => o.name)) : new Set(); }
 
-const subtotal = computed(() => lines.value.reduce((s, l) => s + flt(l.amount), 0));
+// Rates are VAT-inclusive: qty x rate is the gross. Total = gross, VAT is split out of it,
+// Subtotal = gross - VAT.
+const grossTotal = computed(() => lines.value.reduce((s, l) => s + flt(l.amount), 0));
 
-// Group tax by template name → { name, rate, amount }
+// Group tax by template name -> { name, rate, amount }; VAT = gross * rate / (100 + rate)
 const taxLines = computed(() => {
   const map = {};
   for (const l of lines.value) {
@@ -1479,18 +1488,21 @@ const taxLines = computed(() => {
     const tmpl = taxTemplates.value.find(t => t.name === l.tax_code);
     const rate = tmpl?.rate ?? 0;
     if (!rate) continue;
-    if (!map[l.tax_code]) map[l.tax_code] = { template: l.tax_code, rate, amount: 0 };
-    map[l.tax_code].amount += Math.round(flt(l.amount) * rate / 100 * 100) / 100;
+    if (!map[l.tax_code]) map[l.tax_code] = { template: l.tax_code, rate, gross: 0, amount: 0 };
+    map[l.tax_code].gross += flt(l.amount);
   }
+  for (const t of Object.values(map)) t.amount = Math.round(t.gross * t.rate / (100 + t.rate) * 100) / 100;
   return Object.values(map);
 });
 const taxAmount = computed(() => taxLines.value.reduce((s, t) => s + t.amount, 0));
-const grandTotal = computed(() => subtotal.value + taxAmount.value);
+const subtotal = computed(() => Math.round((grossTotal.value - taxAmount.value) * 100) / 100);
+const grandTotal = computed(() => grossTotal.value);
 
 const hasUnreceived = computed(() => fulfill.lines.some(l => l.remaining_to_receive > 0));
 
 // ── View drawer tax summary ───────────────────────────────────────────────
-const viewSubtotal = computed(() => viewItems.value.reduce((s, i) => s + flt(i.amount), 0));
+// Rates are VAT-inclusive: Total = sum of qty x rate, VAT is split out of it, Subtotal = Total - VAT.
+const viewGrossTotal = computed(() => viewItems.value.reduce((s, i) => s + flt(i.amount), 0));
 
 const viewTaxLines = computed(() => {
   const map = {};
@@ -1499,14 +1511,16 @@ const viewTaxLines = computed(() => {
     const tmpl = taxTemplates.value.find(t => t.name === i.tax_code);
     const rate = tmpl?.rate ?? 0;
     if (!rate) continue;
-    if (!map[i.tax_code]) map[i.tax_code] = { template: i.tax_code, rate, amount: 0 };
-    map[i.tax_code].amount += Math.round(flt(i.amount) * rate / 100 * 100) / 100;
+    if (!map[i.tax_code]) map[i.tax_code] = { template: i.tax_code, rate, gross: 0, amount: 0 };
+    map[i.tax_code].gross += flt(i.amount);
   }
+  for (const t of Object.values(map)) t.amount = Math.round(t.gross * t.rate / (100 + t.rate) * 100) / 100;
   return Object.values(map);
 });
 
 const viewTaxAmount = computed(() => viewTaxLines.value.reduce((s, t) => s + t.amount, 0));
-const viewGrandTotal = computed(() => viewSubtotal.value + viewTaxAmount.value);
+const viewSubtotal = computed(() => Math.round((viewGrossTotal.value - viewTaxAmount.value) * 100) / 100);
+const viewGrandTotal = computed(() => viewGrossTotal.value);
 
 const timelineSteps = computed(() => {
   const o = viewDoc.value;
@@ -1546,7 +1560,7 @@ const threeWayMismatch = computed(() =>
 // ── Create / Edit ─────────────────────────────────────────────────────────
 function openNew() {
   assetOnly.value = false;
-  editingName.value = ""; editingStatus.value = "";
+  editingName.value = ""; editingStatus.value = ""; editingApproved.value = false;
   Object.assign(form, { supplier: "", entry_date: todayStr(), transaction_date: todayStr(), expected_delivery_date: expectedDefault(), billing_address: "", delivery_address: "", billing_address_name: "", delivery_address_name: "", set_warehouse: "", purchase_type: "Goods", terms: "", remarks: "", material_request: "", mrns: [], project: "", employee: "", employee_name: "" });
   mrnPick.value = ""; mrnBalance.value = [];
   whFromProject.value = false;
@@ -1555,8 +1569,9 @@ function openNew() {
   fetchVendors(""); fetchItems("");
   drawerOpen.value = true;
 }
-async function openEdit(o) {
+async function openEdit(o, approved = false) {
   assetOnly.value = false;
+  editingApproved.value = !!approved;
   editingName.value = o.name; editingStatus.value = o.status || "";
   Object.assign(form, {
     supplier: o.supplier || "", entry_date: o.entry_date || o.transaction_date || todayStr(), transaction_date: o.transaction_date || todayStr(),
@@ -2026,6 +2041,14 @@ async function savePO(newStatus, sendAfter = false) {
       taxes,
     };
     if (editingName.value) doc.name = editingName.value;
+    if (editingApproved.value) {
+      // Director edit of an approved PO: the server re-checks Director role, no GRN, MRN balance and stock on order
+      await apiPOST("psd_books.api.purchase_order_approval.edit_approved_po", { name: editingName.value, doc: JSON.stringify(doc) });
+      toast.success(`Purchase Order ${editingName.value} updated`);
+      drawerOpen.value = false;
+      await load();
+      return;
+    }
     const saved = await apiSave(doc);
     if (sendAfter && saved?.name) {
       try {

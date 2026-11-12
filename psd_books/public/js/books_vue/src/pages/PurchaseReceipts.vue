@@ -269,28 +269,35 @@
                   <tr>
                     <th style="width:32px">#</th>
                     <th>Item</th>
-                    <th class="ta-r" style="width:64px">Qty</th>
                     <th class="ta-r" style="width:76px">Accepted</th>
-                    <th class="ta-r" style="width:76px">Rejected</th>
                     <th style="width:56px">UOM</th>
                     <th class="ta-r" style="width:100px">Rate</th>
+                    <th style="width:130px">Tax</th>
+                    <th class="ta-r" style="width:110px">Amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(it,i) in viewDoc.items||[]" :key="it.name||it.item_code" class="inv-row">
                     <td class="pr-row-num">{{ i+1 }}</td>
                     <td style="font-weight:500;color:#111827">{{ viewItemNames[it.item_code]||it.item_name||it.item_code }}<span v-if="viewPOs.length > 1" class="c-muted mono-sm" style="font-weight:400"> · {{ it.purchase_order||viewDoc.purchase_order }}</span></td>
-                    <td class="ta-r mono">{{ it.qty }}</td>
                     <td class="ta-r mono" style="color:#2F9E44">{{ it.accepted_qty||it.qty }}</td>
-                    <td class="ta-r mono" style="color:#C92A2A">{{ it.rejected_qty||0 }}</td>
                     <td class="c-muted">{{ it.uom||'Nos' }}</td>
                     <td class="ta-r mono">{{ fmtRate(it.rate) }}</td>
+                    <td class="c-muted">{{ taxLabel(it) }}</td>
+                    <td class="ta-r mono" style="font-weight:600">{{ fmtRate(lineTotal(it)) }}</td>
                   </tr>
                   <tr v-if="!(viewDoc.items||[]).length">
                     <td colspan="7" style="text-align:center;padding:24px;color:#9ca3af;font-size:13px">No items</td>
                   </tr>
                 </tbody>
               </table>
+              <div v-if="(viewDoc.items||[]).length" class="pr-totals">
+                <div class="pr-totals-row"><span>Subtotal</span><span>{{ fmtCur(viewSubtotal) }}</span></div>
+                <div v-for="tl in viewTaxLines" :key="tl.template" class="pr-totals-row pr-totals-tax">
+                  <span>{{ tl.template }} <b>{{ tl.rate }}%</b></span><span>{{ fmtCur(tl.amount) }}</span>
+                </div>
+                <div class="pr-totals-row pr-totals-grand"><span>Grand Total</span><span>{{ fmtCur(viewGrandTotal) }}</span></div>
+              </div>
             </div>
 
           </div>
@@ -393,7 +400,7 @@
                   <SearchableSelect v-model="form.set_warehouse" :options="warehouses" placeholder="Select warehouse where goods will be received…"
                     :createable="true" :staticCreate="true" createLabel="+ Create Warehouse" createDoctype="Warehouse" @search="fetchWarehouses" @open="fetchWarehouses('')" @create="fetchWarehouses('')" />
                 </div>
-                <div v-if="false">
+                <div>
                   <label class="inv-lbl">Supplier Delivery Note No.</label>
                   <input class="inv-fi" v-model="form.supplier_delivery_note" maxlength="140" placeholder="Supplier's DN number" />
                 </div>
@@ -441,14 +448,14 @@
               <div class="pr-lines-wrap">
                 <div class="pr-lines-tbl">
                   <div class="pr-lines-row pr-lines-head">
-                    <span>#</span><span>Item</span><span>Qty</span><span>Accepted Qty</span><span>UOM</span><span>PO Rate</span><span></span>
+                    <span>#</span><span>Item</span><span>Pending Qty</span><span>Accepted Qty</span><span>UOM</span><span>PO Rate</span><span></span>
                   </div>
                   <template v-for="(it,i) in form.items" :key="i">
                     <div class="pr-lines-row">
                       <span class="pr-lines-idx">{{ i+1 }}</span>
                       <SearchableSelect v-model="it.item_code" :options="itemOptions" disabled style="pointer-events:none" placeholder="Search item…" @search="fetchItems" @select="opt => onItemSelect(it, opt)" />
-                      <input class="inv-fi" type="number" v-model.number="it.qty" :disabled="!!it.qc_locked" placeholder="1" min="0.01" :max="it.po_pending || undefined" step="0.01"/>
-                      <input class="inv-fi" type="number" v-model.number="it.accepted_qty" :disabled="!!it.qc_locked" placeholder="1" min="0" :max="it.qty" step="0.01"/>
+                      <input class="inv-fi" type="number" :value="it.po_pending ?? it.qty" disabled readonly title="Quantity still pending on the PO"/>
+                      <input class="inv-fi" type="number" v-model.number="it.accepted_qty" :disabled="!!it.qc_locked" placeholder="0" min="0.01" :max="it.po_pending ?? undefined" step="0.01"/>
                       <select class="inv-fi" v-model="it.uom">
                         <option v-for="u in uomOptionsFor(it)" :key="u" :value="u">{{ u }}</option>
                       </select>
@@ -456,7 +463,7 @@
                       <button @click.stop="askRemoveLine(i)" class="po-item-card-rm" title="Remove line"><span v-html="icon('x',16)"></span></button>
                     </div>
                     <div v-if="it.po_qty || it.qc_locked" class="pr-lines-sub">
-                      <div v-if="it.po_qty" class="exp-field-hint" :class="{'exp-field-hint-err': flt(it.qty) > flt(it.po_pending) + 0.0001}">
+                      <div v-if="it.po_qty" class="exp-field-hint" :class="{'exp-field-hint-err': flt(it.accepted_qty) > flt(it.po_pending) + 0.0001}">
                         <template v-if="it.po_name && poCount > 1"><b>{{ it.po_name }}</b> · </template>Ordered {{ it.po_qty }} · Received {{ it.po_received }} · Pending {{ it.po_pending }}
                       </div>
                       <div v-if="it.qc_locked" class="exp-field-hint">Locked — final after QC {{ it.qc_locked }}</div>
@@ -563,6 +570,7 @@ import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { usePermissions } from "../composables/usePermissions.js";
 import { flt } from "../utils/format.js";
+import { templateHeadlineRate } from "../composables/useTaxCalc.js";
 import { fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 import { useLivePreview, GRN_PRINT_CONFIG, preparePRPrint } from "../composables/useLivePreview.js";
@@ -623,6 +631,41 @@ const poMeta        = ref({});
 const savedGRN      = ref({});   // { grn: name } draft already saved in this form session (retry updates it, never duplicates)
 const doneGRN       = ref({});   // kept for form reset only
 const editPOs       = ref([]);   // POs of the GRN being edited (read-only chips when more than one)  // poMeta: po name -> { project, set_warehouse }
+// ── Tax display (view drawer): template -> headline rate, loaded once ──
+const taxRates = ref({});
+let taxRatesLoaded = false;
+async function loadTaxRates() {
+  if (taxRatesLoaded) return;
+  taxRatesLoaded = true;
+  try {
+    const templates = await apiList("Tax Template", { fields: ["name"], filters: [["disabled", "=", 0]], limit: 100 });
+    const out = {};
+    await Promise.all((templates || []).map(async t => {
+      try { out[t.name] = Number(templateHeadlineRate((await apiGet("Tax Template", t.name))?.taxes)) || 0; } catch { out[t.name] = 0; }
+    }));
+    taxRates.value = out;
+  } catch { taxRatesLoaded = false; }
+}
+const lineAmount = it => flt(it.amount) || flt(it.qty) * flt(it.rate);
+// rates are VAT-inclusive: the line amount is qty x rate (VAT is split out in the totals below)
+const lineTotal = it => lineAmount(it);
+const taxLabel = it => it.tax_code ? `${it.tax_code}${taxRates.value[it.tax_code] ? " · " + taxRates.value[it.tax_code] + "%" : ""}` : "—";
+function fmtCur(v) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "KES", minimumFractionDigits: 2 }).format(flt(v)); }
+// Rates are VAT-inclusive: Grand Total = sum of qty x rate, VAT = gross x rate / (100 + rate), Subtotal = Grand Total - VAT.
+const viewGrossTotal = computed(() => (viewDoc.value?.items || []).reduce((t, i) => t + lineAmount(i), 0));
+const viewTaxLines = computed(() => {
+  const map = {};
+  for (const i of viewDoc.value?.items || []) {
+    const rate = taxRates.value[i.tax_code] || 0;
+    if (!i.tax_code || !rate) continue;
+    if (!map[i.tax_code]) map[i.tax_code] = { template: i.tax_code, rate, gross: 0, amount: 0 };
+    map[i.tax_code].gross += lineAmount(i);
+  }
+  for (const t of Object.values(map)) t.amount = Math.round(t.gross * t.rate / (100 + t.rate) * 100) / 100;
+  return Object.values(map);
+});
+const viewSubtotal = computed(() => Math.round((viewGrossTotal.value - viewTaxLines.value.reduce((t, x) => t + x.amount, 0)) * 100) / 100);
+const viewGrandTotal = computed(() => viewGrossTotal.value);
 const poCount = computed(() => new Set(form.items.map(i => i.po_name).filter(Boolean)).size);
 const viewPOs = computed(() => {
   const d = viewDoc.value || {};
@@ -775,6 +818,7 @@ async function bulkDelete() {
 
 async function openView(r) {
   viewOpen.value = true;
+  loadTaxRates();
   try {
     if (r.source === "real") {
       // Real Purchase Receipt document — show its own item rows directly.
@@ -941,6 +985,7 @@ async function openEdit(r) {
       quality_inspection: it.quality_inspection || "",
       po_item:            it.po_item || null,
       po_name:            it.purchase_order || doc.purchase_order || "",
+      tax_code:           it.tax_code || "",
       warehouse:          it.warehouse || "",
       saved_rate:         it.rate ?? 0,
       item_code:          it.item_code || "",
@@ -959,14 +1004,18 @@ async function openEdit(r) {
     editPOs.value = [...new Set(form.items.map(l => l.po_name).filter(Boolean))];
     if (!editPOs.value.length && doc.purchase_order) editPOs.value = [doc.purchase_order];
     {
-      const rateMap = {};
+      const rateMap = {}, pendMap = {};
       for (const po of editPOs.value) {
         try {
           const fres = await apiGET("psd_books.api.docs.get_purchase_order_fulfillment", { purchase_order: po });
-          (fres?.lines || []).forEach(x => { rateMap[x.name] = flt(x.rate); });
+          (fres?.lines || []).forEach(x => { rateMap[x.name] = flt(x.rate); pendMap[x.name] = flt(x.remaining_to_receive); });
         } catch {}
       }
-      form.items.forEach(l => { if (l.po_item && rateMap[l.po_item] != null) l.po_rate = rateMap[l.po_item]; });
+      form.items.forEach(l => {
+        if (l.po_item && rateMap[l.po_item] != null) l.po_rate = rateMap[l.po_item];
+        // a draft is not counted as received yet; a submitted GRN already is, so add its own qty back
+        if (l.po_item && pendMap[l.po_item] != null) l.po_pending = pendMap[l.po_item] + (doc.docstatus === 1 ? flt(l.accepted_qty) : 0);
+      });
     }
     if (!form.items.length) addItem();
   } catch (e) {
@@ -1127,6 +1176,7 @@ async function onPOSelect(opt) {
       const mapped = lines.map(it => ({
         po_name:      poName,
         po_item:      it.name,
+        tax_code:     it.tax_code || "",
         item_code:    it.item_code,
         item_name:    it.item_name || it.item_code,
         qty:          flt(it.remaining_to_receive) || flt(it.qty) || 1,
@@ -1241,10 +1291,15 @@ async function saveGRN(submit) {
 
   if (!editingName.value && usable.some(it => !it.po_name)) { toast.error("Every item must come from one of the selected Purchase Orders"); return; }
   for (const [idx, it] of usable.entries()) {
-    const rowQty = parseFloat(it.qty) || 0;
+    // Accepted Qty is what is received (no QC / rejected store): it must be more than 0 and within what the PO still has pending.
     const rowAccepted = parseFloat(it.accepted_qty);
-    if (!isNaN(rowAccepted) && (rowAccepted < 0 || rowAccepted > rowQty)) {
-      toast.error(`Row ${idx + 1}: Accepted Qty can't be negative or exceed Received Qty (${rowQty}).`);
+    if (it.qc_locked) continue;
+    if (isNaN(rowAccepted) || rowAccepted <= 0) {
+      toast.error(`Row ${idx + 1}: Accepted Qty must be more than 0 (remove the line if it is not being received).`);
+      return;
+    }
+    if (it.po_pending != null && rowAccepted > flt(it.po_pending) + 0.0001) {
+      toast.error(`Row ${idx + 1}: Accepted Qty can't exceed the Pending Qty (${it.po_pending}).`);
       return;
     }
   }
@@ -1318,9 +1373,9 @@ async function saveGRN(submit) {
       driver_name: form.driver_name || "",
       driver_id_no: form.driver_id_no || "",
       items: rows.map(it => {
-        const rowQty = parseFloat(it.qty) || 1;
-        const rawAccepted = parseFloat(it.accepted_qty);
-        const rowAccepted = Math.min(Math.max(isNaN(rawAccepted) ? rowQty : rawAccepted, 0), rowQty);
+        const rowAccepted = parseFloat(it.accepted_qty) || 0;
+        // the accepted qty is the received qty; nothing goes to the rejected store (QC-locked lines keep their saved split)
+        const rowQty = it.qc_locked ? (parseFloat(it.qty) || rowAccepted) : rowAccepted;
         return {
         doctype: "Purchase Receipt Item",
         // forward the saved row identity so QC coverage / links survive an edit
@@ -1338,6 +1393,7 @@ async function saveGRN(submit) {
         po_item: it.po_item || undefined,
         // every line carries its own PO (a GRN can cover several); a line with no PO uses the header PO
         purchase_order: it.po_name || poName || undefined,
+        tax_code: it.tax_code || undefined,
         // several POs: a line goes to its own PO's warehouse (the header warehouse is the default)
         warehouse: it.warehouse || (multiPO && poMeta.value[it.po_name]?.set_warehouse) || undefined,
         batch_no: it.has_batch_no ? (it.batch_no || null) : null,
@@ -1406,6 +1462,12 @@ onMounted(async () => {
 .pr-info-val { font-size:13px;color:#111827;line-height:1.4; }
 .pr-info-empty { color:#9ca3af !important; }
 .pr-info-link a, .pr-info-link span { color:#2563eb;font-weight:500; }
+
+/* ── Totals under the items ── */
+.pr-totals { margin:0 0 0 auto;padding:12px 16px 14px;width:min(360px,100%);border-top:1px solid #f1f5f9; }
+.pr-totals-row { display:flex;justify-content:space-between;gap:16px;font-size:13px;color:#374151;padding:3px 0; }
+.pr-totals-tax { font-size:12px;color:#6b7280; }
+.pr-totals-grand { margin-top:6px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:14.5px;font-weight:700;color:#111827; }
 
 /* ── Items table ── */
 .pr-items-tbl { font-size:12.5px; }
