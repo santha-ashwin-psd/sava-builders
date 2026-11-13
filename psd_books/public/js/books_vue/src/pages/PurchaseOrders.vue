@@ -1243,6 +1243,7 @@ const linkedCount = computed(() => viewMrns.value.length + links.bills.length + 
 function grnStatus(r) { return r.docstatus === 0 ? "Draft" : r.docstatus === 2 ? "Cancelled" : (r.status || "Submitted"); }
 function qcColor(st) { return st === "Pass" ? "#059669" : st === "Fail" ? "#dc2626" : "#d97706"; }
 const vendors = ref([]), items = ref([]), lines = ref([]), taxAccountHead = ref("");
+const vendorLabels = {};  // supplier id -> name, so the picked vendor shows its name even when it is not in the current search results
 const taxTemplates = ref([]);
 const sortCol = ref("transaction_date"), sortDir = ref("desc");
 const actionRunning = ref(false);
@@ -1411,33 +1412,39 @@ async function loadTaxAccount() {
   } catch { taxTemplates.value = []; }
 }
 
+// One status grouping shared by the count cards, the value cards and the month trends, so they always agree.
+const _poGroup = (o) => {
+  const s = (o.status||"draft").toLowerCase();
+  if (s === "cancelled") return "cancelled";
+  if (s === "closed" || s === "billed") return "closed";
+  if (s === "draft" || s === "pending approval" || s === "sent back") return "draft";
+  if (s === "received") return "toBill";
+  return "toReceive";
+};
 const counts = computed(() => {
   const c = { draft:0, toReceive:0, toBill:0, closed:0, cancelled:0 };
-  for (const o of list.value) {
-    const s = (o.status||"draft").toLowerCase();
-    if (s === "cancelled") c.cancelled++;
-    else if (s === "closed" || s === "billed") c.closed++;
-    else if (s === "draft" || s === "pending approval" || s === "sent back") c.draft++;
-    else if (s === "received") c.toBill++;
-    else c.toReceive++;
-  }
+  for (const o of list.value) c[_poGroup(o)]++;
   return c;
 });
+// Procurement Value = approved orders only: cancelled and not-yet-approved (draft / pending approval / sent back) are left out.
 const summary = computed(() => ({
-  totalValue: list.value.filter(o => (o.status||"").toLowerCase() !== "cancelled")
+  totalValue: list.value.filter(o => { const g = _poGroup(o); return g !== "cancelled" && g !== "draft"; })
     .reduce((s, o) => s + flt(o.grand_total), 0),
 }));
 const _poYM  = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
-const _poLYM = () => { const d=new Date(); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+const _poLYM = () => { const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
 const _poTr  = (a,b) => { if(!b&&!a) return {pct:0,up:true}; if(!b) return {pct:100,up:true}; const p=Math.round((a-b)/b*100); return {pct:Math.abs(p),up:p>=0}; };
-const poThisMonth = computed(()=>{ const ym=_poYM(); const r=list.value.filter(o=>(o.transaction_date||'').startsWith(ym)); return {count:r.length,value:r.reduce((s,o)=>s+flt(o.grand_total),0)}; });
-const poTrends = computed(()=>({
-  total:     _poTr(poThisMonth.value.count, list.value.filter(o=>(o.transaction_date||'').startsWith(_poLYM())).length),
-  draft:     _poTr(counts.value.draft, list.value.filter(o=>(o.transaction_date||'').startsWith(_poLYM())&&o.docstatus===0).length),
-  receive:   _poTr(counts.value.toReceive, list.value.filter(o=>(o.transaction_date||'').startsWith(_poLYM())&&(o.status||'').toLowerCase()!=='cancelled'&&(o.status||'').toLowerCase()!=='closed').length),
-  bill:      _poTr(counts.value.toBill, list.value.filter(o=>(o.transaction_date||'').startsWith(_poLYM())&&(o.status||'').toLowerCase()==='received').length),
-  cancelled: _poTr(counts.value.cancelled, list.value.filter(o=>(o.transaction_date||'').startsWith(_poLYM())&&(o.status||'').toLowerCase()==='cancelled').length),
-}));
+const _poInMonth = (ym, group) => list.value.filter(o => (o.transaction_date||'').startsWith(ym) && (!group || _poGroup(o) === group)).length;
+// This Month cards leave out cancelled orders, like Procurement Value does.
+const poThisMonth = computed(()=>{ const ym=_poYM(); const r=list.value.filter(o=>(o.transaction_date||'').startsWith(ym) && _poGroup(o) !== "cancelled"); return {count:r.length,value:r.reduce((s,o)=>s+flt(o.grand_total),0)}; });
+// Each trend compares this month's POs with last month's POs of the same kind (same month basis, same status group).
+const poTrends = computed(()=>{ const t=_poYM(), l=_poLYM(); return {
+  total:     _poTr(_poInMonth(t), _poInMonth(l)),
+  draft:     _poTr(_poInMonth(t,'draft'), _poInMonth(l,'draft')),
+  receive:   _poTr(_poInMonth(t,'toReceive'), _poInMonth(l,'toReceive')),
+  bill:      _poTr(_poInMonth(t,'toBill'), _poInMonth(l,'toBill')),
+  cancelled: _poTr(_poInMonth(t,'cancelled'), _poInMonth(l,'cancelled')),
+}; });
 
 const filtered = computed(() => {
   let r = list.value;
@@ -1584,6 +1591,7 @@ async function openEdit(o, approved = false) {
   mrnPick.value = ""; mrnBalance.value = [];
   lines.value = [blankLine()];
   whFromProject.value = false;
+  if (o.supplier && o.supplier_name) vendorLabels[o.supplier] = o.supplier_name;
   fetchVendors(""); fetchItems(""); fetchWarehouses(""); fetchProjects("", o.project || ""); fetchMrns(""); fetchEmployees();
   if (o.supplier) fetchVendorAddresses(o.supplier);
   drawerOpen.value = true;
@@ -1766,7 +1774,15 @@ async function fetchVendors(q = "") {
     const f = [["disabled", "=", 0]];
     if (q) f.push(["supplier_name", "like", "%" + q + "%"]);
     const r = await apiList("Supplier", { fields: ["name", "supplier_name"], filters: f, limit: 30, order: "supplier_name asc" });
-    vendors.value = r.map(x => ({ ...x, label: x.supplier_name || x.name, value: x.name }));
+    const list = r.map(x => ({ ...x, label: x.supplier_name || x.name, value: x.name }));
+    list.forEach(v => { vendorLabels[v.value] = v.label; });
+    // Keep the selected vendor in the list, otherwise the box falls back to showing its ID
+    const sel = form.supplier;
+    if (sel && !list.some(v => v.value === sel)) {
+      const lbl = vendorLabels[sel] || sel;
+      list.unshift({ name: sel, supplier_name: lbl, label: lbl, value: sel });
+    }
+    vendors.value = list;
   } catch { vendors.value = []; }
 }
 // ── MRN: approved Purchase MRNs (Asset MRNs while the Asset toggle is on) ──

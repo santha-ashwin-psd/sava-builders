@@ -342,7 +342,7 @@
         <div class="inv-dfooter">
           <div class="add-footer-status">{{ editingName ? 'Editing: ' + editingName : 'New RFQ — unsaved changes' }}</div>
           <div class="add-footer-actions">
-            <button class="add-btn-cancel" @click="formOpen=false" :disabled="saving">Cancel</button>
+            <button class="add-btn-cancel" @click="cancelFromForm" :disabled="saving || (!!editingName && !$canEdit('bills'))" :title="editingName ? 'Cancel this RFQ' : ''">Cancel</button>
             <button class="add-btn-draft" @click="save(false)" :disabled="saving || !(editingName ? $canEdit('bills') : canCreateRfq)">
               <span v-html="icon('save',13)"></span> {{ saving ? 'Saving…' : 'Save' }}
             </button>
@@ -754,6 +754,25 @@ async function cancelRfq() {
     await apiPOST(API + "cancel_rfq", { name: viewDoc.value.name }, HINT);
     toast.success("Request for Quotation cancelled");
     await refreshView();
+    await load();
+  } catch (e) { toast.error(e.message || "Cancel failed"); }
+}
+
+// Footer Cancel of the RFQ form: on an existing RFQ it cancels the RFQ (same as the Cancel RFQ button on the view panel);
+// on a new, unsaved RFQ it just closes the form.
+async function cancelFromForm() {
+  if (!editingName.value) { formOpen.value = false; return; }
+  const name = editingName.value;
+  const ok = await confirm({
+    title: "Cancel Request for Quotation?",
+    body: `${name} will be cancelled and can no longer be edited or sent.`,
+    okLabel: "Cancel RFQ", okStyle: "danger",
+  });
+  if (!ok) return;
+  try {
+    await apiPOST(API + "cancel_rfq", { name }, HINT);
+    toast.success("Request for Quotation cancelled");
+    formOpen.value = false;
     await load();
   } catch (e) { toast.error(e.message || "Cancel failed"); }
 }
