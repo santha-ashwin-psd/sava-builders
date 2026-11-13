@@ -894,11 +894,22 @@ function _renderSavaPOPreprinted(doc, cfg) {
 
   // split the items into pages by printed lines
   const cap = Math.floor(_PP.bodyH / _PP.lineH);
-  const items = (doc.items || []).map((it, i) => {
-    const text = (it.item_name || it.item_code || "") +
-      (it.description && it.description !== it.item_name ? " - " + String(it.description).replace(/\s+/g, " ") : "");
-    return { it, no: i + 1, lines: wrap(text, _PP.descChars) };
-  });
+  // Description column text: the item NAME (and description when it adds something), never the item code.
+  // The code is only a last resort when the item has no name and no description at all.
+  const descText = (it) => {
+    const code = String(it.item_code || "").trim();
+    const clean = (v) => String(v || "").replace(/\s+/g, " ").trim();
+    const noCode = (v) => {   // drop a leading "<code> - " and a bare code
+      const t = clean(v);
+      if (!t || t.toLowerCase() === code.toLowerCase()) return "";
+      const pre = code + " - ";
+      return code && t.toLowerCase().startsWith(pre.toLowerCase()) ? t.slice(pre.length).trim() : t;
+    };
+    const name = noCode(it.item_name) || noCode(it.print_name);
+    const desc = noCode(it.description);
+    return (name && desc && desc !== name) ? name + " - " + desc : (name || desc || code);
+  };
+  const items = (doc.items || []).map((it, i) => ({ it, no: i + 1, lines: wrap(descText(it), _PP.descChars) }));
   const pages = [[]]; let used = 0;
   for (const row of items) {
     if (used + row.lines.length > cap && used > 0) { pages.push([]); used = 0; }
@@ -1512,6 +1523,18 @@ export function printPreprintedPO(doc, config) {
 // Never throws: anything it can't read is simply left off the print.
 export async function preparePOPrint(doc) {
   const out = { ...doc, currency: "KES" };
+  // Item names for the pre-printed LPO: a PO line often has no item_name, and the item code must not print in its place.
+  // Kept in its own field (print_name) so no other print of the PO changes.
+  try {
+    const codes = [...new Set((doc?.items || []).map(i => i.item_code).filter(Boolean))];
+    if (codes.length) {
+      const names = {};
+      await Promise.all(codes.map(async (c) => {
+        try { const it = await apiGet("Item", c); if (it?.item_name) names[c] = it.item_name; } catch { /* keep going */ }
+      }));
+      out.items = (doc.items || []).map(i => ({ ...i, print_name: names[i.item_code] || "" }));
+    }
+  } catch { /* print without item names */ }
   if (!doc?.supplier) return out;
   try {
     const sup = await apiGet("Supplier", doc.supplier);
