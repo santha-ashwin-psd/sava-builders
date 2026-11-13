@@ -36,16 +36,17 @@
     <div class="mrl-table-wrap">
       <table class="mrl-table">
         <thead><tr>
-          <th>MRN No</th><th>Request Type</th><th>Project</th><th>Required By</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
+          <th>MRN No</th><th>Request Type</th><th>Project</th><th>Entry Date</th><th>Expected Delivery Date</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
         </tr></thead>
         <tbody>
-          <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="7"><div class="shimmer" style="height:26px;border-radius:6px"></div></td></tr></template>
-          <tr v-else-if="!sorted.length"><td colspan="7" class="mrl-empty">No Material Requests found</td></tr>
+          <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="8"><div class="shimmer" style="height:26px;border-radius:6px"></div></td></tr></template>
+          <tr v-else-if="!sorted.length"><td colspan="8" class="mrl-empty">No Material Requests found</td></tr>
           <tr v-else v-for="row in paged" :key="row.name" class="mrl-row" @click="selectMR(row.name)">
             <td class="mrl-c-no" data-label="MRN No"><span class="mrl-link">{{ row.name }}</span></td>
             <td data-label="Type">{{ row.material_request_type || '—' }}</td>
             <td data-label="Project">{{ refLabel(row) }}</td>
-            <td data-label="Required By">{{ fmtDate(row.posting_date) }}</td>
+            <td data-label="Entry Date">{{ fmtDate(row.entry_date) }}</td>
+            <td data-label="Expected Delivery Date">{{ fmtDate(row.posting_date) }}</td>
             <td data-label="Requested By">{{ empName(row) }}</td>
             <td class="mrl-c-status" data-label="Status"><span class="bomx-badge" :class="statusClass(row)">{{ row.status }}</span></td>
             <td class="mrl-c-act" style="text-align:center" @click.stop><button class="mrl-act" title="Open" @click="selectMR(row.name)"><span v-html="icon('ext',13)"></span></button></td>
@@ -162,7 +163,7 @@
               <input class="bomx-fi" type="date" v-model="mr.entry_date" :disabled="readOnly" style="width:100%"/>
             </div>
             <div>
-              <div class="bomx-hf-label">Required By <span style="color:var(--bx-red)">*</span></div>
+              <div class="bomx-hf-label">Expected Delivery Date <span style="color:var(--bx-red)">*</span></div>
               <input class="bomx-fi" type="date" v-model="mr.posting_date" :disabled="readOnly" style="width:100%"/>
             </div>
             <div>
@@ -303,7 +304,7 @@ function empName(r) {
 
 async function loadList() {
   try {
-    const fields = ["name", "material_request_type", "posting_date", "production_plan", "project", "owner", "employee", "employee_name", "status", "docstatus", "modified"];
+    const fields = ["name", "material_request_type", "posting_date", "entry_date", "production_plan", "project", "owner", "employee", "employee_name", "status", "docstatus", "modified"];
     const r = await apiList("Material Request", { fields, limit: 1000, order: "modified desc" });
     list.value = r || [];
   } catch (e) {
@@ -367,8 +368,8 @@ const kpis = computed(() => {
   ];
 });
 function exportCSV() {
-  const headers = ["MRN No", "Request Type", "Project", "Required By", "Requested By", "Status"];
-  const rows = sorted.value.map(r => [r.name, r.material_request_type || "", refLabel(r), r.posting_date || "", empName(r) === "-" ? "" : empName(r), r.status || ""]);
+  const headers = ["MRN No", "Request Type", "Project", "Entry Date", "Expected Delivery Date", "Requested By", "Status"];
+  const rows = sorted.value.map(r => [r.name, r.material_request_type || "", refLabel(r), r.entry_date || "", r.posting_date || "", empName(r) === "-" ? "" : empName(r), r.status || ""]);
   const csv = [headers, ...rows].map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
   const a = document.createElement("a");
@@ -691,7 +692,7 @@ function onItemChange(row) {
 
 async function save() {
   if (!mr.value.entry_date) return toast("Entry Date is required", "error");
-  if (!mr.value.posting_date) return toast("Required By date is required", "error");
+  if (!mr.value.posting_date) return toast("Expected Delivery Date is required", "error");
   if (!mr.value.production_plan) {
     if (!mr.value.project && mr.value.material_request_type !== "Asset") return toast("Select a project", "error");
     if (!mr.value.delivery_warehouse) return toast("Select a delivery warehouse", "error");

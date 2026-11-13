@@ -61,7 +61,7 @@
             <th @click="sortBy('name')" class="sortable">PO # <span v-html="sortArrow('name')"></span></th>
             <th @click="sortBy('supplier_name')" class="sortable">Vendor <span v-html="sortArrow('supplier_name')"></span></th>
             <th>Project</th>
-            <th @click="sortBy('transaction_date')" class="sortable">Date <span v-html="sortArrow('transaction_date')"></span></th>
+            <th @click="sortBy('transaction_date')" class="sortable">Order Date <span v-html="sortArrow('transaction_date')"></span></th>
             <th v-if="false" @click="sortBy('expected_delivery_date')" class="sortable">Expected <span v-html="sortArrow('expected_delivery_date')"></span></th>
             <th style="width:170px">Status</th>
             <th @click="sortBy('grand_total')" class="sortable ta-r" style="text-align:right;width:160px">Amount <span v-html="sortArrow('grand_total')"></span></th>
@@ -2346,7 +2346,7 @@ function exportCSV() {
     ? sorted.value.filter(p => selected.value.has(p.name))
     : sorted.value;
   if (!rows.length) return;
-  const head = ["PO #","Vendor","Date","Expected","Status","Amount"];
+  const head = ["PO #","Vendor","Order Date","Expected","Status","Amount"];
   const esc = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const out = [head.map(esc).join(",")];
   for (const o of rows) {
