@@ -156,6 +156,10 @@ def edit_approved_po(name, doc):
 	for f in EDITABLE_HEADER:
 		if f in data:
 			po.set(f, data.get(f))
+	# supplier_name is fetched from the supplier, but Frappe does not re-fetch it on a submitted document,
+	# so a vendor change would keep showing the old name. Set it from the Supplier record.
+	if po.supplier:
+		po.supplier_name = frappe.db.get_value("Supplier", po.supplier, "supplier_name") or po.supplier
 	po.set("items", [])
 	for row in (data.get("items") or []):
 		if not row.get("item_code"):
