@@ -52,13 +52,13 @@
           <th @click="sort('posting_date')" class="sortable">Date <span v-html="sortArrow('posting_date')"></span></th>
           <th @click="sort('item_name')" class="sortable">Item <span v-html="sortArrow('item_name')"></span></th>
           <th @click="sort('warehouse')" class="sortable">Warehouse <span v-html="sortArrow('warehouse')"></span></th>
-          <th>Voucher Type</th><th>Voucher #</th>
+          <th>Voucher Type</th><th>Voucher #</th><th>Stock Movement</th>
           <th @click="sort('actual_qty')" class="sortable ta-r">Qty In/Out <span v-html="sortArrow('actual_qty')"></span></th>
           <th @click="sort('qty_after_transaction')" class="sortable ta-r">Balance Qty <span v-html="sortArrow('qty_after_transaction')"></span></th>
           <th class="ta-r">Value</th>
         </tr></thead>
         <tbody>
-          <template v-if="loading"><tr v-for="n in 10" :key="n"><td colspan="8"><div class="sl-shimmer"></div></td></tr></template>
+          <template v-if="loading"><tr v-for="n in 10" :key="n"><td colspan="9"><div class="sl-shimmer"></div></td></tr></template>
           <template v-else>
             <tr v-for="e in sorted" :key="e.name" class="sl-row" @click="openView(e)">
               <td class="mono-sm text-muted">{{ fmtDate(e.posting_date) }}</td>
@@ -66,11 +66,19 @@
               <td class="text-muted">{{ e.warehouse }}</td>
               <td class="text-muted" style="font-size:12px">{{ e.voucher_type }}</td>
               <td><span class="sl-voucher">{{ e.voucher_no }}</span></td>
+              <td>
+                <div v-if="e.wh_from||e.wh_to" class="sl-wh-flow">
+                  <span class="sl-wh-tag" v-if="e.wh_from" :title="e.wh_from">{{ shortWH(e.wh_from) }}</span>
+                  <span v-if="e.wh_from&&e.wh_to" style="color:#9ca3af;font-size:11px">→</span>
+                  <span class="sl-wh-tag sl-wh-tag-to" v-if="e.wh_to" :title="e.wh_to">{{ shortWH(e.wh_to) }}</span>
+                </div>
+                <span v-else class="text-muted" style="font-size:12px">—</span>
+              </td>
               <td class="ta-r mono-sm" :class="flt(e.actual_qty)>0?'green':'red'">{{ flt(e.actual_qty)>0?'+':'' }}{{ fmtQty(e.actual_qty) }}</td>
               <td class="ta-r mono-sm">{{ fmtQty(e.qty_after_transaction) }}</td>
               <td class="ta-r mono-sm">{{ fmtCur(e.stock_value_difference) }}</td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="8" class="sl-empty">{{ loaded?(list.length?'No entries match this filter':'No ledger entries found'):'Run to view stock ledger' }}</td></tr>
+            <tr v-if="!sorted.length"><td colspan="9" class="sl-empty">{{ loaded?(list.length?'No entries match this filter':'No ledger entries found'):'Run to view stock ledger' }}</td></tr>
           </template>
         </tbody>
       </table>
@@ -166,7 +174,7 @@ const sortCol=ref("posting_date"),sortDir=ref("desc");
 const now=new Date();
 const firstOfMonth=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
 const filters=reactive({item:"",warehouse:"",from_date:firstOfMonth,to_date:now.toISOString().slice(0,10)});
-async function load(){loading.value=true;loaded.value=true;try{const co=await resolveCompany();const f=[["company","=",co]];if(filters.item)f.push(["item_code","=",filters.item]);if(filters.warehouse)f.push(["warehouse","=",filters.warehouse]);if(filters.from_date)f.push(["posting_date",">=",filters.from_date]);if(filters.to_date)f.push(["posting_date","<=",filters.to_date]);list.value=await apiList("Stock Ledger Entry",{fields:["name","posting_date","posting_time","item_code","warehouse","voucher_type","voucher_no","actual_qty","qty_after_transaction","stock_value_difference","valuation_rate"],filters:f,limit:100000,order:"posting_date asc"});await attachItemNames();}catch(e){toast.error(e.message||"Failed to load stock ledger");}finally{loading.value=false;}}
+async function load(){loading.value=true;loaded.value=true;try{const co=await resolveCompany();const f=[["company","=",co]];if(filters.item)f.push(["item_code","=",filters.item]);if(filters.warehouse)f.push(["warehouse","=",filters.warehouse]);if(filters.from_date)f.push(["posting_date",">=",filters.from_date]);if(filters.to_date)f.push(["posting_date","<=",filters.to_date]);list.value=await apiList("Stock Ledger Entry",{fields:["name","posting_date","posting_time","creation","item_code","warehouse","voucher_type","voucher_no","actual_qty","qty_after_transaction","stock_value_difference","valuation_rate"],filters:f,limit:100000,order:"posting_date asc"});await attachItemNames();await attachWarehouseFlow();}catch(e){toast.error(e.message||"Failed to load stock ledger");}finally{loading.value=false;}}
 const filteredRows=computed(()=>{
   let r=list.value;
   if(dirFilter.value==="in")r=r.filter(e=>flt(e.actual_qty)>0);
@@ -174,7 +182,7 @@ const filteredRows=computed(()=>{
   if(search.value.trim()){const q=search.value.toLowerCase();r=r.filter(e=>(e.item_code||"").toLowerCase().includes(q)||(e.item_name||"").toLowerCase().includes(q)||(e.voucher_no||"").toLowerCase().includes(q)||(e.warehouse||"").toLowerCase().includes(q)||(e.voucher_type||"").toLowerCase().includes(q));}
   return r;
 });
-const sorted=computed(()=>{const col=sortCol.value;return[...filteredRows.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";const c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));return sortDir.value==="asc"?c:-c;});});
+const sorted=computed(()=>{const col=sortCol.value;return[...filteredRows.value].sort((a,b)=>{const av=a[col]??"",bv=b[col]??"";let c=typeof av==="number"?av-bv:String(av).localeCompare(String(bv));if(c===0&&col==="posting_date")c=String(a.posting_time||"").localeCompare(String(b.posting_time||""))||String(a.creation||"").localeCompare(String(b.creation||""));return sortDir.value==="asc"?c:-c;});});
 function sort(col){if(sortCol.value===col)sortDir.value=sortDir.value==="asc"?"desc":"asc";else{sortCol.value=col;sortDir.value="asc";}}
 function sortArrow(col){if(sortCol.value!==col)return'<span style="color:#d1d5db">⇅</span>';return sortDir.value==="asc"?"↑":"↓";}
 const dirTabs=computed(()=>[
@@ -193,9 +201,9 @@ function exportCSV(){
   const rows=sorted.value;
   if(!rows.length)return;
   const esc=v=>{const s=v==null?"":String(v);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
-  const lines=[["Date","Item","Warehouse","Voucher Type","Voucher #","Qty In/Out","Balance Qty","Value Change","Valuation Rate"].join(",")];
+  const lines=[["Date","Item","Warehouse","Voucher Type","Voucher #","Stock Movement","Qty In/Out","Balance Qty","Value Change","Valuation Rate"].join(",")];
   for(const e of rows){
-    lines.push([fmtDate(e.posting_date),e.item_code||"",e.warehouse||"",e.voucher_type||"",e.voucher_no||"",flt(e.actual_qty),flt(e.qty_after_transaction),flt(e.stock_value_difference),flt(e.valuation_rate)].map(esc).join(","));
+    lines.push([fmtDate(e.posting_date),e.item_code||"",e.warehouse||"",e.voucher_type||"",e.voucher_no||"",[e.wh_from,e.wh_to].filter(Boolean).join(" → "),flt(e.actual_qty),flt(e.qty_after_transaction),flt(e.stock_value_difference),flt(e.valuation_rate)].map(esc).join(","));
   }
   const blob=new Blob(["﻿"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
@@ -205,12 +213,38 @@ function exportCSV(){
   toast.success(`Exported ${rows.length} row(s)`);
 }
 async function attachItemNames(){const codes=[...new Set(list.value.map(e=>e.item_code).filter(Boolean))];if(!codes.length)return;try{const rows=await apiList("Item",{fields:["name","item_name"],filters:[["name","in",codes]],limit:100000});const m={};rows.forEach(r=>{m[r.name]=r.item_name;});list.value=list.value.map(e=>({...e,item_name:m[e.item_code]||e.item_code}));}catch{list.value=list.value.map(e=>({...e,item_name:e.item_code}));}}
+function shortWH(wh){if(!wh)return"";const p=String(wh).split(" - ");return p[0].length>18?p[0].slice(0,16)+"…":p[0];}
+// Stock movement (From → To) for Stock Entry rows: a ledger row only holds its own leg, so read the entry's source/target warehouses.
+async function attachWarehouseFlow(){
+  const vouchers=[...new Set(list.value.filter(e=>e.voucher_type==="Stock Entry"&&e.voucher_no).map(e=>e.voucher_no))];
+  if(!vouchers.length)return;
+  try{
+    const hdr={},lines={};
+    for(let i=0;i<vouchers.length;i+=300){
+      const chunk=vouchers.slice(i,i+300);
+      const h=await apiList("Stock Entry",{fields:["name","from_warehouse","to_warehouse"],filters:[["name","in",chunk]],limit:100000});
+      (h||[]).forEach(r=>{hdr[r.name]=r;});
+      const d=await apiList("Stock Entry Detail",{fields:["parent","item_code","s_warehouse","t_warehouse"],filters:[["parent","in",chunk]],limit:100000});
+      (d||[]).forEach(r=>{const k=r.parent+"|"+r.item_code;(lines[k]||(lines[k]=[])).push(r);});
+    }
+    list.value=list.value.map(e=>{
+      if(e.voucher_type!=="Stock Entry")return e;
+      const h=hdr[e.voucher_no]||{};
+      const cands=(lines[e.voucher_no+"|"+e.item_code]||[]).map(l=>({from:l.s_warehouse||h.from_warehouse||"",to:l.t_warehouse||h.to_warehouse||""}));
+      const m=cands.find(c=>c.from===e.warehouse||c.to===e.warehouse)||cands[0]||{from:h.from_warehouse||"",to:h.to_warehouse||""};
+      return{...e,wh_from:m.from,wh_to:m.to};
+    });
+  }catch{/* leave the movement column blank */}
+}
 async function fetchItems(q=""){try{const r=await apiList("Item",{fields:["name","item_name"],filters:q?[["name","like","%"+q+"%"]]:[],limit:200});items.value=r.map(x=>({label:x.item_name||x.name,value:x.name}));}catch{items.value=[];}}
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 // Pre-load dropdown options so the pickers aren't empty on first open.
 onMounted(()=>{fetchItems("");fetchWarehouses("");});
 </script>
 <style scoped>
+.sl-wh-flow{display:flex;align-items:center;gap:4px;flex-wrap:nowrap;}
+.sl-wh-tag{font-size:11px;font-weight:600;background:#eff6ff;color:#1d4ed8;padding:2px 7px;border-radius:6px;white-space:nowrap;max-width:100px;overflow:hidden;text-overflow:ellipsis;}
+.sl-wh-tag-to{background:#f0fdf4;color:#15803d;}
 .sl-page{display:flex;flex-direction:column;gap:16px;padding:24px;}
 /* premium filter bar */
 .sl-filterbar{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 16px;}

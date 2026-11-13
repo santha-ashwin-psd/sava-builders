@@ -13,7 +13,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from psd_books.utils.naming import next_plain_name
-from frappe.utils import flt, today
+from frappe.utils import flt, today, nowtime
 from psd_books.db.validators import validate_fiscal_year
 
 
@@ -69,6 +69,15 @@ class StockEntry(Document):
     def _set_defaults(self):
         if not self.posting_date:
             self.posting_date = today()
+        # posting_time: this doctype has no "set posting time" checkbox and the field
+        # defaults to 00:00:00, so most entries were posting to the ledger at midnight.
+        # Stamp the real time when it is blank or still the default. Explicit times
+        # (e.g. passed in by stock_link from a source document) are left alone, and
+        # Opening Stock keeps 00:00:00 so historical balances sort first on their date.
+        if self.stock_entry_type != "Opening Stock" and (
+            not self.posting_time or str(self.posting_time) in ("00:00:00", "0:00:00")
+        ):
+            self.posting_time = nowtime()
         if not self.company:
             self.company = (
                 frappe.db.get_single_value("Books Settings", "default_company")
