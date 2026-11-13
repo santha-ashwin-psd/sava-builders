@@ -475,8 +475,8 @@ const canIssueStock = computed(() => docRight("Delivery Note"));
 // An RFQ or purchase order already made from this MRN locks both buttons, so they can't be created twice.
 // Cancelled ones don't count. Looked up when the MRN is loaded.
 const linkedDocs = ref({ rfq: "", po: "" });
-// Creating a PO from the MRN is only blocked by an RFQ; an existing PO is fine (order the rest later).
-const poBlockNote = computed(() => linkedDocs.value.rfq ? `RFQ ${linkedDocs.value.rfq} already exists for this request.` : "");
+// An RFQ (or its quotations) never blocks creating a PO from the MRN; an existing PO is fine too (order the rest later).
+const poBlockNote = computed(() => "");
 // Partial ordering: what each item has on POs so far and what is left to order.
 const mrnBalance = ref([]);
 async function loadMrnBalance() {
@@ -798,7 +798,6 @@ async function amendMR() {
 
 async function createPurchaseOrder() {
   if (!canCreatePO.value) { toast(PO_NOTE, "error"); return; }
-  if (poBlockNote.value) { toast(poBlockNote.value, "error"); return; }
   router.push(`/purchase-orders?new_from_mr=${mr.value.name}`);
 }
 
