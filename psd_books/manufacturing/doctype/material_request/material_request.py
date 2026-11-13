@@ -124,5 +124,67 @@ class MaterialRequest(Document):
 	def on_submit(self):
 		self.db_set("status", "Approved" if self.flags.get("mrn_workflow") else "Submitted")
 
+	def before_cancel(self):
+		# Fail early, before anything is cancelled: refuse when a linked Purchase Order cannot be
+		# cancelled along with this request (goods received / billed, or it also covers other MRNs).
+		blocked = [p["reason"] for p in self._linked_po_plan() if p["action"] == "block"]
+		if blocked:
+			frappe.throw("<br>".join(blocked), title=_("Cannot cancel {0}").format(self.name))
+
 	def on_cancel(self):
 		self.db_set("status", "Cancelled")
+		self._cancel_linked_purchase_orders()
+
+	def _linked_po_plan(self):
+		"""What to do with each live Purchase Order that covers this MRN (see classify_linked_po)."""
+		from psd_books.invoicing.doctype.purchase_order.purchase_order import po_material_requests
+		names = frappe.db.sql_list("""select distinct po.name
+				from `tabPurchase Order` po
+				left join `tabPurchase Order Item` poi on poi.parent = po.name
+			 where po.docstatus < 2 and ifnull(po.status, '') != 'Cancelled'
+				 and (po.material_request = %(mr)s or poi.material_request = %(mr)s)""", {"mr": self.name})
+		plan = []
+		for name in names:
+			po = frappe.get_doc("Purchase Order", name)
+			mrns = po_material_requests(po)
+			if self.name not in mrns:
+				continue
+			has_grn = frappe.db.exists("Purchase Receipt", {"purchase_order": name, "docstatus": ["<", 2]})
+			has_bill = frappe.db.exists("Purchase Invoice", {"purchase_order": name, "docstatus": ["<", 2], "is_return": 0})
+			plan.append(dict(classify_linked_po(name, po.docstatus, self.name, mrns, bool(has_grn), bool(has_bill)), po=po))
+		return plan
+
+	def _cancel_linked_purchase_orders(self):
+		"""A cancelled MRN takes its Purchase Orders with it. Orders not yet issued (Draft, Pending Approval,
+		Sent Back) are closed the way the PO screen closes them; issued orders with nothing received or billed
+		are cancelled normally. Anything else was already refused in before_cancel."""
+		from psd_books.invoicing import po_approval_rules as rules
+		note = _("Cancelled because Material Request {0} was cancelled.").format(self.name)
+		for p in self._linked_po_plan():
+			po = p["po"]
+			if p["action"] == "cancel_unissued":
+				for step in rules.cancel_open_steps(po):
+					frappe.db.set_value("Purchase Order Approval", step.name, "status", step.status, update_modified=False)
+			elif p["action"] == "cancel_issued":
+				po.flags.ignore_permissions = True
+				po.cancel()
+			else:
+				continue
+			frappe.db.set_value("Purchase Order", po.name, "status", "Cancelled", update_modified=True)
+			po.add_comment("Info", note)
+
+
+def classify_linked_po(po_name, docstatus, mr_name, mrns, has_grn, has_bill):
+	"""Decide what cancelling Material Request `mr_name` does to one live Purchase Order. Pure function.
+	Returns {"po", "action", "reason"}; action is cancel_unissued (docstatus 0), cancel_issued (docstatus 1)
+	or block."""
+	other = [m for m in mrns if m != mr_name]
+	if other:
+		return {"po": po_name, "action": "block",
+			"reason": _("Purchase Order {0} also covers Material Request {1}. Take this request's lines off the "
+				"order, or cancel the order yourself first.").format(po_name, ", ".join(other))}
+	if has_grn or has_bill:
+		return {"po": po_name, "action": "block",
+			"reason": _("Purchase Order {0} already has a GRN or bill. Cancel those (or the order, from the "
+				"Purchase Orders screen) first.").format(po_name)}
+	return {"po": po_name, "action": "cancel_issued" if docstatus == 1 else "cancel_unissued", "reason": ""}

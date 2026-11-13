@@ -84,7 +84,7 @@
                 </div>
               </div>
               <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-                <button v-if="!isNew" class="bomx-btn bomx-btn-light" @click="printMR"><span v-html="icon('printer',12)"></span> Print</button>
+                <button v-if="!isNew && mr.docstatus===1" class="bomx-btn bomx-btn-light" @click="printMR"><span v-html="icon('printer',12)"></span> Print</button>
                 <button v-if="!isNew && (mr.docstatus===0 || mr.docstatus===2)" class="bomx-btn" style="background:var(--bx-redS);color:var(--bx-red)" @click="deleteMR" :disabled="submitting || saving || !canDeleteMR" :title="!canDeleteMR ? MR_CANCEL_NOTE : 'Delete this Material Request'">
                   <span v-html="icon('trash',12)"></span> Delete
                 </button>

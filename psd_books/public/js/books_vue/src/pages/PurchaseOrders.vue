@@ -529,10 +529,10 @@
             <button class="inv-ab-btn" :disabled="!$canEdit('bills')" :title="!$canEdit('bills') ? 'Read-only access' : ''" @click="emailPO(viewDoc)">
               <span v-html="icon('mail',13)"></span> <span class="ab-label">Email</span>
             </button>
-            <button class="inv-ab-btn inv-ab-dropdown" @click="downloadPOPdf('pdf')">
+            <button v-if="isApprovedPO(viewDoc)" class="inv-ab-btn inv-ab-dropdown" @click="downloadPOPdf('pdf')">
               <span v-html="icon('download',13)"></span> <span class="ab-label">Download</span>
             </button>
-            <button class="inv-ab-btn" @click="downloadPOPdf('print')">
+            <button v-if="isApprovedPO(viewDoc)" class="inv-ab-btn" @click="downloadPOPdf('print')">
               <span v-html="icon('printer',13)"></span> <span class="ab-label">Print</span>
             </button>
             <button v-if="hasUnreceived && (viewDoc?.purchase_type || 'Goods') === 'Goods' && (viewDoc?.status||'').toLowerCase() !== 'draft' && (viewDoc?.status||'').toLowerCase() !== '' && (viewDoc?.status||'').toLowerCase() !== 'cancelled' && !isApprovalStage(viewDoc)" class="inv-ab-btn" @click="openReceiveModal" :disabled="actionRunning || !poCanReceive" :title="!poCanReceive ? 'Only the Store Keeper, Director or an admin can mark goods received' : ''">
@@ -1363,6 +1363,11 @@ function canEdit(o) {
 function isApprovalStage(o) {
   const s = (o?.status||"").toLowerCase();
   return s === "pending approval" || s === "sent back";
+}
+// Approved and issued: anything past the approval stages (not draft, pending approval, sent back or cancelled).
+function isApprovedPO(o) {
+  const s = (o?.status||"").toLowerCase();
+  return !!s && ![ "draft", "pending approval", "sent back", "cancelled" ].includes(s);
 }
 function canCancel(o) {
   const s = (o?.status||"").toLowerCase();
