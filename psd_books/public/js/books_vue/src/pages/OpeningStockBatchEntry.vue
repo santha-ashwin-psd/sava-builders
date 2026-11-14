@@ -48,14 +48,13 @@
           <th>Warehouse(s)</th>
           <th>Item Names</th>
           <th class="ta-r">Items</th>
-          <th class="ta-r">Batched Lines</th>
           <th class="ta-r">Value</th>
           <th>Status</th>
           <th style="width:44px"></th>
         </tr></thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="9"><div class="ob-shimmer"></div></td></tr>
+            <tr v-for="n in 6" :key="n"><td colspan="8"><div class="ob-shimmer"></div></td></tr>
           </template>
           <template v-else>
             <tr v-for="e in paginated" :key="e.name" class="ob-row" @click="openView(e)">
@@ -64,7 +63,6 @@
               <td><span class="ob-wh-tag" v-if="e.to_warehouse">{{ shortWH(e.to_warehouse) }}</span><span v-else class="text-muted">Multiple</span></td>
               <td class="ob-names-cell"><div class="ob-names" @mouseenter="showNamesTip($event, e)" @mouseleave="hideNamesTip">{{ (e._itemNames || []).join(', ') || '—' }}</div></td>
               <td class="ta-r">{{ e._itemCount ?? '—' }}</td>
-              <td class="ta-r">{{ e._batchCount ?? '—' }}</td>
               <td class="ta-r" style="font-weight:600">{{ fmtCur(e.total_incoming_value) }}</td>
               <td><span class="ob-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span></td>
               <td @click.stop style="display:flex;gap:4px">
@@ -73,7 +71,7 @@
               </td>
             </tr>
             <tr v-if="!filtered.length">
-              <td colspan="9" class="ob-empty">
+              <td colspan="8" class="ob-empty">
                 <div style="font-size:32px;margin-bottom:8px">🗃️</div>
                 <div style="font-weight:600;margin-bottom:4px">No opening stock entries yet</div>
                 <div style="font-size:13px;color:#9ca3af;margin-bottom:12px">Set starting balances and batches before go-live</div>
