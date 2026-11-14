@@ -70,12 +70,13 @@
           <th @click="sort('posting_date')" class="sortable">Transfer Date <span v-html="sortArrow('posting_date')"></span></th>
           <th>Source</th>
           <th>Warehouse Flow</th>
+          <th>Item Names</th>
           <th>Status</th>
           <th style="width:44px"></th>
         </tr></thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 8" :key="n"><td colspan="7"><div class="se-shimmer"></div></td></tr>
+            <tr v-for="n in 8" :key="n"><td colspan="8"><div class="se-shimmer"></div></td></tr>
           </template>
           <template v-else>
             <tr v-for="e in paginated" :key="e.name" class="se-row" @click="openView(e)">
@@ -101,6 +102,7 @@
                   Issued to: {{ salesPersonLabel(e.sales_person) }}
                 </div>
               </td>
+              <td class="se-names-cell"><div class="se-names" @mouseenter="showNamesTip($event, e)" @mouseleave="hideNamesTip">{{ (e._itemNames || []).join(', ') || '—' }}</div></td>
               <td><span class="se-badge" :class="statusClass(e)">{{ statusLabel(e) }}</span></td>
               <td @click.stop style="display:flex;gap:4px">
                 <button class="se-act-btn" @click="openView(e)" title="View"><span v-html="icon('eye',13)"></span></button>
@@ -111,7 +113,7 @@
               </td>
             </tr>
             <tr v-if="!sorted.length">
-              <td colspan="7" class="se-empty">
+              <td colspan="8" class="se-empty">
                 <div style="font-size:32px;margin-bottom:8px">📦</div>
                 <div style="font-weight:600;margin-bottom:4px">No stock entries found</div>
                 <div style="font-size:13px;color:#9ca3af;margin-bottom:12px">Try changing the filter or date range</div>
@@ -583,6 +585,10 @@
       </template>
     </div>
 
+    <Teleport to="body">
+      <div v-if="namesTip.show" class="se-names-tip" :style="{ left: namesTip.x + 'px', top: namesTip.y + 'px' }">{{ namesTip.text }}</div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -770,6 +776,7 @@ const filtered = computed(() => {
       (e.stock_entry_type || "").toLowerCase().includes(q) ||
       (e.from_warehouse || "").toLowerCase().includes(q) ||
       (e.to_warehouse || "").toLowerCase().includes(q) ||
+      (e._itemNames || []).some(n => (n || "").toLowerCase().includes(q)) ||
       (e.remarks || "").toLowerCase().includes(q) ||
       (e.reference_name || "").toLowerCase().includes(q) ||
       (e.work_order || "").toLowerCase().includes(q)
@@ -831,6 +838,19 @@ function tabOf(e) {
   return e.stock_entry_type;
 }
 
+// Hover popover for the Item Names column (white box, blue border, wraps)
+const namesTip = reactive({ show: false, text: "", x: 0, y: 0 });
+function showNamesTip(ev, e) {
+  const text = (e._itemNames || []).join(", ");
+  if (!text) return;
+  const r = ev.currentTarget.getBoundingClientRect();
+  namesTip.text = text;
+  namesTip.x = Math.max(8, Math.min(r.left, window.innerWidth - 436));
+  namesTip.y = r.bottom + 6;
+  namesTip.show = true;
+}
+function hideNamesTip() { namesTip.show = false; }
+
 async function load() {
   loading.value = true;
   try {
@@ -845,6 +865,12 @@ async function load() {
     });
     // Attach item count from a separate list call (names only)
     await tagTransferKinds(rows);
+    // Item names per entry, one bulk query (same API the Opening Stock list uses)
+    try {
+      const names = rows.map(r => r.name);
+      const info = names.length ? await apiPOST("psd_books.api.docs.get_stock_entry_line_counts", { names }) : {};
+      for (const e of rows) e._itemNames = (info[e.name] && info[e.name].item_names) || [];
+    } catch { for (const e of rows) e._itemNames = []; }
     list.value = rows;
   } catch (e) {
     toast.error(e.message || "Failed to load stock entries");
@@ -1616,6 +1642,9 @@ function salesPersonLabel(code) {
 .se-source-cell { display:flex; align-items:center; gap:5px; }
 .se-source-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 .se-source-ref { font-size:11px; color:#6b7280; background:#f3f4f6; padding:1px 5px; border-radius:4px; max-width:100px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.se-names-cell { max-width:260px; width:260px; }
+.se-names { max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#374151; font-size:12.5px; }
+.se-names-tip { position:fixed; z-index:99999; max-width:420px; box-sizing:border-box; background:#fff; color:#1f2937; border:1.5px solid #3b82f6; border-radius:10px; padding:14px 18px; font-size:16px; line-height:1.5; box-shadow:0 8px 24px rgba(15,23,42,.14); pointer-events:none; white-space:normal; word-break:break-word; }
 .se-wh-flow { display:flex; align-items:center; gap:4px; flex-wrap:nowrap; }
 .se-wh-tag { font-size:11px; font-weight:600; background:#eff6ff; color:#1d4ed8; padding:2px 7px; border-radius:6px; white-space:nowrap; max-width:100px; overflow:hidden; text-overflow:ellipsis; }
 .se-wh-tag-to { background:#f0fdf4; color:#15803d; }

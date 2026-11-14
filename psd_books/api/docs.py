@@ -300,6 +300,67 @@ def get_stock_entry_line_counts(names=None):
     return out
 
 
+_ITEM_NAME_CHILD = {
+    "Stock Entry": "Stock Entry Detail",
+    "Material Request": "Material Request Item",
+    "Purchase Order": "Purchase Order Item",
+    "Purchase Receipt": "Purchase Receipt Item",
+}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_item_names(doctype, names=None):
+    """
+    Bulk lookup of item names (in line order) for a list of documents, in two
+    queries total. Used by the list pages' "Item Names" column and search so
+    they don't have to load every document. Company tenancy is re-applied to
+    the parent documents. Returns {document name: [item name, ...], ...}.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    child = _ITEM_NAME_CHILD.get(doctype)
+    if not child:
+        frappe.throw("Not supported", frappe.PermissionError)
+    from psd_books.utils.access import assert_can
+    assert_can(doctype, "read")
+
+    if isinstance(names, str):
+        names = json.loads(names)
+    names = [n for n in (names or []) if n]
+    if not names:
+        return {}
+
+    filters, allowed = _inject_tenancy_filters(doctype, [["name", "in", names]])
+    if not allowed:
+        return {}
+    parents = [r.name for r in frappe.get_all(doctype, filters=filters, fields=["name"], limit_page_length=0)]
+    if not parents:
+        return {}
+
+    rows = frappe.get_all(
+        child,
+        filters={"parent": ["in", parents], "parenttype": doctype},
+        fields=["parent", "item_code", "item_name"],
+        order_by="parent asc, idx asc",
+        limit_page_length=0,
+    )
+    # The item_name stored on the document line is often blank or just the
+    # item code, so take the readable name from the Item master and fall back
+    # to the line's own name, then the code.
+    codes = list({r.item_code for r in rows if r.item_code})
+    master = {}
+    if codes:
+        master = {
+            i.name: i.item_name
+            for i in frappe.get_all("Item", filters={"name": ["in", codes]}, fields=["name", "item_name"], limit_page_length=0)
+        }
+    out = {}
+    for r in rows:
+        nm = master.get(r.item_code) or r.item_name or r.item_code
+        out.setdefault(r.parent, []).append(nm)
+    return out
+
+
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_list(doctype, fields=None, filters=None, order_by="modified desc", limit_page_length=50, start=0):
     """

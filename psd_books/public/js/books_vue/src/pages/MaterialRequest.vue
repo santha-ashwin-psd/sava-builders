@@ -36,15 +36,16 @@
     <div class="mrl-table-wrap">
       <table class="mrl-table">
         <thead><tr>
-          <th>MRN No</th><th>Request Type</th><th>Project</th><th>Entry Date</th><th>Expected Delivery Date</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
+          <th>MRN No</th><th>Request Type</th><th>Project</th><th>Item Names</th><th>Entry Date</th><th>Expected Delivery Date</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
         </tr></thead>
         <tbody>
-          <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="8"><div class="shimmer" style="height:26px;border-radius:6px"></div></td></tr></template>
-          <tr v-else-if="!sorted.length"><td colspan="8" class="mrl-empty">No Material Requests found</td></tr>
+          <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="9"><div class="shimmer" style="height:26px;border-radius:6px"></div></td></tr></template>
+          <tr v-else-if="!sorted.length"><td colspan="9" class="mrl-empty">No Material Requests found</td></tr>
           <tr v-else v-for="row in paged" :key="row.name" class="mrl-row" @click="selectMR(row.name)">
             <td class="mrl-c-no" data-label="MRN No"><span class="mrl-link">{{ row.name }}</span></td>
             <td data-label="Type">{{ row.material_request_type || '—' }}</td>
             <td data-label="Project">{{ refLabel(row) }}</td>
+            <td data-label="Item Names"><ItemNamesCell :names="itemNames(row.name)" /></td>
             <td data-label="Entry Date">{{ fmtDate(row.entry_date) }}</td>
             <td data-label="Expected Delivery Date">{{ fmtDate(row.posting_date) }}</td>
             <td data-label="Requested By">{{ empName(row) }}</td>
@@ -257,6 +258,8 @@
 <script setup>
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useProjectOptions } from "../composables/useProjectOptions.js";
+import ItemNamesCell from "../components/ItemNamesCell.vue";
+import { useItemNames } from "../composables/useItemNames.js";
 import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { apiGet, apiGET, apiPOST, apiSave, apiList, apiSubmit, apiCancel, apiAmend, apiDelete, resolveCompany } from "../api/client.js";
@@ -302,11 +305,13 @@ function empName(r) {
   return (r && (r.employee_name || r.employee)) || "-";
 }
 
+const { loadItemNames, itemNames, hasItem } = useItemNames("Material Request");
 async function loadList() {
   try {
     const fields = ["name", "material_request_type", "posting_date", "entry_date", "production_plan", "project", "owner", "employee", "employee_name", "status", "docstatus", "modified"];
     const r = await apiList("Material Request", { fields, limit: 1000, order: "modified desc" });
     list.value = r || [];
+    loadItemNames(list.value); // runs in the background, list is already visible
   } catch (e) {
     toast("Could not load Material Requests: " + e.message, "error");
   }
@@ -344,7 +349,7 @@ const sorted = computed(() => {
   else if (filterStatus.value) r = r.filter(i => i.status === filterStatus.value);
   if (filterType.value) r = r.filter(i => i.material_request_type === filterType.value);
   const q = search.value.toLowerCase().trim();
-  if (q) r = r.filter(i => [i.name, i.material_request_type, i.production_plan, refLabel(i), empName(i) === "-" ? "" : empName(i)].filter(Boolean).join(" ").toLowerCase().includes(q));
+  if (q) r = r.filter(i => [i.name, i.material_request_type, i.production_plan, refLabel(i), empName(i) === "-" ? "" : empName(i)].filter(Boolean).join(" ").toLowerCase().includes(q) || hasItem(i.name, q));
   return [...r].sort(mrnCompare);
 });
 const paged = computed(() => {

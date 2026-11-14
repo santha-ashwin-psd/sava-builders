@@ -74,6 +74,7 @@
           <th @click="sortBy('supplier_name')" class="sortable">Supplier <span v-html="sortArrow('supplier_name')"></span></th>
             <th>Project</th>
           <th @click="sortBy('purchase_order')" class="sortable">Purchase Order <span v-html="sortArrow('purchase_order')"></span></th>
+          <th>Item Names</th>
           <th @click="sortBy('total_qty')" class="sortable ta-r">Items <span v-html="sortArrow('total_qty')"></span></th>
           <th>Status</th>
           <th style="width:120px;text-align:center">Actions</th>
@@ -81,10 +82,10 @@
       </thead>
       <tbody>
         <template v-if="loading">
-          <tr v-for="n in 5" :key="n"><td colspan="8" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
+          <tr v-for="n in 5" :key="n"><td colspan="9" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
         </template>
         <tr v-else-if="!sorted.length">
-          <td colspan="8" class="bk-empty-state">
+          <td colspan="9" class="bk-empty-state">
             <div class="bk-empty-inner">
               <template v-if="search||tab!=='all'">
                 <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -105,6 +106,7 @@
           <td class="fw-600" @click="openView(r)">{{r.supplier_name||r.supplier||'—'}}</td>
             <td class="c-muted" @click="openView(r)">{{projectLabel(r.project)||'—'}}</td>
           <td class="c-muted mono-sm" @click="openView(r)">{{r.purchase_order||'—'}}</td>
+          <td @click="openView(r)"><ItemNamesCell :names="itemNames(r.name)" /></td>
           <td class="ta-r c-muted mono-sm" @click="openView(r)">{{r.total_qty||'—'}}</td>
           <td @click="openView(r)"><span class="inv-status-badge" :class="statusClass(r)">{{statusLabel(r)}}</span></td>
           <td @click.stop>
@@ -566,6 +568,8 @@ import { apiList, apiGet, apiGET, apiPOST, apiSave, apiSubmit, apiDelete, apiCan
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useProjectOptions } from "../composables/useProjectOptions.js";
 import DocLink from "../components/DocLink.vue";
+import ItemNamesCell from "../components/ItemNamesCell.vue";
+import { useItemNames } from "../composables/useItemNames.js";
 import { useToast } from "../composables/useToast.js";
 import { icon } from "../utils/icons.js";
 import { usePermissions } from "../composables/usePermissions.js";
@@ -707,6 +711,7 @@ function canEdit(r) {
   return !!r && r.source === "real" && r.docstatus === 0;
 }
 
+const { loadItemNames, itemNames, hasItem } = useItemNames("Purchase Receipt");
 async function load() {
   loading.value = true;
   try {
@@ -741,6 +746,7 @@ async function load() {
       project: r.project || "",
     }));
     list.value = rawList;
+    loadItemNames(rawList); // background: list is shown without waiting for item names
     // Resolve missing supplier_name — backend may omit it
     const missing = [...new Set(rawList.filter(r => !r.supplier_name && r.supplier).map(r => r.supplier))];
     if (missing.length) {
@@ -759,7 +765,7 @@ const filtered = computed(() => {
   else if (tab.value === "2") r = r.filter(x => x.docstatus === 2);
   if (search.value.trim()) {
     const q = search.value.toLowerCase();
-    r = r.filter(x => (x.name||"").toLowerCase().includes(q) || (x.supplier_name||"").toLowerCase().includes(q) || projectLabel(x.project).toLowerCase().includes(q));
+    r = r.filter(x => (x.name||"").toLowerCase().includes(q) || (x.supplier_name||"").toLowerCase().includes(q) || projectLabel(x.project).toLowerCase().includes(q) || hasItem(x.name, q));
   }
   return r;
 });

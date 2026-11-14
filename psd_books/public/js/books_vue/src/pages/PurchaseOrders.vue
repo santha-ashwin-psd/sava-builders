@@ -61,6 +61,7 @@
             <th @click="sortBy('name')" class="sortable">PO # <span v-html="sortArrow('name')"></span></th>
             <th @click="sortBy('supplier_name')" class="sortable">Vendor <span v-html="sortArrow('supplier_name')"></span></th>
             <th>Project</th>
+            <th>Item Names</th>
             <th @click="sortBy('transaction_date')" class="sortable">Order Date <span v-html="sortArrow('transaction_date')"></span></th>
             <th v-if="false" @click="sortBy('expected_delivery_date')" class="sortable">Expected <span v-html="sortArrow('expected_delivery_date')"></span></th>
             <th style="width:170px">Status</th>
@@ -70,7 +71,7 @@
         </thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="8"><div class="shimmer"></div></td></tr>
+            <tr v-for="n in 6" :key="n"><td colspan="9"><div class="shimmer"></div></td></tr>
           </template>
           <template v-else>
             <tr v-for="o in paged" :key="o.name" class="inv-row" :class="{selected:selected.has(o.name)}">
@@ -78,6 +79,7 @@
               <td class="td-id" @click="openView(o)"><DocLink doctype="Purchase Order" :name="o.name" /></td>
               <td class="td-customer" @click="openView(o)">{{ o.supplier_name || o.supplier || '—' }}</td>
               <td class="text-muted" @click="openView(o)">{{ projectLabel(o.project) || '—' }}</td>
+              <td @click="openView(o)"><ItemNamesCell :names="itemNames(o.name)" /></td>
               <td class="td-date text-muted mono-sm" @click="openView(o)">{{ fmtDate(o.transaction_date) }}</td>
               <td v-if="false" class="td-due mono-sm" @click="openView(o)" :class="isPastExpected(o)?'text-danger':'text-muted'">{{ fmtDate(o.expected_delivery_date)||'—' }}</td>
               <td class="td-status" @click="openView(o)"><span class="inv-status-badge" :class="badgeClass(o)">{{ displayStatus(o) }}</span></td>
@@ -89,7 +91,7 @@
                 <button v-if="canDelete(o) && $canDelete('bills')" class="inv-act-btn po-act-del" @click="deletePO(o)" title="Delete"><span v-html="icon('trash',13)"></span></button>
               </td>
             </tr>
-            <tr v-if="!sorted.length"><td colspan="8" class="po-empty">No purchase orders match</td></tr>
+            <tr v-if="!sorted.length"><td colspan="9" class="po-empty">No purchase orders match</td></tr>
           </template>
         </tbody>
       </table>
@@ -1137,6 +1139,8 @@ function fmtDateDay(d) {
 }
 import SearchableSelect from "../components/SearchableSelect.vue";
 import { useProjectOptions } from "../composables/useProjectOptions.js";
+import ItemNamesCell from "../components/ItemNamesCell.vue";
+import { useItemNames } from "../composables/useItemNames.js";
 import SummaryStrip from "../components/SummaryStrip.vue";
 import Pagination from "../components/Pagination.vue";
 import { usePagination } from "../composables/usePagination.js";
@@ -1380,6 +1384,7 @@ function canDelete(o) {
   return s === "draft" || s === "" || s === "sent back" || s === "cancelled";
 }
 
+const { loadItemNames, itemNames, hasItem } = useItemNames("Purchase Order");
 async function load() {
   loading.value = true;
   // PO list and project names are independent: fetch them in parallel.
@@ -1392,6 +1397,7 @@ async function load() {
       limit: 100000,
       order: "transaction_date desc, creation desc",
     });
+    loadItemNames(list.value); // background: list is shown without waiting for item names
   } catch (e) { toast.error(e.message || "Failed to load purchase orders"); }
   const pr = await projP;
   projectNames.value = pr ? Object.fromEntries(pr.map(x => [x.name, x.project_name])) : {};
@@ -1468,7 +1474,8 @@ const filtered = computed(() => {
     const q = search.value.toLowerCase();
     r = r.filter(x => (x.name || "").toLowerCase().includes(q)
       || (x.supplier_name || x.supplier || "").toLowerCase().includes(q)
-      || projectLabel(x.project).toLowerCase().includes(q));
+      || projectLabel(x.project).toLowerCase().includes(q)
+      || hasItem(x.name, q));
   }
   return r;
 });
