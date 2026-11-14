@@ -280,7 +280,24 @@ def get_stock_entry_line_counts(names=None):
         {"names": names},
         as_dict=True,
     )
-    return {r.parent: {"item_count": int(r.item_count or 0), "batch_count": int(r.batch_count or 0)} for r in rows}
+    out = {r.parent: {"item_count": int(r.item_count or 0), "batch_count": int(r.batch_count or 0), "item_names": []} for r in rows}
+
+    # Item names per entry (in line order) for the Opening Stock list's
+    # "Item Names" column — one extra grouped-free query, no per-row loads.
+    name_rows = frappe.db.sql(
+        """
+        SELECT parent, COALESCE(NULLIF(item_name, ''), item_code) AS item_name
+        FROM `tabStock Entry Detail`
+        WHERE parent IN %(names)s
+        ORDER BY parent, idx
+        """,
+        {"names": names},
+        as_dict=True,
+    )
+    for r in name_rows:
+        if r.parent in out:
+            out[r.parent]["item_names"].append(r.item_name)
+    return out
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])

@@ -46,6 +46,7 @@
           <th>Entry #</th>
           <th>Date</th>
           <th>Warehouse(s)</th>
+          <th>Item Names</th>
           <th class="ta-r">Items</th>
           <th class="ta-r">Batched Lines</th>
           <th class="ta-r">Value</th>
@@ -54,13 +55,14 @@
         </tr></thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 6" :key="n"><td colspan="8"><div class="ob-shimmer"></div></td></tr>
+            <tr v-for="n in 6" :key="n"><td colspan="9"><div class="ob-shimmer"></div></td></tr>
           </template>
           <template v-else>
             <tr v-for="e in paginated" :key="e.name" class="ob-row" @click="openView(e)">
               <td><span class="ob-num">{{ e.name }}</span></td>
               <td class="mono-sm text-muted">{{ fmtDate(e.posting_date) }}</td>
               <td><span class="ob-wh-tag" v-if="e.to_warehouse">{{ shortWH(e.to_warehouse) }}</span><span v-else class="text-muted">Multiple</span></td>
+              <td class="ob-names-cell"><div class="ob-names" @mouseenter="showNamesTip($event, e)" @mouseleave="hideNamesTip">{{ (e._itemNames || []).join(', ') || '—' }}</div></td>
               <td class="ta-r">{{ e._itemCount ?? '—' }}</td>
               <td class="ta-r">{{ e._batchCount ?? '—' }}</td>
               <td class="ta-r" style="font-weight:600">{{ fmtCur(e.total_incoming_value) }}</td>
@@ -71,7 +73,7 @@
               </td>
             </tr>
             <tr v-if="!filtered.length">
-              <td colspan="8" class="ob-empty">
+              <td colspan="9" class="ob-empty">
                 <div style="font-size:32px;margin-bottom:8px">🗃️</div>
                 <div style="font-weight:600;margin-bottom:4px">No opening stock entries yet</div>
                 <div style="font-size:13px;color:#9ca3af;margin-bottom:12px">Set starting balances and batches before go-live</div>
@@ -375,6 +377,10 @@
       </template>
     </div>
 
+    <Teleport to="body">
+      <div v-if="namesTip.show" class="ob-names-tip" :style="{ left: namesTip.x + 'px', top: namesTip.y + 'px' }">{{ namesTip.text }}</div>
+    </Teleport>
+
   </div>
 </template>
 
@@ -417,12 +423,27 @@ const form = reactive({
 
 const lineTotal = computed(() => lines.value.reduce((s, l) => s + flt(l.qty) * flt(l.basic_rate), 0));
 
+// Hover popover for the Item Names column (white box, blue border, wraps)
+const namesTip = reactive({ show: false, text: "", x: 0, y: 0 });
+function showNamesTip(ev, e) {
+  const text = (e._itemNames || []).join(", ");
+  if (!text) return;
+  const r = ev.currentTarget.getBoundingClientRect();
+  const w = 420;
+  namesTip.text = text;
+  namesTip.x = Math.max(8, Math.min(r.left, window.innerWidth - w - 16));
+  namesTip.y = r.bottom + 6;
+  namesTip.show = true;
+}
+function hideNamesTip() { namesTip.show = false; }
+
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase();
   if (!q) return list.value;
   return list.value.filter(e =>
     (e.name || "").toLowerCase().includes(q) ||
     (e.to_warehouse || "").toLowerCase().includes(q) ||
+    (e._itemNames || []).some(n => (n || "").toLowerCase().includes(q)) ||
     (e.remarks || "").toLowerCase().includes(q)
   );
 });
@@ -500,9 +521,10 @@ async function load() {
         const c = counts[e.name];
         e._itemCount = c ? c.item_count : 0;
         e._batchCount = c ? c.batch_count : 0;
+        e._itemNames = c ? (c.item_names || []) : [];
       }
     } catch {
-      for (const e of rows) { e._itemCount = null; e._batchCount = null; }
+      for (const e of rows) { e._itemCount = null; e._batchCount = null; e._itemNames = []; }
     }
     list.value = rows;
   } catch (e) {
@@ -824,6 +846,9 @@ onMounted(async () => {
 .ob-table td { padding:10px 12px; border-bottom:1px solid #f3f4f6; color:#111827; }
 .ob-row { cursor:pointer; } .ob-row:hover td { background:#f9fafb; }
 .ob-num { font-weight:600; color:#2563eb; }
+.ob-names-cell { max-width:280px; width:280px; }
+.ob-names-tip { position:fixed; z-index:99999; max-width:420px; box-sizing:border-box; background:#fff; color:#1f2937; border:1.5px solid #3b82f6; border-radius:10px; padding:14px 18px; font-size:16px; line-height:1.5; box-shadow:0 8px 24px rgba(15,23,42,.14); pointer-events:none; white-space:normal; word-break:break-word; }
+.ob-names { max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#374151; }
 .ob-wh-tag { background:#eff6ff; color:#2563eb; padding:2px 8px; border-radius:6px; font-size:11.5px; font-weight:600; }
 .ob-badge { display:inline-flex; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; }
 .badge-green { background:#dcfce7; color:#16a34a; } .badge-grey { background:#f3f4f6; color:#6b7280; } .badge-orange { background:#fff7ed; color:#ea580c; }
