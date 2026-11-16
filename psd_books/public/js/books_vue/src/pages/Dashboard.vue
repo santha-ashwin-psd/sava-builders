@@ -75,7 +75,7 @@
         </div>
       </div>
 
-      <div class="ov-card">
+      <div class="ov-card" :style="d.is_approver ? { order: -1 } : null">
         <div class="ov-card-head">
           <div class="ov-head-l">
             <span class="ov-head-ico ov-ico-blue" v-html="iconCheckSq"></span>
@@ -133,11 +133,12 @@
               </thead>
               <tbody>
                 <tr v-for="r in d.awaiting_delivery" :key="r.name" @click="openDoc({ doctype: 'Purchase Order', name: r.name })">
-                  <td><span class="ov-dot" :style="{ background: poDot(r.status) }"></span><span class="ov-tbl-link">{{ r.name }}</span></td>
+                  <td><span class="ov-tbl-link">{{ r.name }}</span></td>
                   <td>{{ r.supplier_name || '—' }}</td>
                   <td class="ov-clip">{{ r.project_label || '—' }}</td>
                   <td class="ta-r">{{ fmt(r.grand_total) }}</td>
-                  <td class="ov-muted">{{ fmtDate(r.expected_delivery_date || r.date) }}</td>
+                  <td class="ov-muted">{{ fmtDate(r.expected_delivery_date || r.date) }}
+                    <span class="ov-pill" :class="dlv(r).cls" style="margin-left:8px">{{ dlv(r).label }}</span></td>
                 </tr>
               </tbody>
             </table>
@@ -185,6 +186,51 @@
       -->
     </div>
 
+    <!-- ── Spend by project + Top suppliers ── -->
+    <div class="ov-row ov-row-even">
+      <div class="ov-card">
+        <div class="ov-card-head">
+          <div class="ov-head-l">
+            <span class="ov-head-ico ov-ico-blue" v-html="iconFolderSq"></span>
+            <div>
+              <div class="ov-card-title">Spend by Project</div>
+              <div class="ov-card-sub">Total purchase order value, top projects</div>
+            </div>
+          </div>
+        </div>
+        <div v-if="loading" class="ov-shimmer" style="height:190px;border-radius:10px"></div>
+        <div v-else-if="spendRows.length" class="ov-hbars">
+          <div v-for="r in spendRows" :key="r.name" class="ov-hbar-row" @click="navTo('/purchase-orders')">
+            <span class="ov-hbar-lbl" :title="r.label">{{ r.label }}</span>
+            <div class="ov-bar-track"><div class="ov-bar-fill" :style="{ width: r.pct + '%', background: '#2563eb' }"></div></div>
+            <span class="ov-hbar-val">{{ fmt(r.value) }}</span>
+          </div>
+        </div>
+        <div v-else class="ov-empty"><div class="ov-empty-sub">No purchase orders yet.</div></div>
+      </div>
+
+      <div class="ov-card">
+        <div class="ov-card-head">
+          <div class="ov-head-l">
+            <span class="ov-head-ico ov-ico-blue" v-html="iconTruck"></span>
+            <div>
+              <div class="ov-card-title">Top Suppliers</div>
+              <div class="ov-card-sub">By purchase order value this month</div>
+            </div>
+          </div>
+        </div>
+        <div v-if="loading" class="ov-shimmer" style="height:190px;border-radius:10px"></div>
+        <div v-else-if="supplierRows.length" class="ov-hbars">
+          <div v-for="r in supplierRows" :key="r.supplier_name" class="ov-hbar-row" @click="navTo('/purchase-orders')">
+            <span class="ov-hbar-lbl" :title="r.supplier_name">{{ r.supplier_name }}</span>
+            <div class="ov-bar-track"><div class="ov-bar-fill" :style="{ width: r.pct + '%', background: '#7c3aed' }"></div></div>
+            <span class="ov-hbar-val">{{ fmt(r.value) }}</span>
+          </div>
+        </div>
+        <div v-else class="ov-empty"><div class="ov-empty-sub">No purchase orders this month.</div></div>
+      </div>
+    </div>
+
     <!-- ── Project snapshot + Recent activity ── -->
     <div class="ov-row ov-row-snap">
       <div class="ov-card">
@@ -196,10 +242,13 @@
               <div class="ov-card-sub">Open material requests and purchase orders per project</div>
             </div>
           </div>
+          <div style="display:flex;align-items:center">
+          <label class="ov-hide-done"><input type="checkbox" v-model="hideDone" /> Hide 100% complete</label>
           <select class="ov-select" v-model="snapProject">
             <option value="">All projects</option>
             <option v-for="pr in snapshot" :key="pr.name" :value="pr.name">{{ projLabel(pr) }}</option>
           </select>
+          </div>
         </div>
         <div v-if="loading" class="ov-shimmer" style="height:200px;border-radius:10px"></div>
         <div v-else-if="snapshotShown.length" class="ov-tbl-wrap ov-snap-wrap">
@@ -211,7 +260,7 @@
                 <th colspan="2" class="ta-c">Material Requests</th>
                 <th colspan="2" class="ta-c">Purchase Orders</th>
                 <!-- Total Value column hidden -->
-                <th rowspan="2">Progress</th>
+                <th rowspan="2" title="Share of this project's Material Requests and Purchase Orders that are no longer open (cancelled excluded)">Progress ⓘ</th>
                 <th rowspan="2">Status</th>
                 <th rowspan="2" class="ta-c">Action</th>
               </tr>
@@ -227,7 +276,7 @@
                 <td class="ta-c" :class="{ 'ov-zero': !pr.total_pos }">{{ pr.total_pos }}</td>
                 <!-- Total Value cell hidden: <td class="ta-r ov-val">{{ fmt(pr.total_value) }}</td> -->
                 <td>
-                  <div class="ov-prog">
+                  <div class="ov-prog" :title="`${pr.progress}% of this project's MRs and POs are closed out`">
                     <div class="ov-prog-track"><div class="ov-prog-fill" :style="{ width: pr.progress + '%' }"></div></div>
                     <span class="ov-prog-n">{{ pr.progress }}%</span>
                   </div>
@@ -256,9 +305,12 @@
           </div>
           <button class="ov-link" @click="navTo('/manufacturing/material-request')">View all →</button>
         </div>
+        <div class="ov-act-filters">
+          <button v-for="f in ACT_FILTERS" :key="f.key" type="button" class="ov-act-pill" :class="{ active: actFilter === f.key }" @click="actFilter = f.key">{{ f.label }}</button>
+        </div>
         <div v-if="loading" class="ov-shimmer" style="height:120px;border-radius:10px"></div>
-        <div v-else-if="d.recent_activity && d.recent_activity.length" class="ov-timeline">
-          <div v-for="row in d.recent_activity" :key="row.doctype + row.name" class="ov-tl-row" @click="openDoc(row)">
+        <div v-else-if="activityShown.length" class="ov-timeline">
+          <div v-for="row in activityShown" :key="row.doctype + row.name" class="ov-tl-row" @click="openDoc(row)">
             <div class="ov-tl-dot" :class="actDotClass(row.status)"><span v-html="actIcon(row.status)"></span></div>
             <div class="ov-tl-body">
               <div class="ov-tl-desc">{{ row.doctype }} <span class="ov-tl-doc">{{ row.name }}</span> {{ actVerb(row.status) }}</div>
@@ -341,13 +393,13 @@ const kpiCards = computed(() => {
   return [
     { key: "projects", label: "Active Projects", accent: "ov-a-blue", icon: iconGlyph("folder"), route: "/projects", color: "#2563eb",
       value: x.active_projects ?? 0, sub: `${x.new_projects_month ?? 0} this month`, trend: (x.new_projects_month || 0) > 0 ? "up" : "", spark: spark(sp.projects) },
-    { key: "mr", label: "MRN Pending Approval", accent: "ov-a-amber", icon: iconGlyph("clock"), route: "/manufacturing/material-request", color: "#f59e0b",
-      value: x.mr_pending_count ?? 0, sub: "Waiting for project manager", trend: "", spark: spark(sp.mr) },
+    { key: "mr", label: "Pending Approval", accent: "ov-a-amber", icon: iconGlyph("clock"), route: "/manufacturing/material-request", color: "#f59e0b",
+      value: (x.mr_pending_count ?? 0) + (x.po_pending_count ?? 0), sub: `${x.mr_pending_count ?? 0} MRN · ${x.po_pending_count ?? 0} PO`, trend: "", spark: spark(sp.mr) },
     { key: "po", label: "Open Purchase Orders", accent: "ov-a-green", icon: iconGlyph("bill"), route: "/purchase-orders", color: "#16a34a",
       value: x.open_po_count ?? 0, sub: `${x.new_pos_week ?? 0} this week`, trend: (x.new_pos_week || 0) > 0 ? "up" : "", spark: spark(sp.po) },
     { key: "val", label: "Total Material Value", accent: "ov-a-purple", icon: iconGlyph("box"), route: "/purchase-orders", color: "#7c3aed",
       value: fmt(x.material_value || 0),
-      sub: pct == null ? "This month's purchase orders" : `${Math.abs(pct)}% vs last month`,
+      sub: pct == null ? "This month's purchase orders" : `${Math.abs(pct)}% vs same days last month`,
       trend: pct == null ? "" : pct >= 0 ? "up" : "down", spark: spark(sp.value) },
   ];
 });
@@ -358,10 +410,10 @@ const PIPELINE = [
   { key: "Pending Approval", label: "Pending Approval", color: "#f59e0b" },
   { key: "Sent Back",        label: "Sent Back",        color: "#fb7185" },
   { key: "Approved",         label: "Approved",         color: "#2563eb" },
-  { key: "Partly Issued",    label: "Partly Issued",    color: "#fb923c" },
-  { key: "Issued",           label: "Issued",           color: "#34d399" },
   { key: "Partially Ordered", label: "Partially Ordered", color: "#a78bfa" },
   { key: "Ordered",          label: "Ordered",          color: "#8b5cf6" },
+  { key: "Received",         label: "Received",         color: "#16a34a" },
+  { key: "Cancelled",        label: "Cancelled",        color: "#ef4444" },
 ];
 const period = ref("month");
 const pipelineData = computed(() => (d.value.mr_pipeline_periods || {})[period.value] || d.value.mr_pipeline || {});
@@ -376,7 +428,15 @@ const pipelineRows = computed(() => {
 });
 
 // ── Awaiting delivery / QC helpers ──
-const poDot = (st) => (st === "Partially Received" ? "#2563eb" : "#f59e0b");
+// Overdue / Due today / Upcoming, from the expected delivery date (list is already sorted oldest first).
+const dlv = (r) => {
+  const n = new Date(), t = `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, "0")}-${String(n.getDate()).padStart(2, "0")}`;
+  const e = String(r.expected_delivery_date || r.date || "").slice(0, 10);
+  if (!e) return { label: "No date", cls: "ov-pill-blue" };
+  if (e < t) return { label: "Overdue", cls: "ov-pill-red" };
+  if (e === t) return { label: "Due today", cls: "ov-pill-amber" };
+  return { label: "Upcoming", cls: "ov-pill-green" };
+};
 const qcLabel = (s) => (s === "Pass" ? "Passed" : s === "Fail" ? "Failed" : s || "Pending");
 const qcPill = (s) => (s === "Pass" ? "ov-pill-green" : s === "Fail" ? "ov-pill-red" : "ov-pill-amber");
 
@@ -387,10 +447,38 @@ const menuFor = ref("");
 const closeMenu = () => { menuFor.value = ""; };
 onMounted(() => window.addEventListener("click", closeMenu));
 onUnmounted(() => window.removeEventListener("click", closeMenu));
-const snapshotShown = computed(() => snapProject.value ? snapshot.value.filter(p => p.name === snapProject.value) : snapshot.value);
+const hideDone = ref(false);
+const snapshotShown = computed(() => {
+  let r = snapProject.value ? snapshot.value.filter(p => p.name === snapProject.value) : snapshot.value;
+  if (hideDone.value) r = r.filter(p => (p.progress || 0) < 100);
+  return r;
+});
 const projLabel = (pr) => `${pr.project_code || pr.name}${pr.project_name ? " – " + pr.project_name : ""}`;
 
+// ── Spend by project / top suppliers ──
+const spendRows = computed(() => {
+  const rows = snapshot.value.filter(p => Number(p.total_value) > 0)
+    .sort((a, b) => b.total_value - a.total_value).slice(0, 8)
+    .map(p => ({ name: p.name, label: projLabel(p), value: Number(p.total_value) }));
+  const max = Math.max(1, ...rows.map(r => r.value));
+  return rows.map(r => ({ ...r, pct: Math.round((r.value / max) * 100) }));
+});
+const supplierRows = computed(() => {
+  const rows = (d.value.top_suppliers || []).filter(r => r.supplier_name);
+  const max = Math.max(1, ...rows.map(r => Number(r.value) || 0));
+  return rows.map(r => ({ ...r, pct: Math.round(((Number(r.value) || 0) / max) * 100) }));
+});
+
 // ── Recent activity ──
+const ACT_FILTERS = [
+  { key: "all", label: "All" }, { key: "Purchase Order", label: "POs" },
+  { key: "Material Request", label: "MRNs" }, { key: "Purchase Receipt", label: "GRNs" },
+];
+const actFilter = ref("all");
+const activityShown = computed(() => {
+  const rows = d.value.recent_activity || [];
+  return (actFilter.value === "all" ? rows : rows.filter(r => r.doctype === actFilter.value)).slice(0, 10);
+});
 const VERB = { "Approved": "approved", "Pending Approval": "sent for approval", "Sent Back": "sent back", "Draft": "saved as draft",
   "Partly Issued": "partly issued", "Issued": "issued", "Partially Ordered": "partially ordered", "Ordered": "ordered", "To Receive": "confirmed", "Partially Received": "partially received",
   "Received": "received", "Completed": "completed", "Submitted": "submitted" };
@@ -507,6 +595,15 @@ const iconCheck    = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none
 .ov-a-blue   { background: linear-gradient(135deg, #f5f9ff, #fff 60%); } .ov-a-blue   .ov-kpi-icon { background: #dbeafe; color: #2563eb; }
 .ov-a-amber  { background: linear-gradient(135deg, #fff9f2, #fff 60%); } .ov-a-amber  .ov-kpi-icon { background: #ffedd5; color: #ea580c; }
 .ov-a-green  { background: linear-gradient(135deg, #f3fcf6, #fff 60%); } .ov-a-green  .ov-kpi-icon { background: #dcfce7; color: #16a34a; }
+.ov-row-even { grid-template-columns: 1fr 1fr; }
+.ov-hbars { display: flex; flex-direction: column; gap: 14px; }
+.ov-hbar-row { display: grid; grid-template-columns: 170px 1fr 110px; align-items: center; gap: 12px; cursor: pointer; }
+.ov-hbar-lbl { font-size: 12.5px; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-hbar-val { font-size: 12.5px; font-weight: 600; color: #0f172a; text-align: right; }
+.ov-act-filters { display: flex; gap: 6px; margin: 0 0 12px; }
+.ov-act-pill { border: 1px solid #e2e8f0; background: #fff; color: #64748b; font-size: 11.5px; font-weight: 600; padding: 3px 11px; border-radius: 999px; cursor: pointer; }
+.ov-act-pill.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.ov-hide-done { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #64748b; margin-right: 12px; cursor: pointer; }
 .ov-a-purple { background: linear-gradient(135deg, #f8f5ff, #fff 60%); } .ov-a-purple .ov-kpi-icon { background: #ede9fe; color: #7c3aed; }
 .ov-kpi-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .ov-kpi-main { min-width: 0; position: relative; z-index: 1; }
@@ -647,7 +744,7 @@ const iconCheck    = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none
 
 /* ── Responsive ── */
 @media (max-width: 1200px) {
-  .ov-row, .ov-row-snap { grid-template-columns: 1fr; }
+  .ov-row, .ov-row-snap, .ov-row-even { grid-template-columns: 1fr; }
   .ov-kpi-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {

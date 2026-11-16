@@ -761,7 +761,7 @@ async function liveLinksOf(name) {
   };
   const [rfq, po, dn] = await Promise.all([
     first("Request for Quotation", [["material_request", "=", name], ["status", "!=", "Cancelled"]]),
-    first("Purchase Order", [["material_request", "=", name], ["docstatus", "!=", 2]]),
+    first("Purchase Order", [["material_request", "=", name], ["docstatus", "!=", 2], ["status", "!=", "Cancelled"]]),
     first("Delivery Note", [["material_request", "=", name], ["docstatus", "!=", 2]]),
   ]);
   return [rfq && `RFQ ${rfq}`, po && `Purchase Order ${po}`, dn && `Delivery Note ${dn}`].filter(Boolean);

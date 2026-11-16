@@ -231,11 +231,11 @@ def get_projects_dashboard(company: str | None = None) -> dict:
 
     ps = _period_starts(today())
     mr_rows = frappe.db.sql("""
-        SELECT status, COUNT(*) AS n,
+        SELECT IF(docstatus = 2, 'Cancelled', status) AS status, COUNT(*) AS n,
                SUM(CASE WHEN creation >= %(month)s THEN 1 ELSE 0 END) AS n_month,
                SUM(CASE WHEN creation >= %(quarter)s THEN 1 ELSE 0 END) AS n_quarter
         FROM `tabMaterial Request`
-        WHERE company = %(company)s AND docstatus != 2 GROUP BY status
+        WHERE company = %(company)s GROUP BY IF(docstatus = 2, 'Cancelled', status)
     """, {**p, "month": ps["month"], "quarter": ps["quarter"]}, as_dict=True)
     mr_pipeline = {r["status"]: int(r["n"]) for r in mr_rows}
     mr_pipeline_periods = {
@@ -248,6 +248,20 @@ def get_projects_dashboard(company: str | None = None) -> dict:
                 FROM `tabPurchase Order`
                 WHERE company = %(company)s AND docstatus != 2 AND status IN %(st)s""",
              {**p, "st": _PO_OPEN})
+
+    po_pending_n = one("""SELECT COUNT(*) AS n FROM `tabPurchase Order`
+                          WHERE company = %(company)s AND docstatus != 2 AND status = 'Pending Approval'""")
+
+    top_suppliers = frappe.db.sql("""
+        SELECT COALESCE(NULLIF(supplier_name, ''), supplier) AS supplier_name,
+               COUNT(*) AS po_count, COALESCE(SUM(grand_total), 0) AS value
+        FROM `tabPurchase Order`
+        WHERE company = %(company)s AND docstatus != 2 AND transaction_date >= %(month)s
+        GROUP BY COALESCE(NULLIF(supplier_name, ''), supplier)
+        ORDER BY value DESC LIMIT 5
+    """, {**p, "month": _period_starts(today())["month"]}, as_dict=True)
+    for r in top_suppliers:
+        r["value"] = flt(r.get("value"))
 
     qc_rows = frappe.db.sql(
         "SELECT status, COUNT(*) AS n FROM `tabQC Inspection` WHERE docstatus != 2 GROUP BY status",
@@ -275,13 +289,22 @@ def get_projects_dashboard(company: str | None = None) -> dict:
     """, p, as_dict=True)
     pending = sorted(mr_pending, key=lambda r: not r["for_me"]) + [dict(r, for_me=False) for r in po_pending]
 
+    # Expected date comes from the Material Request(s) the PO covers (MR "Expected Delivery Date" is
+    # posting_date); earliest one when a PO spans several. Falls back to the PO's own date if it has no MRN.
     awaiting = frappe.db.sql("""
-        SELECT name, supplier_name, project, transaction_date AS date, expected_delivery_date,
-               status, grand_total
-        FROM `tabPurchase Order`
-        WHERE company = %(company)s AND docstatus != 2 AND status IN %(st)s
-        ORDER BY COALESCE(expected_delivery_date, transaction_date) ASC LIMIT 6
+        SELECT po.name, po.supplier_name, po.project, po.transaction_date AS date,
+               COALESCE((SELECT MIN(mr.posting_date) FROM `tabMaterial Request` mr
+                         WHERE mr.name = po.material_request
+                            OR mr.name IN (SELECT poi.material_request FROM `tabPurchase Order Item` poi
+                                           WHERE poi.parent = po.name)),
+                        po.expected_delivery_date) AS exp_date,
+               po.status, po.grand_total
+        FROM `tabPurchase Order` po
+        WHERE po.company = %(company)s AND po.docstatus != 2 AND po.status IN %(st)s
+        ORDER BY COALESCE(exp_date, po.transaction_date) ASC LIMIT 6
     """, {**p, "st": _PO_WAITING}, as_dict=True)
+    for r in awaiting:
+        r["expected_delivery_date"] = r.pop("exp_date")
 
     snapshot = frappe.db.sql("""
         SELECT pr.name, pr.project_code, pr.project_name, pr.status,
@@ -297,7 +320,7 @@ def get_projects_dashboard(company: str | None = None) -> dict:
             WHERE o.project = pr.name AND o.docstatus != 2) AS total_value
         FROM `tabProject` pr
         WHERE pr.company = %(company)s AND pr.status != 'Closed'
-        ORDER BY pr.modified DESC LIMIT 8
+        ORDER BY pr.modified DESC LIMIT 50
     """, {**p, "mr": _MR_OPEN, "po": _PO_OPEN}, as_dict=True)
     for r in snapshot:
         r["total_value"] = flt(r.get("total_value"))
@@ -316,7 +339,7 @@ def get_projects_dashboard(company: str | None = None) -> dict:
           UNION ALL
           SELECT 'Purchase Receipt', name, project, posting_date, status, supplier_name, modified, modified_by
           FROM `tabPurchase Receipt` WHERE company = %(company)s AND docstatus != 2
-        ) x ORDER BY modified DESC LIMIT 10
+        ) x ORDER BY modified DESC LIMIT 40
     """, p, as_dict=True)
 
     qc_recent = frappe.db.sql("""
@@ -336,10 +359,11 @@ def get_projects_dashboard(company: str | None = None) -> dict:
     prev_month_start = frappe.utils.add_months(ps["month"], -1)
     val = one("""SELECT
                    COALESCE(SUM(CASE WHEN transaction_date >= %(m)s THEN grand_total END), 0) AS this_m,
-                   COALESCE(SUM(CASE WHEN transaction_date >= %(pm)s AND transaction_date < %(m)s
+                   COALESCE(SUM(CASE WHEN transaction_date >= %(pm)s AND transaction_date <= %(pe)s
                                      THEN grand_total END), 0) AS prev_m
                  FROM `tabPurchase Order` WHERE company = %(company)s AND docstatus != 2""",
-              {**p, "m": ps["month"], "pm": str(prev_month_start)})
+              {**p, "m": ps["month"], "pm": str(prev_month_start),
+               "pe": str(frappe.utils.add_months(today(), -1))})  # same day-of-month last month
     sp_proj = frappe.db.sql("""SELECT creation FROM `tabProject`
                                WHERE company = %(company)s AND creation >= %(d)s""",
                             {**p, "d": spark_from}, as_dict=True)
@@ -369,6 +393,9 @@ def get_projects_dashboard(company: str | None = None) -> dict:
         "active_projects": int(proj.get("active") or 0),
         "closed_projects": int(proj.get("closed") or 0),
         "mr_pending_count": mr_pipeline.get("Pending Approval", 0),
+        "po_pending_count": int(po_pending_n.get("n") or 0),
+        "top_suppliers": top_suppliers,
+        "is_approver": bool(is_admin or "Director" in set(frappe.get_roles(user))),
         "mr_pipeline": mr_pipeline,
         "mr_pipeline_periods": mr_pipeline_periods,
         "new_projects_month": int(new_projects.get("n") or 0),

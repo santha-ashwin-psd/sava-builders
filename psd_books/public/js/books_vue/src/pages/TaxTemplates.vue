@@ -281,15 +281,17 @@ async function loadAccounts() {
   } catch { accounts.value = []; }
 }
 
+// Sales tax templates are hidden for Sava; table and pill counts share this.
+const visibleList = computed(() => list.value.filter((t) => t.applies_to !== "Sales"));
+
 const typeCounts = computed(() => {
   const m = {};
-  list.value.forEach((t) => { const k = typeOf(t.tax_type); m[k] = (m[k] || 0) + 1; });
+  visibleList.value.forEach((t) => { const k = typeOf(t.tax_type); m[k] = (m[k] || 0) + 1; });
   return m;
 });
 
 const filtered = computed(() => {
-  // Sales tax templates hidden for Sava
-  let r = list.value.filter((t) => t.applies_to !== "Sales");
+  let r = visibleList.value;
   if (typeFilter.value !== "All") r = r.filter((t) => typeOf(t.tax_type) === typeFilter.value);
   const q = search.value.trim().toLowerCase();
   if (q) r = r.filter((t) => (t.template_name || "").toLowerCase().includes(q));
