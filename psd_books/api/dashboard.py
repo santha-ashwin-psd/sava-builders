@@ -163,6 +163,13 @@ _PO_OPEN = ("To Receive", "Partially Received", "Confirmed", "Sent")
 _PO_WAITING = ("To Receive", "Partially Received")
 
 
+def _po_total(alias="`tabPurchase Order`"):
+    """SQL for a PO's total as the PO screen shows it: the sum of its line amounts (rates are
+    VAT-inclusive). Falls back to the stored grand_total for a PO with no lines."""
+    return ("COALESCE((SELECT SUM(_pi.amount) FROM `tabPurchase Order Item` _pi "
+            "WHERE _pi.parent = {a}.name), {a}.grand_total)").format(a=alias)
+
+
 def _period_starts(d):
     """Start dates (ISO) of this month, this quarter and this week (Monday)."""
     import datetime as _dt
@@ -244,7 +251,7 @@ def get_projects_dashboard(company: str | None = None) -> dict:
         "all":     mr_pipeline,
     }
 
-    po = one("""SELECT COUNT(*) AS n, COALESCE(SUM(grand_total), 0) AS total
+    po = one("""SELECT COUNT(*) AS n, COALESCE(SUM(""" + _po_total() + """), 0) AS total
                 FROM `tabPurchase Order`
                 WHERE company = %(company)s AND docstatus != 2 AND status IN %(st)s""",
              {**p, "st": _PO_OPEN})
@@ -254,7 +261,7 @@ def get_projects_dashboard(company: str | None = None) -> dict:
 
     top_suppliers = frappe.db.sql("""
         SELECT COALESCE(NULLIF(supplier_name, ''), supplier) AS supplier_name,
-               COUNT(*) AS po_count, COALESCE(SUM(grand_total), 0) AS value
+               COUNT(*) AS po_count, COALESCE(SUM(""" + _po_total() + """), 0) AS value
         FROM `tabPurchase Order`
         WHERE company = %(company)s AND docstatus != 2 AND transaction_date >= %(month)s
         GROUP BY COALESCE(NULLIF(supplier_name, ''), supplier)
@@ -320,7 +327,7 @@ def get_projects_dashboard(company: str | None = None) -> dict:
             WHERE o.project = pr.name AND o.docstatus != 2 AND o.status IN %(po)s) AS open_pos,
           (SELECT COUNT(*) FROM `tabPurchase Order` o
             WHERE o.project = pr.name AND o.docstatus != 2) AS total_pos,
-          (SELECT COALESCE(SUM(o.grand_total), 0) FROM `tabPurchase Order` o
+          (SELECT COALESCE(SUM(""" + _po_total("o") + """), 0) FROM `tabPurchase Order` o
             WHERE o.project = pr.name AND o.docstatus != 2) AS total_value
         FROM `tabProject` pr
         WHERE pr.company = %(company)s AND pr.status != 'Closed'
@@ -362,9 +369,9 @@ def get_projects_dashboard(company: str | None = None) -> dict:
                        AND creation >= %(d)s""", {**p, "st": _PO_OPEN, "d": ps["week"]})
     prev_month_start = frappe.utils.add_months(ps["month"], -1)
     val = one("""SELECT
-                   COALESCE(SUM(CASE WHEN transaction_date >= %(m)s THEN grand_total END), 0) AS this_m,
+                   COALESCE(SUM(CASE WHEN transaction_date >= %(m)s THEN """ + _po_total() + """ END), 0) AS this_m,
                    COALESCE(SUM(CASE WHEN transaction_date >= %(pm)s AND transaction_date <= %(pe)s
-                                     THEN grand_total END), 0) AS prev_m
+                                     THEN """ + _po_total() + """ END), 0) AS prev_m
                  FROM `tabPurchase Order` WHERE company = %(company)s AND docstatus != 2""",
               {**p, "m": ps["month"], "pm": str(prev_month_start),
                "pe": str(frappe.utils.add_months(today(), -1))})  # same day-of-month last month
@@ -374,7 +381,7 @@ def get_projects_dashboard(company: str | None = None) -> dict:
     sp_mr = frappe.db.sql("""SELECT creation FROM `tabMaterial Request`
                              WHERE company = %(company)s AND docstatus != 2 AND creation >= %(d)s""",
                           {**p, "d": spark_from}, as_dict=True)
-    sp_po = frappe.db.sql("""SELECT creation, transaction_date, grand_total FROM `tabPurchase Order`
+    sp_po = frappe.db.sql("""SELECT creation, transaction_date, """ + _po_total() + """ AS grand_total FROM `tabPurchase Order`
                              WHERE company = %(company)s AND docstatus != 2 AND creation >= %(d)s""",
                           {**p, "d": spark_from}, as_dict=True)
     spark = {
