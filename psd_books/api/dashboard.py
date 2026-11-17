@@ -282,7 +282,9 @@ def get_projects_dashboard(company: str | None = None) -> dict:
         r["for_me"] = bool("Director" in set(frappe.get_roles(user)) and r.get("owner") != user)
     po_pending = frappe.db.sql("""
         SELECT 'Purchase Order' AS doctype, name, project, transaction_date AS date,
-               supplier_name AS party, grand_total AS amount
+               supplier_name AS party,
+               COALESCE((SELECT SUM(poi.amount) FROM `tabPurchase Order Item` poi WHERE poi.parent = `tabPurchase Order`.name),
+                        grand_total) AS amount
         FROM `tabPurchase Order`
         WHERE company = %(company)s AND docstatus != 2 AND status = 'Pending Approval'
         ORDER BY modified DESC LIMIT 8
@@ -298,7 +300,9 @@ def get_projects_dashboard(company: str | None = None) -> dict:
                             OR mr.name IN (SELECT poi.material_request FROM `tabPurchase Order Item` poi
                                            WHERE poi.parent = po.name)),
                         po.expected_delivery_date) AS exp_date,
-               po.status, po.grand_total
+               po.status,
+               COALESCE((SELECT SUM(poi2.amount) FROM `tabPurchase Order Item` poi2 WHERE poi2.parent = po.name),
+                        po.grand_total) AS grand_total
         FROM `tabPurchase Order` po
         WHERE po.company = %(company)s AND po.docstatus != 2 AND po.status IN %(st)s
         ORDER BY COALESCE(exp_date, po.transaction_date) ASC LIMIT 6
