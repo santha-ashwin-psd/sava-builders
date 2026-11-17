@@ -191,6 +191,8 @@ def get_mrn_items(name):
 	lines = frappe.get_all(
 		"Material Request Item", filters={"parent": doc.name, "parenttype": "Material Request"},
 		fields=["item_code", "item_name", "required_qty", "issued_qty", "uom"], order_by="idx asc")
+	master_names = {r.name: r.item_name for r in frappe.get_all(
+		"Item", filters={"name": ["in", [l.item_code for l in lines] or [""]]}, fields=["name", "item_name"])}
 	moved = {r[0]: flt(r[1]) for r in frappe.db.sql(
 		"""SELECT d.item_code, SUM(d.qty) FROM `tabStock Entry Detail` d
 		JOIN `tabStock Entry` s ON s.name = d.parent
@@ -203,7 +205,7 @@ def get_mrn_items(name):
 		transferred = moved.get(l.item_code, 0) + flt(l.issued_qty)
 		pending = required - transferred
 		if pending > 0.0001:
-			items.append({"item_code": l.item_code, "item_name": l.item_name or l.item_code, "uom": l.uom or "",
+			items.append({"item_code": l.item_code, "item_name": master_names.get(l.item_code) or l.item_name or l.item_code, "uom": l.uom or "",
 				"required_qty": required, "transferred_qty": transferred, "pending_qty": pending, "qty": pending})
 	if not items:
 		frappe.throw(_("Material Request {0} is already fully transferred.").format(doc.name))

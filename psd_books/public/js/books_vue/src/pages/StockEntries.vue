@@ -1076,6 +1076,7 @@ async function onMrnPick(opt) {
       if (extra.length) items.value = [...items.value, ...extra];
       lines.value = rows;
       for (const ln of rows) await onItemSelect(ln, { value: ln.item_code });
+      await ensureItemLabels();
     }
   } catch (e) {
     // MRN has nothing left to transfer (or failed to load): drop the previous MRN's lines and the selection
@@ -1153,7 +1154,27 @@ async function loadWhStock() {
 }
 watch(() => form.from_warehouse, () => loadWhStock());
 watch(() => form.stock_entry_type, () => loadWhStock());
+// Items already on the lines must always show their name, never the code: a search, a warehouse
+// change or an MRN load can replace the option list without them. Re-adds / renames those options.
+async function ensureItemLabels() {
+  const codes = [...new Set(lines.value.map(l => l.item_code).filter(Boolean))];
+  if (!codes.length) return;
+  const need = codes.filter(c => { const o = items.value.find(x => x.value === c); return !o || o.label === c; });
+  if (!need.length) return;
+  try {
+    const rows = await apiList("Item", { fields: ["name", "item_name"], filters: [["name", "in", need]], limit: need.length });
+    const nm = {};
+    for (const x of (rows || [])) nm[x.name] = x.item_name || x.name;
+    const next = items.value.map(o => (need.includes(o.value) && nm[o.value]) ? { ...o, label: nm[o.value] } : o);
+    for (const c of need) if (nm[c] && !next.some(o => o.value === c)) next.push({ label: nm[c], value: c });
+    items.value = next;
+  } catch {}
+}
 async function fetchItems(q = "") {
+  await fetchItemsRaw(q);
+  await ensureItemLabels();
+}
+async function fetchItemsRaw(q = "") {
   try {
     const isTransfer = form.stock_entry_type === "Material Transfer";
     // Transfers move only assets, and only those held in the From Warehouse
