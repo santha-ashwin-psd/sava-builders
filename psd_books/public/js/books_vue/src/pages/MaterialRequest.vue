@@ -223,11 +223,31 @@
               </button>
             </div>
 
-            <div v-if="!isNew && mrnBalance.some(b => b.ordered > 0)" style="margin:10px 0 4px;font-size:13px">
-              <div class="bomx-section-lbl">Ordered so far</div>
-              <div v-for="b in mrnBalance" :key="b.item_code" style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #eef0f3">
+            <div v-if="!isNew && mrnBalance.some(b => b.ordered > 0 || b.closed > 0)" style="margin:10px 0 4px;font-size:13px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <div class="bomx-section-lbl" style="margin-right:auto">Ordered so far</div>
+                <button v-if="canShortClose && closableAll.length > 1" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;color:#dc2626;border:1px solid #fca5a5;background:#fff;font-weight:600" :disabled="submitting" @click="startCloseAll">Close all balances</button>
+                <button v-if="canShortClose && reopenableAll.length > 1" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px" :disabled="submitting" @click="reopenAll">Reopen all</button>
+              </div>
+              <div v-for="b in mrnBalance" :key="b.item_code" style="padding:3px 0;border-bottom:1px solid #eef0f3">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                 <span>{{ b.item_name || b.item_code }}</span>
-                <span>MRN {{ b.mrn_qty }} · Ordered {{ b.ordered }} · <b>Balance {{ b.remaining }}</b></span>
+                <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+                  <span>MRN {{ b.mrn_qty + (b.closed || 0) }} · Ordered {{ b.ordered }}<template v-if="b.closed"> · <span style="color:#b45309">Closed {{ b.closed }}</span></template> · <b>Balance {{ b.remaining }}</b></span>
+                  <button v-if="canShortClose && b.ordered > 0 && b.remaining > 0.0005" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;color:#dc2626;border:1px solid #fca5a5;background:#fff;font-weight:600" :disabled="submitting" @click="startClose(b)">Close balance</button>
+                  <button v-if="canShortClose && b.closed > 0" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px" :disabled="submitting" @click="reopenItem(b)">Reopen</button>
+                </span>
+              </div>
+              <div v-if="b.closed > 0 && b.close_reason" style="font-size:12px;color:#92400e;padding:2px 0 3px">Close balance reason: {{ b.close_reason }}<template v-if="b.closed_by"> · {{ ownerName(b.closed_by) }}</template></div>
+              </div>
+              <div v-if="closing" style="margin-top:8px;padding:10px;border:1px solid #fed7aa;background:#fff7ed;border-radius:6px">
+                <div v-if="closing.all" style="font-weight:600;margin-bottom:6px">Close the balance of all {{ closing.count }} items ({{ closing.summary }}): these will no longer be orderable or issued against this MRN.</div>
+                <div v-else style="font-weight:600;margin-bottom:6px">Close the balance of {{ closing.item_name }}: {{ closing.balance }} will no longer be orderable or issued against this MRN.</div>
+                <textarea class="bomx-fi" v-model="closing.reason" rows="2" style="width:100%;resize:vertical" placeholder="Reason (required), e.g. the ordered quantity is enough"></textarea>
+                <div style="display:flex;gap:8px;margin-top:8px">
+                  <button type="button" class="bomx-btn bomx-btn-light" style="color:#dc2626;border:1px solid #fca5a5;background:#fff;font-weight:600" :disabled="submitting || !closing.reason.trim()" @click="shortCloseItem">{{ closing.all ? "Close all balances" : "Close balance" }}</button>
+                  <button type="button" class="bomx-btn bomx-btn-light" :disabled="submitting" @click="closing = null">Cancel</button>
+                </div>
               </div>
             </div>
 
@@ -487,12 +507,84 @@ const poBlockNote = computed(() => "");
 const mrnBalance = ref([]);
 async function loadMrnBalance() {
   mrnBalance.value = [];
+  closing.value = null;
   const m = mr.value;
   if (!m || !m.name || m.docstatus !== 1 || !["Purchase", "Asset"].includes(m.material_request_type)) return;
   try {
     const rows = await apiPOST("psd_books.api.inventory.get_mrn_remaining", { material_request: m.name });
     if (mr.value && mr.value.name === m.name) mrnBalance.value = rows || [];
+    try { canShortClose.value = !!(await apiGET("psd_books.api.mrn.get_approval_state", { name: m.name }))?.can_short_close; } catch { canShortClose.value = false; }
   } catch { mrnBalance.value = []; }
+}
+// Short close (Director only): the balance of an item that is already ordered but not needed any more.
+const canShortClose = ref(false);
+const closing = ref(null);
+function startClose(b) {
+  closing.value = { item_code: b.item_code, item_name: b.item_name || b.item_code, balance: b.remaining, reason: "" };
+}
+const closableAll = computed(() => mrnBalance.value.filter(b => b.ordered > 0 && b.remaining > 0.0005));
+function startCloseAll() {
+  const l = closableAll.value;
+  closing.value = { all: true, count: l.length, summary: l.map(b => `${b.item_name || b.item_code} ${b.remaining}`).join(", "), reason: "" };
+}
+async function shortCloseItem() {
+  const c = closing.value;
+  if (!c || !c.reason.trim()) return;
+  if (c.all) {
+    if (!(await confirm({ title: "Close all balances", body: `Close the balance of ${c.count} items on Material Request ${mr.value.name} (${c.summary})? They will no longer be orderable on a Purchase Order or issued from store. A Director can reopen each item later.`, okLabel: "Close all balances", okStyle: "primary" }))) return;
+    submitting.value = true;
+    try {
+      await apiPOST("psd_books.api.mrn.short_close_all", { name: mr.value.name, reason: c.reason.trim() });
+      toast("Balances closed");
+      closing.value = null;
+      await loadMR();
+      loadList();
+    } catch (e) {
+      toast(e.message, "error");
+    }
+    submitting.value = false;
+    return;
+  }
+  if (!(await confirm({ title: "Close balance", body: `Close ${c.balance} of ${c.item_name} on Material Request ${mr.value.name}? It will no longer be orderable on a Purchase Order or issued from store. A Director can reopen it later.`, okLabel: "Close balance", okStyle: "primary" }))) return;
+  submitting.value = true;
+  try {
+    await apiPOST("psd_books.api.mrn.short_close_item", { name: mr.value.name, item_code: c.item_code, reason: c.reason.trim() });
+    toast("Balance closed");
+    closing.value = null;
+    await loadMR();
+    loadList();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+  submitting.value = false;
+}
+const reopenableAll = computed(() => mrnBalance.value.filter(b => b.closed > 0));
+async function reopenAll() {
+  const l = reopenableAll.value;
+  if (!(await confirm({ title: "Reopen all balances", body: `Reopen the closed balance of ${l.length} items on Material Request ${mr.value.name} (${l.map(b => `${b.item_name || b.item_code} ${b.closed}`).join(", ")})? They can be ordered and issued again.`, okLabel: "Reopen all", okStyle: "primary" }))) return;
+  submitting.value = true;
+  try {
+    await apiPOST("psd_books.api.mrn.reopen_all", { name: mr.value.name });
+    toast("Balances reopened");
+    await loadMR();
+    loadList();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+  submitting.value = false;
+}
+async function reopenItem(b) {
+  if (!(await confirm({ title: "Reopen balance", body: `Reopen the closed ${b.closed} of ${b.item_name || b.item_code} on Material Request ${mr.value.name}? It can be ordered and issued again.`, okLabel: "Reopen", okStyle: "primary" }))) return;
+  submitting.value = true;
+  try {
+    await apiPOST("psd_books.api.mrn.reopen_item", { name: mr.value.name, item_code: b.item_code });
+    toast("Balance reopened");
+    await loadMR();
+    loadList();
+  } catch (e) {
+    toast(e.message, "error");
+  }
+  submitting.value = false;
 }
 const linkedNote = computed(() => {
   const { rfq, po } = linkedDocs.value;

@@ -7,11 +7,23 @@ from psd_books.db.validators import validate_fiscal_year
 
 
 def mrn_required_qty(material_request):
-    """{item_code: qty} the Material Request asks for (rows of the same item are summed)."""
+    """{item_code: qty} the Material Request still asks for (rows of the same item are summed).
+    A Director can short-close a balance that is not needed: that part is taken off here, so the
+    PO screens, the PO quantity check, the MRN status and the stock side all see the smaller qty."""
     out = {}
     for r in frappe.get_all("Material Request Item", filters={"parent": material_request},
-                            fields=["item_code", "required_qty"]):
-        out[r.item_code] = out.get(r.item_code, 0.0) + flt(r.required_qty)
+                            fields=["item_code", "required_qty", "short_closed_qty"]):
+        out[r.item_code] = out.get(r.item_code, 0.0) + max(0.0, flt(r.required_qty) - flt(r.short_closed_qty))
+    return out
+
+
+def mrn_closed_qty(material_request):
+    """{item_code: qty} short-closed on the Material Request."""
+    out = {}
+    for r in frappe.get_all("Material Request Item", filters={"parent": material_request},
+                            fields=["item_code", "short_closed_qty"]):
+        if flt(r.short_closed_qty):
+            out[r.item_code] = out.get(r.item_code, 0.0) + flt(r.short_closed_qty)
     return out
 
 

@@ -1890,7 +1890,7 @@ def get_mrn_remaining(material_request, exclude_po=None):
     material_request: one MRN name, or a JSON list of names (rows then carry their MRN)."""
     from psd_books.utils.access import assert_can
     from psd_books.invoicing.doctype.purchase_order.purchase_order import (
-        mrn_required_qty, mrn_ordered_qty)
+        mrn_required_qty, mrn_ordered_qty, mrn_closed_qty)
     assert_can("Purchase Order", "read")
     if isinstance(material_request, str) and material_request.strip().startswith("["):
         mrns = frappe.parse_json(material_request)
@@ -1902,9 +1902,16 @@ def get_mrn_remaining(material_request, exclude_po=None):
     for mrn in mrns:
         required = mrn_required_qty(mrn)
         ordered = mrn_ordered_qty(mrn, exclude_po or None)
+        closed = mrn_closed_qty(mrn)
+        why = {r[0]: (r[1], r[2]) for r in frappe.db.sql(
+            """SELECT item_code, short_close_reason, short_closed_by FROM `tabMaterial Request Item`
+            WHERE parent = %s AND IFNULL(short_closed_qty, 0) > 0 ORDER BY idx""", mrn)}
         for it, q in required.items():
             out.append({"material_request": mrn, "item_code": it,
+                        "close_reason": (why.get(it) or ("", ""))[0] or "",
+                        "closed_by": (why.get(it) or ("", ""))[1] or "",
                         "item_name": frappe.db.get_value("Item", it, "item_name") or it, "mrn_qty": q,
+                        "closed": flt(closed.get(it, 0)),
                         "ordered": flt(ordered.get(it, 0)),
                         "transferred": flt(moved.get((mrn, it), 0)),
                         "remaining": max(0.0, q - flt(ordered.get(it, 0)))})
@@ -1916,11 +1923,50 @@ def _mrn_transferred_qty(names):
     names = [n for n in names if n]
     if not names:
         return {}
-    return {(r[0], r[1]): flt(r[2]) for r in frappe.db.sql("""SELECT s.material_request, d.item_code, SUM(d.qty)
+    return {(r[0], r[1]): flt(r[2]) for r in frappe.db.sql("""SELECT IFNULL(NULLIF(d.material_request, ''), s.material_request) AS mrn, d.item_code, SUM(d.qty)
         FROM `tabStock Entry Detail` d JOIN `tabStock Entry` s ON s.name = d.parent
-        WHERE s.docstatus = 1 AND s.material_request IN %(n)s
+        WHERE s.docstatus = 1 AND IFNULL(NULLIF(d.material_request, ''), s.material_request) IN %(n)s
         AND s.stock_entry_type IN ('Material Issue', 'Material Transfer')
-        GROUP BY s.material_request, d.item_code""", {"n": tuple(names)})}
+        GROUP BY mrn, d.item_code""", {"n": tuple(names)})}
+
+
+def _mrn_draft_qty(names, exclude=None):
+    """{(MRN, item_code): qty} held by DRAFT Material Issue / Transfer stock entries (docstatus 0).
+    exclude: a Stock Entry name left out (the draft being edited, so it does not block itself)."""
+    names = [n for n in names if n]
+    if not names:
+        return {}
+    cond = " AND s.name != %(ex)s" if exclude else ""
+    return {(r[0], r[1]): flt(r[2]) for r in frappe.db.sql("""SELECT IFNULL(NULLIF(d.material_request, ''), s.material_request) AS mrn, d.item_code, SUM(d.qty)
+        FROM `tabStock Entry Detail` d JOIN `tabStock Entry` s ON s.name = d.parent
+        WHERE s.docstatus = 0 AND IFNULL(NULLIF(d.material_request, ''), s.material_request) IN %(n)s
+        AND s.stock_entry_type IN ('Material Issue', 'Material Transfer'){0}
+        GROUP BY mrn, d.item_code""".format(cond), {"n": tuple(names), "ex": exclude or ""})}
+
+
+@frappe.whitelist(allow_guest=False)
+def get_warehouse_available_qty(warehouse, exclude_entry=None):
+    """{item_code: qty} still free to move out of a warehouse:
+    stock in the Bin minus what DRAFT Material Issue / Transfer entries already hold from it.
+    exclude_entry: the draft being edited (its own rows stay available to it)."""
+    from psd_books.utils.access import assert_can
+    assert_can("Stock Entry", "read")
+    if not warehouse:
+        return {}
+    stock = {r[0]: flt(r[1]) for r in frappe.db.sql(
+        "SELECT item_code, actual_qty FROM `tabBin` WHERE warehouse = %s AND actual_qty > 0", warehouse)}
+    cond = " AND s.name != %(ex)s" if exclude_entry else ""
+    held = {r[0]: flt(r[1]) for r in frappe.db.sql("""SELECT d.item_code, SUM(d.qty)
+        FROM `tabStock Entry Detail` d JOIN `tabStock Entry` s ON s.name = d.parent
+        WHERE s.docstatus = 0 AND IFNULL(NULLIF(d.s_warehouse, ''), s.from_warehouse) = %(wh)s
+        AND s.stock_entry_type IN ('Material Issue', 'Material Transfer'){0}
+        GROUP BY d.item_code""".format(cond), {"wh": warehouse, "ex": exclude_entry or ""})}
+    out = {}
+    for code, qty in stock.items():
+        left = qty - held.get(code, 0)
+        if left > 0.0005:
+            out[code] = left
+    return out
 
 
 @frappe.whitelist(allow_guest=False)
@@ -1967,9 +2013,9 @@ def _items_text(rows):
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
-def get_mrn_pending_items_text(names):
+def get_mrn_pending_items_text(names, exclude_entry=None):
     """{MRN: "Item × pending qty, ..."} for the MRN dropdown on Delivery Notes.
-    pending = required - (submitted Material Issue/Transfer entries + issued_qty), same as get_mrn_items."""
+    pending = required - (submitted Material Issue/Transfer entries + issued_qty + qty held in other drafts), same as get_mrn_items."""
     from psd_books.utils.access import assert_can
     assert_can("Material Request", "read")
     names = frappe.parse_json(names) if isinstance(names, str) else (names or [])
@@ -1978,17 +2024,18 @@ def get_mrn_pending_items_text(names):
         return {}
     lines = frappe.get_all("Material Request Item",
         filters={"parent": ["in", names], "parenttype": "Material Request"},
-        fields=["parent", "item_code", "item_name", "required_qty", "issued_qty"], order_by="idx asc")
+        fields=["parent", "item_code", "item_name", "required_qty", "short_closed_qty", "issued_qty"], order_by="idx asc")
     moved = {}
-    for r in frappe.db.sql("""SELECT s.material_request, d.item_code, SUM(d.qty)
+    for r in frappe.db.sql("""SELECT IFNULL(NULLIF(d.material_request, ''), s.material_request) AS mrn, d.item_code, SUM(d.qty)
         FROM `tabStock Entry Detail` d JOIN `tabStock Entry` s ON s.name = d.parent
-        WHERE s.docstatus = 1 AND s.material_request IN %(n)s
+        WHERE s.docstatus = 1 AND IFNULL(NULLIF(d.material_request, ''), s.material_request) IN %(n)s
         AND s.stock_entry_type IN ('Material Issue', 'Material Transfer')
-        GROUP BY s.material_request, d.item_code""", {"n": tuple(names)}):
+        GROUP BY mrn, d.item_code""", {"n": tuple(names)}):
         moved[(r[0], r[1])] = flt(r[2])
+    drafts = _mrn_draft_qty(names, exclude_entry)
     per = {n: [] for n in names}
     for l in lines:
-        pending = flt(l.required_qty) - moved.get((l.parent, l.item_code), 0) - flt(l.issued_qty)
+        pending = flt(l.required_qty) - flt(l.short_closed_qty) - moved.get((l.parent, l.item_code), 0) - flt(l.issued_qty) - drafts.get((l.parent, l.item_code), 0)
         per[l.parent].append((l.item_code, l.item_name, pending))
     return {n: _items_text(v) for n, v in per.items()}
 

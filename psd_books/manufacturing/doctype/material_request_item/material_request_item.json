@@ -3,7 +3,7 @@
  "module": "Manufacturing",
  "doctype": "DocType",
  "creation": "2026-07-10 00:00:00.000000",
- "modified": "2026-10-15 12:00:00.000000",
+ "modified": "2026-11-17 16:30:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,
@@ -64,6 +64,29 @@
    "no_copy": 1,
    "default": "0",
    "description": "Quantity issued from store on submitted Delivery Notes."
+  },
+  {
+   "fieldname": "short_closed_qty",
+   "fieldtype": "Float",
+   "label": "Short Closed Qty",
+   "read_only": 1,
+   "no_copy": 1,
+   "default": "0",
+   "description": "Balance a Director closed because the qty already ordered is enough. Effective MRN qty = Required Qty - Short Closed Qty."
+  },
+  {
+   "fieldname": "short_close_reason",
+   "fieldtype": "Small Text",
+   "label": "Short Close Reason",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "short_closed_by",
+   "fieldtype": "Data",
+   "label": "Short Closed By",
+   "read_only": 1,
+   "no_copy": 1
   }
  ],
  "permissions": []

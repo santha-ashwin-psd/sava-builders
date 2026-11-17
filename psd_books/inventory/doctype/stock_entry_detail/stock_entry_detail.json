@@ -3,7 +3,7 @@
  "module": "Inventory",
  "doctype": "DocType",
  "creation": "2026-04-11 00:00:00.000000",
- "modified": "2026-04-11 00:00:00.000000",
+ "modified": "2026-11-17 13:30:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,
@@ -541,6 +541,16 @@
    "no_copy": 1,
    "in_list_view": 0,
    "description": "Auto-stamped: the QC Inspection covering this specific row (item + batch), if any. Row-level so the same item across multiple rows/batches on one document is tracked independently."
+  },
+  {
+   "fieldname": "material_request",
+   "fieldtype": "Link",
+   "label": "MRN",
+   "options": "Material Request",
+   "search_index": 1,
+   "no_copy": 1,
+   "in_list_view": 0,
+   "description": "The MRN this row is transferred / issued against. Empty on older entries: the entry's own MRN applies."
   }
  ],
  "permissions": [

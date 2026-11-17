@@ -189,7 +189,7 @@
         <div class="se-fields-grid">
           <div class="se-field" style="grid-column:1/-1">
             <label class="se-label">Entry Type <span class="req">*</span></label>
-            <select v-model="form.stock_entry_type" class="se-select">
+            <select v-model="form.stock_entry_type" class="se-select" @change="onEntryTypeChange">
               <option v-if="editingName && form.stock_entry_type === 'Material Receipt'" value="Material Receipt">Material Receipt — Stock coming IN</option>
               <option value="Material Issue">Item Transfer</option>
               <option value="Material Transfer">Asset Transfer</option>
@@ -208,8 +208,14 @@
             <SearchableSelect v-model="form.project" :options="projects" placeholder="Select project (optional)" @search="q => fetchProjects(q, form.project)" @select="onProjectPick" />
           </div>
           <div class="se-field">
-            <label class="se-label">MRN</label>
-            <SearchableSelect v-model="form.material_request" :options="mrnOptions" placeholder="Select approved MRN (optional)" @search="q => fetchMrns(q, form.material_request)" @open="fetchMrns('', form.material_request)" @select="onMrnPick" />
+            <label class="se-label">MRN <span v-if="form.stock_entry_type === 'Material Issue'" class="req">*</span></label>
+            <SearchableSelect v-model="mrnPick" :options="mrnOptionsAvail" :placeholder="form.mrns.length ? 'Add another MRN of this project…' : (form.stock_entry_type === 'Material Issue' ? 'Select approved MRN' : 'Select approved MRN (optional)')" @search="q => fetchMrns(q)" @open="fetchMrns('')" @select="onMrnPick" />
+            <div v-if="form.mrns.length" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+              <span v-for="m in form.mrns" :key="m" style="display:inline-flex;align-items:center;gap:6px;padding:3px 6px 3px 10px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;font-size:12px;font-weight:600">
+                {{ m }}
+                <button type="button" @click.stop="removeMrn(m)" title="Remove MRN and its items" style="border:0;background:transparent;color:#c2410c;cursor:pointer;font-size:14px;line-height:1;padding:0 2px">×</button>
+              </span>
+            </div>
           </div>
           <div class="se-field">
             <label class="se-label">Employee</label>
@@ -286,9 +292,9 @@
             <div class="se-items-row">
               <div>
   <SearchableSelect
-    v-model="line.item_code" :disabled="line.mrn_required !== undefined || mrnDone"
-    :options="items"
-    placeholder="Item…"
+    v-model="line.item_code" :disabled="line.mrn_required !== undefined || mrnDone || itemsLocked(line)"
+    :options="lineItemOptions(line)"
+    :placeholder="linePlaceholder(line)"
     @search="fetchItems"
     @select="opt=>onItemSelect(line,opt)"
   />
@@ -303,7 +309,8 @@
               <div v-if="!noRate"><input v-model.number="line.basic_rate" type="number" min="0" step="0.01" class="se-input ta-r" /></div>
               <div><button @click="removeLine(line.id)" class="se-rm-line"><span v-html="icon('x',12)"></span></button></div>
             </div>
-            <div v-if="line.mrn_required !== undefined" class="se-mrn-note">MRN qty {{ line.mrn_required }} · Transferred {{ line.mrn_transferred }} · Pending {{ line.mrn_pending }}</div>
+            <div v-if="line.mrn_required !== undefined" class="se-mrn-note"><b v-if="form.mrns.length > 1">{{ line.material_request }} · </b>MRN qty {{ line.mrn_required }} · Transferred {{ line.mrn_transferred }}<template v-if="line.mrn_draft"> · In draft {{ line.mrn_draft }}</template> · Pending {{ line.mrn_pending }}</div>
+            <div v-else-if="line.material_request" class="se-mrn-note"><b>{{ line.material_request }}</b> · MRN</div>
             <div v-if="line.has_batch_no" class="se-batch-row">
               <div class="se-batch-field" style="flex:1.6">
                 <label class="se-label">Batch No <span v-if="batchRequired(line)" class="req">*</span></label>
@@ -346,9 +353,9 @@
             <div class="se-aic-field">
               <label class="se-label">Item</label>
               <SearchableSelect
-  v-model="line.item_code" :disabled="line.mrn_required !== undefined || mrnDone"
-  :options="items"
-  placeholder="Item…"
+  v-model="line.item_code" :disabled="line.mrn_required !== undefined || mrnDone || itemsLocked(line)"
+  :options="lineItemOptions(line)"
+  :placeholder="linePlaceholder(line)"
   @search="fetchItems"
   @select="opt=>onItemSelect(line,opt)"
 />
@@ -359,7 +366,8 @@
   UOM: {{ line.stock_uom || 'Nos' }}
 </div>
             </div>
-            <div v-if="line.mrn_required !== undefined" class="se-mrn-note">MRN qty {{ line.mrn_required }} · Transferred {{ line.mrn_transferred }} · Pending {{ line.mrn_pending }}</div>
+            <div v-if="line.mrn_required !== undefined" class="se-mrn-note"><b v-if="form.mrns.length > 1">{{ line.material_request }} · </b>MRN qty {{ line.mrn_required }} · Transferred {{ line.mrn_transferred }}<template v-if="line.mrn_draft"> · In draft {{ line.mrn_draft }}</template> · Pending {{ line.mrn_pending }}</div>
+            <div v-else-if="line.material_request" class="se-mrn-note"><b>{{ line.material_request }}</b> · MRN</div>
             <div class="se-aic-row2">
               <div class="se-aic-field">
                 <label class="se-label">Qty</label>
@@ -500,6 +508,7 @@
                 <tr v-for="it in viewDoc.items" :key="it.name||it.idx">
                   <td>
                     <div style="font-weight:600;font-size:12.5px">{{ it.item_name || it.item_code }}</div>
+                    <div v-if="it.material_request || viewDoc.material_request" style="font-size:11px;color:#b45309;margin-top:2px">MRN: <b>{{ it.material_request || viewDoc.material_request }}</b></div>
                   </td>
                   <td v-if="isPurchaseSrc(viewDoc)" style="font-size:12.5px">{{ vendorName||'—' }}</td>
                   <td v-if="!isPurchaseSrc(viewDoc)" class="text-muted" style="font-size:12px">{{ it.s_warehouse||viewDoc.from_warehouse||'—' }}</td>
@@ -515,6 +524,7 @@
                 <div class="se-vic-top">
                   <div>
                     <div class="se-vic-name">{{ it.item_name || it.item_code }}</div>
+                    <div v-if="it.material_request || viewDoc.material_request" style="font-size:11px;color:#b45309;margin-top:2px">MRN: <b>{{ it.material_request || viewDoc.material_request }}</b></div>
                   </div>
                 </div>
                 <div class="se-vic-grid">
@@ -650,7 +660,7 @@ const form = reactive({
   entry_date: new Date().toISOString().slice(0, 10),
   posting_date: new Date().toISOString().slice(0, 10),
   from_warehouse: "", to_warehouse: "",
-  adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", employee: "", employee_name: "", driver_name: "", vehicle_no: "", vendor_driver_name: "", vendor_truck_no: "",
+  adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", mrns: [], employee: "", employee_name: "", driver_name: "", vehicle_no: "", vendor_driver_name: "", vendor_truck_no: "",
 });
 
 const TYPE_META = {
@@ -1017,6 +1027,8 @@ async function fetchDrivers() {
 }
 // ── MRN: approved Material Requests (narrowed to the picked project) ──
 const mrnOptions = ref([]);
+const mrnPick = ref("");
+const mrnOptionsAvail = computed(() => mrnOptions.value.filter(o => !form.mrns.includes(o.value)));
 async function fetchMrns(q = "", keep = "") {
   try {
     const co = await resolveCompany();
@@ -1030,7 +1042,7 @@ async function fetchMrns(q = "", keep = "") {
     const r = await apiList("Material Request", { fields: ["name", "project", "posting_date"], filters: f, limit: 200, order: "creation desc" });
     // Items still pending on each MRN, shown under it in the dropdown (as on the Purchase Order screen)
     let itemsBy = {}, pendingKnown = false;
-    try { itemsBy = await apiPOST("psd_books.api.inventory.get_mrn_pending_items_text", { names: JSON.stringify((r || []).map(x => x.name)) }) || {}; pendingKnown = true; } catch {}
+    try { itemsBy = await apiPOST("psd_books.api.inventory.get_mrn_pending_items_text", { names: JSON.stringify((r || []).map(x => x.name)), exclude_entry: editingName.value || "" }) || {}; pendingKnown = true; } catch {}
     // An MRN with nothing left to transfer (empty pending text) is not offered; the picked one stays so the form can still show it
     const opts = (r || []).filter(x => !pendingKnown || itemsBy[x.name] || x.name === keep).map(x => ({ label: x.project ? `${x.name} — ${x.project}` : x.name, value: x.name, sub: itemsBy[x.name] || "" }));
     if (keep && !opts.some(o => o.value === keep)) opts.unshift({ label: keep, value: keep });
@@ -1048,53 +1060,91 @@ async function fillFromProjectWarehouse(proj) {
     form.from_warehouse = wh;
   } catch { /* leave the warehouse as it is */ }
 }
-// Picking an MRN fills in its project automatically (when the MRN has one).
+// Several MRNs of one project can go on one entry: each pick adds that
+// MRN's pending items as rows, each row remembering its own MRN.
 async function onMrnPick(opt) {
+  const name = opt?.value;
+  mrnPick.value = "";
+  if (!name || form.mrns.includes(name)) return;
   mrnDone.value = false;
-  const name = opt?.value || form.material_request;
-  if (!name) return;
+  const first = !form.mrns.length;
   const r = await apiList("Material Request", { fields: ["project", "delivery_warehouse"], filters: [["name", "=", name]], limit: 1 }).catch(() => []);
   const row = (r && r[0]) || {};
-  if (row.project && row.project !== form.project) {
-    form.project = row.project;
-    await fetchProjects("", row.project);
-    await fillFromProjectWarehouse(row.project);
-  }
-  // The MRN's delivery warehouse fills the From Warehouse (the stock sits there)
-  if (row.delivery_warehouse) {
-    if (!warehouses.value.some(o => o.value === row.delivery_warehouse))
-      warehouses.value = [{ label: row.delivery_warehouse, value: row.delivery_warehouse }, ...warehouses.value];
-    form.from_warehouse = row.delivery_warehouse;
+  if (!first) {
+    if ((row.project || "") !== (form.project || ""))
+      return toast.error(`MRN ${name} belongs to a different project. Only MRNs of one project can be on one Stock Entry.`);
+  } else {
+    // The first MRN fills in its project, and its delivery warehouse fills the From Warehouse (the stock sits there)
+    if (row.project && row.project !== form.project) {
+      form.project = row.project;
+      await fetchProjects("", row.project);
+      await fillFromProjectWarehouse(row.project);
+    }
+    if (row.delivery_warehouse) {
+      if (!warehouses.value.some(o => o.value === row.delivery_warehouse))
+        warehouses.value = [{ label: row.delivery_warehouse, value: row.delivery_warehouse }, ...warehouses.value];
+      form.from_warehouse = row.delivery_warehouse;
+    }
   }
   // Items come from the MRN
   try {
-    const d = await apiGET("psd_books.api.mrn.get_mrn_items", { name });
-    const rows = (d?.items || []).map(r => ({ ...blankLine(), item_code: r.item_code, qty: r.qty, stock_uom: r.uom || "", mrn_required: r.required_qty, mrn_transferred: r.transferred_qty, mrn_pending: r.pending_qty }));
-    if (rows.length) {
-      const known = new Set(items.value.map(i => i.value));
-      const extra = (d.items || []).filter(r => !known.has(r.item_code)).map(r => ({ label: r.item_name, value: r.item_code }));
-      if (extra.length) items.value = [...items.value, ...extra];
-      lines.value = rows;
-      for (const ln of rows) await onItemSelect(ln, { value: ln.item_code });
-      await ensureItemLabels();
-    }
+    const d = await apiGET("psd_books.api.mrn.get_mrn_items", { name, exclude_entry: editingName.value || "" });
+    const rows = (d?.items || []).map(r => ({ ...blankLine(), item_code: r.item_code, qty: r.qty, stock_uom: r.uom || "", material_request: name, mrn_required: r.required_qty, mrn_transferred: r.transferred_qty, mrn_draft: r.draft_qty, mrn_pending: r.pending_qty }));
+    if (!rows.length) return;
+    form.mrns = [...form.mrns, name];
+    form.material_request = form.mrns[0];
+    const known = new Set(items.value.map(i => i.value));
+    const extra = (d.items || []).filter(r => !known.has(r.item_code)).map(r => ({ label: r.item_name, value: r.item_code }));
+    if (extra.length) items.value = [...items.value, ...extra];
+    lines.value = [...(first ? [] : lines.value.filter(l => l.item_code)), ...rows];
+    for (const ln of rows) await onItemSelect(ln, { value: ln.item_code });
+    await ensureItemLabels();
+    await fetchMrns("");
+    if (form.mrns.length === 2) toast.info("Each row is capped at its own MRN's pending quantity.");
   } catch (e) {
-    // MRN has nothing left to transfer (or failed to load): drop the previous MRN's lines and the selection
-    lines.value = [blankLine()];
-    form.material_request = "";
-    mrnDone.value = /already fully transferred/i.test(e?.message || "");
     toast.error(e.message || "Could not fetch MRN items");
+    if (first) {
+      // MRN has nothing left to transfer (or failed to load): drop the previous lines and the selection
+      lines.value = [blankLine()];
+      form.mrns = [];
+      form.material_request = "";
+      mrnDone.value = /already fully transferred/i.test(e?.message || "");
+    }
   }
 }
-// Picking a project narrows the MRN list to that project's MRNs; an MRN from another project is cleared.
+// Item Transfer uses non-Asset MRNs and Asset Transfer uses Asset MRNs only, so after the person changes the
+// Entry Type the picked MRN(s) and the rows fetched from them no longer apply: drop both and refresh the MRN list.
+function onEntryTypeChange() {
+  const had = form.mrns.length || form.material_request || lines.value.some(l => l.material_request);
+  if (!had) { fetchMrns(""); return; }
+  form.mrns = [];
+  form.material_request = "";
+  mrnPick.value = "";
+  mrnDone.value = false;
+  const keep = lines.value.filter(l => !l.material_request);
+  lines.value = keep.length ? keep : [blankLine()];
+  fetchMrns("");
+  toast.info("Entry Type changed: the MRN and its items were removed. Select an MRN for this type.");
+}
+function removeMrn(name) {
+  form.mrns = form.mrns.filter(m => m !== name);
+  form.material_request = form.mrns[0] || "";
+  lines.value = lines.value.filter(l => l.material_request !== name);
+  if (!lines.value.length) lines.value = [blankLine()];
+  mrnDone.value = false;
+  fetchMrns("");
+}
+// Picking a project narrows the MRN list to that project's MRNs; MRNs from another project are removed.
 async function onProjectPick(opt) {
   form.project = opt?.value || "";
   await fillFromProjectWarehouse(form.project);
-  if (form.material_request && form.project) {
-    const r = await apiList("Material Request", { fields: ["project"], filters: [["name", "=", form.material_request]], limit: 1 }).catch(() => []);
-    if (!r || !r[0] || r[0].project !== form.project) form.material_request = "";
+  if (form.mrns.length && form.project) {
+    const r = await apiList("Material Request", { fields: ["name", "project"], filters: [["name", "in", form.mrns]], limit: form.mrns.length }).catch(() => []);
+    const other = new Set(form.mrns);
+    for (const x of (r || [])) if (x.project === form.project) other.delete(x.name);
+    for (const m of other) removeMrn(m);
   }
-  await fetchMrns("", form.material_request);
+  await fetchMrns("");
 }
 
 async function fetchWarehouses(q = "") {
@@ -1129,6 +1179,18 @@ const canAddItem = computed(() => {
   }
   return true;
 });
+// Item dropdown follows the Add Item button: a blank row offers items only when Add Item is allowed
+// (or an MRN is picked). Rows that already hold an item keep their options so the name still shows.
+const itemsLocked = (line) => !line.item_code && !canAddItem.value && !form.mrns.length && !form.material_request;
+// An item already chosen on another row is not offered again (the row's own item stays so its name shows).
+const lineItemOptions = (line) => {
+  if (itemsLocked(line)) return [];
+  const used = new Set(lines.value.filter(l => l !== line && l.item_code).map(l => l.item_code));
+  return used.size ? items.value.filter(o => !used.has(o.value)) : items.value;
+};
+const linePlaceholder = (line) => !itemsLocked(line) ? "Item…"
+  : form.stock_entry_type === "Material Issue" ? "Select an MRN first"
+  : "Select a Site Store (From) and a Project Main / Central Store (To) first";
 async function fetchSalesPersons(q = "") {
   try {
     const r = await apiList("Sales Person", {
@@ -1145,13 +1207,22 @@ async function loadWhStock() {
   const wh = form.from_warehouse;
   if (!["Material Transfer", "Material Issue"].includes(form.stock_entry_type) || !wh) { whQty.value = {}; fetchItems(""); return; }
   try {
-    const rows = await apiList("Bin", { fields: ["item_code", "actual_qty"], filters: [["warehouse", "=", wh], ["actual_qty", ">", 0]], limit: 100000 });
-    const m = {};
-    (rows || []).forEach(r => { m[r.item_code] = flt(r.actual_qty); });
-    whQty.value = m;
+    // Bin stock minus what draft entries already hold from this warehouse (the draft being edited is left out)
+    const m = await apiGET("psd_books.api.inventory.get_warehouse_available_qty", { warehouse: wh, exclude_entry: editingName.value || "" });
+    whQty.value = m || {};
   } catch { whQty.value = {}; }
   fetchItems("");
 }
+// Changing the From Warehouse drops rows picked by hand from the old warehouse (their stock is not here).
+// Rows that came from an MRN stay.
+watch(() => form.from_warehouse, (nw, old) => {
+  if (nw === old || !["Material Transfer", "Material Issue"].includes(form.stock_entry_type)) return;
+  const stale = lines.value.filter(l => l.item_code && !l.material_request);
+  if (!stale.length) return;
+  const keep = lines.value.filter(l => !(l.item_code && !l.material_request));
+  lines.value = keep.length ? keep : [blankLine()];
+  toast.info("From Warehouse changed: items picked from the previous warehouse were removed.");
+});
 watch(() => form.from_warehouse, () => loadWhStock());
 watch(() => form.stock_entry_type, () => loadWhStock());
 // Items already on the lines must always show their name, never the code: a search, a warehouse
@@ -1213,6 +1284,7 @@ function itemLabel(code) {
 function onAssetToggle(on) {
   assetMode.value = !!on;
   mrnDone.value = false;
+  form.mrns = []; form.material_request = "";
   lines.value = [blankLine()];   // items picked under the other mode no longer apply
   fetchItems("");
 }
@@ -1284,7 +1356,7 @@ function openNew() {
     stock_entry_type: "Material Issue",
     entry_date: new Date().toISOString().slice(0, 10),
     posting_date: new Date().toISOString().slice(0, 10),
-    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", employee: "", employee_name: "", driver_name: "", vehicle_no: "", vendor_driver_name: "", vendor_truck_no: "",
+    from_warehouse: "", to_warehouse: "", adjustment_reason: "", sales_person: "", remarks: "", project: "", material_request: "", mrns: [], employee: "", employee_name: "", driver_name: "", vehicle_no: "", vendor_driver_name: "", vendor_truck_no: "",
   });
   lines.value = [blankLine()];
   fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects(""); fetchMrns(""); fetchEmployees(); fetchDrivers();
@@ -1303,9 +1375,9 @@ async function openEdit(e, { force = false } = {}) {
     from_warehouse: e.from_warehouse || "", to_warehouse: e.to_warehouse || "",
     adjustment_reason: e.adjustment_reason || "", sales_person: e.sales_person || "", remarks: e.remarks || "",
     project: e.project || "",
-    material_request: e.material_request || "", employee: e.employee || "", employee_name: e.employee_name || "", driver_name: e.driver_name || "", vehicle_no: e.vehicle_no || "", vendor_driver_name: e.vendor_driver_name || "", vendor_truck_no: e.vendor_truck_no || "",
+    material_request: e.material_request || "", mrns: [], employee: e.employee || "", employee_name: e.employee_name || "", driver_name: e.driver_name || "", vehicle_no: e.vehicle_no || "", vendor_driver_name: e.vendor_driver_name || "", vendor_truck_no: e.vendor_truck_no || "",
   });
-  fetchMrns("", form.material_request); fetchEmployees(); fetchDrivers();
+  fetchMrns(""); fetchEmployees(); fetchDrivers();
   lines.value = [blankLine()];
   fetchWarehouses(""); fetchSalesPersons(""); fetchItems(""); fetchProjects("", e.project || "");
   drawerOpen.value = true;
@@ -1318,6 +1390,7 @@ async function openEdit(e, { force = false } = {}) {
           id: _id++, item_code: it.item_code || "", qty: flt(it.qty) || 1, basic_rate: flt(it.basic_rate) || 0,
           s_warehouse: it.s_warehouse || "", t_warehouse: it.t_warehouse || "",
           has_batch_no: 0, batch_no: it.batch_no || "", manufacturing_date: "", expiry_date: "", batchOptions: [],
+          material_request: it.material_request || doc.material_request || "",
         };
         try {
           const r = await apiList("Item", { fields: ["name", "has_batch_no", "stock_uom", "is_asset_item"], filters: [["name", "=", line.item_code]], limit: 1 });
@@ -1348,6 +1421,9 @@ line.stock_uom = r?.[0]?.stock_uom || "";
         return line;
       }));
       lines.value = built.length ? built : [blankLine()];
+      form.mrns = [...new Set(built.map(l => l.material_request).filter(Boolean))];
+      if (!form.mrns.length && doc.material_request) form.mrns = [doc.material_request];
+      form.material_request = form.mrns[0] || "";
       assetMode.value = built.some(l => l.is_asset);
       await fetchItems("");
       const missing = [...new Set(built.map(l => l.item_code).filter(c => c && !items.value.some(o => o.value === c)))];
@@ -1474,6 +1550,7 @@ async function saveEntry(submit) {
   if (!usable.length) return toast.error("At least one item is required");
   const type = form.stock_entry_type;
   if (!form.entry_date) return toast.error("Entry Date is required");
+  if (type === "Material Issue" && !form.mrns.length && !form.material_request) return toast.error("MRN is required for an Item Transfer");
   if (fromWhRequired.value && !form.from_warehouse) return toast.error("From Warehouse is required");
   if (toWhRequired.value && !form.to_warehouse) return toast.error(type === "Material Issue" ? "Receiving Warehouse is required" : "To Warehouse is required");
   // Issue with a Receiving Warehouse is saved as a transfer
@@ -1551,7 +1628,7 @@ async function saveEntry(submit) {
       sales_person: form.stock_entry_type === "Material Issue" ? (form.sales_person || "") : "",
       remarks: form.remarks || "",
       project: form.project || null,
-      material_request: form.material_request || null,
+      material_request: form.mrns[0] || form.material_request || null,
       employee: form.employee || "",
       employee_name: form.employee_name || "",
       driver_name: form.driver_name || "",
@@ -1566,6 +1643,7 @@ async function saveEntry(submit) {
         s_warehouse: l.s_warehouse || form.from_warehouse || null,
         t_warehouse: l.t_warehouse || form.to_warehouse || null,
         batch_no: l.has_batch_no ? (l.batch_no || null) : null,
+        material_request: l.material_request || null,
       })),
     };
     if (editingName.value) doc.name = editingName.value;

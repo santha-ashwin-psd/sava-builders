@@ -65,6 +65,7 @@ def get_approval_state(name):
 		"project_manager": pm or "",
 		"can_approve": bool(waiting and not reason),
 		"reason": reason,
+		"can_short_close": bool(_is_director(user) and not m["readonly"]),
 	}
 
 
@@ -178,11 +179,13 @@ def get_issue_prefill(name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET"])
-def get_mrn_items(name):
+def get_mrn_items(name, exclude_entry=None):
 	"""Read-only: the lines of an MRN with what was already moved against it.
 
 	transferred = submitted Stock Entries (Material Issue / Material Transfer) linked to this MRN
-	+ what store-issue Delivery Notes recorded in issued_qty. pending = required - transferred.
+	+ what store-issue Delivery Notes recorded in issued_qty. Quantities already held by other DRAFT
+	stock entries are reserved too. pending = required - transferred - in_draft.
+	exclude_entry: the draft being edited (it does not reserve against itself).
 	"""
 	assert_can("Material Request", "read")
 	doc = _load(name)
@@ -190,23 +193,148 @@ def get_mrn_items(name):
 		frappe.throw(_("Material Request {0} is not submitted.").format(doc.name))
 	lines = frappe.get_all(
 		"Material Request Item", filters={"parent": doc.name, "parenttype": "Material Request"},
-		fields=["item_code", "item_name", "required_qty", "issued_qty", "uom"], order_by="idx asc")
+		fields=["item_code", "item_name", "required_qty", "short_closed_qty", "issued_qty", "uom"], order_by="idx asc")
 	master_names = {r.name: r.item_name for r in frappe.get_all(
 		"Item", filters={"name": ["in", [l.item_code for l in lines] or [""]]}, fields=["name", "item_name"])}
 	moved = {r[0]: flt(r[1]) for r in frappe.db.sql(
 		"""SELECT d.item_code, SUM(d.qty) FROM `tabStock Entry Detail` d
 		JOIN `tabStock Entry` s ON s.name = d.parent
-		WHERE s.docstatus = 1 AND s.material_request = %s
+		WHERE s.docstatus = 1 AND IFNULL(NULLIF(d.material_request, ''), s.material_request) = %s
 		AND s.stock_entry_type IN ('Material Issue', 'Material Transfer')
 		GROUP BY d.item_code""", doc.name)}
+	from psd_books.api.inventory import _mrn_draft_qty
+	drafts = _mrn_draft_qty([doc.name], exclude_entry)
 	items = []
 	for l in lines:
-		required = flt(l.required_qty)
+		required = max(0.0, flt(l.required_qty) - flt(l.short_closed_qty))
 		transferred = moved.get(l.item_code, 0) + flt(l.issued_qty)
-		pending = required - transferred
+		in_draft = drafts.get((doc.name, l.item_code), 0)
+		pending = required - transferred - in_draft
 		if pending > 0.0001:
 			items.append({"item_code": l.item_code, "item_name": master_names.get(l.item_code) or l.item_name or l.item_code, "uom": l.uom or "",
-				"required_qty": required, "transferred_qty": transferred, "pending_qty": pending, "qty": pending})
+				"required_qty": required, "transferred_qty": transferred, "draft_qty": in_draft, "pending_qty": pending, "qty": pending})
 	if not items:
-		frappe.throw(_("Material Request {0} is already fully transferred.").format(doc.name))
+		frappe.throw(_("Material Request {0} is already fully transferred or already held in a draft Stock Entry.").format(doc.name))
 	return {"material_request": doc.name, "items": items}
+
+
+def _assert_short_close_allowed(doc):
+	if not _is_director(frappe.session.user):
+		frappe.throw(_("Only a Director can short-close or reopen Material Request quantities."), frappe.PermissionError)
+	if doc.docstatus != 1 or doc.status in ("Cancelled", "Draft", "Pending Approval", "Sent Back"):
+		frappe.throw(_("Material Request {0} must be approved to short-close it.").format(doc.name))
+
+
+def _close_balance_rows(doc, item_code, balance, reason):
+	"""Add `balance` to short_closed_qty on the MRN rows of one item (shared by single and close-all)."""
+	left = balance
+	for r in doc.items:
+		if r.item_code != item_code:
+			continue
+		room = flt(r.required_qty) - flt(r.short_closed_qty)
+		take = min(room, left)
+		if take <= 0:
+			continue
+		frappe.db.set_value("Material Request Item", r.name, {
+			"short_closed_qty": flt(r.short_closed_qty) + take,
+			"short_close_reason": reason,
+			"short_closed_by": frappe.session.user,
+		}, update_modified=False)
+		left -= take
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def short_close_item(name, item_code, reason):
+	"""Director only: close the unordered balance of one item on an approved MRN because the qty
+	already ordered is enough. The item must already be (partly) ordered. The closed qty is taken off
+	the MRN qty everywhere (PO screens, PO check, status, stock entries)."""
+	from psd_books.invoicing.doctype.purchase_order.purchase_order import (
+		mrn_ordered_qty, mrn_required_qty, sync_material_request_status)
+	assert_can("Material Request", "read")
+	doc = _load(name)
+	_assert_short_close_allowed(doc)
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw(_("A reason is required to short-close."))
+	ordered = flt(mrn_ordered_qty(doc.name).get(item_code, 0))
+	if ordered <= 0.0005:
+		frappe.throw(_("Nothing is ordered yet for this item. Cancel the item or the MRN instead of short-closing it."))
+	balance = flt(mrn_required_qty(doc.name).get(item_code, 0)) - ordered
+	if balance <= 0.0005:
+		frappe.throw(_("There is no balance left to close for this item."))
+	_close_balance_rows(doc, item_code, balance, reason)
+	doc.add_comment("Info", _("Short-closed {0} of {1}: {2}").format(balance, item_code, reason))
+	sync_material_request_status(doc.name)
+	return {"material_request": doc.name, "item_code": item_code, "closed": balance}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def short_close_all(name, reason):
+	"""Director only: close the unordered balance of every item on an approved MRN that is already
+	(partly) ordered. Items with nothing ordered, or no balance left, are skipped and reported."""
+	from psd_books.invoicing.doctype.purchase_order.purchase_order import (
+		mrn_ordered_qty, mrn_required_qty, sync_material_request_status)
+	assert_can("Material Request", "read")
+	doc = _load(name)
+	_assert_short_close_allowed(doc)
+	reason = (reason or "").strip()
+	if not reason:
+		frappe.throw(_("A reason is required to short-close."))
+	ordered = mrn_ordered_qty(doc.name)
+	required = mrn_required_qty(doc.name)
+	closed, skipped = [], []
+	for code in dict.fromkeys(r.item_code for r in doc.items):
+		ord_q = flt(ordered.get(code, 0))
+		balance = flt(required.get(code, 0)) - ord_q
+		if ord_q <= 0.0005 or balance <= 0.0005:
+			skipped.append(code)
+			continue
+		_close_balance_rows(doc, code, balance, reason)
+		closed.append({"item_code": code, "closed": balance})
+	if not closed:
+		frappe.throw(_("No item has a balance that can be closed. Items must be ordered at least partly."))
+	doc.add_comment("Info", _("Short-closed all balances ({0}): {1}").format(
+		", ".join("{0} {1}".format(c["item_code"], c["closed"]) for c in closed), reason))
+	sync_material_request_status(doc.name)
+	return {"material_request": doc.name, "closed": closed, "skipped": skipped}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def reopen_all(name):
+	"""Director only: undo the short-close of every item on the MRN."""
+	from psd_books.invoicing.doctype.purchase_order.purchase_order import sync_material_request_status
+	assert_can("Material Request", "read")
+	doc = _load(name)
+	_assert_short_close_allowed(doc)
+	back = {}
+	for r in doc.items:
+		if flt(r.short_closed_qty):
+			back[r.item_code] = back.get(r.item_code, 0.0) + flt(r.short_closed_qty)
+			frappe.db.set_value("Material Request Item", r.name, {
+				"short_closed_qty": 0, "short_close_reason": "", "short_closed_by": ""}, update_modified=False)
+	if not back:
+		frappe.throw(_("Nothing is short-closed on this Material Request."))
+	doc.add_comment("Info", _("Reopened all closed balances ({0})").format(
+		", ".join("{0} {1}".format(k, v) for k, v in back.items())))
+	sync_material_request_status(doc.name)
+	return {"material_request": doc.name, "reopened": [{"item_code": k, "reopened": v} for k, v in back.items()]}
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def reopen_item(name, item_code):
+	"""Director only: undo the short-close of one item; its balance can be ordered and moved again."""
+	from psd_books.invoicing.doctype.purchase_order.purchase_order import sync_material_request_status
+	assert_can("Material Request", "read")
+	doc = _load(name)
+	_assert_short_close_allowed(doc)
+	back = 0.0
+	for r in doc.items:
+		if r.item_code == item_code and flt(r.short_closed_qty):
+			back += flt(r.short_closed_qty)
+			frappe.db.set_value("Material Request Item", r.name, {
+				"short_closed_qty": 0, "short_close_reason": "", "short_closed_by": ""}, update_modified=False)
+	if not back:
+		frappe.throw(_("Nothing is short-closed for this item."))
+	doc.add_comment("Info", _("Reopened {0} of {1}").format(back, item_code))
+	sync_material_request_status(doc.name)
+	return {"material_request": doc.name, "item_code": item_code, "reopened": back}
