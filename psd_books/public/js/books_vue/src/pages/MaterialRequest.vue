@@ -226,26 +226,34 @@
             <div v-if="!isNew && mrnBalance.some(b => b.ordered > 0 || b.closed > 0)" style="margin:10px 0 4px;font-size:13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                 <div class="bomx-section-lbl" style="margin-right:auto">Ordered so far</div>
-                <button v-if="canShortClose && closableAll.length > 1" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;color:#dc2626;border:1px solid #fca5a5;background:#fff;font-weight:600" :disabled="submitting" @click="startCloseAll">Close all balances</button>
-                <button v-if="canShortClose && reopenableAll.length > 1" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px" :disabled="submitting" @click="reopenAll">Reopen all</button>
+                <button v-if="canShortClose && closableAll.length > 1" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;color:#dc2626;border:1px solid #fca5a5;background:#fff;font-weight:600" :disabled="submitting" @click="startCloseAll">Short Close All</button>
+                <button v-if="canShortClose && reopenableAll.length > 1" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;font-weight:600;border:1px solid #cbd5e1;background:#fff" :disabled="submitting" @click="reopenAll">Reopen All</button>
               </div>
-              <div v-for="b in mrnBalance" :key="b.item_code" style="padding:3px 0;border-bottom:1px solid #eef0f3">
-              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-                <span>{{ b.item_name || b.item_code }}</span>
-                <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-                  <span>MRN {{ b.mrn_qty + (b.closed || 0) }} · Ordered {{ b.ordered }}<template v-if="b.closed"> · <span style="color:#b45309">Closed {{ b.closed }}</span></template> · <b>Balance {{ b.remaining }}</b></span>
-                  <button v-if="canShortClose && b.ordered > 0 && b.remaining > 0.0005" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;color:#dc2626;border:1px solid #fca5a5;background:#fff;font-weight:600" :disabled="submitting" @click="startClose(b)">Close balance</button>
-                  <button v-if="canShortClose && b.closed > 0" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px" :disabled="submitting" @click="reopenItem(b)">Reopen</button>
-                </span>
+              <div style="display:grid;grid-template-columns:minmax(0,1fr) 70px 66px 92px 84px 150px;column-gap:10px;align-items:center;padding:2px 0 4px;border-bottom:1px solid #e5e7eb;font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.03em">
+                <span>Item</span><span style="text-align:right">MRN Qty</span><span style="text-align:right">Ordered</span><span style="text-align:right">Short closed</span><span style="text-align:right">Balance</span><span></span>
               </div>
-              <div v-if="b.closed > 0 && b.close_reason" style="font-size:12px;color:#92400e;padding:2px 0 3px">Close balance reason: {{ b.close_reason }}<template v-if="b.closed_by"> · {{ ownerName(b.closed_by) }}</template></div>
+              <div v-for="b in mrnBalance" :key="b.item_code" style="padding:5px 0;border-bottom:1px solid #eef0f3">
+                <div style="display:grid;grid-template-columns:minmax(0,1fr) 70px 66px 92px 84px 150px;column-gap:10px;align-items:center">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ b.item_name || b.item_code }}</span>
+                  <span style="text-align:right">{{ b.mrn_qty + (b.closed || 0) }}</span>
+                  <span style="text-align:right">{{ b.ordered }}</span>
+                  <span style="text-align:right;color:#b45309">{{ b.closed > 0 ? b.closed : "–" }}</span>
+                  <span style="text-align:right">
+                    <b v-if="b.remaining > 0.0005">{{ b.remaining }}</b>
+                    <b v-else style="display:inline-block;padding:1px 10px;border-radius:999px;background:#dcfce7;border:1px solid #86efac;color:#15803d">{{ b.remaining }}</b>
+                  </span>
+                  <span style="display:flex;gap:6px;justify-content:flex-end">
+                    <button v-if="canShortClose && b.ordered > 0 && b.remaining > 0.0005" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;color:#dc2626;border:1px solid #fca5a5;background:#fff" :disabled="submitting" @click="startClose(b)">Short Close</button>
+                    <button v-if="canShortClose && b.closed > 0" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;border:1px solid #cbd5e1;background:#fff" :disabled="submitting" @click="reopenItem(b)">Reopen</button>
+                  </span>
+                </div>
               </div>
               <div v-if="closing" style="margin-top:8px;padding:10px;border:1px solid #fed7aa;background:#fff7ed;border-radius:6px">
-                <div v-if="closing.all" style="font-weight:600;margin-bottom:6px">Close the balance of all {{ closing.count }} items ({{ closing.summary }}): these will no longer be orderable or issued against this MRN.</div>
-                <div v-else style="font-weight:600;margin-bottom:6px">Close the balance of {{ closing.item_name }}: {{ closing.balance }} will no longer be orderable or issued against this MRN.</div>
+                <div v-if="closing.all" style="font-weight:600;margin-bottom:6px">Short close all {{ closing.count }} items ({{ closing.summary }}): the balances will no longer be orderable or issued against this MRN.</div>
+                <div v-else style="font-weight:600;margin-bottom:6px">Short close {{ closing.item_name }}: the balance of {{ closing.balance }} will no longer be orderable or issued against this MRN.</div>
                 <textarea class="bomx-fi" v-model="closing.reason" rows="2" style="width:100%;resize:vertical" placeholder="Reason (required), e.g. the ordered quantity is enough"></textarea>
                 <div style="display:flex;gap:8px;margin-top:8px">
-                  <button type="button" class="bomx-btn bomx-btn-light" style="color:#dc2626;border:1px solid #fca5a5;background:#fff;font-weight:600" :disabled="submitting || !closing.reason.trim()" @click="shortCloseItem">{{ closing.all ? "Close all balances" : "Close balance" }}</button>
+                  <button type="button" class="bomx-btn bomx-btn-light" style="color:#dc2626;border:1px solid #fca5a5;background:#fff;font-weight:600" :disabled="submitting || !closing.reason.trim()" @click="shortCloseItem">{{ closing.all ? "Short Close All" : "Short Close" }}</button>
                   <button type="button" class="bomx-btn bomx-btn-light" :disabled="submitting" @click="closing = null">Cancel</button>
                 </div>
               </div>
@@ -253,6 +261,12 @@
 
             <div class="bomx-section-lbl">Remarks</div>
             <textarea class="bomx-fi" v-model="mr.remarks" rows="3" :disabled="readOnly" style="width:100%;min-height:90px;resize:vertical" placeholder="Optional notes…"></textarea>
+            <div v-if="!isNew && mrnBalance.some(b => b.closed > 0 && b.close_reason)" style="margin-top:12px">
+              <div class="bomx-section-lbl">Short close reason</div>
+              <div v-for="b in mrnBalance.filter(x => x.closed > 0 && x.close_reason)" :key="'sc-' + b.item_code" style="font-size:12px;color:#92400e;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:6px 10px;margin-top:4px">
+                <b>{{ b.item_name || b.item_code }}</b> ({{ b.closed }}): {{ b.close_reason }}<template v-if="b.closed_by"> · {{ ownerName(b.closed_by) }}</template>
+              </div>
+            </div>
 
             <div class="inv-view-footer" v-if="!isNew && mr.owner">
               Created by {{ ownerName(mr.owner) }} on {{ fmtDate(mr.creation) }}
@@ -531,11 +545,11 @@ async function shortCloseItem() {
   const c = closing.value;
   if (!c || !c.reason.trim()) return;
   if (c.all) {
-    if (!(await confirm({ title: "Close all balances", body: `Close the balance of ${c.count} items on Material Request ${mr.value.name} (${c.summary})? They will no longer be orderable on a Purchase Order or issued from store. A Director can reopen each item later.`, okLabel: "Close all balances", okStyle: "primary" }))) return;
+    if (!(await confirm({ title: "Short Close All", body: `Short close the balance of ${c.count} items on Material Request ${mr.value.name} (${c.summary})? They will no longer be orderable on a Purchase Order or issued from store. A Director can reopen each item later.`, okLabel: "Short Close All", okStyle: "primary" }))) return;
     submitting.value = true;
     try {
       await apiPOST("psd_books.api.mrn.short_close_all", { name: mr.value.name, reason: c.reason.trim() });
-      toast("Balances closed");
+      toast("Items short closed");
       closing.value = null;
       await loadMR();
       loadList();
@@ -545,11 +559,11 @@ async function shortCloseItem() {
     submitting.value = false;
     return;
   }
-  if (!(await confirm({ title: "Close balance", body: `Close ${c.balance} of ${c.item_name} on Material Request ${mr.value.name}? It will no longer be orderable on a Purchase Order or issued from store. A Director can reopen it later.`, okLabel: "Close balance", okStyle: "primary" }))) return;
+  if (!(await confirm({ title: "Short Close", body: `Short close ${c.balance} of ${c.item_name} on Material Request ${mr.value.name}? It will no longer be orderable on a Purchase Order or issued from store. A Director can reopen it later.`, okLabel: "Short Close", okStyle: "primary" }))) return;
   submitting.value = true;
   try {
     await apiPOST("psd_books.api.mrn.short_close_item", { name: mr.value.name, item_code: c.item_code, reason: c.reason.trim() });
-    toast("Balance closed");
+    toast("Item short closed");
     closing.value = null;
     await loadMR();
     loadList();
