@@ -622,6 +622,7 @@ async function loadApproval() {
 
 async function sendForApproval() {
   if (!mr.value.name) return;
+  if (!(await confirm({ title: "Send for approval", body: `Send Material Request ${mr.value.name} for approval? It can't be edited while it waits for approval.`, okLabel: "Send for approval", okStyle: "primary" }))) return;
   submitting.value = true;
   try {
     await apiPOST("psd_books.api.mrn.send_for_approval", { name: mr.value.name });
@@ -652,6 +653,7 @@ async function sendBackMR() {
 
 async function approveMR() {
   if (!mr.value.name) return;
+  if (!(await confirm({ title: "Approve Material Request", body: `Approve Material Request ${mr.value.name}?`, okLabel: "Approve", okStyle: "primary" }))) return;
   submitting.value = true;
   try {
     await apiPOST("psd_books.api.mrn.approve_mrn", { name: mr.value.name });

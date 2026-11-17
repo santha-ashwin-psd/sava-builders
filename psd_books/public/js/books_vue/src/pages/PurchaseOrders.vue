@@ -2014,6 +2014,7 @@ async function savePO(newStatus, sendAfter = false) {
     if (flt(l.rate) > 999999999) return toast.error(`Rate cannot exceed 9 digits for item "${l.item_code}"`);
     if ((l.description || "").length > 500) return toast.error(`Description too long for item "${l.item_code}" (max 500 characters)`);
   }
+  if (sendAfter && !await confirm({ title: "Send for approval", body: "Send this Purchase Order for approval? It can't be edited while it waits for approval.", okLabel: "Send for approval", okStyle: "primary" })) return;
   drawerSaving.value = true;
   try {
     const company = await resolveCompany();
@@ -2248,6 +2249,7 @@ async function submitPO(o) {
   } catch (e) { toast.error(e.message || "Could not send for approval"); }
 }
 async function approvePO(o) {
+  if (!await confirm({ title: "Approve Purchase Order", body: `Approve Purchase Order ${o.name}?`, okLabel: "Approve", okStyle: "primary" })) return;
   approvalBusy.value = true;
   try {
     const r = await apiPOST("psd_books.api.purchase_order_approval.approve_po", { name: o.name, remarks: approvalRemarks.value.trim() });
