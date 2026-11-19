@@ -43,6 +43,14 @@ export const NAV = [
   // { path: "/payments",                      label: "Payments Made",    icon: "payment",    module: "payments"   },  // hidden for Sava (Purchases)
   // { path: "/debit-notes",                   label: "Debit Notes",      icon: "creditnote", module: "bills"      },  // hidden for Sava (Purchases)
 
+  { section: "Labour Contract" },
+  // Placeholder pages for now (pages/LabourPlaceholder.vue). Reports stay under the Reports section.
+  { path: "/labour-contract/contract",      label: "Contract",         icon: "file",       module: null         },
+  { path: "/labour-contract/weekly-bill",   label: "Weekly Bill",      icon: "fileplus",   module: null         },
+  { path: "/labour-contract/attendance",    label: "Attendance",       icon: "check",      module: null         },
+  { path: "/labour-contract/contractors",   label: "Contractors",      icon: "users",      module: "labour_contractors", doctype: "Labour Contractor" },  // Books Admin / Director / Admin role only
+  { path: "/labour-contract/activities",    label: "Activities",       icon: "stack",      module: "labour_contractors", doctype: "Labour Activity" },  // Books Admin / Director / Admin role only
+
   { section: "Contacts" },
   // { path: "/customers",                     label: "Customers",        icon: "users",      module: "customers"  },  // hidden for Sava (Contacts)
   { path: "/vendors",                       label: "Vendors",          icon: "vendors",    module: "customers"  },

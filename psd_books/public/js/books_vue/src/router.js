@@ -80,6 +80,9 @@ const TDS = () => import("./pages/TDS.vue");
 const TaxTemplates = () => import("./pages/TaxTemplates.vue");
 const ExpenseCategories = () => import("./pages/ExpenseCategories.vue");
 const Reports = () => import("./pages/Reports.vue");
+const LabourPlaceholder = () => import("./pages/LabourPlaceholder.vue");
+const Contractors = () => import("./pages/Contractors.vue");
+const Activities = () => import("./pages/Activities.vue");
 const PriceLists = () => import("./pages/PriceLists.vue");
 const RecurringBills = () => import("./pages/RecurringBills.vue");
 const BulkImport = () => import("./pages/BulkImport.vue");
@@ -364,6 +367,13 @@ const routes = [
   { path: "/gst/tds",      name: "tds",      component: TDS,         meta: { module: "accounts" } },
   { path: "/gst/tax-templates", name: "tax-templates", component: TaxTemplates, meta: { module: "taxes" } },
   { path: "/reports",      name: "reports",  component: Reports,     meta: { module: null       } },
+  { path: "/labour-contract/contract", name: "labour-contract", component: LabourPlaceholder, meta: { module: null, title: "Contract" } },
+  { path: "/labour-contract/weekly-bill", name: "labour-weekly-bill", component: LabourPlaceholder, meta: { module: null, title: "Weekly Bill" } },
+  { path: "/labour-contract/attendance", name: "labour-attendance", component: LabourPlaceholder, meta: { module: null, title: "Attendance" } },
+  // Contractors: Books Admin, Director and the Admin job role only (module key below is never granted to others; doc_access decides).
+  { path: "/labour-contract/contractors", name: "labour-contractors", component: Contractors, meta: { module: "labour_contractors", doctype: "Labour Contractor", title: "Contractors" } },
+  // Activities: same access as Contractors (Books Admin, Director and the Admin job role only).
+  { path: "/labour-contract/activities", name: "labour-activities", component: Activities, meta: { module: "labour_contractors", doctype: "Labour Activity", title: "Activities" } },
   { path: "/bulk-import",        name: "bulk-import",       component: BulkImport,       meta: { module: "admin"    } },
   { path: "/delivery-challans",   name: "delivery-challans",   component: StockEntries,   meta: { module: "inventory" } },
   { path: "/proforma-invoices",   name: "proforma-invoices",   component: ProformaInvoices,   meta: { module: "invoices" } },

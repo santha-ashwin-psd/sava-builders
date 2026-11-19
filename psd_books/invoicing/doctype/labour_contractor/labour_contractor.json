@@ -1,0 +1,138 @@
+{
+ "name": "Labour Contractor",
+ "doctype": "DocType",
+ "module": "Invoicing",
+ "creation": "2026-11-19 18:30:00.000000",
+ "modified": "2026-11-19 18:30:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "docstatus": 0,
+ "idx": 0,
+ "autoname": "LCON-.#####",
+ "naming_rule": "Expression (old style)",
+ "title_field": "contractor_name",
+ "search_fields": "contractor_name,kra_pin,id_no,phone",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1,
+ "engine": "InnoDB",
+ "is_submittable": 0,
+ "istable": 0,
+ "issingle": 0,
+ "editable_grid": 0,
+ "custom": 0,
+ "fields": [
+  {
+   "fieldname": "contractor_name",
+   "fieldtype": "Data",
+   "label": "Contractor Name",
+   "reqd": 1,
+   "in_list_view": 1,
+   "bold": 1
+  },
+  {
+   "fieldname": "contractor_type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Individual\nCompany",
+   "default": "Individual",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "id_no",
+   "fieldtype": "Data",
+   "label": "ID or Registration No.",
+   "reqd": 1
+  },
+  {
+   "fieldname": "kra_pin",
+   "fieldtype": "Data",
+   "label": "KRA PIN",
+   "reqd": 1,
+   "search_index": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "tax_cert_expiry",
+   "fieldtype": "Date",
+   "label": "Tax Certificate Expiry",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_1",
+   "fieldtype": "Column Break",
+   "label": ""
+  },
+  {
+   "fieldname": "phone",
+   "fieldtype": "Data",
+   "label": "Phone"
+  },
+  {
+   "fieldname": "bank_details",
+   "fieldtype": "Data",
+   "label": "Bank and Account No."
+  },
+  {
+   "fieldname": "nca_reg_no",
+   "fieldtype": "Data",
+   "label": "NCA Registration (optional)"
+  },
+  {
+   "fieldname": "disabled",
+   "fieldtype": "Check",
+   "label": "Inactive",
+   "default": "0"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Data",
+   "label": "Company",
+   "search_index": 1,
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Books Admin",
+   "permlevel": 0,
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "System Manager",
+   "permlevel": 0,
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Director",
+   "permlevel": 0,
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  }
+ ]
+}

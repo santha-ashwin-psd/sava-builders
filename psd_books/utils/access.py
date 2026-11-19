@@ -120,6 +120,9 @@ DOCTYPE_MODULE = {
 # Material Request, so a Store Keeper or Site Engineer needs no Sales or Bills access.
 DOCTYPE_MODULE["Delivery Note"] = "inventory"
 DOCTYPE_MODULE["Purchase Receipt"] = "inventory"
+# Sava: Labour Contractor (Labour Contract > Contractors) is an admin-module doctype; see SAVA_ACCESS.
+DOCTYPE_MODULE["Labour Contractor"] = "admin"
+DOCTYPE_MODULE["Labour Activity"] = "admin"
 
 # Sava A17: who may read / raise each document, by Sava job role (same as the plan and the
 # doctype permission rows). For a user holding at least one Sava role this REPLACES the module
@@ -130,6 +133,8 @@ _ALL_SAVA = frozenset({"Site Engineer", "Purchase Manager", "Admin", "Director"}
 # Purchase Manager and Admin: everything except approvals. Director: everything, and is the only approver.
 _FULL = frozenset({"Purchase Manager", "Admin", "Director"})
 _APPROVERS = frozenset({"Director"})
+# Labour Contractors: Books Admin and Director (admin, handled before this table) and the Admin job role only.
+_CONTRACTOR_ROLES = frozenset({"Admin", "Director"})
 SAVA_ACCESS = {
     "Project": {"read": _ALL_SAVA},
     "Warehouse": {"read": _ALL_SAVA},
@@ -150,6 +155,9 @@ SAVA_ACCESS = {
     "Quotation Comparison": {"read": _FULL, "write": _FULL},
     "Purchase Invoice": {"read": _FULL, "write": _FULL},
     "Payment Entry": {"read": _FULL, "write": _FULL},
+    "Labour Contractor": {"read": _CONTRACTOR_ROLES, "write": _CONTRACTOR_ROLES, "cancel_delete": _CONTRACTOR_ROLES},
+    # Labour Activities: same people as Contractors (Books Admin and Director are admin, handled before this table)
+    "Labour Activity": {"read": _CONTRACTOR_ROLES, "write": _CONTRACTOR_ROLES, "cancel_delete": _CONTRACTOR_ROLES},
 }
 
 
