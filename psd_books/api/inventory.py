@@ -2050,10 +2050,12 @@ def get_po_receivable_items_text(names):
     if not names:
         return {}
     lines = frappe.get_all("Purchase Order Item", filters={"parent": ["in", names]},
-        fields=["parent", "item_code", "item_name", "qty", "received_qty"], order_by="idx asc")
+        fields=["parent", "item_code", "item_name", "qty", "received_qty", "short_closed_qty"], order_by="idx asc")
+    master = {i.name: i.item_name for i in frappe.get_all("Item",
+        filters={"name": ["in", list({l.item_code for l in lines}) or [""]]}, fields=["name", "item_name"])}
     per = {n: [] for n in names}
     for l in lines:
-        per[l.parent].append((l.item_code, l.item_name, flt(l.qty) - flt(l.received_qty)))
+        per[l.parent].append((l.item_code, master.get(l.item_code) or l.item_name, flt(l.qty) - flt(l.received_qty) - flt(l.short_closed_qty)))
     return {n: _items_text(v) for n, v in per.items()}
 
 

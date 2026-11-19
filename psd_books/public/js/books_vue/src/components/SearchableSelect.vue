@@ -137,8 +137,10 @@ const filtered = computed(() => {
   const pre = [], con = [];
   normalized.value.forEach((o) => {
     const l = String(o.label || "").toLowerCase();
+    // the small text under a label (e.g. the item names on an MRN or PO) is searchable too
+    const s = String(o.sub || "").toLowerCase();
     if (l.startsWith(qv)) pre.push(o);
-    else if (l.includes(qv)) con.push(o);
+    else if (l.includes(qv) || s.includes(qv)) con.push(o);
   });
   return [...pre, ...con].slice(0, 100);
 });

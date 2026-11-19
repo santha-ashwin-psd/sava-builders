@@ -209,7 +209,7 @@
           </div>
           <div class="se-field">
             <label class="se-label">MRN <span v-if="form.stock_entry_type === 'Material Issue'" class="req">*</span></label>
-            <SearchableSelect v-model="mrnPick" :options="mrnOptionsAvail" :placeholder="form.mrns.length ? 'Add another MRN of this project…' : (form.stock_entry_type === 'Material Issue' ? 'Select approved MRN' : 'Select approved MRN (optional)')" @search="q => fetchMrns(q)" @open="fetchMrns('')" @select="onMrnPick" />
+            <SearchableSelect v-model="mrnPick" :options="mrnOptionsAvail" :placeholder="form.mrns.length ? 'Add another MRN of this project…' : (form.stock_entry_type === 'Material Issue' ? 'Select approved MRN' : 'Select approved MRN (optional)')" @open="fetchMrns('')" @select="onMrnPick" />
             <div v-if="form.mrns.length" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
               <span v-for="m in form.mrns" :key="m" style="display:inline-flex;align-items:center;gap:6px;padding:3px 6px 3px 10px;border-radius:999px;background:#fff7ed;border:1px solid #fed7aa;color:#c2410c;font-size:12px;font-weight:600">
                 {{ m }}

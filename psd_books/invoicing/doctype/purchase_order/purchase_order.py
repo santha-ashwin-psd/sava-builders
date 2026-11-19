@@ -81,14 +81,16 @@ def sync_material_request_status(material_request):
         new_status = "Received"
         for po in pos:
             # a PO can cover several MRNs: only this MRN's lines count towards its status
-            rows = frappe.db.sql("""select poi.qty, poi.received_qty
+            rows = frappe.db.sql("""select poi.qty, poi.received_qty, ifnull(poi.short_closed_qty, 0) as short_closed_qty
                   from `tabPurchase Order Item` poi join `tabPurchase Order` p on p.name = poi.parent
                  where poi.parent = %s
                    and ifnull(nullif(poi.material_request, ''), p.material_request) = %s""",
                 (po, material_request), as_dict=True)
             total = sum(flt(r.qty) for r in rows)
+            # what a Director short-closed on the LPO is no longer expected
+            open_qty = total - sum(flt(r.short_closed_qty) for r in rows)
             received = sum(flt(r.received_qty) for r in rows)
-            if total <= 0 or received < total - 0.001:
+            if total <= 0 or received < open_qty - 0.001:
                 new_status = "Ordered"
                 break
     if mr.status != new_status:
@@ -266,7 +268,9 @@ class PurchaseOrder(Document):
             if direction == -1:
                 # Cancel: only remove qty still on-order (not yet billed).
                 billed = flt(getattr(row, "billed_qty", 0)) * factor
-                still_ordered = max(0.0, row_qty - billed)
+                # a short-closed balance was already taken off "on order" when it was closed
+                closed = flt(getattr(row, "short_closed_qty", 0)) * factor
+                still_ordered = max(0.0, row_qty - billed - closed)
                 if still_ordered <= 0:
                     continue
                 delta = -still_ordered

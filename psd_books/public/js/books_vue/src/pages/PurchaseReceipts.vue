@@ -363,7 +363,7 @@
                 <div>
                   <label class="inv-lbl">{{ editingName ? 'Purchase Order' : 'Purchase Order(s)' }} <span class="inv-req">*</span></label>
                   <template v-if="!editingName">
-                    <SearchableSelect v-model="poPick" :options="poOptionsAvail" :placeholder="selectedPOs.length ? 'Add another PO from this supplier…' : 'Select PO (filtered by supplier)…'" @search="fetchPOs" @open="fetchPOs('')" @select="onPOSelect" />
+                    <SearchableSelect v-model="poPick" :options="poOptionsAvail" :placeholder="selectedPOs.length ? 'Add another PO from this supplier…' : 'Select PO (filtered by supplier)…'" @open="fetchPOs('')" @select="onPOSelect" />
                     <div v-if="selectedPOs.length" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
                       <span v-for="po in selectedPOs" :key="po" style="display:inline-flex;align-items:center;gap:6px;padding:3px 6px 3px 10px;border-radius:999px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:12px;font-weight:600">
                         {{ po }}
@@ -374,7 +374,7 @@
                   <div v-else-if="editPOs.length > 1" style="display:flex;flex-wrap:wrap;gap:6px">
                     <span v-for="po in editPOs" :key="po" style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:12px;font-weight:600">{{ po }}</span>
                   </div>
-                  <SearchableSelect v-else v-model="form.purchase_order" :options="poOptions" placeholder="Select PO (filtered by supplier)…" @search="fetchPOs" @open="fetchPOs('')" @select="onPOSelect" />
+                  <SearchableSelect v-else v-model="form.purchase_order" :options="poOptions" placeholder="Select PO (filtered by supplier)…" @open="fetchPOs('')" @select="onPOSelect" />
                 </div>
               </div>
             </div>

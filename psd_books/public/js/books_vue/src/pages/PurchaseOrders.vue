@@ -242,7 +242,7 @@
                 <label class="inv-lbl">MRN(s) <span class="inv-req">*</span></label>
                 <SearchableSelect v-model="mrnPick" :options="mrnOptionsAvail"
                   :placeholder="form.mrns.length ? 'Add another MRN of this project…' : (assetOnly ? 'Select approved Asset MRN…' : 'Select approved Purchase MRN…')"
-                  @search="q => fetchMrns(q)" @select="onMrnPick" />
+                  @select="onMrnPick" />
                 <div v-if="form.mrns.length" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
                   <span v-for="m in form.mrns" :key="m" style="display:inline-flex;align-items:center;gap:6px;padding:3px 6px 3px 10px;border-radius:999px;background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;font-size:12px;font-weight:600">
                     {{ m }}
@@ -767,19 +767,28 @@
             <div class="inv-tab-body">
               <div v-if="viewLoading" style="text-align:center;padding:32px;color:#6b7280;font-size:13px">Loading…</div>
               <template v-else-if="fulfill.lines.length">
-                <div style="font-size:12px;color:#6b7280;margin-bottom:12px">Status: <strong>{{ fulfill.computed_status }}</strong></div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                  <div style="font-size:12px;color:#6b7280;margin-right:auto">Status: <strong>{{ fulfill.computed_status }}</strong></div>
+                  <button v-if="fulfill.can_short_close && poClosableLines.length > 1" type="button" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;background:#fff;color:#dc2626;border:1px solid #fca5a5;" :disabled="actionRunning" @click="startPoCloseAll">Short Close All</button>
+                  <button v-if="fulfill.can_short_close && poReopenLines.length > 1" type="button" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;background:#fff;border:1px solid #cbd5e1;" :disabled="actionRunning" @click="poReopenAll">Reopen All</button>
+                </div>
 
                 <!-- Desktop table -->
                 <div class="po-fulfill-tbl po-fulfill-desktop">
                   <div class="po-fulfill-head">
                     <span>Item</span><span class="ta-r">Ordered</span><span class="ta-r">Received</span>
-                    <span class="ta-r">Remaining</span>
+                    <span class="ta-r">Short closed</span><span class="ta-r">Remaining</span><span></span>
                   </div>
                   <div v-for="l in fulfill.lines" :key="l.name" class="po-fulfill-row">
                     <span>{{ l.item_name || l.item_code }}</span>
                     <span class="ta-r mono-sm">{{ l.qty }}</span>
                     <span class="ta-r mono-sm" :class="l.received_qty>=l.qty?'text-success':'text-muted'">{{ l.received_qty }}</span>
+                    <span class="ta-r mono-sm" style="color:#b45309">{{ l.short_closed_qty > 0 ? l.short_closed_qty : "–" }}</span>
                     <span class="ta-r mono-sm text-danger">{{ l.remaining_to_receive }}</span>
+                    <span style="display:flex;gap:6px;justify-content:flex-end">
+                      <button v-if="fulfill.can_short_close && l.closable_qty > 0" type="button" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;background:#fff;color:#dc2626;border:1px solid #fca5a5;" :disabled="actionRunning" @click="startPoClose(l)" :title="l.in_draft_qty > 0 ? l.in_draft_qty + ' on a draft GRN is not included' : ''">Short Close {{ l.closable_qty }}</button>
+                      <button v-if="fulfill.can_short_close && l.short_closed_qty > 0" type="button" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;background:#fff;border:1px solid #cbd5e1;" :disabled="actionRunning" @click="poReopenItem(l)">Reopen</button>
+                    </span>
                   </div>
                 </div>
 
@@ -797,10 +806,35 @@
                         <span class="po-fulfill-card-val" :class="l.received_qty>=l.qty?'text-success':'text-muted'">{{ l.received_qty }}</span>
                       </div>
                       <div class="po-fulfill-card-cell">
+                        <span class="po-fulfill-card-lbl">Short closed</span>
+                        <span class="po-fulfill-card-val" style="color:#b45309">{{ l.short_closed_qty > 0 ? l.short_closed_qty : "–" }}</span>
+                      </div>
+                      <div class="po-fulfill-card-cell">
                         <span class="po-fulfill-card-lbl">Remaining</span>
                         <span class="po-fulfill-card-val text-danger">{{ l.remaining_to_receive }}</span>
                       </div>
                     </div>
+                    <div v-if="fulfill.can_short_close && (l.closable_qty > 0 || l.short_closed_qty > 0)" style="display:flex;gap:6px;margin-top:8px">
+                      <button v-if="l.closable_qty > 0" type="button" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;background:#fff;color:#dc2626;border:1px solid #fca5a5;" :disabled="actionRunning" @click="startPoClose(l)" :title="l.in_draft_qty > 0 ? l.in_draft_qty + ' on a draft GRN is not included' : ''">Short Close {{ l.closable_qty }}</button>
+                      <button v-if="l.short_closed_qty > 0" type="button" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;background:#fff;border:1px solid #cbd5e1;" :disabled="actionRunning" @click="poReopenItem(l)">Reopen</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="poClosing" style="margin-top:12px;padding:10px;border:1px solid #fed7aa;background:#fff7ed;border-radius:6px">
+                  <div v-if="poClosing.all" style="font-weight:600;margin-bottom:6px;font-size:13px">Short close all {{ poClosing.count }} lines ({{ poClosing.summary }}): the supplier will not deliver these balances.</div>
+                  <div v-else style="font-weight:600;margin-bottom:6px;font-size:13px">Short close {{ poClosing.item_name }}: the balance of {{ poClosing.qty }} will not be delivered.</div>
+                  <textarea v-model="poClosing.reason" rows="2" style="width:100%;resize:vertical;font-size:13px" placeholder="Reason (required), e.g. supplier cannot supply the balance"></textarea>
+                  <div style="display:flex;gap:8px;margin-top:8px">
+                    <button type="button" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;background:#fff;color:#dc2626;border:1px solid #fca5a5;" :disabled="actionRunning || !poClosing.reason.trim()" @click="doPoShortClose">{{ poClosing.all ? "Short Close All" : "Short Close" }}</button>
+                    <button type="button" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;background:#fff;border:1px solid #cbd5e1;" :disabled="actionRunning" @click="poClosing = null">Cancel</button>
+                  </div>
+                </div>
+
+                <div v-if="fulfill.lines.some(l => l.short_closed_qty > 0 && l.short_close_reason)" style="margin-top:14px">
+                  <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Short close reason</div>
+                  <div v-for="l in fulfill.lines.filter(x => x.short_closed_qty > 0 && x.short_close_reason)" :key="'sc-' + l.name" style="font-size:12px;color:#92400e;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;padding:6px 10px;margin-top:4px">
+                    <b>{{ l.item_name || l.item_code }}</b> ({{ l.short_closed_qty }}): {{ l.short_close_reason }}<template v-if="l.short_closed_by"> · {{ ownerName(l.short_closed_by) }}</template>
                   </div>
                 </div>
 
@@ -1233,7 +1267,7 @@ const viewPrint = ref(null);
 const poCollapsed = reactive({ details: false, address: true, lines: false, remarks: false, terms: true });
 const viewOpen = ref(false), viewDoc = ref(null), viewTab = ref("details");
 const viewLoading = ref(false), viewItems = ref([]);
-const fulfill = reactive({ lines: [], computed_status: "" });
+const fulfill = reactive({ lines: [], computed_status: "", can_short_close: false });
 const links = reactive({ bills: [], purchase_receipts: [], qc_inspections: [] });
 // MRNs a viewed PO covers: its lines' MRNs, else the PO's own MRN
 const viewMrns = computed(() => {
@@ -1652,7 +1686,7 @@ async function openView(o) {
   viewTab.value = "details";
   viewLoading.value = true;
   viewItems.value = [];
-  fulfill.lines = []; fulfill.computed_status = "";
+  fulfill.lines = []; fulfill.computed_status = ""; fulfill.can_short_close = false; poClosing.value = null;
   links.bills = []; links.purchase_receipts = []; links.qc_inspections = [];
   approval.value = null; approvalRemarks.value = ""; amendedAs.value = "";
   try {
@@ -1684,7 +1718,7 @@ async function openView(o) {
         apiGet("Address", n).then(a => { if (a) viewAddressCache.value = { ...viewAddressCache.value, [n]: a }; }).catch(() => {});
       }
     }
-    if (ful) { fulfill.lines = ful.lines || []; fulfill.computed_status = ful.computed_status || ""; }
+    if (ful) { fulfill.lines = ful.lines || []; fulfill.computed_status = ful.computed_status || ""; fulfill.can_short_close = !!ful.can_short_close; }
     if (lnk) { links.bills = lnk.bills || []; links.purchase_receipts = lnk.purchase_receipts || []; links.qc_inspections = lnk.qc_inspections || []; }
   } catch {}
   viewLoading.value = false;
@@ -2105,6 +2139,50 @@ async function emailPO(o) {
     printConfig: { ...PO_PRINT_CONFIG, prepareDoc: preparePOPrint },
   });
 }
+
+// ── Short close on the LPO (Director only): the balance the supplier will not deliver ──
+const poClosing = ref(null);
+const poClosableLines = computed(() => fulfill.lines.filter(l => flt(l.closable_qty) > 0.0005));
+const poReopenLines = computed(() => fulfill.lines.filter(l => flt(l.short_closed_qty) > 0));
+function startPoClose(l) {
+  poClosing.value = { po_item: l.name, item_name: l.item_name || l.item_code, qty: l.closable_qty, reason: "" };
+}
+function startPoCloseAll() {
+  const l = poClosableLines.value;
+  poClosing.value = { all: true, count: l.length, summary: l.map(x => `${x.item_name || x.item_code} ${x.closable_qty}`).join(", "), reason: "" };
+}
+async function reloadFulfillment(po, status) {
+  const ful = await apiGET("psd_books.api.docs.get_purchase_order_fulfillment", { purchase_order: po });
+  fulfill.lines = ful?.lines || []; fulfill.computed_status = ful?.computed_status || ""; fulfill.can_short_close = !!ful?.can_short_close;
+  if (status && viewDoc.value?.name === po) viewDoc.value = { ...viewDoc.value, status };
+  load();
+}
+async function runPoClose(method, args, okMsg) {
+  const po = viewDoc.value?.name;
+  actionRunning.value = true;
+  try {
+    const r = await apiPOST(method, { name: po, ...args });
+    poClosing.value = null;
+    toast.success(okMsg);
+    await reloadFulfillment(po, r?.status);
+  } catch (e) {
+    toast.error(e.message || "Short close failed");
+  }
+  actionRunning.value = false;
+}
+async function doPoShortClose() {
+  const c = poClosing.value;
+  if (!c || !c.reason.trim()) return;
+  const po = viewDoc.value?.name;
+  const body = c.all
+    ? `Short close the balance of ${c.count} lines on ${po} (${c.summary})? They will no longer be expected from the supplier or receivable on a GRN. A Director can reopen each line later.`
+    : `Short close ${c.qty} of ${c.item_name} on ${po}? It will no longer be expected from the supplier or receivable on a GRN. A Director can reopen it later.`;
+  if (!(await confirm({ title: c.all ? "Short Close All" : "Short Close", body, okLabel: c.all ? "Short Close All" : "Short Close", okStyle: "primary" }))) return;
+  if (c.all) await runPoClose("psd_books.api.po_short_close.short_close_po_all", { reason: c.reason.trim() }, "Lines short closed");
+  else await runPoClose("psd_books.api.po_short_close.short_close_po_item", { po_item: c.po_item, reason: c.reason.trim() }, "Line short closed");
+}
+function poReopenItem(l) { return runPoClose("psd_books.api.po_short_close.reopen_po_item", { po_item: l.name }, "Line reopened"); }
+function poReopenAll() { return runPoClose("psd_books.api.po_short_close.reopen_po_all", {}, "Lines reopened"); }
 
 function openBillModal(o) {
   apiGET("psd_books.api.docs.get_purchase_order_fulfillment", { purchase_order: o.name })
@@ -2616,8 +2694,8 @@ watch(() => form.supplier, (val) => {
 
 /* ── Fulfillment table ── */
 .po-fulfill-tbl { display: flex; flex-direction: column; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
-.po-fulfill-head { display: grid; grid-template-columns: 2fr 80px 100px 110px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
-.po-fulfill-row { display: grid; grid-template-columns: 2fr 80px 100px 110px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
+.po-fulfill-head { display: grid; grid-template-columns: 2fr 70px 80px 90px 90px 170px; gap: 8px; background: #f9fafb; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; }
+.po-fulfill-row { display: grid; grid-template-columns: 2fr 70px 80px 90px 90px 170px; gap: 8px; padding: 8px 12px; border-top: 1px solid #f3f4f6; align-items: center; font-size: 12.5px; }
 
 /* ── Misc view helpers ── */
 .po-terms { padding: 10px 12px; background: #f8fafc; border-radius: 6px; overflow: hidden; word-break: break-word; overflow-wrap: anywhere; }
@@ -2748,7 +2826,7 @@ watch(() => form.supplier, (val) => {
   .po-view-items-row { grid-template-columns: 2fr 70px 80px 90px; }
 
   .po-fulfill-head,
-  .po-fulfill-row { grid-template-columns: 2fr 70px 90px 90px; }
+  .po-fulfill-row { grid-template-columns: 2fr 60px 70px 70px 70px 120px; }
 }
 
 /* ── Tablet (≤ 768px) ── */

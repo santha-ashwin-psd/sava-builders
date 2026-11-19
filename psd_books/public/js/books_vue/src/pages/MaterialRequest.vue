@@ -223,7 +223,7 @@
               </button>
             </div>
 
-            <div v-if="!isNew && mrnBalance.some(b => b.ordered > 0 || b.closed > 0)" style="margin:10px 0 4px;font-size:13px">
+            <div v-if="!isNew && mrnBalance.some(b => b.ordered > 0 || b.closed > 0 || (canShortClose && b.remaining > 0.0005))" style="margin:10px 0 4px;font-size:13px">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
                 <div class="bomx-section-lbl" style="margin-right:auto">Ordered so far</div>
                 <button v-if="canShortClose && closableAll.length > 1" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;color:#dc2626;border:1px solid #fca5a5;background:#fff;font-weight:600" :disabled="submitting" @click="startCloseAll">Short Close All</button>
@@ -243,11 +243,12 @@
                     <b v-else style="display:inline-block;padding:1px 10px;border-radius:999px;background:#dcfce7;border:1px solid #86efac;color:#15803d">{{ b.remaining }}</b>
                   </span>
                   <span style="display:flex;gap:6px;justify-content:flex-end">
-                    <button v-if="canShortClose && b.ordered > 0 && b.remaining > 0.0005" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;color:#dc2626;border:1px solid #fca5a5;background:#fff" :disabled="submitting" @click="startClose(b)">Short Close</button>
+                    <button v-if="canShortClose && b.remaining > 0.0005" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;color:#dc2626;border:1px solid #fca5a5;background:#fff" :disabled="submitting" @click="startClose(b)">Short Close</button>
                     <button v-if="canShortClose && b.closed > 0" type="button" class="bomx-btn bomx-btn-light" style="padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap;border:1px solid #cbd5e1;background:#fff" :disabled="submitting" @click="reopenItem(b)">Reopen</button>
                   </span>
                 </div>
               </div>
+              <div v-if="mrnBalance.some(b => b.ordered > 0)" style="margin-top:6px;font-size:12px;color:#92400e">To short close the ordered items, short close them in the LPO (Purchase Order).</div>
               <div v-if="closing" style="margin-top:8px;padding:10px;border:1px solid #fed7aa;background:#fff7ed;border-radius:6px">
                 <div v-if="closing.all" style="font-weight:600;margin-bottom:6px">Short close all {{ closing.count }} items ({{ closing.summary }}): the balances will no longer be orderable or issued against this MRN.</div>
                 <div v-else style="font-weight:600;margin-bottom:6px">Short close {{ closing.item_name }}: the balance of {{ closing.balance }} will no longer be orderable or issued against this MRN.</div>
@@ -530,13 +531,13 @@ async function loadMrnBalance() {
     try { canShortClose.value = !!(await apiGET("psd_books.api.mrn.get_approval_state", { name: m.name }))?.can_short_close; } catch { canShortClose.value = false; }
   } catch { mrnBalance.value = []; }
 }
-// Short close (Director only): the balance of an item that is already ordered but not needed any more.
+// Short close (Director only): the balance of an item that is not needed any more, ordered or not.
 const canShortClose = ref(false);
 const closing = ref(null);
 function startClose(b) {
   closing.value = { item_code: b.item_code, item_name: b.item_name || b.item_code, balance: b.remaining, reason: "" };
 }
-const closableAll = computed(() => mrnBalance.value.filter(b => b.ordered > 0 && b.remaining > 0.0005));
+const closableAll = computed(() => mrnBalance.value.filter(b => b.remaining > 0.0005));
 function startCloseAll() {
   const l = closableAll.value;
   closing.value = { all: true, count: l.length, summary: l.map(b => `${b.item_name || b.item_code} ${b.remaining}`).join(", "), reason: "" };

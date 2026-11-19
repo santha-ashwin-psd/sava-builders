@@ -169,7 +169,7 @@ class PurchaseReceipt(Document):
         messages = []
         for po, rows in self._po_groups().items():
             po_rows = frappe.db.sql("""
-                SELECT name, item_code, item_name, qty, received_qty
+                SELECT name, item_code, item_name, qty, received_qty, short_closed_qty
                 FROM `tabPurchase Order Item` WHERE parent=%s ORDER BY idx
             """, (po,), as_dict=True)
             errors = over_receipt_errors(po_rows, rows)
@@ -269,7 +269,7 @@ class PurchaseReceipt(Document):
     def _adjust_po_received_for(self, po, rows, direction):
         """received_qty, PO status and MRN sync for ONE Purchase Order of this receipt."""
         po_items = frappe.db.sql("""
-            SELECT name, item_code, qty, received_qty
+            SELECT name, item_code, qty, received_qty, short_closed_qty
             FROM `tabPurchase Order Item` WHERE parent=%s ORDER BY idx
         """, (po,), as_dict=True)
         by_code = {}
@@ -291,7 +291,7 @@ class PurchaseReceipt(Document):
             for po_row in pool:
                 if remaining <= 0:
                     break
-                available = max(0.0, flt(po_row.qty) - flt(po_row.received_qty))
+                available = max(0.0, flt(po_row.qty) - flt(po_row.received_qty) - flt(po_row.short_closed_qty))
                 if available <= 0 and direction > 0:
                     continue
                 take = min(available, remaining) if direction > 0 else min(flt(po_row.received_qty), remaining)
@@ -322,7 +322,7 @@ def over_receipt_errors(po_rows, receipt_rows):
     """
     eps = 0.0001
     g = lambda o, k: o.get(k) if isinstance(o, dict) else getattr(o, k, None)
-    pending = {g(r, "name"): flt(g(r, "qty")) - flt(g(r, "received_qty")) for r in po_rows}
+    pending = {g(r, "name"): flt(g(r, "qty")) - flt(g(r, "received_qty")) - flt(g(r, "short_closed_qty")) for r in po_rows}
     by_code = {}
     for r in po_rows:
         by_code.setdefault(g(r, "item_code"), []).append(g(r, "name"))

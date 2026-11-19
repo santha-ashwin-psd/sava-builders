@@ -245,9 +245,9 @@ def _close_balance_rows(doc, item_code, balance, reason):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def short_close_item(name, item_code, reason):
-	"""Director only: close the unordered balance of one item on an approved MRN because the qty
-	already ordered is enough. The item must already be (partly) ordered. The closed qty is taken off
-	the MRN qty everywhere (PO screens, PO check, status, stock entries)."""
+	"""Director only: close the unordered balance of one item on an approved MRN (the qty already
+	ordered is enough, or nothing is needed any more). The item need not be ordered yet. The closed
+	qty is taken off the MRN qty everywhere (PO screens, PO check, status, stock entries)."""
 	from psd_books.invoicing.doctype.purchase_order.purchase_order import (
 		mrn_ordered_qty, mrn_required_qty, sync_material_request_status)
 	assert_can("Material Request", "read")
@@ -257,8 +257,6 @@ def short_close_item(name, item_code, reason):
 	if not reason:
 		frappe.throw(_("A reason is required to short-close."))
 	ordered = flt(mrn_ordered_qty(doc.name).get(item_code, 0))
-	if ordered <= 0.0005:
-		frappe.throw(_("Nothing is ordered yet for this item. Cancel the item or the MRN instead of short-closing it."))
 	balance = flt(mrn_required_qty(doc.name).get(item_code, 0)) - ordered
 	if balance <= 0.0005:
 		frappe.throw(_("There is no balance left to close for this item."))
@@ -270,8 +268,8 @@ def short_close_item(name, item_code, reason):
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def short_close_all(name, reason):
-	"""Director only: close the unordered balance of every item on an approved MRN that is already
-	(partly) ordered. Items with nothing ordered, or no balance left, are skipped and reported."""
+	"""Director only: close the unordered balance of every item on an approved MRN, whether or not it
+	is ordered yet. Items with no balance left are skipped and reported."""
 	from psd_books.invoicing.doctype.purchase_order.purchase_order import (
 		mrn_ordered_qty, mrn_required_qty, sync_material_request_status)
 	assert_can("Material Request", "read")
@@ -286,13 +284,13 @@ def short_close_all(name, reason):
 	for code in dict.fromkeys(r.item_code for r in doc.items):
 		ord_q = flt(ordered.get(code, 0))
 		balance = flt(required.get(code, 0)) - ord_q
-		if ord_q <= 0.0005 or balance <= 0.0005:
+		if balance <= 0.0005:
 			skipped.append(code)
 			continue
 		_close_balance_rows(doc, code, balance, reason)
 		closed.append({"item_code": code, "closed": balance})
 	if not closed:
-		frappe.throw(_("No item has a balance that can be closed. Items must be ordered at least partly."))
+		frappe.throw(_("No item has a balance left to close."))
 	doc.add_comment("Info", _("Short-closed all balances ({0}): {1}").format(
 		", ".join("{0} {1}".format(c["item_code"], c["closed"]) for c in closed), reason))
 	sync_material_request_status(doc.name)

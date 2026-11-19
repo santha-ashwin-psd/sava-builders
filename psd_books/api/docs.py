@@ -4026,7 +4026,7 @@ def send_sales_order_email(sales_order, to, subject, body, cc=None, pdf_html=Non
 def _po_status_from_fulfillment(po_name):
     rows = frappe.get_all("Purchase Order Item",
         filters={"parent": po_name},
-        fields=["qty", "received_qty", "billed_qty"])
+        fields=["qty", "received_qty", "billed_qty", "short_closed_qty"])
     if not rows:
         return "Submitted"
     total_qty = sum(flt(r.qty) for r in rows)
@@ -4034,10 +4034,12 @@ def _po_status_from_fulfillment(po_name):
     billed    = sum(flt(r.billed_qty)   for r in rows)
     if total_qty <= 0:
         return "Submitted"
-    # Sava does not use Bills, so a PO is Closed as soon as every line is received.
-    if received >= total_qty - 0.001:
+    # A Director can short-close what the supplier will not deliver: that part is no longer expected.
+    open_qty = total_qty - sum(flt(r.short_closed_qty) for r in rows)
+    # Sava does not use Bills, so a PO is Closed as soon as every line is received (or short-closed).
+    if open_qty <= 0.001 or received >= open_qty - 0.001:
         return "Closed"
-    if billed >= total_qty - 0.001:
+    if billed >= open_qty - 0.001:
         return "Billed"
     if received > 0 or billed > 0:
         return "Partially Received"
@@ -4068,7 +4070,8 @@ def get_purchase_order_fulfillment(purchase_order):
     rows = frappe.get_all("Purchase Order Item",
         filters={"parent": purchase_order},
         fields=["name", "item_code", "item_name", "qty", "uom", "rate", "amount",
-                "received_qty", "billed_qty", "tax_code"],
+                "received_qty", "billed_qty", "tax_code",
+                "short_closed_qty", "short_close_reason", "short_closed_by"],
         order_by="idx asc")
     # Qty already sitting on Draft Purchase Receipts (GRNs) is not "received" yet (received_qty only
     # moves on submit), but it must not be offered again for a new receipt.
@@ -4078,12 +4081,22 @@ def get_purchase_order_fulfillment(purchase_order):
            JOIN `tabPurchase Receipt` pr ON pr.name = pri.parent
            WHERE COALESCE(NULLIF(pri.purchase_order, ''), pr.purchase_order) = %s AND pr.docstatus = 0
            GROUP BY pri.po_item""", (purchase_order,), as_dict=True)}
+    # Show the item's name (from the Item master), not its code, in the fulfillment and receive screens.
+    _names = {i.name: i.item_name for i in frappe.get_all("Item",
+        filters={"name": ["in", [r["item_code"] for r in rows] or [""]]}, fields=["name", "item_name"])}
     for r in rows:
-        r["remaining_to_receive"] = max(0.0, flt(r["qty"]) - flt(r["received_qty"]))
+        r["item_name"] = _names.get(r["item_code"]) or r.get("item_name") or r["item_code"]
+    for r in rows:
+        _closed = flt(r.get("short_closed_qty"))
+        r["short_closed_qty"]     = _closed
+        r["remaining_to_receive"] = max(0.0, flt(r["qty"]) - flt(r["received_qty"]) - _closed)
         r["remaining_to_bill"]    = max(0.0, flt(r["qty"]) - flt(r["billed_qty"]))
         r["in_draft_qty"]         = _draft.get(str(r["name"]), 0.0)
-        r["receivable_qty"]       = max(0.0, flt(r["qty"]) - flt(r["received_qty"]) - r["in_draft_qty"])
-    return {"lines": rows, "computed_status": _po_status_from_fulfillment(purchase_order)}
+        r["receivable_qty"]       = max(0.0, flt(r["qty"]) - flt(r["received_qty"]) - _closed - r["in_draft_qty"])
+        r["closable_qty"]         = r["receivable_qty"]
+    from psd_books.api.po_short_close import can_short_close
+    return {"lines": rows, "computed_status": _po_status_from_fulfillment(purchase_order),
+            "can_short_close": can_short_close(purchase_order)}
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
@@ -4107,10 +4120,10 @@ def mark_po_received(purchase_order, line_qtys=None):
 
     rows = frappe.get_all("Purchase Order Item",
         filters={"parent": purchase_order},
-        fields=["name", "item_code", "qty", "received_qty"])
+        fields=["name", "item_code", "qty", "received_qty", "short_closed_qty"])
     updated = 0
     for r in rows:
-        remaining = max(0.0, flt(r.qty) - flt(r.received_qty))
+        remaining = max(0.0, flt(r.qty) - flt(r.received_qty) - flt(r.short_closed_qty))
         if remaining <= 0:
             continue
         if line_qtys:
@@ -6177,7 +6190,7 @@ def create_purchase_receipt_from_po(purchase_order, line_qtys=None, supplier_del
     _draft_names = sorted({n for r in _draft_rows for n in (r.receipts or "").split(",") if n})
     pr_items = []
     for it in (po.items or []):
-        remaining = max(0.0, flt(it.qty) - flt(it.received_qty) - _in_draft.get(str(it.name), 0.0))
+        remaining = max(0.0, flt(it.qty) - flt(it.received_qty) - flt(it.get("short_closed_qty")) - _in_draft.get(str(it.name), 0.0))
         if remaining <= 0: continue
         if line_qtys:
             q = min(flt(line_qtys.get(str(it.name), 0)), remaining)
