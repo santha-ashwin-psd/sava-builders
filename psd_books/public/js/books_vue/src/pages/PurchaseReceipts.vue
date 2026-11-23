@@ -71,21 +71,23 @@
         <tr>
           <th style="width:32px" class="th-check"><input type="checkbox" @change="toggleAll" :checked="allChecked"/></th>
           <th @click="sortBy('name')" class="sortable">GRN # <span v-html="sortArrow('name')"></span></th>
+          <th @click="sortBy('entry_date')" class="sortable">Entry Date <span v-html="sortArrow('entry_date')"></span></th>
           <th @click="sortBy('supplier_name')" class="sortable">Supplier <span v-html="sortArrow('supplier_name')"></span></th>
             <th>Project</th>
           <th @click="sortBy('purchase_order')" class="sortable">Purchase Order <span v-html="sortArrow('purchase_order')"></span></th>
           <th>Item Names</th>
           <th @click="sortBy('total_qty')" class="sortable ta-r">Items <span v-html="sortArrow('total_qty')"></span></th>
+          <th @click="sortBy('grand_total')" class="sortable ta-r">Amount (KES) <span v-html="sortArrow('grand_total')"></span></th>
           <th>Status</th>
           <th style="width:120px;text-align:center">Actions</th>
         </tr>
       </thead>
       <tbody>
         <template v-if="loading">
-          <tr v-for="n in 5" :key="n"><td colspan="9" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
+          <tr v-for="n in 5" :key="n"><td colspan="11" style="padding:14px"><div class="shimmer" style="height:12px"></div></td></tr>
         </template>
         <tr v-else-if="!sorted.length">
-          <td colspan="9" class="bk-empty-state">
+          <td colspan="11" class="bk-empty-state">
             <div class="bk-empty-inner">
               <template v-if="search||tab!=='all'">
                 <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -103,11 +105,13 @@
         <tr v-else v-for="r in paged" :key="r.name" class="inv-row" :class="{selected:selectedRows.has(r.name)}">
           <td class="td-check"><input type="checkbox" :disabled="r.source!=='real'" :checked="selectedRows.has(r.name)" @change="toggleRow(r.name)"/></td>
           <td @click="openView(r)"><DocLink doctype="Purchase Receipt" :name="r.name" /></td>
+          <td class="c-muted" @click="openView(r)">{{ r.entry_date ? fmtDate(r.entry_date) : '—' }}</td>
           <td class="fw-600" @click="openView(r)">{{r.supplier_name||r.supplier||'—'}}</td>
             <td class="c-muted" @click="openView(r)">{{projectLabel(r.project)||'—'}}</td>
           <td class="c-muted mono-sm" @click="openView(r)">{{r.purchase_order||'—'}}</td>
           <td @click="openView(r)"><ItemNamesCell :names="itemNames(r.name)" /></td>
           <td class="ta-r c-muted mono-sm" @click="openView(r)">{{r.total_qty||'—'}}</td>
+          <td class="ta-r mono" style="font-weight:600" @click="openView(r)">{{ r.grand_total ? fmtRate(r.grand_total) : '—' }}</td>
           <td @click="openView(r)"><span class="inv-status-badge" :class="statusClass(r)">{{statusLabel(r)}}</span></td>
           <td @click.stop>
             <div class="pr-actions-row">
@@ -236,6 +240,14 @@
                 <div class="pr-info-item">
                   <div class="pr-info-lbl">Total Qty</div>
                   <div class="pr-info-val" style="font-weight:600">{{ (viewDoc.items||[]).reduce((s,i)=>s+flt(i.qty),0)||'—' }}</div>
+                </div>
+                <div class="pr-info-item">
+                  <div class="pr-info-lbl">Entry Date</div>
+                  <div class="pr-info-val" :class="(viewDoc.entry_date||viewDoc.posting_date)?'':'pr-info-empty'">{{ (viewDoc.entry_date||viewDoc.posting_date) ? fmtDate(viewDoc.entry_date||viewDoc.posting_date) : '—' }}</div>
+                </div>
+                <div class="pr-info-item">
+                  <div class="pr-info-lbl">Employee</div>
+                  <div class="pr-info-val" :class="(viewDoc.employee_name||viewDoc.employee)?'':'pr-info-empty'">{{ viewDoc.employee_name || viewDoc.employee || '—' }}</div>
                 </div>
                 <div v-if="viewPOs.length" class="pr-info-item pr-info-full">
                   <div class="pr-info-lbl">{{ viewPOs.length > 1 ? 'Purchase Orders' : 'Purchase Order' }}</div>
@@ -732,6 +744,7 @@ async function load() {
       supplier: r.supplier,
       supplier_name: r.supplier_name,
       posting_date: r.posting_date || r.expected_delivery_date || r.transaction_date,
+      entry_date: r.entry_date || r.posting_date || "",
       // one GRN can cover several POs: show them all (backend sends them in line order)
       purchase_order: (r.purchase_orders && r.purchase_orders.length) ? r.purchase_orders.join(", ") : r.purchase_order,
       total_qty: r.qty_received,
@@ -774,7 +787,7 @@ const sorted = computed(() => {
   const key = sortKey.value, dir = sortDir.value;
   return [...filtered.value].sort((a,b) => {
     let av = a[key], bv = b[key];
-    if (key === "total_qty") { av = flt(av); bv = flt(bv); return dir * (av - bv); }
+    if (key === "total_qty" || key === "grand_total") { av = flt(av); bv = flt(bv); return dir * (av - bv); }
     av = (av||"").toString().toLowerCase(); bv = (bv||"").toString().toLowerCase();
     return dir * av.localeCompare(bv);
   });

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
 	ACTIVITY_CATEGORIES, ACTIVITY_CODE_RE, cleanName, nextActivityCode, matchesFilter, countsFor, matchesSearch,
-	usedOnText, validateActivity,
+	usedOnText, validateActivity, buildUsage, freeActivities,
 } from "./labourActivity.js";
 
 const list = [
@@ -67,5 +67,25 @@ describe("validateActivity", () => {
 	it("rejects an unknown category", () => {
 		expect(validateActivity({ ...ok, category: "Roofing" }, list, "").category).toBe("Choose a category");
 		for (const c of ACTIVITY_CATEGORIES) expect(validateActivity({ ...ok, category: c }, list, "")).toEqual({});
+	});
+});
+
+describe("buildUsage and freeActivities", () => {
+	const contracts = [{ name: "LC-2026-0001", activity: "ACT-001" }, { name: "LC-2026-0002", activity: "ACT-002" }];
+	it("maps activity to its contract, which usedOnText then shows", () => {
+		const u = buildUsage(contracts);
+		expect(u).toEqual({ "ACT-001": "LC-2026-0001", "ACT-002": "LC-2026-0002" });
+		expect(usedOnText(list[0], u)).toBe("LC-2026-0001");
+		expect(usedOnText({ name: "ACT-009" }, u)).toBe("Not used");
+		expect(buildUsage()).toEqual({});
+	});
+	it("lists only active activities that are on no contract", () => {
+		const acts = [...list, { name: "ACT-004", activity_name: "Tiling", disabled: 0 }];
+		expect(freeActivities(acts, contracts).map((a) => a.name)).toEqual(["ACT-004"]);
+	});
+	it("keeps the activity of the contract being edited", () => {
+		const acts = [...list, { name: "ACT-004", activity_name: "Tiling", disabled: 0 }];
+		expect(freeActivities(acts, contracts, "LC-2026-0001", "ACT-001").map((a) => a.name)).toEqual(["ACT-001", "ACT-004"]);
+		expect(freeActivities(acts, contracts, "LC-2026-0001").map((a) => a.name)).toEqual(["ACT-001", "ACT-004"]);
 	});
 });

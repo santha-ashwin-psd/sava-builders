@@ -51,6 +51,20 @@ export function usedOnText(a, usage = {}) {
 	return (usage && usage[a.name]) || "Not used";
 }
 
+// Builds the usage map for usedOnText from contract rows ({ name, activity }): activity code -> contract name.
+export function buildUsage(contracts = []) {
+	const out = {};
+	for (const c of contracts || []) if (c && c.activity && !out[c.activity]) out[c.activity] = c.name;
+	return out;
+}
+
+// Activities that can still be put on a contract: active, and not on any other contract.
+// `keep` is the activity already on the contract being edited; it stays listed.
+export function freeActivities(activities = [], contracts = [], editingName = "", keep = "") {
+	const taken = new Set((contracts || []).filter((c) => c.name !== editingName).map((c) => c.activity));
+	return (activities || []).filter((a) => a.name === keep || (!a.disabled && !taken.has(a.name)));
+}
+
 // Returns { field: message }. `list` = loaded activities, `editingName` = code being edited ("" for new).
 export function validateActivity(form, list = [], editingName = "") {
 	const e = {};

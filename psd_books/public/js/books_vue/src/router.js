@@ -83,6 +83,9 @@ const Reports = () => import("./pages/Reports.vue");
 const LabourPlaceholder = () => import("./pages/LabourPlaceholder.vue");
 const Contractors = () => import("./pages/Contractors.vue");
 const Activities = () => import("./pages/Activities.vue");
+const Contract = () => import("./pages/Contract.vue");
+const WeeklyBill = () => import("./pages/WeeklyBill.vue");
+const Attendance = () => import("./pages/Attendance.vue");
 const PriceLists = () => import("./pages/PriceLists.vue");
 const RecurringBills = () => import("./pages/RecurringBills.vue");
 const BulkImport = () => import("./pages/BulkImport.vue");
@@ -367,9 +370,12 @@ const routes = [
   { path: "/gst/tds",      name: "tds",      component: TDS,         meta: { module: "accounts" } },
   { path: "/gst/tax-templates", name: "tax-templates", component: TaxTemplates, meta: { module: "taxes" } },
   { path: "/reports",      name: "reports",  component: Reports,     meta: { module: null       } },
-  { path: "/labour-contract/contract", name: "labour-contract", component: LabourPlaceholder, meta: { module: null, title: "Contract" } },
-  { path: "/labour-contract/weekly-bill", name: "labour-weekly-bill", component: LabourPlaceholder, meta: { module: null, title: "Weekly Bill" } },
-  { path: "/labour-contract/attendance", name: "labour-attendance", component: LabourPlaceholder, meta: { module: null, title: "Attendance" } },
+  // Contract: same access as Contractors (Books Admin, Director and the Admin job role only); only a Director approves.
+  { path: "/labour-contract/contract", name: "labour-contract", component: Contract, meta: { module: "labour_contractors", doctype: "Labour Contract", title: "Contract" } },
+  // Weekly Bill: same access as Contractors (Books Admin, Director and the Admin job role only); only a Director approves.
+  { path: "/labour-contract/weekly-bill", name: "labour-weekly-bill", component: WeeklyBill, meta: { module: "labour_contractors", doctype: "Labour Weekly Bill", title: "Weekly Bill" } },
+  // Attendance (weekly wages sheet): same access as Contractors (Books Admin, Director and the Admin job role only); only a Director approves.
+  { path: "/labour-contract/attendance", name: "labour-attendance", component: Attendance, meta: { module: "labour_contractors", doctype: "Labour Attendance Sheet", title: "Attendance" } },
   // Contractors: Books Admin, Director and the Admin job role only (module key below is never granted to others; doc_access decides).
   { path: "/labour-contract/contractors", name: "labour-contractors", component: Contractors, meta: { module: "labour_contractors", doctype: "Labour Contractor", title: "Contractors" } },
   // Activities: same access as Contractors (Books Admin, Director and the Admin job role only).

@@ -78,7 +78,7 @@
     </table>
     <div class="vt-footer" v-if="!loading && list.length">Showing <strong>{{ filtered.length }}</strong> of <strong>{{ list.length }}</strong> activities</div>
   </div>
-  <p style="margin:10px 4px;font-size:12px;color:#6b7280">Only active activities appear when you create a contract. Each activity can have one contract per project. An activity used on a contract can be deactivated but not deleted.</p>
+  <p style="margin:10px 4px;font-size:12px;color:#6b7280">Only active activities appear when you create a contract. An activity can be used on one contract only, so create a new activity for each contract. An activity used on a contract can be deactivated but not deleted.</p>
 
   <!-- Add / Edit drawer -->
   <Teleport to="body">
@@ -176,7 +176,7 @@ import { fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
 import {
-  ACTIVITY_CATEGORIES, nextActivityCode, matchesFilter, countsFor, matchesSearch, usedOnText, validateActivity, cleanName,
+  ACTIVITY_CATEGORIES, nextActivityCode, matchesFilter, countsFor, matchesSearch, usedOnText, validateActivity, cleanName, buildUsage,
 } from "../utils/labourActivity.js";
 
 const { toast } = useToast();
@@ -184,8 +184,7 @@ const DT = "Labour Activity";
 const FILTERS = [{ k: "all", l: "All" }, { k: "active", l: "Active" }, { k: "inactive", l: "Inactive" }];
 
 const list = ref([]);
-// Activity code -> where it is used (e.g. "Contract 02"). Empty until the Contract screen exists, so every
-// activity shows "Not used". The server still blocks deleting a used activity.
+// Activity code -> the contract that uses it (e.g. "LC-2026-0001"), filled in load().
 const usage = ref({});
 const loading = ref(true);
 const search = ref("");
@@ -246,6 +245,8 @@ async function load() {
       order: "activity_code asc", limit: 500,
     });
     list.value = rows || [];
+    // Which contract uses each activity. If the user can't read contracts, every activity shows "Not used"; the server still blocks delete.
+    try { usage.value = buildUsage(await apiList("Labour Contract", { fields: ["name", "activity"], limit: 1000 })); } catch (_) { usage.value = {}; }
   } catch (e) {
     toast("Failed to load activities: " + (e.message || e), "error");
   } finally { loading.value = false; }
@@ -315,6 +316,8 @@ onMounted(load);
 </script>
 
 <style scoped>
+.nim-req, .inv-req { color: #dc2626; }
+.cust-drawer-sub { color: #fff; font-size: 12px; margin-top: 2px; }
 .ct-err { margin-top: 4px; font-size: 12px; color: #dc2626; }
 .ct-hint { margin-top: 4px; font-size: 12px; color: #9ca3af; }
 .inv-drawer-panel.open {

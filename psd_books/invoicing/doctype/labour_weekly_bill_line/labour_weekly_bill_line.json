@@ -1,0 +1,70 @@
+{
+ "name": "Labour Weekly Bill Line",
+ "doctype": "DocType",
+ "module": "Invoicing",
+ "creation": "2026-11-23 12:00:00.000000",
+ "modified": "2026-11-23 12:00:00.000000",
+ "modified_by": "Administrator",
+ "owner": "Administrator",
+ "docstatus": 0,
+ "idx": 0,
+ "engine": "InnoDB",
+ "is_submittable": 0,
+ "issingle": 0,
+ "editable_grid": 0,
+ "custom": 0,
+ "istable": 1,
+ "fields": [
+  {
+   "fieldname": "contract",
+   "fieldtype": "Link",
+   "label": "Contract",
+   "options": "Labour Contract",
+   "reqd": 1,
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "contractor",
+   "fieldtype": "Link",
+   "label": "Contractor",
+   "options": "Labour Contractor",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "contract_value",
+   "fieldtype": "Currency",
+   "label": "Contract Value",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "paid_till_now",
+   "fieldtype": "Currency",
+   "label": "Paid Till Now",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "pending_amount",
+   "fieldtype": "Currency",
+   "label": "On Other Pending Bills",
+   "read_only": 1
+  },
+  {
+   "fieldname": "balance",
+   "fieldtype": "Currency",
+   "label": "Balance Amount",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "amount_to_pay",
+   "fieldtype": "Currency",
+   "label": "Amount To Pay Now",
+   "in_list_view": 1
+  }
+ ],
+ "permissions": []
+}

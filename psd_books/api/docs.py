@@ -6345,7 +6345,7 @@ def get_purchase_receipt_list(company=None, limit=200):
 
     # 1) Real Purchase Receipts
     prs = frappe.db.sql("""
-        SELECT name, supplier, supplier_name, posting_date, purchase_order,
+        SELECT name, supplier, supplier_name, posting_date, entry_date, purchase_order,
                status, total_qty, supplier_delivery_note, docstatus, project
         FROM `tabPurchase Receipt`
         WHERE company = %(co)s
@@ -6370,6 +6370,13 @@ def get_purchase_receipt_list(company=None, limit=200):
             lst = _pr_pos.setdefault(r.parent, [])
             if r.purchase_order not in lst:
                 lst.append(r.purchase_order)
+    # GRN amount = sum of line amounts (qty x rate, VAT-inclusive), same as the Grand Total in the drawer.
+    _pr_amt = {}
+    if prs:
+        _pr_amt = {r.parent: flt(r.total) for r in frappe.db.sql(
+            """SELECT parent, SUM(IF(IFNULL(amount, 0) != 0, amount, IFNULL(qty, 0) * IFNULL(rate, 0))) AS total
+               FROM `tabPurchase Receipt Item` WHERE parent IN %(n)s GROUP BY parent""",
+            {"n": tuple(p.name for p in prs)}, as_dict=True)}
     out = []
     pos_with_pr = set()
     for p in prs:
@@ -6383,6 +6390,8 @@ def get_purchase_receipt_list(company=None, limit=200):
             "purchase_orders":       _all_pos,
             "supplier":              p.supplier, "supplier_name": p.supplier_name,
             "posting_date":          p.posting_date,
+            "entry_date":            p.entry_date,
+            "grand_total":           round(_pr_amt.get(p.name, 0), 2),
             "supplier_delivery_note":p.supplier_delivery_note,
             "status":                p.status or ("Cancelled" if p.docstatus == 2 else ("Draft" if p.docstatus == 0 else "Submitted")),
             "receipt_status":        "Cancelled" if p.docstatus == 2 else ("Draft" if p.docstatus == 0 else "Submitted"),

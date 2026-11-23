@@ -357,6 +357,8 @@ onMounted(load);
 </script>
 
 <style scoped>
+.nim-req, .inv-req { color: #dc2626; }
+.cust-drawer-sub { color: #fff; font-size: 12px; margin-top: 2px; }
 .ct-err { margin-top: 4px; font-size: 12px; color: #dc2626; }
 .inv-drawer-panel.open {
   transform: translateX(0);
