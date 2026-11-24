@@ -7,7 +7,8 @@ Endpoints (all POST)
 - close_contract(name): Approved -> Closed; whoever may write Labour Contracts
 - reopen_contract(name): Closed -> Approved; Director only, refused while the project is Closed
 - blockers_for(name): read-only list of what would stop the contract being sent or approved
-- my_permissions() (GET): {can_approve} for the screen; only a Director can approve or send back
+- my_permissions() (GET): {can_approve, can_mark_paid} for the screen (can_mark_paid: Director, Purchase Manager or Admin, for the Weekly Bill Paid button); only a Director can approve or send back
+- paid_totals() (GET): {contract: amount paid on Paid weekly bills} for the caller's company (cards on the Contract screen)
 A Director may hold no Frappe role permission on this doctype, so these check access themselves and save
 with ignore_permissions.
 """
@@ -66,6 +67,16 @@ def approve_contract(name):
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])
+def save_narration(name, narration=None):
+	from psd_books.utils.access import assert_can
+	assert_can(DOCTYPE, "write")
+	doc = _load(name)
+	rules.set_narration(doc, narration)
+	doc.save(ignore_permissions=True)
+	return _summary(doc)
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
 def send_back_contract(name, reason=None):
 	doc = _load(name)
 	rules.send_back(doc, frappe.session.user, frappe.get_roles(), reason)
@@ -95,4 +106,18 @@ def reopen_contract(name):
 
 @frappe.whitelist(allow_guest=False, methods=["GET"])
 def my_permissions():
-	return {"can_approve": rules.APPROVER_ROLE in frappe.get_roles()}
+	from psd_books.invoicing.doctype.labour_weekly_bill import labour_weekly_bill as wb_rules
+	roles = set(frappe.get_roles())
+	return {"can_approve": rules.APPROVER_ROLE in roles,
+		"can_mark_paid": bool(set(wb_rules.PAYER_ROLES) & roles)}
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def paid_totals():
+	from psd_books.utils.access import assert_can
+	assert_can(DOCTYPE, "read")
+	from psd_books.invoicing.doctype.labour_weekly_bill import labour_weekly_bill as bills
+	company = bills.caller_company()
+	names = frappe.get_all(DOCTYPE, filters={"company": company} if company else {}, pluck="name", limit_page_length=0)
+	tot = bills.committed_totals(names)
+	return {n: tot[n]["paid"] for n in names}

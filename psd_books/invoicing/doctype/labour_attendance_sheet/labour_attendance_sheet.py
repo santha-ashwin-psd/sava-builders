@@ -9,7 +9,11 @@ One sheet per week for the whole company. The week runs Saturday to Friday (any 
 - Status: Draft -> Pending approval -> Approved -> Submitted. A Director approves or sends it back (Sent back, editable again).
   Approved is locked; Submitted is final. Statuses are set only through the workflow (doc.flags.las_workflow).
 - Blocked on send and approve: nobody has a day or OT; a paid employee has no rate; a total below zero.
-- Delete only while the sheet was never sent for approval.
+- Cancel (Director only, reason required): a Sent back, Approved or Submitted sheet becomes Cancelled (locked, kept as a record,
+  left out of the wages reports). A Pending sheet is sent back instead.
+- Amend: a Cancelled sheet is copied into a new Draft for the same week (amends_sheet); one amendment per cancelled sheet.
+  Cancelled sheets are ignored by the one-sheet-per-week check and by the values carried from the earlier sheet.
+- Delete only while the sheet was never sent for approval, or when it is Cancelled and has not been amended.
 """
 import datetime
 from decimal import ROUND_HALF_UP, Decimal
@@ -20,13 +24,14 @@ from frappe.model.document import Document
 from frappe.utils import flt
 
 DOCTYPE = "Labour Attendance Sheet"
-DRAFT, PENDING, APPROVED, SUBMITTED, SENT_BACK = "Draft", "Pending approval", "Approved", "Submitted", "Sent back"
+DRAFT, PENDING, APPROVED, SUBMITTED, SENT_BACK, CANCELLED = "Draft", "Pending approval", "Approved", "Submitted", "Sent back", "Cancelled"
 SENDABLE = (DRAFT, SENT_BACK)
-LOCKED = (PENDING, APPROVED, SUBMITTED)
+CANCELLABLE = (SENT_BACK, APPROVED, SUBMITTED)
+LOCKED = (PENDING, APPROVED, SUBMITTED, CANCELLED)
 APPROVER_ROLE = "Director"
 DAYS = ("d_sat", "d_sun", "d_mon", "d_tue", "d_wed", "d_thu", "d_fri")
 INPUT_KEYS = ("grade", "area_of_work") + DAYS + ("rate", "ot_hours", "sha")
-CARRY_KEYS = ("grade", "area_of_work", "rate", "ot_hours", "sha")
+CARRY_KEYS = ("grade", "area_of_work", "rate", "sha")   # OT hours are never carried from the earlier sheet
 LINE_KEYS = ("employee", "employee_name", "id_no") + INPUT_KEYS
 DEFAULT_GRADE, DEFAULT_SHA = "C", 125
 
@@ -112,7 +117,7 @@ def check_edit(doc, before_status):
 		doc.status = DRAFT
 		return
 	if before_status in LOCKED:
-		hint = {PENDING: _("A Director can send it back."), SUBMITTED: _("A submitted sheet is final.")}.get(before_status, "")
+		hint = {PENDING: _("A Director can send it back."), SUBMITTED: _("A submitted sheet is final."), CANCELLED: _("Amend it to make a new sheet.")}.get(before_status, "")
 		frappe.throw(_("{0} is {1} and can't be edited. {2}").format(doc.name, before_status, hint))
 	if doc.status != before_status:
 		frappe.throw(_("Status {0} is set by the approval flow, not by editing.").format(doc.status))
@@ -164,6 +169,41 @@ def submit(doc, user, now):
 	doc.flags.las_workflow = True
 
 
+def cancel(doc, user, roles, reason, now):
+	reason = (reason or "").strip()
+	if doc.status not in CANCELLABLE:
+		frappe.throw(_("{0} is {1}. Only a Sent back, Approved or Submitted sheet can be cancelled. A sheet pending approval can be sent back.").format(doc.name, doc.status))
+	if APPROVER_ROLE not in roles:
+		frappe.throw(_("Only a Director can cancel a Labour Attendance Sheet."))
+	if not reason:
+		frappe.throw(_("Give a reason for cancelling the sheet."))
+	doc.status = CANCELLED
+	doc.cancelled_by = user
+	doc.cancelled_on = now
+	doc.cancel_reason = reason
+	doc.flags.las_workflow = True
+
+
+def check_amend(doc, existing_amendment=None):
+	"""A Cancelled sheet that has no amendment yet can be amended."""
+	if doc.status != CANCELLED:
+		frappe.throw(_("{0} is {1}. Only a cancelled sheet can be amended.").format(doc.name, doc.status))
+	if existing_amendment:
+		frappe.throw(_("{0} was already amended as {1}.").format(doc.name, existing_amendment))
+
+
+def amended_values(doc):
+	"""Values of the new Draft that amends a Cancelled sheet: same week and company, every line copied."""
+	return {"doctype": DOCTYPE, "company": doc.get("company"), "week_start": doc.week_start, "amends_sheet": doc.name, "lines": line_dicts(doc)}
+
+
+def can_delete(status, raised_by, amendment=None):
+	"""Delete rule (on_trash): never sent for approval, or Cancelled and not amended."""
+	if status == CANCELLED:
+		return not amendment
+	return status == DRAFT and not raised_by
+
+
 # ---- database helpers ----
 def active_employees(company):
 	kw = {"filters": {"status": "Active"}, "fields": ["name", "employee_name", "id_no"], "order_by": "employee_name asc", "limit_page_length": 0}
@@ -174,30 +214,35 @@ def active_employees(company):
 
 def previous_values(week_start, company):
 	"""{employee: carried values} from the latest sheet of an earlier week."""
-	filters = {"week_start": ["<", week_start]}
+	filters = {"week_start": ["<", week_start], "status": ["!=", CANCELLED]}
 	if company:
 		filters["company"] = company
 	prev = frappe.get_all(DOCTYPE, filters=filters, order_by="week_start desc", limit_page_length=1, pluck="name")
 	if not prev:
 		return {}
 	rows = frappe.db.sql(
-		"select employee, grade, area_of_work, rate, ot_hours, sha from `tabLabour Attendance Line` where parent = %s", prev[0], as_dict=True)
+		"select employee, grade, area_of_work, rate, sha from `tabLabour Attendance Line` where parent = %s", prev[0], as_dict=True)
 	return {r["employee"]: r for r in rows}
 
 
 def baseline_rows(week_start, company):
-	"""One row per Active employee with no days ticked and the values carried from the earlier sheet."""
+	"""One row per Active employee with no days ticked and grade, area, rate and SHA carried from the earlier sheet. OT hours start at 0 (never carried)."""
 	prev = previous_values(week_start, company)
 	rows = []
 	for e in active_employees(company):
 		p = prev.get(e["name"])
 		row = {"employee": e["name"], "employee_name": e.get("employee_name"), "id_no": e.get("id_no") or "",
 			"grade": (p and p.get("grade")) or DEFAULT_GRADE, "area_of_work": (p and p.get("area_of_work")) or "",
-			"rate": flt(p.get("rate")) if p else 0, "ot_hours": flt(p.get("ot_hours")) if p else 0,
+			"rate": flt(p.get("rate")) if p else 0, "ot_hours": 0,
 			"sha": flt(p.get("sha")) if p else DEFAULT_SHA}
 		row.update({k: 0 for k in DAYS})
 		rows.append(row)
 	return rows
+
+
+def amendment_of(name):
+	"""The sheet that amends this one, or None."""
+	return frappe.db.get_value(DOCTYPE, {"amends_sheet": name}, "name") or None
 
 
 def line_dicts(doc):
@@ -243,7 +288,7 @@ class LabourAttendanceSheet(Document):
 			frappe.throw(_("Pick a date in the week"))
 		ws = saturday_of(self.week_start)
 		self.week_start, self.week_end = ws, friday_of(ws)
-		filters = {"week_start": ws, "name": ["!=", self.name or ""]}
+		filters = {"week_start": ws, "name": ["!=", self.name or ""], "status": ["!=", CANCELLED]}
 		if self.get("company"):
 			filters["company"] = self.company
 		dup = frappe.get_all(DOCTYPE, filters=filters, pluck="name")
@@ -255,5 +300,8 @@ class LabourAttendanceSheet(Document):
 			frappe.throw("<br>".join(errs))
 
 	def on_trash(self):
-		if self.status != DRAFT or self.raised_by:
-			frappe.throw(_("Delete is blocked. A sheet that was sent for approval can't be deleted."))
+		amendment = amendment_of(self.name) if self.status == CANCELLED else None
+		if not can_delete(self.status, self.raised_by, amendment):
+			if amendment:
+				frappe.throw(_("Delete is blocked. {0} was already amended as {1}.").format(self.name, amendment))
+			frappe.throw(_("Delete is blocked. A sheet that was sent for approval can't be deleted. Cancel it first, then delete the cancelled sheet."))

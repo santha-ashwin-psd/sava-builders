@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
 	saturdayISO, fridayISO, weekLabel, weekTitleDates, ordinal, dayDates, daysOf, figures, totalsOf, mergeRows, rowError,
-	sheetBlockers, validateSheet, matchesFilter, countsFor, matchesSearch, actionState, canDelete, toDoc, printHtml, DAYS,
+	sheetBlockers, validateSheet, matchesFilter, countsFor, kpiFor, matchesSearch, actionState, canDelete, amendedNames, toDoc, printHtml, DAYS, cleanNumber,
 } from "./labourAttendance.js";
 
 const row = (days = 7, o = {}) => ({
@@ -91,7 +91,7 @@ describe("blockers and errors", () => {
 describe("list and actions", () => {
 	const list = [{ name: "A", status: "Draft" }, { name: "B", status: "Sent back" }, { name: "C", status: "Pending approval" }, { name: "D", status: "Approved" }, { name: "E", status: "Submitted" }];
 	it("filters and counts", () => {
-		expect(countsFor(list)).toEqual({ all: 5, draft: 2, pending: 1, approved: 1, submitted: 1 });
+		expect(countsFor(list)).toEqual({ all: 5, draft: 2, pending: 1, approved: 1, submitted: 1, cancelled: 0 });
 		expect(list.filter((s) => matchesFilter(s, "draft")).map((s) => s.name)).toEqual(["A", "B"]);
 	});
 	it("searches name, status and week", () => {
@@ -99,11 +99,11 @@ describe("list and actions", () => {
 		expect(matchesSearch({ name: "LAS-2026-0001", status: "Draft", week_start: "2026-10-24" }, "nov")).toBe(false);
 	});
 	it("buttons by status", () => {
-		expect(actionState("Draft", false)).toEqual({ canEdit: true, canSend: true, canApprove: false, canSendBack: false, canSubmit: false });
+		expect(actionState("Draft", false)).toEqual({ canEdit: true, canSend: true, canApprove: false, canSendBack: false, canSubmit: false, canCancel: false, canAmend: false });
 		expect(actionState("Pending approval", true).canApprove).toBe(true);
 		expect(actionState("Pending approval", false).canApprove).toBe(false);
-		expect(actionState("Approved", false)).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canSubmit: true });
-		expect(actionState("Submitted", true)).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canSubmit: false });
+		expect(actionState("Approved", false)).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canSubmit: true, canCancel: false, canAmend: false });
+		expect(actionState("Submitted", true)).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canSubmit: false, canCancel: true, canAmend: false });
 	});
 	it("delete only while never sent", () => {
 		expect(canDelete({ status: "Draft", raised_by: "" })).toBe(true);
@@ -124,5 +124,77 @@ describe("toDoc and print", () => {
 		expect(h).toContain("WEEKLY WAGES PAYMENT SHEET 24/10/26 TO 30/10/26");
 		expect(h).toContain("24TH"); expect(h).toContain("SIGNATURE"); expect(h).toContain("A &lt;b&gt;");
 		expect(h).toContain("<b>3,258</b>"); expect(h).toContain("82.5");
+	});
+});
+
+describe("kpiFor", () => {
+	const s = (status, week_start, total_amount) => ({ status, week_start, total_amount });
+	const list = [
+		s("Draft", "2026-11-21", 999), s("Sent back", "2026-11-14", 500), s("Pending approval", "2026-11-14", 4000),
+		s("Approved", "2026-11-07", 3000), s("Submitted", "2026-10-31", 2000), s("Submitted", "2026-10-24", 1000),
+	];
+	it("counts and totals each group", () => {
+		const k = kpiFor(list, "2026-11-24");
+		expect(k.all).toEqual({ n: 6, value: 11499 });
+		expect(k.pending).toEqual({ n: 1, value: 4000 });
+		expect(k.approved).toEqual({ n: 1, value: 3000 });
+		expect(k.submitted).toEqual({ n: 2, value: 3000 });
+	});
+	it("sums only Submitted sheets of the current month", () => {
+		expect(kpiFor(list, "2026-11-24").monthValue).toBe(0);
+		expect(kpiFor(list, "2026-10-05").monthValue).toBe(3000);
+		expect(kpiFor(list, "2026-09-01").monthValue).toBe(0);
+	});
+	it("takes the newest Submitted week", () => {
+		expect(kpiFor(list, "2026-11-24").latest).toEqual({ week_start: "2026-10-31", value: 2000 });
+		expect(kpiFor([s("Draft", "2026-11-21", 5)], "2026-11-24").latest).toBeNull();
+	});
+	it("handles an empty list", () => {
+		const k = kpiFor([], "2026-11-24");
+		expect(k.all.n).toBe(0); expect(k.monthValue).toBe(0); expect(k.latest).toBeNull();
+	});
+});
+
+
+describe("cancel, amend, delete", () => {
+	it("cancel is for a Director on Sent back, Approved or Submitted", () => {
+		for (const st of ["Sent back", "Approved", "Submitted"]) { expect(actionState(st, true).canCancel).toBe(true); expect(actionState(st, false).canCancel).toBe(false); }
+		for (const st of ["Draft", "Pending approval", "Cancelled"]) expect(actionState(st, true).canCancel).toBe(false);
+	});
+	it("a cancelled sheet is locked and can be amended", () => {
+		const a = actionState("Cancelled", true);
+		expect(a).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canSubmit: false, canCancel: false, canAmend: true });
+		expect(actionState("Approved", true).canAmend).toBe(false);
+	});
+	it("a cancelled sheet is deleted only while nothing amends it", () => {
+		const list = [{ name: "A", status: "Cancelled" }, { name: "B", status: "Cancelled" }, { name: "C", status: "Draft", amends_sheet: "B" }];
+		const am = amendedNames(list);
+		expect(am.has("B")).toBe(true); expect(am.has("A")).toBe(false);
+		expect(canDelete(list[0], am)).toBe(true); expect(canDelete(list[1], am)).toBe(false);
+		expect(canDelete(list[2], am)).toBe(true);
+		expect(canDelete({ status: "Approved", raised_by: "u" }, am)).toBe(false);
+		expect(canDelete({ name: "A", status: "Cancelled" })).toBe(true);
+	});
+	it("All lists Cancelled too; Cancelled has its own filter and count", () => {
+		const list = [{ status: "Draft" }, { status: "Approved" }, { status: "Cancelled" }, { status: "Cancelled" }];
+		expect(countsFor(list)).toEqual({ all: 4, draft: 1, pending: 0, approved: 1, submitted: 0, cancelled: 2 });
+		expect(list.filter((s) => matchesFilter(s, "all")).length).toBe(4);
+		expect(list.filter((s) => matchesFilter(s, "cancelled")).length).toBe(2);
+	});
+	it("cards leave out Cancelled sheets", () => {
+		const k = kpiFor([{ status: "Submitted", week_start: "2026-11-14", total_amount: 100 }, { status: "Cancelled", week_start: "2026-11-21", total_amount: 900 }], "2026-11-24");
+		expect(k.all).toEqual({ n: 1, value: 100 }); expect(k.monthValue).toBe(100); expect(k.latest).toEqual({ week_start: "2026-11-14", value: 100 });
+	});
+});
+describe("rate / OT hours / SHA input", () => {
+	it("keeps digits and one decimal point only", () => {
+		expect(cleanNumber("afd0")).toBe("0");
+		expect(cleanNumber("abc")).toBe("");
+		expect(cleanNumber("1,250")).toBe("1250");
+		expect(cleanNumber("-3")).toBe("3");
+		expect(cleanNumber("2.5")).toBe("2.5");
+		expect(cleanNumber("1.2.3")).toBe("1.2");
+		expect(cleanNumber(125)).toBe("125");
+		expect(cleanNumber(null)).toBe("");
 	});
 });

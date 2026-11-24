@@ -6,7 +6,7 @@
       <input v-model="search" placeholder="Search wages sheets…" class="sales-search-input" autocomplete="off"/>
     </div>
     <div class="sales-pills">
-      <button v-for="f in FILTERS" :key="f.k" class="sales-pill" :class="{active: activeFilter===f.k}" @click="activeFilter=f.k">
+      <button v-for="f in FILTERS" :key="f.k" class="sales-pill" :class="[{active: activeFilter===f.k}, f.k!=='all' ? PILL_CLASS[f.k] : '']" @click="activeFilter=f.k">
         {{ f.l }}
         <span class="sales-pill-count" :class="activeFilter===f.k?'':'zb-pc-muted'">{{ counts[f.k] }}</span>
       </button>
@@ -15,6 +15,20 @@
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
       <button class="sales-btn-primary" :disabled="!$canCreate('admin')" :title="!$canCreate('admin') ? 'Not permitted' : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> New Wages Sheet</button>
     </div>
+  </div>
+
+  <!-- KPI cards (click a card to filter the list) -->
+  <div class="bk-kpi-grid bk-kpi-grid-4">
+    <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeFilter='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Sheets</div><div class="bk-kpi-value">{{ kpi.all.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.all.value) }}</div></div></div></div>
+    <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeFilter='pending'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Pending Approval</div><div class="bk-kpi-value bk-kpi-amber">{{ kpi.pending.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.pending.value) }}</div></div></div></div>
+    <div class="bk-kpi-card clickable" @click="activeFilter='approved'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Approved</div><div class="bk-kpi-value bk-kpi-green">{{ kpi.approved.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.approved.value) }}</div></div></div></div>
+    <div class="bk-kpi-card clickable" @click="activeFilter='submitted'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Submitted</div><div class="bk-kpi-value bk-kpi-blue">{{ kpi.submitted.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.submitted.value) }}</div></div></div></div>
+  </div>
+  <div class="bk-stat-grid">
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Wages This Month</div><div class="bk-stat-value bk-kpi-blue" style="font-size:16px">KES {{ fmtKES(kpi.monthValue) }}</div></div><div class="bk-stat-icon" style="background:#cffafe;color:#0891b2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Latest Week Wages</div><div class="bk-stat-value bk-kpi-blue" style="font-size:16px">KES {{ fmtKES(kpi.latest ? kpi.latest.value : 0) }}</div><div class="ct-kpi-sub" style="font-size:11px">{{ kpi.latest ? weekLabel(kpi.latest.week_start) : 'No approved sheet yet' }}</div></div><div class="bk-stat-icon" style="background:#cffafe;color:#0891b2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Pending Approval Amount</div><div class="bk-stat-value bk-kpi-amber" style="font-size:16px">KES {{ fmtKES(kpi.pending.value) }}</div></div><div class="bk-stat-icon" style="background:#fef3c7;color:#d97706"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Submitted Total</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">KES {{ fmtKES(kpi.submitted.value) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div></div></div>
   </div>
 
   <div class="inv-table-wrap">
@@ -36,13 +50,13 @@
           <td class="vt-td vt-td-mono">{{ s.name }}</td>
           <td class="vt-td vt-td-secondary">{{ weekLabel(s.week_start) }}</td>
           <td class="vt-td vt-td-r">{{ fmtKES(s.total_amount) }}</td>
-          <td class="vt-td"><span class="vt-badge" :class="'vt-badge-'+statusClass(s.status)"><span class="vt-badge-dot"></span>{{ s.status }}</span></td>
+          <td class="vt-td"><span class="vt-badge" :class="'vt-badge-'+badgeClass(s.status)"><span class="vt-badge-dot"></span>{{ s.status }}</span></td>
         </tr>
       </tbody>
     </table>
     <div class="vt-footer" v-if="!loading && list.length">Showing <strong>{{ filtered.length }}</strong> of <strong>{{ list.length }}</strong> sheets</div>
   </div>
-  <p style="margin:10px 4px;font-size:12px;color:#6b7280">One sheet per week for all Active employees, Saturday to Friday. A Director approves each sheet; once sent for approval it is locked, and a submitted sheet is final.</p>
+  <p style="margin:10px 4px;font-size:12px;color:#6b7280">One sheet per week for all Active employees, Saturday to Friday. A Director approves each sheet; once sent for approval it is locked, and a submitted sheet is final. A Director can cancel a sent back, approved or submitted sheet; a cancelled sheet can be amended into a new draft, or deleted if it was not amended.</p>
 
   <Teleport to="body">
     <div v-if="showDrawer" class="inv-drawer-bg" @click.self="showDrawer=false"></div>
@@ -66,6 +80,8 @@
         <div v-if="form.status===SENT_BACK && form.rejection_reason" class="ct-note ct-note-bad">Sent back: {{ form.rejection_reason }}</div>
         <div v-if="form.status===PENDING" class="ct-note">Waiting for Director approval. The sheet is locked.</div>
         <div v-if="form.status===APPROVED" class="ct-note ct-note-ok">Approved by {{ ownerName(form.approved_by) }} on {{ fmtDate(form.approved_on) }}. Submit to finalise.</div>
+        <div v-if="form.status===CANCELLED" class="ct-note ct-note-bad">Cancelled by {{ ownerName(form.cancelled_by) }} on {{ fmtDate(form.cancelled_on) }}. Reason: {{ form.cancel_reason }}. {{ amendment ? 'Amended as ' + amendment + '.' : 'Amend it to make a new sheet for this week.' }}</div>
+        <div v-if="form.amends_sheet && form.status!==CANCELLED" class="ct-note">This sheet amends the cancelled sheet {{ form.amends_sheet }}.</div>
         <div v-if="form.status===SUBMITTED" class="ct-note ct-note-ok">Submitted by {{ ownerName(form.submitted_by) }} on {{ fmtDate(form.submitted_on) }}. This week's wages sheet is final.</div>
 
         <!-- Card 1: Week -->
@@ -140,10 +156,10 @@
                       <input type="checkbox" :checked="!!Number(r[d.key])" :disabled="!ac.canEdit" :aria-label="'Present ' + d.label + ', ' + r.employee_name" @change="r[d.key] = $event.target.checked ? 1 : 0"/>
                     </td>
                     <td class="vt-td vt-td-r">{{ figures(r).days }}</td>
-                    <td class="vt-td vt-td-r"><input type="number" min="0" v-model.number="r.rate" class="inv-fi" style="width:80px;text-align:right" :disabled="!ac.canEdit" :aria-label="'Rate per day, ' + r.employee_name"/></td>
-                    <td class="vt-td vt-td-r"><input type="number" min="0" step="0.5" v-model.number="r.ot_hours" class="inv-fi" style="width:64px;text-align:right" :disabled="!ac.canEdit" :aria-label="'OT hours, ' + r.employee_name"/></td>
+                    <td class="vt-td vt-td-r"><input type="text" inputmode="decimal" autocomplete="off" :value="r.rate" @input="onNumInput($event, r, 'rate')" class="inv-fi" style="width:80px;text-align:right" :disabled="!ac.canEdit" :aria-label="'Rate per day, ' + r.employee_name"/></td>
+                    <td class="vt-td vt-td-r"><input type="text" inputmode="decimal" autocomplete="off" :value="r.ot_hours" @input="onNumInput($event, r, 'ot_hours')" class="inv-fi" style="width:64px;text-align:right" :disabled="!ac.canEdit" :aria-label="'OT hours, ' + r.employee_name"/></td>
                     <td class="vt-td vt-td-r">{{ fmtOt(figures(r).otAmount) }}</td>
-                    <td class="vt-td vt-td-r"><input type="number" min="0" v-model.number="r.sha" class="inv-fi" style="width:72px;text-align:right" :disabled="!ac.canEdit" :aria-label="'SHA, ' + r.employee_name"/></td>
+                    <td class="vt-td vt-td-r"><input type="text" inputmode="decimal" autocomplete="off" :value="r.sha" @input="onNumInput($event, r, 'sha')" class="inv-fi" style="width:72px;text-align:right" :disabled="!ac.canEdit" :aria-label="'SHA, ' + r.employee_name"/></td>
                     <td class="vt-td vt-td-r"><b>{{ fmtKES(figures(r).total) }}</b><div v-if="rowError(r)" class="ct-err">{{ rowError(r) }}</div></td>
                   </tr>
                 </tbody>
@@ -173,6 +189,8 @@
           <button v-if="ac.canSend" class="add-btn-more" :disabled="busy || !canWrite || !!existingSheet || blockers.length>0" @click="sendForApproval"><span v-html="icon('check',13)"></span> Send for approval</button>
           <button v-if="ac.canApprove" class="add-btn-more" :disabled="busy || blockers.length>0" @click="approve">Approve as Director</button>
           <button v-if="ac.canSendBack" class="add-btn-cancel" :disabled="busy" @click="sendBack">Send back</button>
+          <button v-if="ac.canCancel" class="add-btn-cancel at-cancel-sheet" :disabled="busy" @click="cancelSheet">Cancel sheet</button>
+          <button v-if="ac.canAmend" class="add-btn-more" :disabled="busy || !canWrite || !!amendment" :title="amendment ? 'Already amended as ' + amendment : ''" @click="amendSheet">Amend</button>
           <button v-if="ac.canSubmit" class="add-btn-more" :disabled="busy || !canWrite" @click="submitSheet">Submit</button>
         </div>
       </div>
@@ -196,8 +214,8 @@ import { icon } from "../utils/icons.js";
 import { todayISO } from "../utils/labourContractor.js";
 import { statusClass, fmtKES } from "../utils/labourContract.js";
 import {
-  PENDING, APPROVED, SUBMITTED, SENT_BACK, DAYS, GRADES, weekLabel, dayDates, figures, totalsOf, mergeRows, rowError,
-  sheetBlockers, validateSheet, matchesFilter, countsFor, matchesSearch, actionState, canDelete, toDoc, printHtml,
+  PENDING, APPROVED, SUBMITTED, SENT_BACK, CANCELLED, DAYS, GRADES, weekLabel, dayDates, figures, totalsOf, mergeRows, rowError,
+  sheetBlockers, validateSheet, matchesFilter, countsFor, kpiFor, matchesSearch, actionState, canDelete, amendedNames, toDoc, printHtml, cleanNumber,
 } from "../utils/labourAttendance.js";
 
 const { toast } = useToast();
@@ -206,7 +224,9 @@ const { prompt } = usePrompt();
 const { canEdit: canEditModule } = usePermissions();
 const DT = "Labour Attendance Sheet";
 const API = "psd_books.api.labour_attendance.";
-const FILTERS = [{ k: "all", l: "All" }, { k: "draft", l: "Draft" }, { k: "pending", l: "Pending" }, { k: "approved", l: "Approved" }, { k: "submitted", l: "Submitted" }];
+const FILTERS = [{ k: "all", l: "All" }, { k: "draft", l: "Draft" }, { k: "pending", l: "Pending" }, { k: "approved", l: "Approved" }, { k: "submitted", l: "Submitted" }, { k: "cancelled", l: "Cancelled" }];
+
+const PILL_CLASS = { draft: "pill-draft", pending: "pill-unpaid", approved: "pill-paid", submitted: "pill-submitted", cancelled: "pill-cancelled" };
 
 const list = ref([]);
 const canApprove = ref(false);
@@ -225,7 +245,12 @@ const formErrors = reactive({});
 const form = reactive({});
 
 const canWrite = computed(() => canEditModule("admin"));
-const blank = () => ({ name: "", status: "Draft", week_date: todayISO(), raised_by: "", approved_by: "", approved_on: "", submitted_by: "", submitted_on: "", rejection_reason: "" });
+function onNumInput(e, r, key) {   // Rate, OT hours, SHA: digits and one decimal point only
+  const c = cleanNumber(e.target.value);
+  e.target.value = c;
+  r[key] = c;
+}
+const blank = () => ({ name: "", status: "Draft", week_date: todayISO(), raised_by: "", approved_by: "", approved_on: "", submitted_by: "", submitted_on: "", rejection_reason: "", cancelled_by: "", cancelled_on: "", cancel_reason: "", amends_sheet: "" });
 function resetForm(src) {
   Object.keys(formErrors).forEach((k) => delete formErrors[k]);
   Object.keys(form).forEach((k) => delete form[k]);
@@ -234,9 +259,13 @@ function resetForm(src) {
 }
 
 const counts = computed(() => countsFor(list.value));
+const kpi = computed(() => kpiFor(list.value, todayISO()));
 const filtered = computed(() => list.value.filter((s) => matchesFilter(s, activeFilter.value) && matchesSearch(s, search.value)));
 const ac = computed(() => actionState(form.status, canApprove.value));
-const canDeleteDoc = computed(() => !!form.name && canDelete(form));
+const amended = computed(() => amendedNames(list.value));
+const amendment = computed(() => (form.name ? (list.value.find((s) => s.amends_sheet === form.name) || {}).name || "" : ""));
+const canDeleteDoc = computed(() => !!form.name && canDelete(form, amended.value));
+const badgeClass = (st) => (st === CANCELLED ? "red" : statusClass(st));
 const totals = computed(() => totalsOf(rows.value));
 const blockers = computed(() => sheetBlockers(rows.value));
 const dates = computed(() => dayDates(form.week_date || todayISO()));
@@ -248,7 +277,7 @@ async function load() {
   loading.value = true;
   try {
     const [sheets, perm] = await Promise.all([
-      apiList(DT, { fields: ["name", "status", "week_start", "week_end", "total_amount", "raised_by"], order: "week_start desc, modified desc", limit: 1000 }),
+      apiList(DT, { fields: ["name", "status", "week_start", "week_end", "total_amount", "raised_by", "amends_sheet", "cancelled_by", "cancelled_on", "cancel_reason"], order: "week_start desc, modified desc", limit: 1000 }),
       apiGET("psd_books.api.labour_contract.my_permissions", {}),
     ]);
     list.value = sheets || [];
@@ -281,7 +310,7 @@ async function openEdit(s) {
   showDrawer.value = true;
   try {
     const doc = await apiGet(DT, s.name);
-    Object.assign(form, { status: doc.status, rejection_reason: doc.rejection_reason, approved_by: doc.approved_by, approved_on: doc.approved_on, raised_by: doc.raised_by, submitted_by: doc.submitted_by, submitted_on: doc.submitted_on });
+    Object.assign(form, { status: doc.status, rejection_reason: doc.rejection_reason, approved_by: doc.approved_by, approved_on: doc.approved_on, raised_by: doc.raised_by, submitted_by: doc.submitted_by, submitted_on: doc.submitted_on, cancelled_by: doc.cancelled_by, cancelled_on: doc.cancelled_on, cancel_reason: doc.cancel_reason, amends_sheet: doc.amends_sheet });
     if (actionState(doc.status, false).canEdit) await refreshRows(doc.lines || []);
     else rows.value = (doc.lines || []).map((l) => ({ ...l })); // locked: show the sheet as saved
   } catch (e) { toast(e.message || "Could not open sheet", "error"); }
@@ -316,7 +345,7 @@ async function run(method, args, okMsg) {
     toast(okMsg);
     await load();
     if (r && r.name) {
-      Object.assign(form, { status: r.status, raised_by: r.raised_by, approved_by: r.approved_by, approved_on: r.approved_on, submitted_by: r.submitted_by, submitted_on: r.submitted_on, rejection_reason: r.rejection_reason });
+      Object.assign(form, { status: r.status, raised_by: r.raised_by, approved_by: r.approved_by, approved_on: r.approved_on, submitted_by: r.submitted_by, submitted_on: r.submitted_on, rejection_reason: r.rejection_reason, cancelled_by: r.cancelled_by, cancelled_on: r.cancelled_on, cancel_reason: r.cancel_reason, amends_sheet: r.amends_sheet });
       if (actionState(r.status, false).canEdit) await refreshRows(r.lines || []);
       else rows.value = (r.lines || []).map((l) => ({ ...l }));
     }
@@ -326,13 +355,13 @@ async function run(method, args, okMsg) {
 }
 
 async function sendForApproval() {
-  const ok = await confirm({ title: "Send for approval?", body: "Send this wages sheet to the Director for approval? Wages: KES " + fmtKES(totals.value.total) + " for " + totals.value.employees + " employees. The sheet is locked once it is sent.", okLabel: "Send for approval", okStyle: "primary" });
+  const ok = await confirm({ title: "Confirm to send for approval", body: "Send this wages sheet to the Director for approval? Wages: KES " + fmtKES(totals.value.total) + " for " + totals.value.employees + " employees. The sheet is locked once it is sent.", okLabel: "Send for approval", okStyle: "primary" });
   if (!ok) return;
   const name = await saveDraft(true);
   if (name) await run("send_for_approval", { name }, "Sent for Director approval");
 }
 async function approve() {
-  const ok = await confirm({ title: "Approve wages sheet?", body: "Approve " + form.name + "? Wages: KES " + fmtKES(totals.value.total) + " for " + totals.value.employees + " employees. Submit it afterwards to finalise.", okLabel: "Approve", okStyle: "primary" });
+  const ok = await confirm({ title: "Confirm to approve", body: "Approve " + form.name + "? Wages: KES " + fmtKES(totals.value.total) + " for " + totals.value.employees + " employees. Submit it afterwards to finalise.", okLabel: "Approve", okStyle: "primary" });
   if (ok) await run("approve_sheet", { name: form.name }, "Sheet approved");
 }
 async function sendBack() {
@@ -340,12 +369,31 @@ async function sendBack() {
   if (!reason || !reason.trim()) return;
   await run("send_back_sheet", { name: form.name, reason: reason.trim() }, "Sent back");
 }
+async function cancelSheet() {
+  const reason = await prompt({ title: "Cancel sheet " + form.name, label: "Reason", okLabel: "Cancel sheet" });
+  if (!reason || !reason.trim()) return;
+  await run("cancel_sheet", { name: form.name, reason: reason.trim() }, "Sheet cancelled");
+}
+async function amendSheet() {
+  const ok = await confirm({ title: "Confirm to amend", body: "Create a new Draft for " + weekLabel(form.week_date) + " with all lines copied from " + form.name + "? Correct it, then send it for approval.", okLabel: "Amend", okStyle: "primary" });
+  if (!ok) return;
+  busy.value = true;
+  try {
+    const r = await apiPOST(API + "amend_sheet", { name: form.name });
+    toast("Amendment created: " + r.name);
+    await load();
+    const s = list.value.find((x) => x.name === r.name);
+    if (s) await openEdit(s); else showDrawer.value = false;
+  } catch (e) {
+    toast(e.message || "Could not amend sheet", "error");
+  } finally { busy.value = false; }
+}
 async function submitSheet() {
-  const ok = await confirm({ title: "Submit wages sheet?", body: "Submit " + form.name + "? A submitted sheet is final and can't be edited." });
+  const ok = await confirm({ title: "Confirm to submit", body: "Submit " + form.name + "? A submitted sheet is final and can't be edited." });
   if (ok) await run("submit_sheet", { name: form.name }, "Sheet submitted");
 }
 async function doDelete() {
-  const ok = await confirm({ title: "Delete sheet?", body: "Delete " + form.name + "? Only a sheet never sent for approval can be deleted." });
+  const ok = await confirm({ title: "Confirm to delete", body: "Delete " + form.name + "? Only a sheet never sent for approval, or a cancelled sheet that was not amended, can be deleted." });
   if (!ok) return;
   busy.value = true;
   try { await apiDelete(DT, form.name); toast("Sheet deleted"); showDrawer.value = false; await load(); }
@@ -367,6 +415,7 @@ onMounted(load);
 </script>
 
 <style scoped>
+.ct-kpi-sub { display: block !important; color: #6b7280; font-weight: 500; }
 .nim-req, .inv-req { color: #dc2626; }
 .ct-err { margin-top: 4px; font-size: 12px; color: #dc2626; }
 .ct-dd { font-size: 10px; font-weight: 500; color: #9ca3af; letter-spacing: 0; }
@@ -412,6 +461,7 @@ onMounted(load);
 .at-foot .ct-info { flex: 1; min-width: 260px; }
 .at-totals { padding: 8px 14px; border-radius: 8px; border: 1px solid #1a6ef7; background: #fff; font-weight: 600; font-size: 13px; color: #111827; }
 .at-del { margin-right: auto; color: #dc2626; }
+.at-cancel-sheet { color: #dc2626; border-color: #fecaca; }
 .add-btn-cancel:disabled, .add-btn-more:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 900px) { .at-drawer { width: 100% !important; right: -100%; max-width: 100%; } }
 </style>

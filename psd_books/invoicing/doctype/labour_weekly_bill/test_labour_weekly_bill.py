@@ -117,7 +117,7 @@ class TestWorkflow(unittest.TestCase):
 		self.assertEqual((d.status, d.approved_by), ("Approved", "d@x"))
 
 	def test_only_draft_or_sent_back_can_be_sent(self):
-		for st in ("Pending approval", "Approved"):
+		for st in ("Pending approval", "Approved", "Paid", "Cancelled"):
 			with self.assertRaises(Exception):
 				wb.send_for_approval(Doc(st), [], "a@x")
 		wb.send_for_approval(Doc("Sent back"), [], "a@x")
@@ -136,6 +136,61 @@ class TestWorkflow(unittest.TestCase):
 		with self.assertRaises(Exception):
 			wb.approve(Doc("Pending approval"), ["Certificate expired"], "d@x", ["Director"], "now")
 
+	def test_mark_paid(self):
+		d = Doc("Approved")
+		for roles in (["Site Engineer"], ["Books Admin"], []):
+			with self.assertRaises(Exception):
+				wb.mark_paid(d, "s@x", roles, "now")
+		wb.mark_paid(d, "d@x", ["Director"], "now")
+		self.assertEqual((d.status, d.paid_by, d.paid_on), ("Paid", "d@x", "now"))
+		for role in ("Purchase Manager", "Admin"):
+			e = Doc("Approved")
+			wb.mark_paid(e, "u@x", [role], "now")
+			self.assertEqual((e.status, e.paid_by), ("Paid", "u@x"))
+		for st in ("Draft", "Pending approval", "Sent back", "Paid"):
+			with self.assertRaises(Exception):
+				wb.mark_paid(Doc(st), "d@x", ["Director"], "now")
+
+	def test_reopen_unpaid_cancel(self):
+		d = Doc("Approved")
+		d.approved_by, d.approved_on = "d@x", "t"
+		with self.assertRaises(Exception):
+			wb.reopen(d, "a@x", ["Books Admin"])
+		wb.reopen(d, "d@x", ["Director"])
+		self.assertEqual((d.status, d.approved_by, d.approved_on), ("Draft", None, None))
+		for st in ("Draft", "Pending approval", "Paid", "Cancelled"):
+			with self.assertRaises(Exception):
+				wb.reopen(Doc(st), "d@x", ["Director"])
+		p = Doc("Paid")
+		p.paid_by, p.paid_on = "d@x", "t"
+		with self.assertRaises(Exception):
+			wb.mark_unpaid(p, "a@x", ["Books Admin"])
+		wb.mark_unpaid(p, "d@x", ["Director"])
+		self.assertEqual((p.status, p.paid_by, p.paid_on), ("Approved", None, None))
+		with self.assertRaises(Exception):
+			wb.mark_unpaid(Doc("Approved"), "d@x", ["Director"])
+
+	def test_cancel_needs_approved_director_and_reason(self):
+		with self.assertRaises(Exception):
+			wb.cancel(Doc("Paid"), "d@x", ["Director"], "wrong", "now")  # mark unpaid first
+		for st in ("Draft", "Pending approval", "Sent back", "Cancelled"):
+			with self.assertRaises(Exception):
+				wb.cancel(Doc(st), "d@x", ["Director"], "wrong", "now")
+		with self.assertRaises(Exception):
+			wb.cancel(Doc("Approved"), "a@x", ["Books Admin"], "wrong", "now")
+		with self.assertRaises(Exception):
+			wb.cancel(Doc("Approved"), "d@x", ["Director"], "  ", "now")
+		d = Doc("Approved")
+		wb.cancel(d, "d@x", ["Director"], "entered twice", "now")
+		self.assertEqual((d.status, d.cancel_reason, d.cancelled_by, d.cancelled_on), ("Cancelled", "entered twice", "d@x", "now"))
+
+	def test_can_delete(self):
+		self.assertTrue(wb.can_delete("Draft", None))
+		self.assertTrue(wb.can_delete("Cancelled", "a@x"))
+		for st in ("Draft", "Sent back", "Pending approval", "Approved", "Paid"):
+			self.assertFalse(wb.can_delete(st, "a@x"))
+		self.assertFalse(wb.can_delete("Approved", None))
+
 	def test_send_back(self):
 		d = Doc("Pending approval")
 		with self.assertRaises(Exception):
@@ -150,7 +205,7 @@ class TestWorkflow(unittest.TestCase):
 
 class TestEditLock(unittest.TestCase):
 	def test_locked(self):
-		for st in ("Pending approval", "Approved"):
+		for st in ("Pending approval", "Approved", "Paid", "Cancelled"):
 			with self.assertRaises(Exception):
 				wb.check_edit(Doc(st), st)
 
@@ -198,7 +253,7 @@ class TestSync(unittest.TestCase):
 		cons = [types.SimpleNamespace(name="LC-1", contractor="LCON-1", contract_value=500000),
 			types.SimpleNamespace(name="LC-2", contractor="LCON-2", contract_value=750000)]
 		p1 = mock.patch.object(wb, "approved_contracts", return_value=cons)
-		p2 = mock.patch.object(frappe.db, "sql", return_value=[("LC-2", "Approved", 270000), ("LC-2", "Pending approval", 30000)])
+		p2 = mock.patch.object(frappe.db, "sql", return_value=[("LC-2", "Paid", 270000), ("LC-2", "Approved", 10000), ("LC-2", "Pending approval", 20000)])
 		p1.start(); p2.start()
 		self.addCleanup(p1.stop); self.addCleanup(p2.stop)
 

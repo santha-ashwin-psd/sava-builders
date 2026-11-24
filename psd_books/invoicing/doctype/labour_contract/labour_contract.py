@@ -69,6 +69,14 @@ def check_edit(doc, before_status):
 		frappe.throw(_("Status {0} is set by the approval flow, not by editing.").format(doc.status))
 
 
+def set_narration(doc, narration):
+	"""The narration of an Approved contract can still be changed; nothing else on it can."""
+	if doc.status != APPROVED:
+		frappe.throw(_("{0} is {1}. The narration can be saved here only on an Approved contract.").format(doc.name, doc.status))
+	doc.narration = (narration or "").strip()
+	doc.flags.lc_workflow = True
+
+
 def send_for_approval(doc, problems, user):
 	if doc.status not in SENDABLE:
 		frappe.throw(_("{0} is {1}. Only a Draft or Sent back contract can be sent for approval.").format(doc.name, doc.status))

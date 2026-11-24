@@ -5,8 +5,15 @@ Endpoints
   and paid_this_week (the bill of that week already holding it: Pending / Approved, or an earlier Draft; or "")
 - list_columns(names) (GET): per bill in names, the contracts paid on it, their projects and the balance still to pay on them after the bill
   (only bills of the caller's company)
+- balance_by_project() (GET): {project: value - paid till now} over the Approved contracts of the caller's company (contracts of a Closed
+  project left out); the Balance To Pay card on the Weekly Bill screen
 - send_for_approval(name) (POST): Draft / Sent back -> Pending approval, after a fresh check of the figures
 - approve_bill(name) (POST): Pending approval -> Approved; Director only (a Books Admin is not enough)
+- mark_paid(name) (POST): Approved -> Paid, the payment is recorded; Director only
+- reopen_bill(name) (POST): Approved -> Draft for editing (approval cleared); Director only
+- mark_unpaid(name) (POST): Paid -> Approved; Director only
+- cancel_bill(name, reason) (POST): Approved -> Cancelled, reason required; Director only
+- amend_bill(name) (POST): new Draft bill from a Cancelled one (same week and amounts), one amendment per cancelled bill
 - send_back_bill(name, reason) (POST): Pending approval -> Sent back; Director only, reason required
 A Director may hold no Frappe role permission on this doctype, so these check access themselves and save
 with ignore_permissions.
@@ -19,7 +26,7 @@ from psd_books.invoicing.doctype.labour_weekly_bill import labour_weekly_bill as
 
 DOCTYPE = "Labour Weekly Bill"
 FIELDS = ["name", "status", "project", "week_start", "week_end", "total_amount", "raised_by", "approved_by", "approved_on",
-	"rejection_reason"]
+	"paid_by", "paid_on", "cancelled_by", "cancelled_on", "cancel_reason", "amended_from", "rejection_reason"]
 
 
 def _load(name):
@@ -75,6 +82,17 @@ def list_columns(names):
 	return rules.list_columns(lines, projects)
 
 
+@frappe.whitelist(allow_guest=False, methods=["GET"])
+def balance_by_project():
+	from psd_books.utils.access import assert_can
+	assert_can(DOCTYPE, "read")
+	out = {}
+	for r in rules.figures(None, None, rules.caller_company() or None):
+		k = r.get("project") or ""
+		out[k] = out.get(k, 0.0) + max(0.0, (r["contract_value"] or 0) - (r["paid_till_now"] or 0))
+	return out
+
+
 @frappe.whitelist(allow_guest=False, methods=["POST"])
 def send_for_approval(name):
 	from psd_books.utils.access import assert_can
@@ -96,6 +114,54 @@ def approve_bill(name):
 	rules.approve(doc, problems, frappe.session.user, frappe.get_roles(), now_datetime())
 	doc.save(ignore_permissions=True)
 	return _summary(doc)
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def mark_paid(name):
+	doc = _load(name)
+	rules.mark_paid(doc, frappe.session.user, frappe.get_roles(), now_datetime())
+	doc.save(ignore_permissions=True)
+	return _summary(doc)
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def reopen_bill(name):
+	doc = _load(name)
+	rules.reopen(doc, frappe.session.user, frappe.get_roles())
+	doc.save(ignore_permissions=True)
+	return _summary(doc)
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def mark_unpaid(name):
+	doc = _load(name)
+	rules.mark_unpaid(doc, frappe.session.user, frappe.get_roles())
+	doc.save(ignore_permissions=True)
+	return _summary(doc)
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def cancel_bill(name, reason=None):
+	doc = _load(name)
+	rules.cancel(doc, frappe.session.user, frappe.get_roles(), reason, now_datetime())
+	doc.save(ignore_permissions=True)
+	return _summary(doc)
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def amend_bill(name):
+	from psd_books.utils.access import assert_can
+	assert_can(DOCTYPE, "write")
+	old = _load(name)
+	if old.status != rules.CANCELLED:
+		frappe.throw(_("{0} is {1}. Only a Cancelled bill can be amended.").format(old.name, old.status))
+	again = frappe.db.get_value(DOCTYPE, {"amended_from": old.name}, "name")
+	if again:
+		frappe.throw(_("{0} was already amended as {1}.").format(old.name, again))
+	new = frappe.get_doc({"doctype": DOCTYPE, "company": old.get("company"), "week_start": old.week_start, "amended_from": old.name,
+		"lines": [{"contract": ln.contract, "amount_to_pay": ln.amount_to_pay} for ln in old.get("lines") or []]})
+	new.insert(ignore_permissions=True)
+	return _summary(new)
 
 
 @frappe.whitelist(allow_guest=False, methods=["POST"])

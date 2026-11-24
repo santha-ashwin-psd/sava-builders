@@ -9,7 +9,7 @@ export const STATUSES = [DRAFT, PENDING, APPROVED, SENT_BACK, CLOSED];
 const LOCKED = [PENDING, APPROVED, CLOSED];
 
 export function statusClass(s) {
-	return { [DRAFT]: "amber", [PENDING]: "amber", [APPROVED]: "green", [SENT_BACK]: "red", [CLOSED]: "blue" }[s] || "blue";
+	return { [DRAFT]: "amber", [PENDING]: "amber", [APPROVED]: "green", Paid: "green", Cancelled: "red", [SENT_BACK]: "red", [CLOSED]: "blue" }[s] || "blue";
 }
 
 export function isLocked(status) { return LOCKED.includes(status); }
@@ -83,8 +83,30 @@ export function actionState(status, canApprove) {
 		canSendBack: status === PENDING && !!canApprove,
 		canClose: status === APPROVED,
 		canReopen: status === CLOSED && !!canApprove, // Director only
+		canEditNarration: status === APPROVED, // the narration of an Approved contract can still be saved
 	};
 }
 
 // Delete: a Draft never sent for approval, or a Closed contract for a Director (server: on_trash also blocks it when a weekly bill uses it).
 export function canDelete(c, isDirector = false) { return (c.status === DRAFT && !c.raised_by) || (c.status === CLOSED && !!isDirector); }
+
+// Figures for the cards on the Contract screen. paid = {contract: amount on Paid bills}.
+// all / pending / approved / closed: count and contract value of each group (Draft and Sent back count in all only).
+// Balance of one contract = value - paid (never below zero). paid = {contract: amount on Paid bills}.
+export function balanceOf(c, paid = {}) {
+	return Math.max(0, (Number(c.contract_value) || 0) - (Number(paid[c.name]) || 0));
+}
+
+// Balance to pay = value - paid, over Approved contracts only.
+export function kpiFor(list, paid = {}) {
+	const grp = () => ({ n: 0, value: 0 });
+	const out = { all: grp(), pending: grp(), approved: grp(), closed: grp(), totalValue: 0, approvedValue: 0, paid: 0, balance: 0 };
+	for (const c of list || []) {
+		const v = Number(c.contract_value) || 0;
+		const p = Number(paid[c.name]) || 0;
+		out.all.n++; out.all.value += v; out.totalValue += v; out.paid += p;
+		for (const k of ["pending", "approved", "closed"]) if (matchesFilter(c, k)) { out[k].n++; out[k].value += v; }
+		if (c.status === APPROVED) { out.approvedValue += v; out.balance += Math.max(0, v - p); }
+	}
+	return out;
+}

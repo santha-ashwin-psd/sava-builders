@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-	statusClass, isLocked, fmtKES, matchesFilter, countsFor, matchesSearch, blockersFor, validateContract, actionState, canDelete,
+	statusClass, isLocked, fmtKES, matchesFilter, countsFor, matchesSearch, blockersFor, validateContract, actionState, canDelete, kpiFor, balanceOf,
 } from "./labourContract.js";
 
 const list = [
@@ -85,7 +85,7 @@ describe("validateContract (save)", () => {
 
 describe("actions and delete", () => {
 	it("Draft and Sent back: edit and send only", () => {
-		for (const s of ["Draft", "Sent back"]) expect(actionState(s, true)).toEqual({ canEdit: true, canSend: true, canApprove: false, canSendBack: false, canClose: false, canReopen: false });
+		for (const s of ["Draft", "Sent back"]) expect(actionState(s, true)).toEqual({ canEdit: true, canSend: true, canApprove: false, canSendBack: false, canClose: false, canReopen: false, canEditNarration: false });
 	});
 	it("Pending approval: only a Director approves or sends back", () => {
 		expect(actionState("Pending approval", true)).toMatchObject({ canEdit: false, canApprove: true, canSendBack: true });
@@ -93,7 +93,9 @@ describe("actions and delete", () => {
 	});
 	it("Approved: close only; Closed: only a Director can reopen", () => {
 		expect(actionState("Approved", true)).toMatchObject({ canEdit: false, canClose: true, canApprove: false, canReopen: false });
-		expect(actionState("Closed", true)).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canClose: false, canReopen: true });
+		expect(actionState("Closed", true)).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canClose: false, canReopen: true, canEditNarration: false });
+		expect(actionState("Approved", false).canEditNarration).toBe(true);
+		expect(actionState("Pending approval", true).canEditNarration).toBe(false);
 		expect(Object.values(actionState("Closed", false)).some(Boolean)).toBe(false);
 	});
 	it("delete only a Draft that was never sent", () => {
@@ -104,5 +106,35 @@ describe("actions and delete", () => {
 		expect(canDelete({ status: "Closed", raised_by: "a@x" }, true)).toBe(true);
 		expect(canDelete({ status: "Closed", raised_by: "a@x" }, false)).toBe(false);
 		expect(canDelete({ status: "Closed", raised_by: "a@x" })).toBe(false);
+	});
+});
+
+describe("kpiFor", () => {
+	it("counts and values per group; balance only over Approved contracts", () => {
+		const k = kpiFor(list, { "LC-2026-0001": 125000, "LC-2026-0003": 100000 });
+		expect(k.all).toEqual({ n: 5, value: 1350020 });
+		expect(k.pending).toEqual({ n: 1, value: 10 });
+		expect(k.approved).toEqual({ n: 1, value: 500000 });
+		expect(k.closed).toEqual({ n: 1, value: 100000 });
+		expect(k.totalValue).toBe(1350020);
+		expect(k.approvedValue).toBe(500000);
+		expect(k.paid).toBe(225000);
+		expect(k.balance).toBe(375000);
+	});
+	it("handles an empty list and missing paid figures", () => {
+		const k = kpiFor([]);
+		expect(k.all.n).toBe(0);
+		expect(k.balance).toBe(0);
+		expect(kpiFor(list).paid).toBe(0);
+	});
+	it("balance never goes below zero", () => {
+		expect(kpiFor([list[0]], { "LC-2026-0001": 600000 }).balance).toBe(0);
+	});
+});
+describe("balanceOf", () => {
+	it("value minus paid, never below zero", () => {
+		expect(balanceOf({ name: "A", contract_value: 100000 }, { A: 30000 })).toBe(70000);
+		expect(balanceOf({ name: "B", contract_value: 50000 }, {})).toBe(50000);
+		expect(balanceOf({ name: "C", contract_value: 1000 }, { C: 2500 })).toBe(0);
 	});
 });

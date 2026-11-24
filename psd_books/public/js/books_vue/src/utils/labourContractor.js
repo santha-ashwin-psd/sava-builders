@@ -40,6 +40,9 @@ export function countsFor(list, today = todayISO()) {
   return out;
 }
 
+// Phone takes digits, spaces and a leading + only; anything else typed or pasted is dropped.
+export function cleanPhone(v) { return String(v ?? "").replace(/[^0-9+ ]/g, "").replace(/(?!^)\+/g, ""); }
+
 export function matchesSearch(c, q) {
   const s = String(q || "").trim().toLowerCase();
   if (!s) return true;

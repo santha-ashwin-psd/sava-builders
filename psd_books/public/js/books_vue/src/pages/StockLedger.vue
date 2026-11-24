@@ -10,7 +10,7 @@
       </div>
       <div class="sl-fld sl-fld-item">
         <label class="sl-fld-lbl">Item</label>
-        <SearchableSelect v-model="filters.item" :options="items" placeholder="All items" @search="fetchItems" />
+        <SearchableSelect v-model="filters.item" :options="items" placeholder="All items" @search="fetchItems" @select="onItemSelect" />
       </div>
       <div class="sl-fld sl-fld-wh">
         <label class="sl-fld-lbl">Warehouse</label>
@@ -236,7 +236,10 @@ async function attachWarehouseFlow(){
     });
   }catch{/* leave the movement column blank */}
 }
-async function fetchItems(q=""){try{const r=await apiList("Item",{fields:["name","item_name"],filters:q?[["name","like","%"+q+"%"]]:[],limit:200});items.value=r.map(x=>({label:x.item_name||x.name,value:x.name}));}catch{items.value=[];}}
+// Item filter: search and show by item name only (the value kept for the filter is still the item code).
+const selectedItem=ref(null);
+function onItemSelect(o){selectedItem.value=o&&o.value?{label:o.label,value:o.value}:null;}
+async function fetchItems(q=""){try{const r=await apiList("Item",{fields:["name","item_name"],filters:q?[["item_name","like","%"+q+"%"]]:[],order:"item_name asc",limit:200});const list=r.map(x=>({label:x.item_name||x.name,value:x.name}));const s=selectedItem.value;if(filters.item&&s&&s.value===filters.item&&!list.some(o=>o.value===s.value))list.unshift(s);items.value=list;}catch{items.value=selectedItem.value?[selectedItem.value]:[];}}
 async function fetchWarehouses(q=""){try{const co=await resolveCompany();const r=await apiList("Warehouse",{fields:["name"],filters:[["company","=",co],["is_group","=",0],...(q?[["name","like",`%${q}%`]]:[])],limit:20});warehouses.value=r.map(x=>({label:x.name,value:x.name}));}catch{warehouses.value=[];}}
 // Pre-load dropdown options so the pickers aren't empty on first open.
 onMounted(()=>{fetchItems("");fetchWarehouses("");});

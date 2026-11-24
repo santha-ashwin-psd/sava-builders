@@ -147,7 +147,7 @@
           <div class="inv-fg inv-fg2">
             <div class="inv-field">
               <label class="inv-lbl">Phone</label>
-              <input v-model="form.phone" class="inv-fi" placeholder="0712 345 678"/>
+              <input type="tel" inputmode="tel" autocomplete="off" :value="form.phone" @input="onPhoneInput" class="inv-fi" placeholder="0712 345 678"/>
             </div>
             <div class="inv-field">
               <label class="inv-lbl">Bank and Account No.</label>
@@ -216,7 +216,7 @@ import { fmtDate } from "../utils/format.js";
 import { ownerName } from "../utils/userNames.js";
 import { icon } from "../utils/icons.js";
 import {
-  CONTRACTOR_TYPES, isCertExpired, contractorInitials, matchesFilter, countsFor, matchesSearch, validateContractor,
+  CONTRACTOR_TYPES, isCertExpired, contractorInitials, matchesFilter, countsFor, matchesSearch, validateContractor, cleanPhone,
 } from "../utils/labourContractor.js";
 
 const { toast } = useToast();
@@ -238,6 +238,11 @@ const deleting = ref(false);
 const busyName = ref("");
 const formErrors = reactive({});
 const form = reactive({});
+function onPhoneInput(e) {   // digits, spaces and a leading + only
+  const v = cleanPhone(e.target.value);
+  e.target.value = v;
+  form.phone = v;
+}
 const canEditRow = true;
 
 function blankForm() {

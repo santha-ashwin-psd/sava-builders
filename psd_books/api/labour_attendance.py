@@ -7,6 +7,9 @@ Endpoints
 - approve_sheet(name) (POST): Pending approval -> Approved; Director only (a Books Admin is not enough)
 - send_back_sheet(name, reason) (POST): Pending approval -> Sent back; Director only, reason required
 - submit_sheet(name) (POST): Approved -> Submitted (final); whoever may write Labour Attendance Sheets
+- cancel_sheet(name, reason) (POST): Sent back / Approved / Submitted -> Cancelled; Director only, reason required
+- amend_sheet(name) (POST): copies a Cancelled sheet into a new Draft for the same week (one amendment per cancelled sheet);
+  whoever may write Labour Attendance Sheets. Returns the new sheet.
 A Director may hold no Frappe role permission on this doctype, so these check access themselves and save
 with ignore_permissions. The Director check for the screen is api.labour_contract.my_permissions.
 """
@@ -18,7 +21,7 @@ from psd_books.invoicing.doctype.labour_attendance_sheet import labour_attendanc
 
 DOCTYPE = rules.DOCTYPE
 FIELDS = ["name", "status", "week_start", "week_end", "total_amount", "raised_by", "approved_by", "approved_on",
-	"submitted_by", "submitted_on", "rejection_reason"]
+	"submitted_by", "submitted_on", "rejection_reason", "cancelled_by", "cancelled_on", "cancel_reason", "amends_sheet"]
 LINE_FIELDS = rules.LINE_KEYS + ("days", "ot_amount", "total")
 
 
@@ -47,7 +50,7 @@ def preview(week_date, name=None):
 	if not company:
 		from psd_books.utils.tenancy import _is_bypass, get_user_company
 		company = "" if _is_bypass(frappe.session.user) else (get_user_company(frappe.session.user) or "")
-	filters = {"week_start": ws, "name": ["!=", name or ""]}
+	filters = {"week_start": ws, "name": ["!=", name or ""], "status": ["!=", rules.CANCELLED]}
 	if company:
 		filters["company"] = company
 	existing = frappe.get_all(DOCTYPE, filters=filters, pluck="name")
@@ -93,3 +96,22 @@ def submit_sheet(name):
 	rules.submit(doc, frappe.session.user, now_datetime())
 	doc.save(ignore_permissions=True)
 	return _summary(doc)
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def cancel_sheet(name, reason=None):
+	doc = _load(name)
+	rules.cancel(doc, frappe.session.user, frappe.get_roles(), reason, now_datetime())
+	doc.save(ignore_permissions=True)
+	return _summary(doc)
+
+
+@frappe.whitelist(allow_guest=False, methods=["POST"])
+def amend_sheet(name):
+	from psd_books.utils.access import assert_can
+	assert_can(DOCTYPE, "write")
+	doc = _load(name)
+	rules.check_amend(doc, rules.amendment_of(name))
+	new = frappe.get_doc(rules.amended_values(doc))
+	new.insert(ignore_permissions=True)
+	return _summary(new)

@@ -136,8 +136,10 @@ _ALL_SAVA = frozenset({"Site Engineer", "Purchase Manager", "Admin", "Director"}
 # Purchase Manager and Admin: everything except approvals. Director: everything, and is the only approver.
 _FULL = frozenset({"Purchase Manager", "Admin", "Director"})
 _APPROVERS = frozenset({"Director"})
-# Labour Contractors: Books Admin and Director (admin, handled before this table) and the Admin job role only.
-_CONTRACTOR_ROLES = frozenset({"Admin", "Director"})
+# Labour Contract module (Contractors, Activities, Contract, Weekly Bill, Attendance): Books Admin and Director
+# (admin, handled before this table), the Purchase Manager and the Admin job roles. They send for approval;
+# only a Director approves (api/labour_*.py check the Director role themselves).
+_CONTRACTOR_ROLES = frozenset({"Purchase Manager", "Admin", "Director"})
 SAVA_ACCESS = {
     "Project": {"read": _ALL_SAVA},
     "Warehouse": {"read": _ALL_SAVA},

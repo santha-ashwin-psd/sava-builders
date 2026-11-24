@@ -4,7 +4,7 @@
 
 import { todayISO, isCertExpired } from "./labourContractor.js";
 
-export const DRAFT = "Draft", PENDING = "Pending approval", APPROVED = "Approved", SENT_BACK = "Sent back";
+export const DRAFT = "Draft", PENDING = "Pending approval", APPROVED = "Approved", SENT_BACK = "Sent back", PAID = "Paid", CANCELLED = "Cancelled";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const utc = (iso) => { const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
@@ -35,16 +35,18 @@ export function weekLabel(iso) {
 	return a.getUTCDate() + " " + MONTHS[a.getUTCMonth()] + " to " + b.getUTCDate() + " " + MONTHS[b.getUTCMonth()] + " " + b.getUTCFullYear();
 }
 
-// Filter keys: all | draft | pending | approved (Sent back counts under draft: it is editable again).
+// Filter keys: all | draft | pending | approved | paid | cancelled (Sent back counts under draft: it is editable again).
 export function matchesFilter(b, key) {
 	if (key === "draft") return b.status === DRAFT || b.status === SENT_BACK;
 	if (key === "pending") return b.status === PENDING;
 	if (key === "approved") return b.status === APPROVED;
+	if (key === "paid") return b.status === PAID;
+	if (key === "cancelled") return b.status === CANCELLED;
 	return true;
 }
 export function countsFor(list) {
-	const out = { all: list.length, draft: 0, pending: 0, approved: 0 };
-	for (const b of list) for (const k of ["draft", "pending", "approved"]) if (matchesFilter(b, k)) out[k]++;
+	const out = { all: list.length, draft: 0, pending: 0, approved: 0, paid: 0, cancelled: 0 };
+	for (const b of list) for (const k of ["draft", "pending", "approved", "paid", "cancelled"]) if (matchesFilter(b, k)) out[k]++;
 	return out;
 }
 export function matchesSearch(b, q, projectNames = {}, columns = {}) {
@@ -78,6 +80,11 @@ export function visibleRows(rows = []) {
 	return rows.filter((r) => !isFullyPaid(r));
 }
 
+// A bill that is locked (Pending approval, Approved, Paid) shows only the contracts being paid on it (amount above zero).
+export function lockedRows(rows = []) {
+	return rows.filter((r) => Number(r.amount_to_pay) > 0);
+}
+
 // Rows for the screen: the server's preview rows (one per Approved contract of any project) with the amounts already saved on the bill.
 // dropped = contracts that had an amount above zero but are no longer in the preview (no longer Approved).
 export function mergeRows(previewRows = [], savedLines = []) {
@@ -90,6 +97,9 @@ export function mergeRows(previewRows = [], savedLines = []) {
 	});
 	return { rows, dropped: [...saved].filter(([, a]) => a > 0).map(([c]) => c) };
 }
+
+// Amount to pay now takes digits and one decimal point only; anything else typed or pasted is dropped (same rule as the Contract value).
+export function cleanAmount(v) { return String(v ?? "").replace(/[^0-9.]/g, "").replace(/^(\d*\.\d*).*$/, "$1"); }
 
 export function totalOf(rows) { return rows.reduce((a, r) => a + (Number(r.amount_to_pay) || 0), 0); }
 
@@ -126,13 +136,16 @@ export function validateBill(form, rows = []) {
 }
 
 // Which buttons apply. canApprove = the user holds the Director role (api.labour_contract.my_permissions).
-export function actionState(status, canApprove) {
+// canMarkPaid: an Approved bill is marked Paid (the payment is recorded) by a Director, Purchase Manager or Admin (canPay; defaults to canApprove).
+// canReopen (Edit) and canCancel: an Approved bill, Director. canMarkUnpaid: a Paid bill, Director. canAmend: a Cancelled bill.
+export function actionState(status, canApprove, canPay = canApprove) {
 	const editable = status === DRAFT || status === SENT_BACK;
-	return { canEdit: editable, canSend: editable, canApprove: status === PENDING && !!canApprove, canSendBack: status === PENDING && !!canApprove };
+	return { canEdit: editable, canSend: editable, canApprove: status === PENDING && !!canApprove, canSendBack: status === PENDING && !!canApprove, canMarkPaid: status === APPROVED && !!canPay,
+		canReopen: status === APPROVED && !!canApprove, canCancel: status === APPROVED && !!canApprove, canMarkUnpaid: status === PAID && !!canApprove, canAmend: status === CANCELLED };
 }
 
-// Delete only while the bill was never sent for approval (server: on_trash).
-export function canDelete(b) { return b.status === DRAFT && !b.raised_by; }
+// Delete only a Draft never sent for approval, or a Cancelled bill (server: on_trash).
+export function canDelete(b) { return b.status === CANCELLED || (b.status === DRAFT && !b.raised_by); }
 
 // The document sent to save_doc: only contract and amount per line; the server rebuilds the rest.
 export function toDoc(form, rows, company) {
@@ -141,4 +154,28 @@ export function toDoc(form, rows, company) {
 		week_start: form.week_date,
 		lines: rows.map((r) => ({ contract: r.contract, amount_to_pay: Number(r.amount_to_pay) || 0 })),
 	};
+}
+
+// A bill is not tied to one project: it belongs to a project when its own project or any contract on it (columns[bill].projects) is that project.
+export function inProject(b, project, columns = {}) {
+	if (!project) return true;
+	return b.project === project || ((columns[b.name] || {}).projects || []).includes(project);
+}
+
+// Figures for the cards on the Weekly Bill screen.
+// all / draft / pending / approved: count and total of each group (Draft includes Sent back).
+// weekN / weekValue: bills of the current Monday to Sunday week (any status except Sent back). paid: total of Paid bills. Cancelled bills are left out of every figure.
+export function kpiFor(list, today = todayISO()) {
+	const grp = () => ({ n: 0, value: 0 });
+	const out = { all: grp(), draft: grp(), pending: grp(), approved: grp(), paidBills: grp(), weekN: 0, weekValue: 0, paid: 0 };
+	const wk = mondayISO(today);
+	for (const b of list || []) {
+		if (b.status === CANCELLED) continue; // a cancelled bill counts nowhere
+		const v = Number(b.total_amount) || 0;
+		out.all.n++; out.all.value += v;
+		for (const k of ["draft", "pending", "approved"]) if (matchesFilter(b, k)) { out[k].n++; out[k].value += v; }
+		if (b.status === PAID) { out.paid += v; out.paidBills.n++; out.paidBills.value += v; }
+		if (b.week_start && mondayISO(b.week_start) === wk && b.status !== SENT_BACK) { out.weekN++; out.weekValue += v; }
+	}
+	return out;
 }

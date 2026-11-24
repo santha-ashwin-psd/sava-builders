@@ -54,7 +54,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nPending approval\nApproved\nSent back",
+   "options": "Draft\nPending approval\nApproved\nSent back\nPaid\nCancelled",
    "default": "Draft",
    "read_only": 1,
    "in_list_view": 1,
@@ -104,6 +104,32 @@
    "read_only": 1
   },
   {
+   "fieldname": "paid_by",
+   "fieldtype": "Link",
+   "label": "Marked paid by",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "paid_on",
+   "fieldtype": "Datetime",
+   "label": "Paid on",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_by",
+   "fieldtype": "Link",
+   "label": "Cancelled by",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancelled_on",
+   "fieldtype": "Datetime",
+   "label": "Cancelled on",
+   "read_only": 1
+  },
+  {
    "fieldname": "column_break_2",
    "fieldtype": "Column Break",
    "label": ""
@@ -112,6 +138,18 @@
    "fieldname": "rejection_reason",
    "fieldtype": "Small Text",
    "label": "Sent back reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cancel_reason",
+   "fieldtype": "Small Text",
+   "label": "Cancel reason",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amended_from",
+   "fieldtype": "Data",
+   "label": "Amended from",
    "read_only": 1
   },
   {
@@ -164,6 +202,19 @@
   },
   {
    "role": "Admin",
+   "permlevel": 0,
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Purchase Manager",
    "permlevel": 0,
    "read": 1,
    "write": 1,

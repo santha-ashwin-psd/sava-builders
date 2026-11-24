@@ -242,7 +242,7 @@ async function load() {
   try {
     const rows = await apiList(DT, {
       fields: ["name", "activity_code", "activity_name", "category", "disabled", "owner", "creation", "modified", "modified_by"],
-      order: "activity_code asc", limit: 500,
+      order: "creation desc", limit: 500,
     });
     list.value = rows || [];
     // Which contract uses each activity. If the user can't read contracts, every activity shows "Not used"; the server still blocks delete.

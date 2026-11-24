@@ -2,7 +2,7 @@
  "doctype": "DocType",
  "module": "Invoicing",
  "creation": "2026-11-23 12:00:00.000000",
- "modified": "2026-11-23 12:00:00.000000",
+ "modified": "2026-11-24 12:30:00.000000",
  "modified_by": "Administrator",
  "owner": "Administrator",
  "docstatus": 0,
@@ -45,7 +45,7 @@
    "fieldname": "status",
    "fieldtype": "Select",
    "label": "Status",
-   "options": "Draft\nPending approval\nApproved\nSubmitted\nSent back",
+   "options": "Draft\nPending approval\nApproved\nSubmitted\nSent back\nCancelled",
    "default": "Draft",
    "read_only": 1,
    "in_list_view": 1,
@@ -119,6 +119,37 @@
    "read_only": 1
   },
   {
+   "fieldname": "cancelled_by",
+   "fieldtype": "Link",
+   "label": "Cancelled by",
+   "options": "User",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "cancelled_on",
+   "fieldtype": "Datetime",
+   "label": "Cancelled on",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "cancel_reason",
+   "fieldtype": "Small Text",
+   "label": "Cancel reason",
+   "read_only": 1,
+   "no_copy": 1
+  },
+  {
+   "fieldname": "amends_sheet",
+   "fieldtype": "Link",
+   "label": "Amends sheet",
+   "options": "Labour Attendance Sheet",
+   "read_only": 1,
+   "no_copy": 1,
+   "search_index": 1
+  },
+  {
    "fieldname": "company",
    "fieldtype": "Data",
    "label": "Company",
@@ -168,6 +199,19 @@
   },
   {
    "role": "Admin",
+   "permlevel": 0,
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "report": 1,
+   "share": 1
+  },
+  {
+   "role": "Purchase Manager",
    "permlevel": 0,
    "read": 1,
    "write": 1,

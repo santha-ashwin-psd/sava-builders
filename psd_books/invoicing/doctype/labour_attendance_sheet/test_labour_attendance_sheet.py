@@ -50,10 +50,17 @@ class Doc:
 	def __init__(self, status="Draft", new=False):
 		self.name, self.status, self._new = "LAS-1", status, new
 		self.raised_by = self.approved_by = self.approved_on = self.rejection_reason = self.submitted_by = self.submitted_on = None
+		self.cancelled_by = self.cancelled_on = self.cancel_reason = None
+		self.week_start = datetime.date(2026, 11, 14)
+		self.company = "CO"
+		self.lines = []
 		self.flags = types.SimpleNamespace(get=lambda k, d=None: getattr(self.flags, k, d))
 
 	def is_new(self):
 		return self._new
+
+	def get(self, k, d=None):
+		return getattr(self, k, d)
 
 
 class TestWeek(unittest.TestCase):
@@ -217,7 +224,7 @@ class TestBaseline(unittest.TestCase):
 		prev = [{"employee": "E1", "grade": "SK", "area_of_work": "Store", "rate": 750, "ot_hours": 2, "sha": 100}]
 		rows, _ga = self.run_baseline(emps, ["LAS-2026-0001"], prev)
 		a, b = rows
-		self.assertEqual((a["grade"], a["area_of_work"], a["rate"], a["ot_hours"], a["sha"], a["id_no"]), ("SK", "Store", 750, 2, 100, "40528637"))
+		self.assertEqual((a["grade"], a["area_of_work"], a["rate"], a["ot_hours"], a["sha"], a["id_no"]), ("SK", "Store", 750, 0, 100, "40528637"))   # OT hours are not carried (previous sheet had 2)
 		self.assertEqual((b["grade"], b["area_of_work"], b["rate"], b["ot_hours"], b["sha"], b["id_no"]), ("C", "", 0, 0, 125, ""))
 		self.assertEqual(las.days_of(a) + las.days_of(b), 0)
 
@@ -230,6 +237,60 @@ class TestBaseline(unittest.TestCase):
 		kw = [c for c in ga.call_args_list if c.args[0] == "Employee"][0].kwargs
 		self.assertEqual(kw["filters"], {"status": "Active"})
 		self.assertIn(["company", "=", "CO"], kw["or_filters"])
+
+
+class TestCancelAmend(unittest.TestCase):
+	def test_cancel_from_sent_back_approved_submitted(self):
+		for st in ("Sent back", "Approved", "Submitted"):
+			d = Doc(status=st)
+			las.cancel(d, "dir", ["Director"], "  Wrong rates  ", "now")
+			self.assertEqual((d.status, d.cancelled_by, d.cancelled_on, d.cancel_reason), ("Cancelled", "dir", "now", "Wrong rates"))
+			self.assertTrue(d.flags.las_workflow)
+
+	def test_cancel_not_from_other_statuses(self):
+		for st in ("Draft", "Pending approval", "Cancelled"):
+			with self.assertRaises(Exception):
+				las.cancel(Doc(status=st), "dir", ["Director"], "x", "now")
+
+	def test_only_director_cancels_and_reason_needed(self):
+		with self.assertRaises(Exception):
+			las.cancel(Doc(status="Approved"), "u", ["Books Admin"], "x", "now")
+		for r in ("", "   ", None):
+			with self.assertRaises(Exception):
+				las.cancel(Doc(status="Approved"), "dir", ["Director"], r, "now")
+
+	def test_cancelled_sheet_is_locked(self):
+		with self.assertRaises(Exception):
+			las.check_edit(Doc(status="Cancelled"), "Cancelled")
+
+	def test_amend_only_a_cancelled_sheet_without_amendment(self):
+		las.check_amend(Doc(status="Cancelled"), None)
+		for st in ("Draft", "Pending approval", "Approved", "Submitted", "Sent back"):
+			with self.assertRaises(Exception):
+				las.check_amend(Doc(status=st), None)
+		with self.assertRaises(Exception):
+			las.check_amend(Doc(status="Cancelled"), "LAS-9")
+
+	def test_amended_values_copy_week_company_and_lines(self):
+		d = Doc(status="Cancelled")
+		d.lines = [types.SimpleNamespace(get=lambda k, df=None, _r=line(3, emp="E1"): _r.get(k, df))]
+		v = las.amended_values(d)
+		self.assertEqual((v["doctype"], v["amends_sheet"], v["company"], v["week_start"]), ("Labour Attendance Sheet", "LAS-1", "CO", datetime.date(2026, 11, 14)))
+		self.assertEqual(len(v["lines"]), 1)
+		self.assertEqual((v["lines"][0]["employee"], las.days_of(v["lines"][0]), v["lines"][0]["rate"]), ("E1", 3, 600))
+
+	def test_delete_rule(self):
+		self.assertTrue(las.can_delete("Draft", None))
+		self.assertFalse(las.can_delete("Draft", "u"))
+		for st in ("Pending approval", "Approved", "Submitted", "Sent back"):
+			self.assertFalse(las.can_delete(st, "u"))
+		self.assertTrue(las.can_delete("Cancelled", "u", None))
+		self.assertFalse(las.can_delete("Cancelled", "u", "LAS-2"))
+
+	def test_cancelled_sheets_ignored_when_carrying_values(self):
+		with mock.patch.object(frappe, "get_all", return_value=[]) as ga:
+			las.previous_values(datetime.date(2026, 10, 31), "CO")
+		self.assertEqual(ga.call_args.kwargs["filters"]["status"], ["!=", "Cancelled"])
 
 
 if __name__ == "__main__":

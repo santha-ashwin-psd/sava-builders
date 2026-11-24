@@ -75,7 +75,7 @@
     </div>
 
     <!-- P&L -->
-    <div v-if="['mrn_lpo','lpo_grn','proj_summary','supp_analysis','asset_reg'].includes(activeReport)" class="books-card report-card bs-card">
+    <div v-if="['mrn_lpo','lpo_grn','proj_summary','supp_analysis','asset_reg','lab_contract','lab_wages','lab_weekly'].includes(activeReport)" class="books-card report-card bs-card">
       <div class="bs-page-head">
         <div class="bs-page-head-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
@@ -90,7 +90,7 @@
             <input v-model="procSearch" type="text" class="dr-input proc-search-input" :placeholder="procSearchHint" />
             <button v-if="procSearch" type="button" class="proc-search-clear" title="Clear" @click="procSearch = ''">&times;</button>
           </div>
-          <select v-if="activeReport !== 'asset_reg'" v-model="procProject" class="dr-input">
+          <select v-if="!PROC_DATE_REPORTS.includes(activeReport)" v-model="procProject" class="dr-input">
             <option value="">All projects</option>
             <option v-for="p in procProjects" :key="p" :value="p">{{ p }}</option>
           </select>
@@ -5141,7 +5141,12 @@ const activeReport = ref("mrn_lpo");
 const PROC_METHODS = {
   mrn_lpo: "mrn_vs_lpo", lpo_grn: "lpo_vs_grn", proj_summary: "project_summary", supp_analysis: "supplier_analysis",
   asset_reg: "asset_register",
+  // Sava Phase 2: labour contract reports (psd_books.api.labour_reports)
+  lab_contract: "contract_status", lab_wages: "employee_wages", lab_weekly: "weekly_payments",
 };
+const PROC_LABOUR = ["lab_contract", "lab_wages", "lab_weekly"];
+// Reports that use the date range and have no project filter
+const PROC_DATE_REPORTS = ["asset_reg", "lab_wages", "lab_weekly"];
 const procProject = ref("");
 const procProjects = ref([]);
 const procRows = ref([]);
@@ -5158,10 +5163,10 @@ async function loadProcurement() {
   procLoading.value = true;
   procError.value = "";
   try {
-    const params = key === "asset_reg"
+    const params = PROC_DATE_REPORTS.includes(key)
       ? { from_date: fromDate.value, to_date: toDate.value }
       : (procProject.value ? { project: procProject.value } : {});
-    const r = await apiGET("psd_books.api.procurement_reports." + method, params);
+    const r = await apiGET("psd_books.api." + (PROC_LABOUR.includes(key) ? "labour_reports." : "procurement_reports.") + method, params);
     const rows = Array.isArray(r) ? r : (r?.message || []);
     procCache.value = { ...procCache.value, [key]: { rows, project: procProject.value } };
     if (activeReport.value === key) procRows.value = rows;
@@ -5186,15 +5191,20 @@ const PROC_HIDDEN = {
   proj_summary: ["project", "billed_value"],
   lpo_grn: ["supplier", "project", "billed_qty"],
   mrn_lpo: ["project"],
+  lab_contract: ["project"],
 };
-const PROC_COL_LABELS = { project_name: "Project" };
+const PROC_COL_LABELS = { project_name: "Project", billed_pct: "Billed %", employee_id: "Employee ID", sha: "SHA", ot_amount: "OT Amount", rate: "Rate/Day" };
 // Search box: matches MRN / LPO no., supplier name, project (code or name), item code and item name
-const PROC_SEARCH_KEYS = ["mrn", "lpo", "supplier_name", "project", "project_name", "item_code", "item_name"];
+const PROC_SEARCH_KEYS = ["mrn", "lpo", "supplier_name", "project", "project_name", "item_code", "item_name",
+  "contract", "task", "contractor_name", "employee", "employee_id", "week"];
 const PROC_SEARCH_HINTS = {
   mrn_lpo: "Search MRN, project, item code, item name",
   lpo_grn: "Search LPO, supplier, project, item",
   proj_summary: "Search project",
   asset_reg: "Search item code, item name",
+  lab_contract: "Search contract, project, task, contractor",
+  lab_wages: "Search employee",
+  lab_weekly: "Search week",
 };
 const procSearch = ref("");
 const procSearchable = computed(() => !!PROC_SEARCH_HINTS[activeReport.value]);
@@ -5220,6 +5230,9 @@ const PROC_TITLES = {
   proj_summary: ["Project Summary", "Requisitions, LPOs, value received and billed for each project"],
   supp_analysis: ["Supplier Analysis", "LPOs, value and receipts for each supplier"],
   asset_reg: ["Asset Register", "Opening stock, purchases and total quantity of asset items"],
+  lab_contract: ["Contract Status", "Value, billed %, paid and balance of each labour contract"],
+  lab_wages: ["Employee Wages", "Days, overtime, SHA and net wages of each employee from submitted wages sheets"],
+  lab_weekly: ["Weekly Payments Summary", "Paid to contractors and to employees in each week"],
 };
 const procTitle = computed(() => (PROC_TITLES[activeReport.value] || [""])[0]);
 const procSubtitle = computed(() => (PROC_TITLES[activeReport.value] || ["", ""])[1]);
@@ -5234,7 +5247,7 @@ function procIsNumber(col) {
 }
 function procCell(v, col) {
   if (typeof v !== "number") return v ?? "";
-  const money = /_value$/.test(col);
+  const money = /_value$|_amount$|_wages$|^(sha|rate|paid_to_contractors|paid_to_employees|total_for_week)$/.test(col);
   return v.toLocaleString("en-US", money
     ? { minimumFractionDigits: 2, maximumFractionDigits: 2 }
     : { maximumFractionDigits: 2 });
@@ -5290,11 +5303,16 @@ watch(activeReport, (k) => {
   if (c) procProject.value = c.project;
   else loadProcurement();   // no Run Report button: load on open / first visit
 }, { immediate: true });
-// Asset Register is the only procurement report that uses the date range
+// Asset Register and the labour wage / payment reports use the date range
 watch([fromDate, toDate], () => {
-  if (activeReport.value !== "asset_reg" || !procCache.value.asset_reg) return;
+  const key = activeReport.value;
+  if (!PROC_DATE_REPORTS.includes(key)) return;
   if (fromDate.value && toDate.value && fromDate.value > toDate.value) return;
-  loadProcurement();
+  // other date reports now hold figures for the old range: drop them so they reload when opened
+  const keep = { ...procCache.value };
+  for (const k of PROC_DATE_REPORTS) if (k !== key) delete keep[k];
+  procCache.value = keep;
+  if (procCache.value[key]) loadProcurement();
 });
 watch(procProject, () => {
   const c = procCache.value[activeReport.value];
@@ -7215,9 +7233,12 @@ const allReports = [
   { key: "proj_summary", label: "Project Summary", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
   { key: "supp_analysis", label: "Supplier Analysis", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
   { key: "asset_reg", label: "Asset Register", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
+  { key: "lab_contract", label: "Contract Status", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
+  { key: "lab_wages", label: "Employee Wages", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
+  { key: "lab_weekly", label: "Weekly Payments", icon: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>` },
 ];
 // Sava: only the procurement reports are shown; the others stay defined but hidden
-const SAVA_REPORT_KEYS = ["mrn_lpo", "lpo_grn", "proj_summary", "supp_analysis", "asset_reg"];
+const SAVA_REPORT_KEYS = ["mrn_lpo", "lpo_grn", "proj_summary", "supp_analysis", "asset_reg", "lab_contract", "lab_wages", "lab_weekly"];
 const reports = allReports.filter(r => SAVA_REPORT_KEYS.includes(r.key));
 
 const tabPalette = ["c-blue","c-slate","c-cyan","c-amber","c-pink","c-slate","c-emerald","c-violet","c-blue","c-blue"];

@@ -12,7 +12,7 @@ from psd_books.utils import access
 
 DT = "Labour Contract"
 # the other Sava job roles known to access.py (_ALL_SAVA = Site Engineer, Purchase Manager, Admin, Director)
-OTHER_SAVA_ROLES = ("Site Engineer", "Purchase Manager")
+OTHER_SAVA_ROLES = ("Site Engineer",)
 
 
 def member(readonly=False, admin=False, no_member=False, levels=None):
@@ -40,6 +40,10 @@ class TestLabourContractAccess(unittest.TestCase):
 	def test_admin_job_role_can_do_everything(self):
 		for action in ("read", "create", "write", "delete"):
 			self.assertTrue(can({"Admin"}, action), action)
+
+	def test_purchase_manager_job_role_can_do_everything(self):
+		for action in ("read", "create", "write", "delete"):
+			self.assertTrue(can({"Purchase Manager"}, action), action)
 
 	def test_other_sava_roles_cannot_even_with_every_module_on(self):
 		full = {m: "Delete" for m in access.MODULES}  # only the role rule may refuse

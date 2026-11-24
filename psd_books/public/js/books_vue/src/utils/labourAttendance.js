@@ -2,7 +2,9 @@
 // Kept free of Vue so they can be unit tested (labourAttendance.test.js).
 // Rules mirror the server (invoicing/doctype/labour_attendance_sheet/labour_attendance_sheet.py); the server stays the authority.
 
-export const DRAFT = "Draft", PENDING = "Pending approval", APPROVED = "Approved", SUBMITTED = "Submitted", SENT_BACK = "Sent back";
+import { todayISO } from "./labourContractor.js";
+
+export const DRAFT = "Draft", PENDING = "Pending approval", APPROVED = "Approved", SUBMITTED = "Submitted", SENT_BACK = "Sent back", CANCELLED = "Cancelled";
 export const DEFAULT_SHA = 125;
 // The client's paper sheet runs Saturday to Friday.
 export const DAYS = [
@@ -16,6 +18,8 @@ const utc = (iso) => { const [y, m, d] = String(iso).slice(0, 10).split("-").map
 const isoOf = (dt) => dt.toISOString().slice(0, 10);
 const pad = (n) => String(n).padStart(2, "0");
 const num = (v) => Number(v) || 0;
+// Rate, OT hours and SHA take digits and one decimal point only; anything else typed or pasted is dropped.
+export function cleanNumber(v) { return String(v ?? "").replace(/[^0-9.]/g, "").replace(/^(\d*\.\d*).*$/, "$1"); }
 
 // Saturday of the Saturday-to-Friday week holding the date (YYYY-MM-DD), as YYYY-MM-DD.
 export function saturdayISO(iso) {
@@ -119,19 +123,43 @@ export function validateSheet(form, rows = []) {
 	return e;
 }
 
-// Filter keys: all | draft | pending | approved | submitted (Sent back counts under draft: it is editable again).
+// Filter keys: all | draft | pending | approved | submitted | cancelled (Sent back counts under draft: it is editable again;
+// All lists every sheet, Cancelled included).
 export function matchesFilter(s, key) {
 	if (key === "draft") return s.status === DRAFT || s.status === SENT_BACK;
 	if (key === "pending") return s.status === PENDING;
 	if (key === "approved") return s.status === APPROVED;
 	if (key === "submitted") return s.status === SUBMITTED;
+	if (key === "cancelled") return s.status === CANCELLED;
 	return true;
 }
 export function countsFor(list) {
-	const out = { all: list.length, draft: 0, pending: 0, approved: 0, submitted: 0 };
-	for (const s of list) for (const k of ["draft", "pending", "approved", "submitted"]) if (matchesFilter(s, k)) out[k]++;
+	const out = { all: 0, draft: 0, pending: 0, approved: 0, submitted: 0, cancelled: 0 };
+	for (const s of list) for (const k of ["all", "draft", "pending", "approved", "submitted", "cancelled"]) if (matchesFilter(s, k)) out[k]++;
 	return out;
 }
+// Figures for the cards on the Attendance screen.
+// all / pending / approved / submitted: count and total wages of each group (Cancelled sheets are left out of everything).
+// monthValue: wages of Submitted sheets whose week starts in the current calendar month.
+// latest: { week_start, value } of the newest Submitted sheet by week, or null.
+export function kpiFor(list, today = todayISO()) {
+	const grp = () => ({ n: 0, value: 0 });
+	const out = { all: grp(), pending: grp(), approved: grp(), submitted: grp(), monthValue: 0, latest: null };
+	const month = String(today).slice(0, 7);
+	for (const s of list || []) {
+		if (s.status === CANCELLED) continue;
+		const v = num(s.total_amount);
+		out.all.n++; out.all.value += v;
+		for (const k of ["pending", "approved", "submitted"]) if (matchesFilter(s, k)) { out[k].n++; out[k].value += v; }
+		if (s.status !== SUBMITTED) continue;
+		const ws = String(s.week_start || "").slice(0, 10);
+		if (!ws) continue;
+		if (ws.slice(0, 7) === month) out.monthValue += v;
+		if (!out.latest || ws > out.latest.week_start) out.latest = { week_start: ws, value: v };
+	}
+	return out;
+}
+
 export function matchesSearch(s, q) {
 	const t = String(q || "").trim().toLowerCase();
 	if (!t) return true;
@@ -139,13 +167,23 @@ export function matchesSearch(s, q) {
 }
 
 // Which buttons apply. canApprove = the user holds the Director role (api.labour_contract.my_permissions).
+// Cancel is for a Director on a Sent back, Approved or Submitted sheet; Amend is for a Cancelled sheet.
 export function actionState(status, canApprove) {
 	const editable = status === DRAFT || status === SENT_BACK;
-	return { canEdit: editable, canSend: editable, canApprove: status === PENDING && !!canApprove, canSendBack: status === PENDING && !!canApprove, canSubmit: status === APPROVED };
+	return {
+		canEdit: editable, canSend: editable, canApprove: status === PENDING && !!canApprove, canSendBack: status === PENDING && !!canApprove, canSubmit: status === APPROVED,
+		canCancel: (status === SENT_BACK || status === APPROVED || status === SUBMITTED) && !!canApprove, canAmend: status === CANCELLED,
+	};
 }
 
-// Delete only while the sheet was never sent for approval (server: on_trash).
-export function canDelete(s) { return s.status === DRAFT && !s.raised_by; }
+// Delete only while the sheet was never sent for approval, or when it is Cancelled and nothing amends it (server: on_trash).
+// amended = names of the sheets that have an amendment (see amendedNames).
+export function canDelete(s, amended = new Set()) {
+	if (s.status === CANCELLED) return !amended.has(s.name);
+	return s.status === DRAFT && !s.raised_by;
+}
+// Names of the sheets that already have an amendment.
+export function amendedNames(list) { return new Set((list || []).map((s) => s.amends_sheet).filter(Boolean)); }
 
 // The document sent to save_doc: the typed values per line; the server rebuilds names, days, OT amount and totals.
 export function toDoc(form, rows, company) {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  KRA_PIN_RE, isCertExpired, matchesFilter, countsFor, matchesSearch, validateContractor, contractorInitials, todayISO,
+  KRA_PIN_RE, isCertExpired, matchesFilter, countsFor, matchesSearch, validateContractor, contractorInitials, todayISO, cleanPhone,
 } from "./labourContractor.js";
 
 const TODAY = "2026-11-19";
@@ -62,5 +62,16 @@ describe("validateContractor", () => {
   });
   it("lets an expired certificate be saved (renewal is an edit)", () => {
     expect(validateContractor({ ...ok, tax_cert_expiry: "2020-01-01" }, list, "")).toEqual({});
+  });
+});
+describe("phone input", () => {
+  it("keeps digits, spaces and a leading + only", () => {
+    expect(cleanPhone("sfsdvfea")).toBe("");
+    expect(cleanPhone("0712 345 678")).toBe("0712 345 678");
+    expect(cleanPhone("+254 712-345.678")).toBe("+254 712345678");
+    expect(cleanPhone("07a12")).toBe("0712");
+    expect(cleanPhone("12+34")).toBe("1234");
+    expect(cleanPhone("++254")).toBe("+254");
+    expect(cleanPhone(null)).toBe("");
   });
 });

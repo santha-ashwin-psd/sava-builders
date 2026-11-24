@@ -6,15 +6,34 @@
       <input v-model="search" placeholder="Search weekly bills…" class="sales-search-input" autocomplete="off"/>
     </div>
     <div class="sales-pills">
-      <button v-for="f in FILTERS" :key="f.k" class="sales-pill" :class="{active: activeFilter===f.k}" @click="activeFilter=f.k">
+      <button v-for="f in FILTERS" :key="f.k" class="sales-pill" :class="[{active: activeFilter===f.k}, f.k!=='all' ? PILL_CLASS[f.k] : '']" @click="activeFilter=f.k">
         {{ f.l }}
         <span class="sales-pill-count" :class="activeFilter===f.k?'':'zb-pc-muted'">{{ counts[f.k] }}</span>
       </button>
     </div>
+    <select v-model="projectFilter" class="inv-fi ct-project-filter" title="Filter by project">
+      <option value="">All projects</option>
+      <option v-for="p in projects" :key="p.name" :value="p.name">{{ p.project_name || p.name }}</option>
+    </select>
     <div class="cust-toolbar-right" style="margin-left:auto">
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
       <button class="sales-btn-primary" :disabled="!$canCreate('admin')" :title="!$canCreate('admin') ? 'Not permitted' : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> New Weekly Bill</button>
     </div>
+  </div>
+
+
+  <!-- KPI cards (click a card to filter the list) -->
+  <div class="bk-kpi-grid bk-kpi-grid-4">
+    <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeFilter='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Bills</div><div class="bk-kpi-value">{{ kpi.all.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.all.value) }}</div></div></div></div>
+    <div class="bk-kpi-card clickable" @click="activeFilter='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#e2e8f0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Draft</div><div class="bk-kpi-value">{{ kpi.draft.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.draft.value) }}</div></div></div></div>
+    <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeFilter='pending'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Pending Approval</div><div class="bk-kpi-value bk-kpi-amber">{{ kpi.pending.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.pending.value) }}</div></div></div></div>
+    <div class="bk-kpi-card clickable" @click="activeFilter='approved'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Approved</div><div class="bk-kpi-value bk-kpi-green">{{ kpi.approved.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.approved.value) }}</div></div></div></div>
+  </div>
+  <div class="bk-stat-grid">
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Bills This Week</div><div class="bk-stat-value">{{ kpi.weekN }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Amount This Week</div><div class="bk-stat-value bk-kpi-blue" style="font-size:16px">KES {{ fmtKES(kpi.weekValue) }}</div></div><div class="bk-stat-icon" style="background:#cffafe;color:#0891b2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Total Paid</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">KES {{ fmtKES(kpi.paid) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Balance To Pay</div><div class="bk-stat-value bk-kpi-amber" style="font-size:16px">KES {{ fmtKES(balanceToPay) }}</div></div><div class="bk-stat-icon" style="background:#fef3c7;color:#d97706"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div></div>
   </div>
 
   <div class="inv-table-wrap">
@@ -28,8 +47,8 @@
         </template>
         <tr v-else-if="!filtered.length">
           <td colspan="7" class="vt-empty">
-            <div class="vt-empty-title">{{ search || activeFilter!=='all' ? 'No results found' : 'No weekly bills yet' }}</div>
-            <div class="vt-empty-sub">{{ search || activeFilter!=='all' ? 'Try adjusting your search or filter' : 'Create the first weekly bill' }}</div>
+            <div class="vt-empty-title">{{ search || projectFilter || activeFilter!=='all' ? 'No results found' : 'No weekly bills yet' }}</div>
+            <div class="vt-empty-sub">{{ search || projectFilter || activeFilter!=='all' ? 'Try adjusting your search or filter' : 'Create the first weekly bill' }}</div>
           </td>
         </tr>
         <tr v-else v-for="b in filtered" :key="b.name" class="inv-row" @click="openEdit(b)">
@@ -43,7 +62,7 @@
         </tr>
       </tbody>
     </table>
-    <div class="vt-footer" v-if="!loading && list.length">Showing <strong>{{ filtered.length }}</strong> of <strong>{{ list.length }}</strong> bills</div>
+    <div class="vt-footer" v-if="!loading && list.length">Showing <strong>{{ filtered.length }}</strong> of <strong>{{ scoped.length }}</strong> bills</div>
   </div>
   <p style="margin:10px 4px;font-size:12px;color:#6b7280">A project can have more than one bill in the same week. A bill lists the Approved contracts of all projects that still have a balance, and a contract can be paid once a week. A Director approves each bill, and the bill is locked once sent for approval.</p>
 
@@ -52,7 +71,6 @@
       <div class="inv-drawer-panel open ct-drawer" style="width:1160px;max-width:98vw">
         <div class="inv-dh" style="background:linear-gradient(135deg,#1e3a5f,#1a6ef7);padding:18px 24px">
           <div class="cust-drawer-header-left">
-            <div class="cust-drawer-icon" style="color:#fff"><span v-html="icon('fileplus',16)"></span></div>
             <div>
               <div class="inv-dh-title">{{ form.name || 'New Weekly Bill' }}</div>
               <div class="cust-drawer-sub">{{ form.name ? form.status : 'Amounts to pay contractors for one week' }}</div>
@@ -82,7 +100,7 @@
               </thead>
               <tbody>
                 <tr v-if="rowsLoading"><td colspan="8" class="vt-empty"><div class="vt-empty-sub">Loading contracts…</div></td></tr>
-                <tr v-else-if="!visible.length"><td colspan="8" class="vt-empty"><div class="vt-empty-sub">{{ rows.length ? 'All Approved contracts are fully paid' : 'There are no Approved contracts to bill' }}</div></td></tr>
+                <tr v-else-if="!visible.length"><td colspan="8" class="vt-empty"><div class="vt-empty-sub">{{ !ac.canEdit ? 'No contracts on this bill' : rows.length ? 'All Approved contracts are fully paid' : 'There are no Approved contracts to bill' }}</div></td></tr>
                 <tr v-else v-for="r in visible" :key="r.contract">
                   <td class="vt-td vt-td-mono">{{ r.contract }}</td>
                   <td class="vt-td">{{ contractorNames[r.contractor] || r.contractor }}<span v-if="certExpired(r.contractor)" class="ct-flag"> certificate expired</span></td>
@@ -92,7 +110,7 @@
                   <td class="vt-td vt-td-r">{{ fmtKES(r.paid_till_now) }}<span v-if="!r.paid_till_now" class="ct-hint"> (New)</span></td>
                   <td class="vt-td vt-td-r">{{ fmtKES(r.balance) }}</td>
                   <td class="vt-td vt-td-r">
-                    <input type="number" min="0" v-model.number="r.amount_to_pay" class="inv-fi" style="width:130px;text-align:right" :disabled="!ac.canEdit || !!r.paid_this_week || rowLocked(r)" :aria-label="'Amount to pay now, contract ' + r.contract" :style2="''"/>
+                    <input type="text" inputmode="decimal" autocomplete="off" :value="r.amount_to_pay" @input="onAmountInput($event, r)" class="inv-fi" style="width:130px;text-align:right" :disabled="!ac.canEdit || !!r.paid_this_week || rowLocked(r)" :aria-label="'Amount to pay now, contract ' + r.contract" :style2="''"/>
                     <div v-if="r.paid_this_week" class="ct-hint">Already on {{ r.paid_this_week }} this week</div>
                     <div v-if="rowLocked(r)" class="ct-hint">Past week: already has payments</div>
                     <div v-if="rowError(r)" class="ct-err">{{ rowError(r) }}</div>
@@ -102,11 +120,14 @@
             </table>
           </div>
           <div v-if="visible.length" style="margin-top:12px;font-weight:600;text-align:right">Total to pay now: KES {{ fmtKES(total) }}</div>
-          <div class="ct-info"><span v-html="icon('info',14)"></span>Fully paid contracts are not listed. Contracts of all projects are shown. A contract can be paid once a week, and an amount can't be above its balance.</div>
+          <div v-if="ac.canEdit" class="ct-info"><span v-html="icon('info',14)"></span>Fully paid contracts are not listed. Contracts of all projects are shown. A contract can be paid once a week, and an amount can't be above its balance.</div>
 
           <div v-if="form.status===SENT_BACK && form.rejection_reason" class="ct-note ct-note-bad">Sent back: {{ form.rejection_reason }}</div>
           <div v-if="form.status===PENDING" class="ct-note">Waiting for Director approval. The bill is locked.</div>
-          <div v-if="form.status===APPROVED" class="ct-note ct-note-ok">Approved by {{ ownerName(form.approved_by) }} on {{ fmtDate(form.approved_on) }}.</div>
+          <div v-if="form.status===APPROVED" class="ct-note ct-note-ok">Approved by {{ ownerName(form.approved_by) }} on {{ fmtDate(form.approved_on) }}. Payment is not recorded until the bill is marked Paid.</div>
+          <div v-if="form.status===CANCELLED" class="ct-note ct-note-bad">Cancelled by {{ ownerName(form.cancelled_by) }} on {{ fmtDate(form.cancelled_on) }}: {{ form.cancel_reason }}<span v-if="form.amended_from"> (amended from {{ form.amended_from }})</span></div>
+          <div v-if="form.amended_from && form.status!==CANCELLED" class="ct-note">Amended from {{ form.amended_from }}.</div>
+          <div v-if="form.status===PAID" class="ct-note ct-note-ok">Paid. Marked paid by {{ ownerName(form.paid_by) }} on {{ fmtDate(form.paid_on) }}. Approved by {{ ownerName(form.approved_by) }} on {{ fmtDate(form.approved_on) }}.</div>
           <div v-if="blockers.length && (ac.canSend || ac.canApprove)" class="ct-errbox">
             <div class="ct-errbox-title"><span v-html="icon('alert',15)"></span>Please fix the following</div>
             <ul><li v-for="b in blockers" :key="b">{{ b }}</li></ul>
@@ -114,13 +135,21 @@
           <div v-if="droppedMsg" class="ct-note ct-note-bad">{{ droppedMsg }}</div>
         </div>
 
-        <div class="inv-dfooter" style="border-top:1px solid #e8ecf0;padding:14px 24px;background:#fafbfd;flex-wrap:wrap;gap:8px">
-          <button v-if="canDeleteDoc && $canDelete('admin')" class="form-btn form-btn-outline" :disabled="busy" @click="doDelete" style="margin-right:auto;color:#dc2626">Delete</button>
-          <button class="form-btn form-btn-outline" @click="showDrawer=false">{{ ac.canEdit ? 'Cancel' : 'Close window' }}</button>
-          <button v-if="ac.canEdit" class="form-btn form-btn-outline ct-btn-blue" :disabled="busy || !canWrite" @click="saveDraft(false)">{{ saving ? 'Saving…' : 'Save Draft' }}</button>
-          <button v-if="ac.canSend" class="form-btn form-btn-primary" :disabled="busy || !canWrite || blockers.length>0 || !!droppedMsg" @click="sendForApproval">Send for approval</button>
-          <button v-if="ac.canApprove" class="form-btn form-btn-primary" :disabled="busy || blockers.length>0" @click="approve">Approve as Director</button>
-          <button v-if="ac.canSendBack" class="form-btn form-btn-outline" :disabled="busy" @click="sendBack">Send back</button>
+        <div class="inv-dfooter">
+          <div class="add-footer-status">{{ form.name ? 'Editing: ' + form.name : 'New weekly bill — unsaved' }}</div>
+          <div class="add-footer-actions">
+            <button v-if="canDeleteDoc && $canDelete('admin')" class="add-btn-cancel wb-del" :disabled="busy" @click="doDelete">Delete</button>
+            <button class="add-btn-cancel" @click="showDrawer=false">{{ ac.canEdit ? 'Cancel' : 'Close window' }}</button>
+            <button v-if="ac.canEdit" class="add-btn-draft" :disabled="busy || !canWrite" @click="saveDraft(false)"><span v-html="icon('save',13)"></span> {{ saving ? 'Saving…' : 'Save Draft' }}</button>
+            <button v-if="ac.canSend" class="add-btn-more" :disabled="busy || !canWrite || blockers.length>0 || !!droppedMsg" @click="sendForApproval"><span v-html="icon('check',13)"></span> Send for approval</button>
+            <button v-if="ac.canApprove" class="add-btn-more" :disabled="busy || blockers.length>0" @click="approve">Approve as Director</button>
+            <button v-if="ac.canReopen" class="add-btn-draft" :disabled="busy" @click="reopen">Edit</button>
+            <button v-if="ac.canCancel" class="add-btn-cancel wb-cancel-bill" :disabled="busy" @click="cancelBill">Cancel bill</button>
+            <button v-if="ac.canMarkUnpaid" class="add-btn-cancel" :disabled="busy" @click="markUnpaid">Mark unpaid</button>
+            <button v-if="ac.canAmend" class="add-btn-more" :disabled="busy || !canWrite" @click="amend">Amend</button>
+            <button v-if="ac.canMarkPaid" class="add-btn-more" :disabled="busy" @click="markPaid">Paid</button>
+            <button v-if="ac.canSendBack" class="add-btn-cancel" :disabled="busy" @click="sendBack">Send back</button>
+          </div>
         </div>
       </div>
     </div>
@@ -143,8 +172,8 @@ import { icon } from "../utils/icons.js";
 import { isCertExpired, todayISO } from "../utils/labourContractor.js";
 import { statusClass, fmtKES } from "../utils/labourContract.js";
 import {
-  PENDING, APPROVED, SENT_BACK, weekLabel, matchesFilter, countsFor, matchesSearch, mergeRows, totalOf, rowError, visibleRows,
-  billBlockers, validateBill, actionState, canDelete, toDoc, contractsLabel, projectsLabel, pastLocked,
+  PENDING, APPROVED, SENT_BACK, PAID, CANCELLED, weekLabel, matchesFilter, countsFor, matchesSearch, mergeRows, totalOf, rowError, visibleRows,
+  billBlockers, validateBill, actionState, cleanAmount, lockedRows, canDelete, toDoc, contractsLabel, projectsLabel, pastLocked, inProject, kpiFor,
 } from "../utils/labourWeeklyBill.js";
 
 const { toast } = useToast();
@@ -153,7 +182,7 @@ const { prompt } = usePrompt();
 const { canEdit: canEditModule } = usePermissions();
 const DT = "Labour Weekly Bill";
 const API = "psd_books.api.labour_weekly_bill.";
-const FILTERS = [{ k: "all", l: "All" }, { k: "draft", l: "Draft" }, { k: "pending", l: "Pending" }, { k: "approved", l: "Approved" }];
+const FILTERS = [{ k: "all", l: "All" }, { k: "draft", l: "Draft" }, { k: "pending", l: "Pending" }, { k: "approved", l: "Approved" }, { k: "paid", l: "Paid" }, { k: "cancelled", l: "Cancelled" }];
 
 const list = ref([]);
 const projects = ref([]);
@@ -162,21 +191,32 @@ const contractActivity = ref({});
 const contractProject = ref({});
 const contractors = ref([]);
 const canApprove = ref(false);
+function onAmountInput(e, r) {   // digits and one decimal point only
+  const c = cleanAmount(e.target.value);
+  e.target.value = c;
+  r.amount_to_pay = c;
+}
+const canPay = ref(false);   // Director, Purchase Manager or Admin: the Paid button
 const loading = ref(true);
 const search = ref("");
 const activeFilter = ref("all");
+const projectFilter = ref("");
+const balances = ref({});   // {project: balance still to pay on its Approved contracts}
+// Pill colours, same look as the Purchase Orders pills
+const PILL_CLASS = { draft: "pill-draft", pending: "pill-unpaid", approved: "pill-paid", paid: "pill-paid", cancelled: "pill-draft" };
 const showDrawer = ref(false);
 const saving = ref(false);
 const busy = ref(false);
 const rows = ref([]);
-const visible = computed(() => visibleRows(rows.value));
+// A bill being edited lists every unpaid contract; a locked one (Pending, Approved, Paid) lists only the contracts paid on it.
+const visible = computed(() => (ac.value.canEdit ? visibleRows(rows.value) : lockedRows(rows.value)));
 const rowsLoading = ref(false);
 const droppedMsg = ref("");
 const formErrors = reactive({});
 const form = reactive({});
 
 const canWrite = computed(() => canEditModule("admin"));
-const blank = () => ({ name: "", status: "Draft", project: "", week_date: todayISO(), raised_by: "", approved_by: "", approved_on: "", rejection_reason: "" });
+const blank = () => ({ name: "", status: "Draft", project: "", week_date: todayISO(), raised_by: "", approved_by: "", approved_on: "", paid_by: "", paid_on: "", cancelled_by: "", cancelled_on: "", cancel_reason: "", amended_from: "", rejection_reason: "" });
 function resetForm(src) {
   Object.keys(formErrors).forEach((k) => delete formErrors[k]);
   Object.keys(form).forEach((k) => delete form[k]);
@@ -186,9 +226,15 @@ function resetForm(src) {
 
 const projectNames = computed(() => Object.fromEntries(projects.value.map((p) => [p.name, p.project_name || p.name])));
 const contractorNames = computed(() => Object.fromEntries(contractors.value.map((c) => [c.name, c.contractor_name || c.name])));
-const counts = computed(() => countsFor(list.value));
-const filtered = computed(() => list.value.filter((b) => matchesFilter(b, activeFilter.value) && matchesSearch(b, search.value, projectNames.value, columns.value)));
-const ac = computed(() => actionState(form.status, canApprove.value));
+// The project filter narrows the pills, the cards and the table together
+const scoped = computed(() => projectFilter.value ? list.value.filter((b) => inProject(b, projectFilter.value, columns.value)) : list.value);
+const counts = computed(() => countsFor(scoped.value));
+const kpi = computed(() => kpiFor(scoped.value, todayISO()));
+const balanceToPay = computed(() => projectFilter.value
+  ? Number(balances.value[projectFilter.value]) || 0
+  : Object.values(balances.value).reduce((a, v) => a + (Number(v) || 0), 0));
+const filtered = computed(() => scoped.value.filter((b) => matchesFilter(b, activeFilter.value) && matchesSearch(b, search.value, projectNames.value, columns.value)));
+const ac = computed(() => actionState(form.status, canApprove.value, canPay.value));
 const canDeleteDoc = computed(() => !!form.name && canDelete(form));
 const total = computed(() => totalOf(rows.value));
 const blockers = computed(() => billBlockers(rows.value, contractors.value));
@@ -200,14 +246,17 @@ function errStyle(f) { return formErrors[f] ? "border-color:#dc2626;background:#
 async function load() {
   loading.value = true;
   try {
-    const [bills, pr, ct, perm] = await Promise.all([
-      apiList(DT, { fields: ["name", "status", "project", "week_start", "week_end", "total_amount", "raised_by"], order: "week_start desc, modified desc", limit: 1000 }),
+    const [bills, pr, ct, perm, bal] = await Promise.all([
+      apiList(DT, { fields: ["name", "status", "project", "week_start", "week_end", "total_amount", "raised_by"], order: "creation desc", limit: 1000 }),
       apiList("Project", { fields: ["name", "project_name", "status"], limit: 1000 }),
       apiList("Labour Contractor", { fields: ["name", "contractor_name", "disabled", "tax_cert_expiry"], order: "contractor_name asc", limit: 1000 }),
       apiGET("psd_books.api.labour_contract.my_permissions", {}),
+      apiGET(API + "balance_by_project", {}).catch(() => ({})),   // card only: the page still opens if this fails
     ]);
     list.value = bills || []; projects.value = pr || []; contractors.value = ct || [];
     canApprove.value = !!(perm && perm.can_approve);
+    canPay.value = !!(perm && perm.can_mark_paid);
+    balances.value = (bal && typeof bal === "object" && !Array.isArray(bal)) ? (bal.message || bal) : {};
     loadColumns();
     loadActivities();
   } catch (e) {
@@ -256,7 +305,7 @@ async function openEdit(b) {
   showDrawer.value = true;
   try {
     const doc = await apiGet(DT, b.name);
-    Object.assign(form, { rejection_reason: doc.rejection_reason, approved_by: doc.approved_by, approved_on: doc.approved_on, raised_by: doc.raised_by });
+    Object.assign(form, { rejection_reason: doc.rejection_reason, approved_by: doc.approved_by, approved_on: doc.approved_on, paid_by: doc.paid_by, paid_on: doc.paid_on, cancelled_by: doc.cancelled_by, cancelled_on: doc.cancelled_on, cancel_reason: doc.cancel_reason, amended_from: doc.amended_from, raised_by: doc.raised_by });
     if (actionState(doc.status, false).canEdit) await refreshRows(doc.lines || []);
     else rows.value = (doc.lines || []).map((l) => ({ ...l })); // locked: show the bill as saved
   } catch (e) { toast(e.message || "Could not open bill", "error"); }
@@ -291,7 +340,7 @@ async function run(method, args, okMsg) {
     toast(okMsg);
     await load();
     if (r && r.name) {
-      Object.assign(form, { status: r.status, raised_by: r.raised_by, approved_by: r.approved_by, approved_on: r.approved_on, rejection_reason: r.rejection_reason });
+      Object.assign(form, { status: r.status, raised_by: r.raised_by, approved_by: r.approved_by, approved_on: r.approved_on, paid_by: r.paid_by, paid_on: r.paid_on, cancelled_by: r.cancelled_by, cancelled_on: r.cancelled_on, cancel_reason: r.cancel_reason, amended_from: r.amended_from, rejection_reason: r.rejection_reason });
       if (actionState(r.status, false).canEdit) await refreshRows(r.lines || []);
       else rows.value = (r.lines || []).map((l) => ({ ...l }));
     }
@@ -301,14 +350,45 @@ async function run(method, args, okMsg) {
 }
 
 async function sendForApproval() {
-  const ok = await confirm({ title: "Send for approval?", body: "Send this bill to the Director for approval? Total to pay: KES " + fmtKES(total.value) + ". The bill is locked once it is sent.", okLabel: "Send for approval", okStyle: "primary" });
+  const ok = await confirm({ title: "Confirm to send for approval", body: "Send this bill to the Director for approval? Total to pay: KES " + fmtKES(total.value) + ". The bill is locked once it is sent.", okLabel: "Send for approval", okStyle: "primary" });
   if (!ok) return;
   const name = await saveDraft(true);
   if (name) await run("send_for_approval", { name }, "Sent for Director approval");
 }
 async function approve() {
-  const ok = await confirm({ title: "Approve bill?", body: "Approve " + form.name + "? Total to pay: KES " + fmtKES(total.value) + ".", okLabel: "Approve", okStyle: "primary" });
+  const ok = await confirm({ title: "Confirm to approve", body: "Approve " + form.name + "? Total to pay: KES " + fmtKES(total.value) + ".", okLabel: "Approve", okStyle: "primary" });
   if (ok) await run("approve_bill", { name: form.name }, "Bill approved");
+}
+async function markPaid() {
+  const ok = await confirm({ title: "Confirm to mark as paid", body: "Mark bill " + form.name + " as paid? Total paid: KES " + fmtKES(total.value) + ". The payment is recorded now and can't be undone.", okLabel: "Yes, mark as Paid", okStyle: "primary" });
+  if (ok) await run("mark_paid", { name: form.name }, "Payment recorded");
+}
+async function reopen() {
+  const ok = await confirm({ title: "Confirm to edit", body: "Reopen " + form.name + " as a Draft so the amounts can be changed? Its approval is cleared and it must be sent to the Director for approval again.", okLabel: "Reopen for editing", okStyle: "primary" });
+  if (ok) await run("reopen_bill", { name: form.name }, "Bill reopened as Draft");
+}
+async function markUnpaid() {
+  const ok = await confirm({ title: "Confirm to mark as unpaid", body: "Reverse the payment of " + form.name + " (KES " + fmtKES(total.value) + ")? The bill goes back to Approved and the amount no longer counts as paid.", okLabel: "Yes, mark unpaid", okStyle: "primary" });
+  if (ok) await run("mark_unpaid", { name: form.name }, "Bill marked unpaid");
+}
+async function cancelBill() {
+  const reason = await prompt({ title: "Cancel bill", label: "Reason", okLabel: "Cancel bill" });
+  if (!reason || !reason.trim()) return;
+  await run("cancel_bill", { name: form.name, reason: reason.trim() }, "Bill cancelled");
+}
+async function amend() {
+  const ok = await confirm({ title: "Confirm to amend", body: "Make a new Draft bill from " + form.name + " with the same week and amounts. You can change it and send it for approval.", okLabel: "Amend", okStyle: "primary" });
+  if (!ok) return;
+  busy.value = true;
+  try {
+    const r = await apiPOST(API + "amend_bill", { name: form.name });
+    toast("New draft " + r.name + " made");
+    await load();
+    const nb = list.value.find((x) => x.name === r.name);
+    if (nb) await openEdit(nb); else showDrawer.value = false;
+  } catch (e) {
+    toast(e.message || "Could not amend bill", "error");
+  } finally { busy.value = false; }
 }
 async function sendBack() {
   const reason = await prompt({ title: "Send back", label: "Reason", okLabel: "Send back" });
@@ -316,7 +396,7 @@ async function sendBack() {
   await run("send_back_bill", { name: form.name, reason: reason.trim() }, "Sent back");
 }
 async function doDelete() {
-  const ok = await confirm({ title: "Delete bill?", body: "Delete " + form.name + "? Only a bill never sent for approval can be deleted." });
+  const ok = await confirm({ title: "Confirm to delete", body: "Delete " + form.name + "? Only a Draft never sent for approval, or a Cancelled bill, can be deleted." });
   if (!ok) return;
   busy.value = true;
   try { await apiDelete(DT, form.name); toast("Bill deleted"); showDrawer.value = false; await load(); }
@@ -329,6 +409,8 @@ onMounted(load);
 
 <style scoped>
 .nim-req, .inv-req { color: #dc2626; }
+.ct-project-filter { width: 190px; height: 34px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; font-size: 13px; }
+.ct-kpi-sub { display: block !important; color: #6b7280; font-weight: 500; }
 .cust-drawer-sub { color: #fff; font-size: 12px; margin-top: 2px; }
 .ct-err { margin-top: 4px; font-size: 12px; color: #dc2626; }
 .ct-hint { font-size: 12px; color: #9ca3af; }
@@ -344,6 +426,8 @@ onMounted(load);
 .ct-errbox-title { display: flex; align-items: center; gap: 8px; font-weight: 700; }
 .ct-errbox ul { margin: 8px 0 0; padding-left: 22px; }
 .ct-errbox li { margin: 2px 0; }
+.wb-del { margin-right: auto; color: #dc2626; }
+.wb-cancel-bill { color: #dc2626; border-color: #fecaca; }
 .ct-btn-blue { color: #1a6ef7; border-color: #1a6ef7; }
 .ct-btn-blue:hover:not(:disabled) { background: #eff6ff; }
 .ct-note-ok { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }

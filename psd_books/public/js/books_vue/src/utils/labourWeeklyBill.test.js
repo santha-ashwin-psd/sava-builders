@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-	mondayISO, sundayISO, weekLabel, matchesFilter, countsFor, matchesSearch, mergeRows, totalOf, rowError, billBlockers,
-	validateBill, actionState, canDelete, toDoc, contractsLabel, isFullyPaid, visibleRows, projectsLabel, isPastWeek, pastLocked,
+	mondayISO, sundayISO, weekLabel, matchesFilter, countsFor, lockedRows, matchesSearch, mergeRows, totalOf, rowError, billBlockers,
+	validateBill, actionState, canDelete, toDoc, contractsLabel, isFullyPaid, visibleRows, projectsLabel, isPastWeek, pastLocked, inProject, kpiFor, cleanAmount,
 } from "./labourWeeklyBill.js";
 
 const preview = [
@@ -46,10 +46,17 @@ describe("fully paid contracts", () => {
 	});
 });
 
+describe("lockedRows", () => {
+	it("keeps only the contracts being paid on a locked bill", () => {
+		const rows = [{ contract: "A", amount_to_pay: 0 }, { contract: "B", amount_to_pay: 50000 }, { contract: "C", amount_to_pay: "" }];
+		expect(lockedRows(rows).map((r) => r.contract)).toEqual(["B"]);
+	});
+});
+
 describe("list helpers", () => {
 	const list = [{ name: "LWB-1", status: "Draft", project: "P1", week_start: "2026-11-16" }, { name: "LWB-2", status: "Sent back", project: "P1", week_start: "2026-11-09" },
 		{ name: "LWB-3", status: "Pending approval", project: "P2", week_start: "2026-11-09" }, { name: "LWB-4", status: "Approved", project: "P2", week_start: "2026-11-02" }];
-	it("counts, with Sent back under draft", () => { expect(countsFor(list)).toEqual({ all: 4, draft: 2, pending: 1, approved: 1 }); });
+	it("counts, with Sent back under draft", () => { expect(countsFor(list)).toEqual({ all: 4, draft: 2, pending: 1, approved: 1, paid: 0, cancelled: 0 }); });
 	it("filters", () => { expect(list.filter((b) => matchesFilter(b, "draft")).length).toBe(2); expect(list.filter((b) => matchesFilter(b, "all")).length).toBe(4); });
 	it("searches number, project name and week", () => {
 		expect(list.filter((b) => matchesSearch(b, "aj-005", { P1: "AJ-005 build" })).length).toBe(2);
@@ -109,10 +116,25 @@ describe("validate, actions, payload", () => {
 		expect(validateBill({ week_date: "2026-11-16" }, preview)).toEqual({});
 	});
 	it("actions", () => {
-		for (const s of ["Draft", "Sent back"]) expect(actionState(s, true)).toEqual({ canEdit: true, canSend: true, canApprove: false, canSendBack: false });
-		expect(actionState("Pending approval", true)).toEqual({ canEdit: false, canSend: false, canApprove: true, canSendBack: true });
+		for (const s of ["Draft", "Sent back"]) expect(actionState(s, true)).toEqual({ canEdit: true, canSend: true, canApprove: false, canSendBack: false, canMarkPaid: false, canReopen: false, canCancel: false, canMarkUnpaid: false, canAmend: false });
+		expect(actionState("Pending approval", true)).toEqual({ canEdit: false, canSend: false, canApprove: true, canSendBack: true, canMarkPaid: false, canReopen: false, canCancel: false, canMarkUnpaid: false, canAmend: false });
 		expect(actionState("Pending approval", false).canApprove).toBe(false);
-		expect(Object.values(actionState("Approved", true)).some(Boolean)).toBe(false);
+		expect(actionState("Approved", true)).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canMarkPaid: true, canReopen: true, canCancel: true, canMarkUnpaid: false, canAmend: false });
+		expect(actionState("Approved", false).canReopen).toBe(false);
+		expect(actionState("Paid", true).canMarkUnpaid).toBe(true);
+		expect(actionState("Paid", false).canMarkUnpaid).toBe(false);
+		expect(actionState("Paid", true).canCancel).toBe(false);
+		expect(actionState("Cancelled", false).canAmend).toBe(true);
+		expect(actionState("Approved", false).canMarkPaid).toBe(false);
+		// Purchase Manager / Admin: Paid only, none of the Director buttons
+		expect(actionState("Approved", false, true)).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canMarkPaid: true, canReopen: false, canCancel: false, canMarkUnpaid: false, canAmend: false });
+		expect(actionState("Paid", false, true).canMarkPaid).toBe(false);
+		expect(actionState("Pending approval", false, true).canMarkPaid).toBe(false);
+		expect(actionState("Paid", true).canMarkPaid).toBe(false);
+	});
+	it("cancelled bills can be deleted, sent ones not", () => {
+		expect(canDelete({ status: "Cancelled", raised_by: "a@x" })).toBe(true);
+		expect(canDelete({ status: "Paid", raised_by: "a@x" })).toBe(false);
 	});
 	it("delete only a Draft never sent", () => {
 		expect(canDelete({ status: "Draft", raised_by: "" })).toBe(true);
@@ -156,5 +178,54 @@ describe("past week locks", () => {
 		expect(pastLocked(fresh, "2026-11-16", true, "2026-11-23")).toBe(false);
 		expect(pastLocked(paid, "2026-11-23", true, "2026-11-23")).toBe(false);  // current week
 		expect(pastLocked(paid, "2026-11-16", false, "2026-11-23")).toBe(false);  // existing bill
+	});
+});
+
+describe("inProject and kpiFor", () => {
+	const bills = [
+		{ name: "B1", status: "Approved", project: "", week_start: "2026-11-23", total_amount: 20000 },
+		{ name: "B2", status: "Draft", project: "", week_start: "2026-11-24", total_amount: 5000 },
+		{ name: "B3", status: "Sent back", project: "", week_start: "2026-11-25", total_amount: 7000 },
+		{ name: "B4", status: "Pending approval", project: "", week_start: "2026-11-16", total_amount: 3000 },
+		{ name: "B5", status: "Paid", project: "", week_start: "2026-11-23", total_amount: 8000 },
+		{ name: "B6", status: "Cancelled", project: "", week_start: "2026-11-23", total_amount: 9000 },
+	];
+	it("matches a project through the bill or its contracts", () => {
+		const cols = { B1: { projects: ["P1"] }, B2: { projects: ["P2"] } };
+		expect(inProject(bills[0], "", cols)).toBe(true);
+		expect(inProject(bills[0], "P1", cols)).toBe(true);
+		expect(inProject(bills[1], "P1", cols)).toBe(false);
+		expect(inProject({ name: "X", project: "P1" }, "P1", {})).toBe(true);
+		expect(inProject(bills[2], "P1", {})).toBe(false);
+	});
+	it("totals per group, this week and paid", () => {
+		const k = kpiFor(bills, "2026-11-24");
+		expect(k.all).toEqual({ n: 5, value: 43000 });
+		expect(k.draft).toEqual({ n: 2, value: 12000 });
+		expect(k.pending).toEqual({ n: 1, value: 3000 });
+		expect(k.approved).toEqual({ n: 1, value: 20000 });
+		expect(k.paid).toBe(8000);
+		expect(k.paidBills).toEqual({ n: 1, value: 8000 });
+		expect(k.weekN).toBe(3);
+		expect(k.weekValue).toBe(33000);
+	});
+	it("handles an empty list", () => {
+		const k = kpiFor([], "2026-11-24");
+		expect(k.all.n).toBe(0);
+		expect(k.weekValue).toBe(0);
+	});
+});
+describe("amount to pay input", () => {
+	it("keeps digits and one decimal point only", () => {
+		expect(cleanAmount("kjjkuhjuhhiuuhuhu")).toBe("");
+		expect(cleanAmount("12ab3")).toBe("123");
+		expect(cleanAmount("1,500")).toBe("1500");
+		expect(cleanAmount("-5")).toBe("5");
+		expect(cleanAmount("12.5")).toBe("12.5");
+		expect(cleanAmount("1.2.3")).toBe("1.2");
+		expect(cleanAmount("5.")).toBe("5.");
+		expect(cleanAmount(550)).toBe("550");
+		expect(cleanAmount(null)).toBe("");
+		expect(Number(cleanAmount("5."))).toBe(5);
 	});
 });

@@ -190,6 +190,15 @@ class TestEditLock(unittest.TestCase):
 		for st in ("Draft", "Sent back"):
 			lc.check_edit(Doc(status=st), st)
 
+	def test_narration_saved_only_when_approved(self):
+		d = Doc(status="Approved")
+		lc.set_narration(d, "  site visit done  ")
+		self.assertEqual(d.narration, "site visit done")
+		self.assertTrue(d.flags.lc_workflow)
+		for st in ("Draft", "Pending approval", "Sent back", "Closed"):
+			with self.assertRaises(Exception):
+				lc.set_narration(Doc(status=st), "x")
+
 	def test_status_cannot_be_edited_directly(self):
 		with self.assertRaises(Exception):
 			lc.check_edit(Doc(status="Approved"), "Draft")

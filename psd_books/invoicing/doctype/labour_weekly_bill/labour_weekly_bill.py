@@ -3,15 +3,18 @@
 A bill is not tied to one project: it lists every Approved contract of the caller's company (contracts of a Closed project
 are left out), whatever its project or dates, and a project can have any number of bills in the same week (Monday to
 Sunday; any date in the week can be given, it is moved to the Monday). The user enters the amount to pay now on each. The lines are made by the system; the user only edits the amounts.
-- Paid till now = amounts on other Approved bills; balance = contract value - paid - amounts on other bills
-  still Pending approval. An amount can't be below zero or above the balance (checked on save, send and approve).
-- Status: Draft -> Pending approval -> Approved; a Director can send it back (Sent back, editable again).
-  Only a Director approves. Statuses are set only through the workflow (doc.flags.lwb_workflow).
-- Pending approval and Approved bills are locked.
+- Paid till now = amounts on other Paid bills; balance = contract value - paid - amounts on other bills
+  still Pending approval or Approved (approved but not yet marked Paid). An amount can't be below zero or above the balance (checked on save, send and approve).
+- Status: Draft -> Pending approval -> Approved -> Paid; a Director can send it back (Sent back, editable again).
+  Only a Director approves and a Director, Purchase Manager or Admin marks an Approved bill Paid (the payment is recorded then, not on approval). Statuses are set only through the workflow (doc.flags.lwb_workflow).
+- Pending approval, Approved, Paid and Cancelled bills are locked.
+- Reversing (Director only): Edit reopens an Approved bill to Draft (approval cleared, send for approval again); Mark Unpaid
+  moves a Paid bill back to Approved; Cancel (Approved only, reason required) sets Cancelled, which counts nowhere (not in paid, balance or
+  the week); Amend makes a new Draft from a Cancelled bill (amended_from). Delete only a Draft never sent, or a Cancelled bill.
 - Blocked on send and on approve: no amount above zero; a contractor paid on the bill has an expired tax
   certificate or is inactive.
 - A contract can be paid once a week: an amount above zero on a contract is refused when another bill of the same week
-  (Monday to Sunday) already holds an amount on it (checked on save, send and approve). Pending approval and Approved
+  (Monday to Sunday) already holds an amount on it (checked on save, send and approve). Pending approval, Approved and Paid
   bills always count; a Draft counts only against bills created after it (the first Draft keeps the contract), so two
   drafts can't both claim it. A Sent back bill does not reserve the week.
 - A new bill can be made for a past week, but only for contracts with nothing paid so far (paid till now 0); a contract that already has
@@ -25,10 +28,12 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import flt, getdate, nowdate
 
-DRAFT, PENDING, APPROVED, SENT_BACK = "Draft", "Pending approval", "Approved", "Sent back"
+DRAFT, PENDING, APPROVED, SENT_BACK, PAID, CANCELLED = "Draft", "Pending approval", "Approved", "Sent back", "Paid", "Cancelled"
 SENDABLE = (DRAFT, SENT_BACK)
-LOCKED = (PENDING, APPROVED)
+LOCKED = (PENDING, APPROVED, PAID, CANCELLED)
 APPROVER_ROLE = "Director"
+# Who may mark an Approved bill Paid (record the payment): a Director, a Purchase Manager or an Admin.
+PAYER_ROLES = ("Director", "Purchase Manager", "Admin")
 
 
 # ---- pure helpers (no database) ----
@@ -138,6 +143,68 @@ def approve(doc, problems, user, roles, now):
 	doc.flags.lwb_workflow = True
 
 
+def mark_paid(doc, user, roles, now):
+	"""Approved -> Paid: the payment is recorded. Director, Purchase Manager or Admin."""
+	if doc.status != APPROVED:
+		frappe.throw(_("{0} is {1}. Only an Approved bill can be marked Paid.").format(doc.name, doc.status))
+	if not set(PAYER_ROLES) & set(roles):
+		frappe.throw(_("Only a Director, Purchase Manager or Admin can mark a Labour Weekly Bill as Paid."))
+	doc.status = PAID
+	doc.paid_by = user
+	doc.paid_on = now
+	doc.flags.lwb_workflow = True
+
+
+def _director(roles, what):
+	if APPROVER_ROLE not in roles:
+		frappe.throw(_("Only a Director can {0} a Labour Weekly Bill.").format(what))
+
+
+def reopen(doc, user, roles):
+	"""Approved -> Draft so the amounts can be edited; approval is cleared and the bill must be sent for approval again. Director only."""
+	if doc.status != APPROVED:
+		frappe.throw(_("{0} is {1}. Only an Approved bill can be reopened for editing.").format(doc.name, doc.status))
+	_director(roles, "reopen")
+	doc.status = DRAFT
+	doc.approved_by = None
+	doc.approved_on = None
+	doc.rejection_reason = None
+	doc.flags.lwb_workflow = True
+
+
+def mark_unpaid(doc, user, roles):
+	"""Paid -> Approved: the payment is reversed. Director only."""
+	if doc.status != PAID:
+		frappe.throw(_("{0} is {1}. Only a Paid bill can be marked unpaid.").format(doc.name, doc.status))
+	_director(roles, "mark as unpaid")
+	doc.status = APPROVED
+	doc.paid_by = None
+	doc.paid_on = None
+	doc.flags.lwb_workflow = True
+
+
+def cancel(doc, user, roles, reason, now):
+	"""Approved -> Cancelled (a Paid bill must be marked unpaid first). Reason required. Director only."""
+	reason = (reason or "").strip()
+	if doc.status == PAID:
+		frappe.throw(_("{0} is Paid. Mark it unpaid before cancelling.").format(doc.name))
+	if doc.status != APPROVED:
+		frappe.throw(_("{0} is {1}. Only an Approved bill can be cancelled.").format(doc.name, doc.status))
+	_director(roles, "cancel")
+	if not reason:
+		frappe.throw(_("Give a reason for cancelling the bill."))
+	doc.status = CANCELLED
+	doc.cancel_reason = reason
+	doc.cancelled_by = user
+	doc.cancelled_on = now
+	doc.flags.lwb_workflow = True
+
+
+def can_delete(status, raised_by):
+	"""A Draft never sent for approval, or a Cancelled bill."""
+	return status == CANCELLED or (status == DRAFT and not raised_by)
+
+
 def send_back(doc, user, roles, reason):
 	reason = (reason or "").strip()
 	if doc.status != PENDING:
@@ -175,23 +242,23 @@ def caller_company():
 
 
 def committed_totals(contracts, exclude_bill=None):
-	"""{contract: {"paid": amount on other Approved bills, "pending": amount on other Pending approval bills}}."""
+	"""{contract: {"paid": amount on other Paid bills, "pending": amount on other Pending approval or Approved (not yet Paid) bills}}."""
 	out = {c: {"paid": 0.0, "pending": 0.0} for c in contracts}
 	if not contracts:
 		return out
 	rows = frappe.db.sql(
 		"""select l.contract, b.status, sum(l.amount_to_pay) from `tabLabour Weekly Bill Line` l
 		join `tabLabour Weekly Bill` b on b.name = l.parent
-		where l.contract in %(c)s and b.name != %(n)s and b.status in ('Approved', 'Pending approval')
+		where l.contract in %(c)s and b.name != %(n)s and b.status in ('Paid', 'Approved', 'Pending approval')
 		group by l.contract, b.status""", {"c": tuple(contracts), "n": exclude_bill or ""})
 	for contract, status, amt in rows:
-		out[contract]["paid" if status == APPROVED else "pending"] = flt(amt)
+		out[contract]["paid" if status == PAID else "pending"] += flt(amt)
 	return out
 
 
 def paid_this_week(contracts, week_start, exclude_bill=None, creation=None):
 	"""{contract: bill name} for contracts with an amount above zero on another bill of the week that holds it: any Pending
-	approval or Approved bill, and any Draft created before this bill (creation; None for a new bill = every Draft)."""
+	approval, Approved or Paid bill, and any Draft created before this bill (creation; None for a new bill = every Draft)."""
 	out = {}
 	if not contracts:
 		return out
@@ -199,7 +266,7 @@ def paid_this_week(contracts, week_start, exclude_bill=None, creation=None):
 		"""select l.contract, b.name from `tabLabour Weekly Bill Line` l
 		join `tabLabour Weekly Bill` b on b.name = l.parent
 		where l.contract in %(c)s and b.week_start = %(w)s and b.name != %(n)s and l.amount_to_pay > 0
-		and (b.status in ('Approved', 'Pending approval') or (b.status = 'Draft' and (%(cr)s is null or b.creation < %(cr)s)))
+		and (b.status in ('Paid', 'Approved', 'Pending approval') or (b.status = 'Draft' and (%(cr)s is null or b.creation < %(cr)s)))
 		order by b.name""", {"c": tuple(contracts), "w": monday_of(week_start), "n": exclude_bill or "", "cr": creation})
 	for contract, bill in rows:
 		out.setdefault(contract, bill)
@@ -309,5 +376,5 @@ class LabourWeeklyBill(Document):
 			frappe.throw("<br>".join(errs))
 
 	def on_trash(self):
-		if self.status != DRAFT or self.raised_by:
-			frappe.throw(_("Delete is blocked. A bill that was sent for approval can't be deleted."))
+		if not can_delete(self.status, self.raised_by):
+			frappe.throw(_("Delete is blocked. Only a Draft never sent for approval, or a Cancelled bill, can be deleted."))

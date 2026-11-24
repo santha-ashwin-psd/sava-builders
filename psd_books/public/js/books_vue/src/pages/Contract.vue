@@ -6,15 +6,34 @@
       <input v-model="search" placeholder="Search contracts…" class="sales-search-input" autocomplete="off"/>
     </div>
     <div class="sales-pills">
-      <button v-for="f in FILTERS" :key="f.k" class="sales-pill" :class="{active: activeFilter===f.k}" @click="activeFilter=f.k">
+      <button v-for="f in FILTERS" :key="f.k" class="sales-pill" :class="[{active: activeFilter===f.k}, f.k!=='all' ? PILL_CLASS[f.k] : '']" @click="activeFilter=f.k">
         {{ f.l }}
         <span class="sales-pill-count" :class="activeFilter===f.k?'':'zb-pc-muted'">{{ counts[f.k] }}</span>
       </button>
     </div>
+    <select v-model="projectFilter" class="inv-fi ct-project-filter" title="Filter by project">
+      <option value="">All projects</option>
+      <option v-for="p in projects" :key="p.name" :value="p.name">{{ p.project_name || p.name }}</option>
+    </select>
     <div class="cust-toolbar-right" style="margin-left:auto">
       <button class="sales-btn-ghost" @click="load" title="Refresh"><span v-html="icon('refresh',13)"></span> Refresh</button>
       <button class="sales-btn-primary" :disabled="!$canCreate('admin')" :title="!$canCreate('admin') ? 'Not permitted' : ''" @click="openAdd"><span v-html="icon('plus',13)"></span> New Contract</button>
     </div>
+  </div>
+
+
+  <!-- KPI cards (click a card to filter the list) -->
+  <div class="bk-kpi-grid bk-kpi-grid-4">
+    <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeFilter='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Contracts</div><div class="bk-kpi-value">{{ kpi.all.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.all.value) }}</div></div></div></div>
+    <div class="bk-kpi-card clickable" @click="activeFilter='pending'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#e2e8f0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Pending Approval</div><div class="bk-kpi-value">{{ kpi.pending.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.pending.value) }}</div></div></div></div>
+    <div class="bk-kpi-card clickable" @click="activeFilter='approved'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Approved</div><div class="bk-kpi-value bk-kpi-green">{{ kpi.approved.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.approved.value) }}</div></div></div></div>
+    <div class="bk-kpi-card clickable" @click="activeFilter='closed'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Closed</div><div class="bk-kpi-value bk-kpi-blue">{{ kpi.closed.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.closed.value) }}</div></div></div></div>
+  </div>
+  <div class="bk-stat-grid">
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Total Value</div><div class="bk-stat-value bk-kpi-blue" style="font-size:16px">KES {{ fmtKES(kpi.totalValue) }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Approved Value</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">KES {{ fmtKES(kpi.approvedValue) }}</div></div><div class="bk-stat-icon" style="background:#dcfce7;color:#16a34a"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Paid So Far</div><div class="bk-stat-value bk-kpi-green" style="font-size:16px">KES {{ fmtKES(kpi.paid) }}</div></div><div class="bk-stat-icon" style="background:#cffafe;color:#0891b2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div></div></div>
+    <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Balance To Pay</div><div class="bk-stat-value bk-kpi-amber" style="font-size:16px">KES {{ fmtKES(kpi.balance) }}</div></div><div class="bk-stat-icon" style="background:#fef3c7;color:#d97706"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div></div>
   </div>
 
   <div class="inv-table-wrap">
@@ -22,17 +41,17 @@
       <thead>
         <tr>
           <th class="vt-th">Contract</th><th class="vt-th">Project</th><th class="vt-th">Task / Activity</th><th class="vt-th">Contractor</th>
-          <th class="vt-th vt-th-r">Contract Value (KES)</th><th class="vt-th">Period</th><th class="vt-th">Status</th>
+          <th class="vt-th vt-th-r">Contract Value (KES)</th><th class="vt-th vt-th-r">Paid (KES)</th><th class="vt-th vt-th-r">Balance (KES)</th><th class="vt-th">Period</th><th class="vt-th">Status</th>
         </tr>
       </thead>
       <tbody>
         <template v-if="loading">
-          <tr v-for="n in 6" :key="n" class="vt-row-shimmer"><td colspan="7"><div class="shimmer" style="height:12px;border-radius:3px;width:65%"></div></td></tr>
+          <tr v-for="n in 6" :key="n" class="vt-row-shimmer"><td colspan="9"><div class="shimmer" style="height:12px;border-radius:3px;width:65%"></div></td></tr>
         </template>
         <tr v-else-if="!filtered.length">
-          <td colspan="7" class="vt-empty">
-            <div class="vt-empty-title">{{ search || activeFilter!=='all' ? 'No results found' : 'No contracts yet' }}</div>
-            <div class="vt-empty-sub">{{ search || activeFilter!=='all' ? 'Try adjusting your search or filter' : 'Add your first labour contract to get started' }}</div>
+          <td colspan="9" class="vt-empty">
+            <div class="vt-empty-title">{{ search || projectFilter || activeFilter!=='all' ? 'No results found' : 'No contracts yet' }}</div>
+            <div class="vt-empty-sub">{{ search || projectFilter || activeFilter!=='all' ? 'Try adjusting your search or filter' : 'Add your first labour contract to get started' }}</div>
           </td>
         </tr>
         <tr v-else v-for="c in filtered" :key="c.name" class="inv-row" @click="openEdit(c)">
@@ -41,12 +60,14 @@
           <td class="vt-td">{{ names.activity[c.activity] || c.activity }}</td>
           <td class="vt-td">{{ names.contractor[c.contractor] || c.contractor }}</td>
           <td class="vt-td vt-td-r">{{ fmtKES(c.contract_value) }}</td>
+          <td class="vt-td vt-td-r">{{ fmtKES(paid[c.name] || 0) }}</td>
+          <td class="vt-td vt-td-r">{{ fmtKES(balanceOf(c, paid)) }}</td>
           <td class="vt-td vt-td-secondary">{{ fmtDate(c.start_date) }} – {{ fmtDate(c.end_date) }}</td>
           <td class="vt-td"><span class="vt-badge" :class="'vt-badge-'+statusClass(c.status)"><span class="vt-badge-dot"></span>{{ c.status }}</span></td>
         </tr>
       </tbody>
     </table>
-    <div class="vt-footer" v-if="!loading && list.length">Showing <strong>{{ filtered.length }}</strong> of <strong>{{ list.length }}</strong> contracts</div>
+    <div class="vt-footer" v-if="!loading && list.length">Showing <strong>{{ filtered.length }}</strong> of <strong>{{ scoped.length }}</strong> contracts</div>
   </div>
   <p style="margin:10px 4px;font-size:12px;color:#6b7280">A Director approves each contract. The value is locked once the contract is sent for approval. A contractor can hold any number of contracts. Each activity can be used on one contract only.</p>
 
@@ -55,7 +76,6 @@
       <div class="inv-drawer-panel open ct-drawer" style="width:560px;max-width:98vw">
         <div class="inv-dh" style="background:linear-gradient(135deg,#1e3a5f,#1a6ef7);padding:18px 24px">
           <div class="cust-drawer-header-left">
-            <div class="cust-drawer-icon" style="color:#fff"><span v-html="icon('file',16)"></span></div>
             <div>
               <div class="inv-dh-title">{{ form.name || 'New Contract' }}</div>
               <div class="cust-drawer-sub">{{ form.name ? form.status : 'Labour contract for one task on one project' }}</div>
@@ -102,13 +122,13 @@
             </div>
             <div class="inv-field" style="grid-column:span 2">
               <label class="inv-lbl">Contract Value (KES) <span class="nim-req">*</span></label>
-              <input type="number" min="0" v-model.number="form.contract_value" class="inv-fi" :style="errStyle('contract_value')" :disabled="!ac.canEdit" @input="delete formErrors.contract_value"/>
+              <input type="text" inputmode="decimal" autocomplete="off" :value="form.contract_value" class="inv-fi" :style="errStyle('contract_value')" :disabled="!ac.canEdit" @input="onValueInput"/>
               <div v-if="formErrors.contract_value" class="ct-err">{{ formErrors.contract_value }}</div>
               <div v-else class="ct-info"><span v-html="icon('info',14)"></span>{{ ac.canEdit ? 'Value locks once sent for approval.' : 'Value is locked.' }}</div>
             </div>
             <div class="inv-field" style="grid-column:span 2">
               <label class="inv-lbl">Narration</label>
-              <textarea v-model="form.narration" class="inv-fi" rows="3" placeholder="Enter narration" :disabled="!ac.canEdit" style="height:auto;padding:8px 10px"></textarea>
+              <textarea v-model="form.narration" class="inv-fi" rows="3" placeholder="Enter narration" :disabled="!(ac.canEdit || ac.canEditNarration)" style="height:auto;padding:8px 10px"></textarea>
             </div>
           </div>
 
@@ -129,6 +149,7 @@
           <button v-if="ac.canSend" class="form-btn form-btn-primary" :disabled="busy || !canWrite || blockers.length>0" @click="sendForApproval">Submit for approval</button>
           <button v-if="ac.canApprove" class="form-btn form-btn-primary" :disabled="busy || blockers.length>0" @click="approve">Approve as Director</button>
           <button v-if="ac.canSendBack" class="form-btn form-btn-outline" :disabled="busy" @click="sendBack">Send back</button>
+          <button v-if="ac.canEditNarration" class="form-btn form-btn-outline ct-btn-blue" :disabled="busy || !canWrite" @click="saveNarration">Save narration</button>
           <button v-if="ac.canClose" class="form-btn form-btn-outline" :disabled="busy || !canWrite" @click="closeContract">Close contract</button>
           <button v-if="ac.canReopen" class="form-btn form-btn-primary" :disabled="busy" @click="reopenContract">Reopen contract</button>
         </div>
@@ -153,7 +174,7 @@ import { icon } from "../utils/icons.js";
 import { isCertExpired } from "../utils/labourContractor.js";
 import {
   DRAFT, PENDING, APPROVED, SENT_BACK, CLOSED, statusClass, fmtKES, matchesFilter, countsFor, matchesSearch,
-  blockersFor, validateContract, actionState, canDelete,
+  blockersFor, validateContract, actionState, canDelete, kpiFor, balanceOf,
 } from "../utils/labourContract.js";
 import { freeActivities } from "../utils/labourActivity.js";
 
@@ -173,6 +194,10 @@ const canApprove = ref(false);
 const loading = ref(true);
 const search = ref("");
 const activeFilter = ref("all");
+const projectFilter = ref("");
+const paid = ref({});
+// Pill colours, same look as the Purchase Orders pills
+const PILL_CLASS = { draft: "pill-draft", pending: "pill-unpaid", approved: "pill-paid", closed: "pill-submitted" };
 const showDrawer = ref(false);
 const saving = ref(false);
 const busy = ref(false);
@@ -180,6 +205,13 @@ const formErrors = reactive({});
 const form = reactive({});
 
 const canWrite = computed(() => canEditModule("admin"));
+// Contract value takes digits and one decimal point only; anything else typed or pasted is dropped.
+function onValueInput(e) {
+  const v = e.target.value.replace(/[^0-9.]/g, "").replace(/^(\d*\.\d*).*$/, "$1");
+  e.target.value = v;
+  form.contract_value = v;
+  delete formErrors.contract_value;
+}
 const blank = () => ({ name: "", status: DRAFT, project: "", activity: "", contractor: "", start_date: "", end_date: "", contract_value: "", narration: "",
   raised_by: "", approved_by: "", approved_on: "", rejection_reason: "", closed_on: "" });
 function resetForm(src) {
@@ -193,8 +225,11 @@ const names = computed(() => ({
   activity: Object.fromEntries(activities.value.map((a) => [a.name, a.activity_name || a.name])),
   contractor: Object.fromEntries(contractors.value.map((c) => [c.name, c.contractor_name || c.name])),
 }));
-const counts = computed(() => countsFor(list.value));
-const filtered = computed(() => list.value.filter((c) => matchesFilter(c, activeFilter.value) && matchesSearch(c, search.value, names.value)));
+// The project filter narrows the pills, the cards and the table together
+const scoped = computed(() => projectFilter.value ? list.value.filter((c) => c.project === projectFilter.value) : list.value);
+const counts = computed(() => countsFor(scoped.value));
+const kpi = computed(() => kpiFor(scoped.value, paid.value));
+const filtered = computed(() => scoped.value.filter((c) => matchesFilter(c, activeFilter.value) && matchesSearch(c, search.value, names.value)));
 // Only open projects, active activities and active contractors can be picked; the one already on the contract stays listed.
 const projectOptions = computed(() => projects.value.filter((p) => p.status !== "Closed" || p.name === form.project));
 const activityOptions = computed(() => freeActivities(activities.value, list.value, form.name, form.activity));
@@ -209,16 +244,18 @@ function errStyle(f) { return formErrors[f] ? "border-color:#dc2626;background:#
 async function load() {
   loading.value = true;
   try {
-    const [rows, pr, ac2, ct, perm] = await Promise.all([
+    const [rows, pr, ac2, ct, perm, pd] = await Promise.all([
       apiList(DT, { fields: ["name", "status", "project", "activity", "contractor", "start_date", "end_date", "contract_value", "narration",
-        "raised_by", "approved_by", "approved_on", "rejection_reason", "closed_on"], order: "modified desc", limit: 1000 }),
+        "raised_by", "approved_by", "approved_on", "rejection_reason", "closed_on"], order: "creation desc", limit: 1000 }),
       apiList("Project", { fields: ["name", "project_name", "status"], limit: 1000 }),
       apiList("Labour Activity", { fields: ["name", "activity_name", "disabled"], order: "activity_code asc", limit: 500 }),
       apiList("Labour Contractor", { fields: ["name", "contractor_name", "disabled", "tax_cert_expiry"], order: "contractor_name asc", limit: 1000 }),
       apiGET(API + "my_permissions", {}),
+      apiGET(API + "paid_totals", {}).catch(() => ({})),   // cards only: the page still opens if this fails
     ]);
     list.value = rows || []; projects.value = pr || []; activities.value = ac2 || []; contractors.value = ct || [];
     canApprove.value = !!(perm && perm.can_approve);
+    paid.value = (pd && typeof pd === "object" && !Array.isArray(pd)) ? (pd.message || pd) : {};
   } catch (e) {
     toast("Failed to load contracts: " + (e.message || e), "error");
   } finally { loading.value = false; }
@@ -266,14 +303,18 @@ async function run(method, args, okMsg) {
   } finally { busy.value = false; }
 }
 
+async function saveNarration() {
+  await run("save_narration", { name: form.name, narration: (form.narration || "").trim() }, "Narration saved");
+}
+
 async function sendForApproval() {
-  const ok = await confirm({ title: "Send for approval?", body: "Send this contract to the Director for approval? The contract value is locked once it is sent.", okLabel: "Send for approval", okStyle: "primary" });
+  const ok = await confirm({ title: "Confirm to send for approval", body: "Send this contract to the Director for approval? The contract value is locked once it is sent.", okLabel: "Send for approval", okStyle: "primary" });
   if (!ok) return;
   const name = await saveDraft(true);
   if (name) await run("send_for_approval", { name }, "Sent for Director approval");
 }
 async function approve() {
-  const ok = await confirm({ title: "Approve contract?", body: "Approve " + form.name + "? The contract value is locked once it is approved.", okLabel: "Approve", okStyle: "primary" });
+  const ok = await confirm({ title: "Confirm to approve", body: "Approve contract " + form.name + "?", okLabel: "Approve", okStyle: "primary" });
   if (ok) await run("approve_contract", { name: form.name }, "Contract approved");
 }
 async function sendBack() {
@@ -282,15 +323,15 @@ async function sendBack() {
   await run("send_back_contract", { name: form.name, reason: reason.trim() }, "Sent back");
 }
 async function closeContract() {
-  const ok = await confirm({ title: "Close contract?", body: "A closed contract is locked. Only a Director can reopen it.", okLabel: "Close contract", okStyle: "primary" });
+  const ok = await confirm({ title: "Confirm to close", body: "A closed contract is locked. Only a Director can reopen it.", okLabel: "Close contract", okStyle: "primary" });
   if (ok) await run("close_contract", { name: form.name }, "Contract closed");
 }
 async function reopenContract() {
-  const ok = await confirm({ title: "Reopen contract?", body: "Reopen " + form.name + "? It goes back to Approved and can be used on weekly bills again.", okLabel: "Reopen contract", okStyle: "primary" });
+  const ok = await confirm({ title: "Confirm to reopen", body: "Reopen " + form.name + "? It goes back to Approved and can be used on weekly bills again.", okLabel: "Reopen contract", okStyle: "primary" });
   if (ok) await run("reopen_contract", { name: form.name }, "Contract reopened");
 }
 async function doDelete() {
-  const ok = await confirm({ title: "Delete contract?", body: "Delete " + form.name + "? This can't be undone. A contract on a weekly bill can't be deleted." });
+  const ok = await confirm({ title: "Confirm to delete", body: "Delete " + form.name + "? This can't be undone. A contract on a weekly bill can't be deleted." });
   if (!ok) return;
   busy.value = true;
   try { await apiDelete(DT, form.name); toast("Contract deleted"); showDrawer.value = false; await load(); }
@@ -303,6 +344,8 @@ onMounted(load);
 
 <style scoped>
 .nim-req, .inv-req { color: #dc2626; }
+.ct-project-filter { width: 190px; height: 34px; border-radius: 8px; border: 1px solid #e5e7eb; background: #fff; font-size: 13px; }
+.ct-kpi-sub { display: block !important; color: #6b7280; font-weight: 500; }
 .cust-drawer-sub { color: #fff; font-size: 12px; margin-top: 2px; }
 .ct-err { margin-top: 4px; font-size: 12px; color: #dc2626; }
 .ct-hint { margin-top: 4px; font-size: 12px; color: #9ca3af; }
