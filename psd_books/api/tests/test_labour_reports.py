@@ -65,20 +65,20 @@ class TestEmployeeWages(unittest.TestCase):
 
 
 class TestWeeklyPayments(unittest.TestCase):
-	def test_sheet_friday_lands_in_its_monday_week(self):
-		bills = [{"week_start": datetime.date(2026, 11, 9), "amount": 100000}]
-		sheets = [{"week_end": datetime.date(2026, 11, 13), "amount": 33200}]   # Fri 13 Nov -> week of Mon 9 Nov
+	def test_sheet_friday_lands_in_its_saturday_week(self):
+		bills = [{"week_start": datetime.date(2026, 11, 7), "amount": 100000}]
+		sheets = [{"week_end": datetime.date(2026, 11, 13), "amount": 33200}]   # Fri 13 Nov -> week of Sat 7 Nov
 		rows = r.build_weekly_payments(bills, sheets)
 		self.assertEqual(len(rows), 2)
-		self.assertEqual(rows[0]["week"], "09 Nov to 15 Nov 2026")
+		self.assertEqual(rows[0]["week"], "07 Nov to 13 Nov 2026")
 		self.assertEqual((rows[0]["paid_to_contractors"], rows[0]["paid_to_employees"], rows[0]["total_for_week"]), (100000, 33200, 133200))
 		self.assertEqual(rows[1]["week"], "Total")
 
 	def test_weeks_sorted_and_summed(self):
-		bills = [{"week_start": datetime.date(2026, 11, 9), "amount": 10}, {"week_start": datetime.date(2026, 11, 9), "amount": 5}]
+		bills = [{"week_start": datetime.date(2026, 11, 7), "amount": 10}, {"week_start": datetime.date(2026, 11, 7), "amount": 5}]
 		sheets = [{"week_end": datetime.date(2026, 10, 30), "amount": 7}]
 		rows = r.build_weekly_payments(bills, sheets)
-		self.assertEqual([x["week"] for x in rows], ["26 Oct to 01 Nov 2026", "09 Nov to 15 Nov 2026", "Total"])
+		self.assertEqual([x["week"] for x in rows], ["24 Oct to 30 Oct 2026", "07 Nov to 13 Nov 2026", "Total"])
 		self.assertEqual(rows[1]["paid_to_contractors"], 15)
 		self.assertEqual(rows[-1]["total_for_week"], 22)
 

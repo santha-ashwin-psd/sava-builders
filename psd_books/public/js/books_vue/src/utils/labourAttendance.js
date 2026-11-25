@@ -12,6 +12,8 @@ export const DAYS = [
 	{ key: "d_wed", label: "Wed" }, { key: "d_thu", label: "Thu" }, { key: "d_fri", label: "Fri" },
 ];
 export const GRADES = ["C", "SK"];
+// Stored value stays "C" / "SK" (the Labour Worker's Unskilled / Skilled); the screen and the print show it as USK / SK.
+export const gradeLabel = (g) => (g === "C" ? "USK" : g || "");
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const utc = (iso) => { const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
@@ -75,8 +77,8 @@ export function totalsOf(rows) {
 	return out;
 }
 
-// Rows for the screen: the server's baseline (one per Active employee) with the values already typed or saved.
-// A row of an employee no longer in the baseline is dropped unless it has a day ticked. added = names of employees new to the sheet.
+// Rows for the screen: the server's baseline (one per Active worker) with the values already typed or saved.
+// A row of a worker no longer in the baseline is dropped unless it has a day ticked. added = names of workers new to the sheet.
 export function mergeRows(baseline = [], current = []) {
 	const cur = new Map(current.map((r) => [r.employee, r]));
 	const inputs = ["grade", "area_of_work", "rate", "ot_hours", "sha", ...DAYS.map((d) => d.key)];
@@ -110,7 +112,7 @@ export function rowError(r) {
 export function sheetBlockers(rows) {
 	const out = [];
 	const paid = rows.filter((r) => daysOf(r) > 0 || num(r.ot_hours) > 0);
-	if (!paid.length) out.push("Tick attendance for at least one employee.");
+	if (!paid.length) out.push("Tick attendance for at least one worker.");
 	for (const r of paid) if (num(r.rate) <= 0) out.push("Rate per day is missing for " + labelOf(r) + ".");
 	for (const r of rows) { const e = rowError(r); if (e) out.push(labelOf(r) + ": " + e); }
 	return out;
@@ -119,7 +121,7 @@ export function sheetBlockers(rows) {
 export function validateSheet(form, rows = []) {
 	const e = {};
 	if (!form.week_date) e.week_date = "Pick a date in the week";
-	else if (!rows.length) e.week_date = "There are no Active employees to list";
+	else if (!rows.length) e.week_date = "There are no Active workers to list";
 	return e;
 }
 
@@ -209,11 +211,11 @@ export function printHtml(weekIso, rows) {
 		+ "<tr>" + DAYS.map((d) => "<th>" + d.label + "</th>").join("") + "</tr>";
 	const body = rows.map((r, i) => {
 		const f = figures(r);
-		return "<tr><td>" + (i + 1) + "</td><td class=\"l\">" + esc(r.employee_name) + "</td><td>" + esc(r.id_no) + "</td><td>" + esc(r.grade) + "</td><td>" + esc(r.area_of_work) + "</td>"
+		return "<tr><td>" + (i + 1) + "</td><td class=\"l\">" + esc(r.employee_name) + "</td><td>" + esc(r.id_no) + "</td><td>" + esc(gradeLabel(r.grade)) + "</td><td>" + esc(r.area_of_work) + "</td>"
 			+ DAYS.map((d) => "<td>" + (Number(r[d.key]) ? 1 : 0) + "</td>").join("")
 			+ "<td>" + f.days + "</td><td>" + fmt(r.rate) + "</td><td>" + (num(r.ot_hours) ? fmtOt(r.ot_hours) : "") + "</td><td>" + fmtOt(f.otAmount) + "</td><td>" + fmt(r.sha) + "</td><td><b>" + fmt(f.total) + "</b></td><td></td><td></td></tr>";
 	}).join("");
-	const foot = "<tr class=\"tt\"><td colspan=\"12\" class=\"l\"><b>Total (" + t.employees + " employees)</b></td><td><b>" + t.days + "</b></td><td></td><td></td><td><b>" + fmtOt(t.otAmount) + "</b></td><td><b>" + fmt(t.sha) + "</b></td><td><b>" + fmt(t.total) + "</b></td><td></td><td></td></tr>";
+	const foot = "<tr class=\"tt\"><td colspan=\"12\" class=\"l\"><b>Total (" + t.employees + " workers)</b></td><td><b>" + t.days + "</b></td><td></td><td></td><td><b>" + fmtOt(t.otAmount) + "</b></td><td><b>" + fmt(t.sha) + "</b></td><td><b>" + fmt(t.total) + "</b></td><td></td><td></td></tr>";
 	return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Weekly wages payment sheet " + esc(weekTitleDates(weekIso)) + "</title><style>"
 		+ "@page{size:A4 landscape;margin:10mm}body{font-family:Arial,Helvetica,sans-serif;font-size:11px;margin:0}h1{font-size:13px;text-align:center;text-decoration:underline;margin:0 0 8px}"
 		+ "table{border-collapse:collapse;width:100%}th,td{border:1px solid #000;padding:3px 4px;text-align:center}td.l{text-align:left}th.sg{min-width:70px}tr.tt td{background:#f3f3f3}</style></head><body>"

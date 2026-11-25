@@ -436,7 +436,7 @@ onMounted(load);
   display: flex;
   gap: 3px;
   justify-content: center;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.12s;
 }
 .inv-row:hover .vt-actions { opacity: 1; }

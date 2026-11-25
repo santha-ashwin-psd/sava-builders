@@ -2,7 +2,7 @@
 
 Endpoints
 - preview(week_date, name=None) (GET): the week (Saturday to Friday), any other sheet for that week, and one baseline row per
-  Active employee (no days ticked; grade, area, rate, OT hours and SHA carried from the latest earlier sheet)
+  Active Labour Worker (no days ticked; grade from the worker's Skilled / Unskilled, area, rate and SHA carried from the latest earlier sheet)
 - send_for_approval(name) (POST): Draft / Sent back -> Pending approval, after a fresh check
 - approve_sheet(name) (POST): Pending approval -> Approved; Director only (a Books Admin is not enough)
 - send_back_sheet(name, reason) (POST): Pending approval -> Sent back; Director only, reason required

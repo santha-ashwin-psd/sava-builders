@@ -1,14 +1,15 @@
 """Labour Attendance Sheet (Sava Phase 2, Labour Contract > Attendance). Follows the client's paper "Weekly Wages Payment Sheet".
 
 One sheet per week for the whole company. The week runs Saturday to Friday (any date can be given; it is moved to the Saturday).
-- Lines: every Active employee. A new employee added mid-week joins a Draft / Sent back sheet the next time it is opened or saved.
-  A line starts with the values of the employee's line on the latest earlier sheet (grade, area of work, rate, OT hours, SHA);
-  the user can edit them. Day ticks are never copied. With no earlier line: grade C, rate 0, OT 0, SHA 125.
+- Lines: every Active Labour Worker (Labour Contract > Workers). A new worker added mid-week joins a Draft / Sent back sheet the
+  next time it is opened or saved. The line field `employee` links to the Labour Worker. The grade starts from the worker's
+  Skilled (SK) / Unskilled (C); area of work, rate and SHA are carried from the worker's line on the latest earlier sheet.
+  The user can edit them. Day ticks and OT hours are never copied. With no earlier line: rate 0, SHA 125.
 - Per line: Days = ticks; OT amount = OT hours x rate / 8 (2 decimals); Total = days x rate + OT amount - SHA, rounded to the
-  whole shilling (half up). An employee with no days and no OT gets Total 0 (no SHA is deducted).
+  whole shilling (half up). A worker with no days and no OT gets Total 0 (no SHA is deducted).
 - Status: Draft -> Pending approval -> Approved -> Submitted. A Director approves or sends it back (Sent back, editable again).
   Approved is locked; Submitted is final. Statuses are set only through the workflow (doc.flags.las_workflow).
-- Blocked on send and approve: nobody has a day or OT; a paid employee has no rate; a total below zero.
+- Blocked on send and approve: nobody has a day or OT; a paid worker has no rate; a total below zero.
 - Cancel (Director only, reason required): a Sent back, Approved or Submitted sheet becomes Cancelled (locked, kept as a record,
   left out of the wages reports). A Pending sheet is sent back instead.
 - Amend: a Cancelled sheet is copied into a new Draft for the same week (amends_sheet); one amendment per cancelled sheet.
@@ -31,9 +32,10 @@ LOCKED = (PENDING, APPROVED, SUBMITTED, CANCELLED)
 APPROVER_ROLE = "Director"
 DAYS = ("d_sat", "d_sun", "d_mon", "d_tue", "d_wed", "d_thu", "d_fri")
 INPUT_KEYS = ("grade", "area_of_work") + DAYS + ("rate", "ot_hours", "sha")
-CARRY_KEYS = ("grade", "area_of_work", "rate", "sha")   # OT hours are never carried from the earlier sheet
+CARRY_KEYS = ("area_of_work", "rate", "sha")   # OT hours are never carried from the earlier sheet
 LINE_KEYS = ("employee", "employee_name", "id_no") + INPUT_KEYS
 DEFAULT_GRADE, DEFAULT_SHA = "C", 125
+GRADE_OF_SKILL = {"Skilled": "SK", "Unskilled": "C"}   # Labour Worker.skill -> stored grade
 
 
 # ---- pure helpers (no database) ----
@@ -81,7 +83,7 @@ def blockers(lines):
 	out = []
 	paid = [ln for ln in lines if days_of(ln) > 0 or flt(ln.get("ot_hours")) > 0]
 	if not paid:
-		out.append(_("Tick attendance for at least one employee."))
+		out.append(_("Tick attendance for at least one worker."))
 	for ln in paid:
 		if flt(ln.get("rate")) <= 0:
 			out.append(_("Rate per day is missing for {0}.").format(_label(ln)))
@@ -91,8 +93,8 @@ def blockers(lines):
 
 
 def merge_lines(saved, baseline):
-	"""Rows for the sheet: one per Active employee (baseline) carrying the saved values, plus a saved line of an employee
-	who is no longer Active only if it has days ticked. Sorted by employee name."""
+	"""Rows for the sheet: one per Active worker (baseline) carrying the saved values, plus a saved line of a worker
+	who is no longer Active only if it has days ticked. Sorted by worker name."""
 	saved_by = {s.get("employee"): s for s in saved}
 	out = []
 	for b in baseline:
@@ -205,15 +207,15 @@ def can_delete(status, raised_by, amendment=None):
 
 
 # ---- database helpers ----
-def active_employees(company):
-	kw = {"filters": {"status": "Active"}, "fields": ["name", "employee_name", "id_no"], "order_by": "employee_name asc", "limit_page_length": 0}
+def active_workers(company):
+	kw = {"filters": {"status": "Active"}, "fields": ["name", "worker_name", "id_no", "skill"], "order_by": "worker_name asc", "limit_page_length": 0}
 	if company:
 		kw["or_filters"] = [["company", "=", company], ["company", "is", "not set"]]
-	return frappe.get_all("Employee", **kw)
+	return frappe.get_all("Labour Worker", **kw)
 
 
 def previous_values(week_start, company):
-	"""{employee: carried values} from the latest sheet of an earlier week."""
+	"""{worker: carried values} from the latest sheet of an earlier week."""
 	filters = {"week_start": ["<", week_start], "status": ["!=", CANCELLED]}
 	if company:
 		filters["company"] = company
@@ -226,13 +228,13 @@ def previous_values(week_start, company):
 
 
 def baseline_rows(week_start, company):
-	"""One row per Active employee with no days ticked and grade, area, rate and SHA carried from the earlier sheet. OT hours start at 0 (never carried)."""
+	"""One row per Active worker with no days ticked; grade from the worker's Skilled / Unskilled, area, rate and SHA carried from the earlier sheet. OT hours start at 0 (never carried)."""
 	prev = previous_values(week_start, company)
 	rows = []
-	for e in active_employees(company):
+	for e in active_workers(company):
 		p = prev.get(e["name"])
-		row = {"employee": e["name"], "employee_name": e.get("employee_name"), "id_no": e.get("id_no") or "",
-			"grade": (p and p.get("grade")) or DEFAULT_GRADE, "area_of_work": (p and p.get("area_of_work")) or "",
+		row = {"employee": e["name"], "employee_name": e.get("worker_name"), "id_no": e.get("id_no") or "",
+			"grade": GRADE_OF_SKILL.get(e.get("skill")) or DEFAULT_GRADE, "area_of_work": (p and p.get("area_of_work")) or "",
 			"rate": flt(p.get("rate")) if p else 0, "ot_hours": 0,
 			"sha": flt(p.get("sha")) if p else DEFAULT_SHA}
 		row.update({k: 0 for k in DAYS})
@@ -250,7 +252,7 @@ def line_dicts(doc):
 
 
 def sync_lines(doc):
-	"""Rebuild the lines from the Active employees, keeping what is already entered, and recompute every line."""
+	"""Rebuild the lines from the Active workers, keeping what is already entered, and recompute every line."""
 	merged = merge_lines(line_dicts(doc), baseline_rows(doc.week_start, doc.get("company")))
 	doc.set("lines", [])
 	total = 0
@@ -262,7 +264,7 @@ def sync_lines(doc):
 
 
 def current_blockers(doc):
-	"""Blockers from fresh lines (employees refreshed; entries kept)."""
+	"""Blockers from fresh lines (workers refreshed; entries kept)."""
 	sync_lines(doc)
 	return blockers(line_dicts(doc))
 

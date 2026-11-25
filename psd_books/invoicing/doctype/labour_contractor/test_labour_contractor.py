@@ -28,7 +28,10 @@ except ImportError:  # plain-python run outside a bench
     document.Document = object
     fm.model = model
     model.document = document
-    sys.modules.update({"frappe": fm, "frappe.model": model, "frappe.model.document": document})
+    utils = types.ModuleType("frappe.utils")
+    utils.flt = lambda v, *a: float(v or 0)
+    fm.utils = utils
+    sys.modules.update({"frappe": fm, "frappe.model": model, "frappe.model.document": document, "frappe.utils": utils})
 
 import frappe  # noqa: E402,F811
 from psd_books.invoicing.doctype.labour_contractor import labour_contractor as lc  # noqa: E402
@@ -43,6 +46,7 @@ class FakeContractor(lc.LabourContractor):
         self.kra_pin = k.get("kra_pin", "A123456789Z")
         self.tax_cert_expiry = k.get("tax_cert_expiry", "2027-01-01")
         self.phone = self.bank_details = self.nca_reg_no = ""
+        self.disabled = k.get("disabled", 0)
 
     def get(self, k, default=None):
         return getattr(self, k, default)
@@ -85,3 +89,25 @@ class TestLabourContractor(unittest.TestCase):
 
     def test_expired_certificate_can_still_be_saved(self):
         FakeContractor(tax_cert_expiry="2020-01-01").validate()
+
+    def test_delete_blockers(self):
+        c = lambda n, st, v: {"name": n, "status": st, "contract_value": v}
+        self.assertEqual(lc.delete_blockers([], {}), [])
+        self.assertEqual(lc.delete_blockers([c("01", "Closed", 100)], {"01": 100}), [])
+        self.assertEqual(len(lc.delete_blockers([c("01", "Approved", 100)], {"01": 100})), 1)
+        self.assertEqual(len(lc.delete_blockers([c("01", "Closed", 100)], {"01": 60})), 1)
+        self.assertEqual(len(lc.delete_blockers([c("01", "Draft", 100)], {})), 2)
+
+    def test_on_trash_blocked_then_allowed(self):
+        with mock.patch.object(frappe, "get_all", create=True,
+                               return_value=[{"name": "02", "status": "Approved", "contract_value": 300000}]), \
+             mock.patch.object(frappe.db, "sql", create=True, return_value=[]):
+            with self.assertRaises(Exception) as cm:
+                FakeContractor(name="LCON-2").on_trash()
+            self.assertIn("can't be deleted", str(cm.exception))
+        with mock.patch.object(frappe, "get_all", create=True, return_value=[]):
+            FakeContractor(name="LCON-2").on_trash()
+        with mock.patch.object(frappe, "get_all", create=True,
+                               return_value=[{"name": "02", "status": "Closed", "contract_value": 100}]), \
+             mock.patch.object(frappe.db, "sql", create=True, return_value=[("02", 100)]):
+            FakeContractor(name="LCON-2").on_trash()

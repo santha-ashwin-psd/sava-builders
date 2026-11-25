@@ -7,8 +7,7 @@
 Rules shared with the screens:
 - Paid on a contract = amounts on Paid weekly bills (same as "Paid till now" on the Weekly Bill screen).
 - Wages count only Submitted attendance sheets; a sheet is placed in the range by its last day (week_end).
-- A weekly bill runs Monday to Sunday and an attendance sheet Saturday to Friday, so a sheet is placed in the Monday to
-  Sunday week of its Friday (the week that holds its Monday to Friday days).
+- A weekly bill and an attendance sheet both run Saturday to Friday, so a sheet is placed in the week of its Friday.
 - A blank To date means no end date: everything from the From date onwards (a blank From means from the start).
 - Every report is limited to the caller's company (a bypass user sees all) and needs read access on the labour doctypes.
 - Each report ends with a Total row, like the Asset Register.
@@ -24,12 +23,13 @@ WAGES_STATUSES = ("Submitted",)
 
 # ---- pure logic (no database) ----
 def monday_of(d):
+	"""First day (Saturday) of the Saturday to Friday week holding d. Name kept from the Monday to Sunday weeks."""
 	d = getdate(d)
-	return d - datetime.timedelta(days=d.weekday())
+	return d - datetime.timedelta(days=(d.weekday() - 5) % 7)
 
 
-def week_label(monday):
-	m = getdate(monday)
+def week_label(week_start):
+	m = getdate(week_start)
 	s = m + datetime.timedelta(days=6)
 	return "{} to {}".format(m.strftime("%d %b"), s.strftime("%d %b %Y"))
 
@@ -87,7 +87,7 @@ def build_employee_wages(lines):
 
 
 def build_weekly_payments(bills, sheets):
-	"""bills: dicts with week_start (Monday), amount (Paid bill total).
+	"""bills: dicts with week_start (Saturday), amount (Paid bill total).
 	sheets: dicts with week_end (Friday), amount (Submitted wages total)."""
 	weeks = {}
 	for b in bills:

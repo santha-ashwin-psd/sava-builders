@@ -213,28 +213,32 @@ class TestWorkflow(unittest.TestCase):
 class TestBaseline(unittest.TestCase):
 	def run_baseline(self, employees, prev_sheet, prev_lines, company="CO"):
 		def get_all(dt, **kw):
-			return employees if dt == "Employee" else prev_sheet
+			return employees if dt == "Labour Worker" else prev_sheet
 		with mock.patch.object(frappe, "get_all", side_effect=get_all) as ga, \
 				mock.patch.object(frappe.db, "sql", return_value=prev_lines):
 			rows = las.baseline_rows(datetime.date(2026, 10, 31), company)
 		return rows, ga
 
 	def test_carries_last_values_and_defaults_for_new_employee(self):
-		emps = [{"name": "E1", "employee_name": "Ann", "id_no": "40528637"}, {"name": "E2", "employee_name": "Bob", "id_no": None}]
-		prev = [{"employee": "E1", "grade": "SK", "area_of_work": "Store", "rate": 750, "ot_hours": 2, "sha": 100}]
+		emps = [{"name": "E1", "worker_name": "Ann", "id_no": "40528637", "skill": "Skilled"}, {"name": "E2", "worker_name": "Bob", "id_no": None, "skill": "Unskilled"}]
+		prev = [{"employee": "E1", "grade": "C", "area_of_work": "Store", "rate": 750, "ot_hours": 2, "sha": 100}]
 		rows, _ga = self.run_baseline(emps, ["LAS-2026-0001"], prev)
 		a, b = rows
-		self.assertEqual((a["grade"], a["area_of_work"], a["rate"], a["ot_hours"], a["sha"], a["id_no"]), ("SK", "Store", 750, 0, 100, "40528637"))   # OT hours are not carried (previous sheet had 2)
+		self.assertEqual((a["grade"], a["area_of_work"], a["rate"], a["ot_hours"], a["sha"], a["id_no"]), ("SK", "Store", 750, 0, 100, "40528637"))   # grade from the worker's Skilled (not the old sheet's C); OT hours are not carried (previous sheet had 2)
 		self.assertEqual((b["grade"], b["area_of_work"], b["rate"], b["ot_hours"], b["sha"], b["id_no"]), ("C", "", 0, 0, 125, ""))
 		self.assertEqual(las.days_of(a) + las.days_of(b), 0)
 
+	def test_unskilled_worker_gets_grade_c_skilled_gets_sk(self):
+		rows, _ga = self.run_baseline([{"name": "W1", "worker_name": "Ann", "id_no": "", "skill": "Skilled"}, {"name": "W2", "worker_name": "Bob", "id_no": "", "skill": "Unskilled"}], [], [])
+		self.assertEqual([r["grade"] for r in rows], ["SK", "C"])
+
 	def test_no_earlier_sheet_gives_defaults(self):
-		rows, _ga = self.run_baseline([{"name": "E1", "employee_name": "Ann", "id_no": ""}], [], [])
+		rows, _ga = self.run_baseline([{"name": "E1", "worker_name": "Ann", "id_no": "", "skill": "Unskilled"}], [], [])
 		self.assertEqual((rows[0]["rate"], rows[0]["sha"], rows[0]["grade"]), (0, 125, "C"))
 
-	def test_only_active_employees_and_company_filter_asked_for(self):
+	def test_only_active_workers_and_company_filter_asked_for(self):
 		_rows, ga = self.run_baseline([], [], [])
-		kw = [c for c in ga.call_args_list if c.args[0] == "Employee"][0].kwargs
+		kw = [c for c in ga.call_args_list if c.args[0] == "Labour Worker"][0].kwargs
 		self.assertEqual(kw["filters"], {"status": "Active"})
 		self.assertIn(["company", "=", "CO"], kw["or_filters"])
 

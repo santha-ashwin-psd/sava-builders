@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
 	saturdayISO, fridayISO, weekLabel, weekTitleDates, ordinal, dayDates, daysOf, figures, totalsOf, mergeRows, rowError,
-	sheetBlockers, validateSheet, matchesFilter, countsFor, kpiFor, matchesSearch, actionState, canDelete, amendedNames, toDoc, printHtml, DAYS, cleanNumber,
+	sheetBlockers, validateSheet, matchesFilter, countsFor, kpiFor, matchesSearch, actionState, canDelete, amendedNames, toDoc, printHtml, DAYS, cleanNumber, gradeLabel, GRADES,
 } from "./labourAttendance.js";
 
 const row = (days = 7, o = {}) => ({
@@ -196,5 +196,20 @@ describe("rate / OT hours / SHA input", () => {
 		expect(cleanNumber("1.2.3")).toBe("1.2");
 		expect(cleanNumber(125)).toBe("125");
 		expect(cleanNumber(null)).toBe("");
+	});
+});
+describe("skill label (stored grade C / SK)", () => {
+	it("shows SK / USK", () => {
+		expect(gradeLabel("C")).toBe("USK");
+		expect(gradeLabel("SK")).toBe("SK");
+		expect(gradeLabel("")).toBe("");
+		expect(gradeLabel(undefined)).toBe("");
+	});
+	it("still stores C and SK", () => { expect(GRADES).toEqual(["C", "SK"]); });
+	it("prints SK / USK in the grade column", () => {
+		const h = printHtml("2026-10-27", [row(5, { grade: "SK" }), row(5, { grade: "C", employee: "E2" })]);
+		expect(h).toContain("<td>SK</td>");
+		expect(h).toContain("<td>USK</td>");
+		expect(h).not.toContain("Unskilled");
 	});
 });

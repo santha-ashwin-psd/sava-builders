@@ -1,7 +1,7 @@
 """Labour Weekly Bill approval API (Sava Phase 2). Rules live in invoicing/doctype/labour_weekly_bill/labour_weekly_bill.py.
 
 Endpoints
-- preview(week_date, project=None, name=None) (GET): the week (Monday to Sunday) and one row per Approved contract of the caller's company (all projects; one project if given) with project, value, paid till now, balance,
+- preview(week_date, project=None, name=None) (GET): the week (Saturday to Friday) and one row per Approved contract of the caller's company (all projects; one project if given) with project, value, paid till now, balance,
   and paid_this_week (the bill of that week already holding it: Pending / Approved, or an earlier Draft; or "")
 - list_columns(names) (GET): per bill in names, the contracts paid on it, their projects and the balance still to pay on them after the bill
   (only bills of the caller's company)

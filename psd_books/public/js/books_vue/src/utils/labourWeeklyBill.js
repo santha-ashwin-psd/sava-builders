@@ -17,10 +17,11 @@ export function pastLocked(r, weekDate, isNew, today = todayISO()) {
 	return !!isNew && isPastWeek(weekDate, today) && (Number(r.paid_till_now) || 0) > 0.005;
 }
 
-// Monday of the week holding the date (YYYY-MM-DD), as YYYY-MM-DD. Weeks run Monday to Sunday.
+// First day of the week holding the date (YYYY-MM-DD), as YYYY-MM-DD. Weeks run Saturday to Friday, so this is the Saturday.
+// The names mondayISO / sundayISO are kept from the Monday to Sunday weeks.
 export function mondayISO(iso) {
 	const d = utc(iso);
-	d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+	d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 1) % 7));
 	return isoOf(d);
 }
 export function sundayISO(iso) {
@@ -28,7 +29,7 @@ export function sundayISO(iso) {
 	d.setUTCDate(d.getUTCDate() + 6);
 	return isoOf(d);
 }
-// "16 Nov to 22 Nov 2026"
+// "14 Nov to 20 Nov 2026"
 export function weekLabel(iso) {
 	if (!iso) return "";
 	const a = utc(mondayISO(iso)), b = utc(sundayISO(iso));
@@ -144,6 +145,37 @@ export function actionState(status, canApprove, canPay = canApprove) {
 		canReopen: status === APPROVED && !!canApprove, canCancel: status === APPROVED && !!canApprove, canMarkUnpaid: status === PAID && !!canApprove, canAmend: status === CANCELLED };
 }
 
+// Print is offered only once the Director has approved the bill: Approved or Paid (not Draft, Pending, Sent back or Cancelled).
+export function canPrint(status) { return status === APPROVED || status === PAID; }
+
+const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const kes = (v) => Math.round(Number(v) || 0).toLocaleString("en-US");
+// "24 Nov 2026" from a date or datetime string; "" when blank.
+export function longDate(iso) {
+	if (!iso) return "";
+	const d = utc(iso);
+	return isNaN(d) ? "" : d.getUTCDate() + " " + MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear();
+}
+// Printable page for one approved bill.
+// bill: { name, status, week_date, approved_by, approved_on, paid_by, paid_on } (people already as names)
+// lines: [{ contract, contractor, activity, project, contract_value, paid_till_now, balance, amount_to_pay }] (names already resolved)
+export function printHtml(bill, lines = []) {
+	const total = lines.reduce((a, r) => a + (Number(r.amount_to_pay) || 0), 0);
+	const body = lines.map((r, i) => "<tr><td>" + (i + 1) + "</td><td>" + esc(r.contract) + "</td><td class=\"l\">" + esc(r.contractor) + "</td><td class=\"l\">" + esc(r.activity) + "</td><td class=\"l\">" + esc(r.project) + "</td>"
+		+ "<td class=\"r\">" + kes(r.contract_value) + "</td><td class=\"r\">" + kes(r.paid_till_now) + "</td><td class=\"r\">" + kes(r.balance) + "</td><td class=\"r\"><b>" + kes(r.amount_to_pay) + "</b></td></tr>").join("");
+	const foot = "<tr class=\"tt\"><td colspan=\"8\" class=\"r\"><b>Total to pay now (KES)</b></td><td class=\"r\"><b>" + kes(total) + "</b></td></tr>";
+	const approved = bill.approved_by || bill.approved_on ? "Approved by " + esc(bill.approved_by) + (bill.approved_on ? " on " + esc(longDate(bill.approved_on)) : "") + "." : "";
+	const paid = bill.status === PAID ? " Paid" + (bill.paid_by ? " by " + esc(bill.paid_by) : "") + (bill.paid_on ? " on " + esc(longDate(bill.paid_on)) : "") + "." : "";
+	return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Weekly Bill " + esc(bill.name) + "</title><style>"
+		+ "@page{size:A4 landscape;margin:12mm}body{font-family:Arial,Helvetica,sans-serif;font-size:12px;margin:0}h1{font-size:15px;text-align:center;text-decoration:underline;margin:0 0 6px}"
+		+ "p.sub{text-align:center;margin:0 0 10px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #000;padding:4px 6px;text-align:center}td.l{text-align:left}td.r,th.r{text-align:right}tr.tt td{background:#f3f3f3}"
+		+ ".note{margin:10px 0 0}.sig{display:flex;justify-content:space-between;margin-top:46px}.sig div{width:30%;border-top:1px solid #000;padding-top:4px;text-align:center}</style></head><body>"
+		+ "<h1>WEEKLY BILL " + esc(bill.name) + "</h1><p class=\"sub\">Week (Saturday to Friday): " + esc(weekLabel(bill.week_date)) + " &nbsp;|&nbsp; Status: " + esc(bill.status) + "</p>"
+		+ "<table><tr><th>S.NO</th><th>Contract</th><th>Contractor</th><th>Activity</th><th>Project</th><th class=\"r\">Contract Value</th><th class=\"r\">Paid Till Now</th><th class=\"r\">Balance Amount</th><th class=\"r\">Amount To Pay Now</th></tr>"
+		+ body + foot + "</table><p class=\"note\">" + approved + paid + "</p>"
+		+ "<div class=\"sig\"><div>Prepared by</div><div>Approved by (Director)</div><div>Received by (Contractor)</div></div></body></html>";
+}
+
 // Delete only a Draft never sent for approval, or a Cancelled bill (server: on_trash).
 export function canDelete(b) { return b.status === CANCELLED || (b.status === DRAFT && !b.raised_by); }
 
@@ -164,7 +196,7 @@ export function inProject(b, project, columns = {}) {
 
 // Figures for the cards on the Weekly Bill screen.
 // all / draft / pending / approved: count and total of each group (Draft includes Sent back).
-// weekN / weekValue: bills of the current Monday to Sunday week (any status except Sent back). paid: total of Paid bills. Cancelled bills are left out of every figure.
+// weekN / weekValue: bills of the current Saturday to Friday week (any status except Sent back). paid: total of Paid bills. Cancelled bills are left out of every figure.
 export function kpiFor(list, today = todayISO()) {
 	const grp = () => ({ n: 0, value: 0 });
 	const out = { all: grp(), draft: grp(), pending: grp(), approved: grp(), paidBills: grp(), weekN: 0, weekValue: 0, paid: 0 };

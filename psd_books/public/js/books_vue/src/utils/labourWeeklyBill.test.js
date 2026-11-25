@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
 	mondayISO, sundayISO, weekLabel, matchesFilter, countsFor, lockedRows, matchesSearch, mergeRows, totalOf, rowError, billBlockers,
-	validateBill, actionState, canDelete, toDoc, contractsLabel, isFullyPaid, visibleRows, projectsLabel, isPastWeek, pastLocked, inProject, kpiFor, cleanAmount,
+	validateBill, actionState, canDelete, toDoc, contractsLabel, isFullyPaid, visibleRows, projectsLabel, isPastWeek, pastLocked, inProject, kpiFor, cleanAmount, canPrint, printHtml, longDate,
 } from "./labourWeeklyBill.js";
 
 const preview = [
@@ -14,16 +14,16 @@ const ctrs = [
 ];
 
 describe("weeks", () => {
-	it("moves any day to Monday and Sunday", () => {
-		for (const d of ["2026-11-16", "2026-11-18", "2026-11-22"]) { expect(mondayISO(d)).toBe("2026-11-16"); expect(sundayISO(d)).toBe("2026-11-22"); }
-		expect(mondayISO("2026-11-23")).toBe("2026-11-23");
+	it("moves any day to Saturday and Friday", () => {
+		for (const d of ["2026-11-14", "2026-11-18", "2026-11-20"]) { expect(mondayISO(d)).toBe("2026-11-14"); expect(sundayISO(d)).toBe("2026-11-20"); }
+		expect(mondayISO("2026-11-21")).toBe("2026-11-21");
 	});
 	it("handles month and year ends", () => {
-		expect(mondayISO("2027-01-01")).toBe("2026-12-28");
-		expect(sundayISO("2027-01-01")).toBe("2027-01-03");
-		expect(weekLabel("2027-01-01")).toBe("28 Dec to 3 Jan 2027");
+		expect(mondayISO("2027-01-01")).toBe("2026-12-26");
+		expect(sundayISO("2027-01-01")).toBe("2027-01-01");
+		expect(weekLabel("2027-01-01")).toBe("26 Dec to 1 Jan 2027");
 	});
-	it("labels a week", () => { expect(weekLabel("2026-11-18")).toBe("16 Nov to 22 Nov 2026"); expect(weekLabel("")).toBe(""); });
+	it("labels a week", () => { expect(weekLabel("2026-11-18")).toBe("14 Nov to 20 Nov 2026"); expect(weekLabel("")).toBe(""); });
 });
 
 describe("contract paid once a week", () => {
@@ -164,7 +164,7 @@ describe("project column", () => {
 
 describe("past weeks", () => {
 	it("a week is past only when it ended before the current week", () => {
-		expect(isPastWeek("2026-11-22", "2026-11-23")).toBe(true);
+		expect(isPastWeek("2026-11-20", "2026-11-23")).toBe(true);
 		expect(isPastWeek("2026-11-23", "2026-11-23")).toBe(false);
 		expect(isPastWeek("2026-11-29", "2026-11-23")).toBe(false);
 		expect(isPastWeek("", "2026-11-23")).toBe(false);
@@ -227,5 +227,35 @@ describe("amount to pay input", () => {
 		expect(cleanAmount(550)).toBe("550");
 		expect(cleanAmount(null)).toBe("");
 		expect(Number(cleanAmount("5."))).toBe(5);
+	});
+});
+describe("print (after approval only)", () => {
+	it("is offered for Approved and Paid bills only", () => {
+		for (const s of ["Approved", "Paid"]) expect(canPrint(s)).toBe(true);
+		for (const s of ["Draft", "Sent back", "Pending approval", "Cancelled", "", undefined]) expect(canPrint(s)).toBe(false);
+	});
+	it("formats a date or datetime", () => {
+		expect(longDate("2026-11-24 15:30:00")).toBe("24 Nov 2026");
+		expect(longDate("")).toBe("");
+		expect(longDate(null)).toBe("");
+	});
+	const bill = { name: "01", status: "Paid", week_date: "2026-11-23", approved_by: "Director", approved_on: "2026-11-24 10:00:00", paid_by: "Director", paid_on: "2026-11-24" };
+	const lines = [{ contract: "01", contractor: "Kamau <b>", activity: "Tiles", project: "PS Digitise", contract_value: 50000, paid_till_now: 0, balance: 50000, amount_to_pay: 4000 },
+		{ contract: "02", contractor: "Otieno", activity: "Paint", project: "PSD", contract_value: 300000, paid_till_now: 1000, balance: 299000, amount_to_pay: "1500" }];
+	it("shows the week, every line, the total and the approval", () => {
+		const h = printHtml(bill, lines);
+		expect(h).toContain("WEEKLY BILL 01");
+		expect(h).toContain("21 Nov to 27 Nov 2026");
+		expect(h).toContain("Tiles");
+		expect(h).toContain("<b>5,500</b>");
+		expect(h).toContain("300,000");
+		expect(h).toContain("Approved by Director on 24 Nov 2026.");
+		expect(h).toContain("Paid by Director on 24 Nov 2026.");
+	});
+	it("escapes names and omits the paid note on an Approved bill", () => {
+		const h = printHtml({ ...bill, status: "Approved" }, lines);
+		expect(h).toContain("Kamau &lt;b&gt;");
+		expect(h).not.toContain("Kamau <b>");
+		expect(h).not.toContain("Paid by");
 	});
 });

@@ -123,6 +123,7 @@ DOCTYPE_MODULE["Purchase Receipt"] = "inventory"
 # Sava: Labour Contractor (Labour Contract > Contractors) is an admin-module doctype; see SAVA_ACCESS.
 DOCTYPE_MODULE["Labour Contractor"] = "admin"
 DOCTYPE_MODULE["Labour Activity"] = "admin"
+DOCTYPE_MODULE["Labour Worker"] = "admin"
 DOCTYPE_MODULE["Labour Contract"] = "admin"
 DOCTYPE_MODULE["Labour Weekly Bill"] = "admin"
 DOCTYPE_MODULE["Labour Attendance Sheet"] = "admin"
@@ -163,6 +164,8 @@ SAVA_ACCESS = {
     "Labour Contractor": {"read": _CONTRACTOR_ROLES, "write": _CONTRACTOR_ROLES, "cancel_delete": _CONTRACTOR_ROLES},
     # Labour Activities: same people as Contractors (Books Admin and Director are admin, handled before this table)
     "Labour Activity": {"read": _CONTRACTOR_ROLES, "write": _CONTRACTOR_ROLES, "cancel_delete": _CONTRACTOR_ROLES},
+    # Labour Workers (Labour Contract > Workers, listed on the weekly wages sheet): same people as Contractors
+    "Labour Worker": {"read": _CONTRACTOR_ROLES, "write": _CONTRACTOR_ROLES, "cancel_delete": _CONTRACTOR_ROLES},
     # Labour Contracts: same people as Contractors; only a Director approves (api/labour_contract.py)
     "Labour Contract": {"read": _CONTRACTOR_ROLES, "write": _CONTRACTOR_ROLES, "cancel_delete": _CONTRACTOR_ROLES},
     # Labour Weekly Bills: same people; only a Director approves (api/labour_weekly_bill.py)

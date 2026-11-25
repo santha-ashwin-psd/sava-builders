@@ -56,10 +56,9 @@
     </table>
     <div class="vt-footer" v-if="!loading && list.length">Showing <strong>{{ filtered.length }}</strong> of <strong>{{ list.length }}</strong> sheets</div>
   </div>
-  <p style="margin:10px 4px;font-size:12px;color:#6b7280">One sheet per week for all Active employees, Saturday to Friday. A Director approves each sheet; once sent for approval it is locked, and a submitted sheet is final. A Director can cancel a sent back, approved or submitted sheet; a cancelled sheet can be amended into a new draft, or deleted if it was not amended.</p>
+  <p style="margin:10px 4px;font-size:12px;color:#6b7280">One sheet per week for all Active workers, Saturday to Friday. A Director approves each sheet; once sent for approval it is locked, and a submitted sheet is final. A Director can cancel a sent back, approved or submitted sheet; a cancelled sheet can be amended into a new draft, or deleted if it was not amended.</p>
 
   <Teleport to="body">
-    <div v-if="showDrawer" class="inv-drawer-bg" @click.self="showDrawer=false"></div>
     <div class="inv-drawer-panel at-drawer" :class="{open:showDrawer}">
 
       <!-- Header -->
@@ -122,8 +121,8 @@
           <div class="add-card-header" @click="atCollapsed.sheet=!atCollapsed.sheet">
             <div class="add-card-title">
               <span class="add-card-title-icon"><span v-html="icon('check',16)"></span></span>
-              Attendance
-              <span class="at-count">{{ rows.length }} employee{{ rows.length !== 1 ? 's' : '' }}</span>
+              Weekly Wages
+              <span class="at-count">{{ rows.length }} worker{{ rows.length !== 1 ? 's' : '' }}</span>
             </div>
             <span class="add-card-chevron" :class="{collapsed:atCollapsed.sheet}">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
@@ -140,15 +139,15 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-if="rowsLoading"><td colspan="19" class="vt-empty"><div class="vt-empty-sub">Loading employees…</div></td></tr>
-                  <tr v-else-if="!rows.length"><td colspan="19" class="vt-empty"><div class="vt-empty-sub">There are no Active employees to list</div></td></tr>
+                  <tr v-if="rowsLoading"><td colspan="19" class="vt-empty"><div class="vt-empty-sub">Loading workers…</div></td></tr>
+                  <tr v-else-if="!rows.length"><td colspan="19" class="vt-empty"><div class="vt-empty-sub">There are no Active workers to list</div></td></tr>
                   <tr v-else v-for="(r, i) in rows" :key="r.employee">
                     <td class="vt-td">{{ i + 1 }}</td>
                     <td class="vt-td vt-td-mono">{{ r.id_no || '—' }}</td>
                     <td class="vt-td">{{ r.employee_name }}</td>
                     <td class="vt-td">
                       <select v-model="r.grade" class="inv-fi" style="width:64px" :disabled="!ac.canEdit" :aria-label="'Grade, ' + r.employee_name">
-                        <option v-for="g in GRADES" :key="g" :value="g">{{ g }}</option>
+                        <option v-for="g in GRADES" :key="g" :value="g">{{ gradeLabel(g) }}</option>
                       </select>
                     </td>
                     <td class="vt-td"><input v-model="r.area_of_work" class="inv-fi" style="width:120px" :disabled="!ac.canEdit" :aria-label="'Area of work, ' + r.employee_name"/></td>
@@ -166,8 +165,8 @@
               </table>
             </div>
             <div class="at-foot">
-              <div class="ct-info"><span v-html="icon('info',14)"></span>Total = days x rate + OT amount - SHA, rounded to the shilling. OT amount = OT hours x rate / 8. An employee with no days and no OT is paid nothing.</div>
-              <div v-if="rows.length" class="at-totals">Week: {{ totals.employees }} employees paid, {{ totals.days }} employee-days, wages KES {{ fmtKES(totals.total) }}</div>
+              <div class="ct-info"><span v-html="icon('info',14)"></span>Total = days x rate + OT amount - SHA, rounded to the shilling. OT amount = OT hours x rate / 8. A worker with no days and no OT is paid nothing.</div>
+              <div v-if="rows.length" class="at-totals">Week: {{ totals.employees }} workers paid, {{ totals.days }} worker-days, wages KES {{ fmtKES(totals.total) }}</div>
             </div>
           </div>
         </div>
@@ -214,7 +213,7 @@ import { icon } from "../utils/icons.js";
 import { todayISO } from "../utils/labourContractor.js";
 import { statusClass, fmtKES } from "../utils/labourContract.js";
 import {
-  PENDING, APPROVED, SUBMITTED, SENT_BACK, CANCELLED, DAYS, GRADES, weekLabel, dayDates, figures, totalsOf, mergeRows, rowError,
+  PENDING, APPROVED, SUBMITTED, SENT_BACK, CANCELLED, DAYS, GRADES, gradeLabel, weekLabel, dayDates, figures, totalsOf, mergeRows, rowError,
   sheetBlockers, validateSheet, matchesFilter, countsFor, kpiFor, matchesSearch, actionState, canDelete, amendedNames, toDoc, printHtml, cleanNumber,
 } from "../utils/labourAttendance.js";
 
@@ -287,7 +286,7 @@ async function load() {
   } finally { loading.value = false; }
 }
 
-// Every Active employee with fresh carried values; keeps the entries already typed or saved.
+// Every Active worker with fresh carried values; keeps the entries already typed or saved.
 async function refreshRows(saved) {
   addedMsg.value = ""; existingSheet.value = "";
   if (!form.week_date) { rows.value = []; return; }
@@ -297,10 +296,10 @@ async function refreshRows(saved) {
     existingSheet.value = p.existing_sheet || "";
     const m = mergeRows(p.rows || [], saved === undefined ? rows.value : saved);
     rows.value = m.rows;
-    if (m.added.length) addedMsg.value = "New employees added to this sheet: " + m.added.join(", ") + ".";
+    if (m.added.length) addedMsg.value = "New workers added to this sheet: " + m.added.join(", ") + ".";
   } catch (e) {
     rows.value = [];
-    toast(e.message || "Could not load employees", "error");
+    toast(e.message || "Could not load workers", "error");
   } finally { rowsLoading.value = false; }
 }
 
@@ -355,13 +354,13 @@ async function run(method, args, okMsg) {
 }
 
 async function sendForApproval() {
-  const ok = await confirm({ title: "Confirm to send for approval", body: "Send this wages sheet to the Director for approval? Wages: KES " + fmtKES(totals.value.total) + " for " + totals.value.employees + " employees. The sheet is locked once it is sent.", okLabel: "Send for approval", okStyle: "primary" });
+  const ok = await confirm({ title: "Confirm to send for approval", body: "Send this wages sheet to the Director for approval? Wages: KES " + fmtKES(totals.value.total) + " for " + totals.value.employees + " workers. The sheet is locked once it is sent.", okLabel: "Send for approval", okStyle: "primary" });
   if (!ok) return;
   const name = await saveDraft(true);
   if (name) await run("send_for_approval", { name }, "Sent for Director approval");
 }
 async function approve() {
-  const ok = await confirm({ title: "Confirm to approve", body: "Approve " + form.name + "? Wages: KES " + fmtKES(totals.value.total) + " for " + totals.value.employees + " employees. Submit it afterwards to finalise.", okLabel: "Approve", okStyle: "primary" });
+  const ok = await confirm({ title: "Confirm to approve", body: "Approve " + form.name + "? Wages: KES " + fmtKES(totals.value.total) + " for " + totals.value.employees + " workers. Submit it afterwards to finalise.", okLabel: "Approve", okStyle: "primary" });
   if (ok) await run("approve_sheet", { name: form.name }, "Sheet approved");
 }
 async function sendBack() {
@@ -446,8 +445,8 @@ onMounted(load);
 .ct-errbox li { margin: 2px 0; }
 .ct-info { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 8px; font-size: 12.5px; background: #eff6ff; color: #1d4ed8; }
 .ct-note-ok { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-.at-drawer { width: 1360px; right: -1360px; transition: right .22s ease; position: fixed; top: 0; bottom: 0; max-width: 96vw; z-index: 8100; background: #fff; display: flex; flex-direction: column; }
-.at-drawer.open { right: 0; }
+.at-drawer { position: fixed; inset: 0; width: 100%; max-width: 100%; visibility: hidden; opacity: 0; transition: opacity .15s ease; z-index: 8100; background: #fff; display: flex; flex-direction: column; }
+.at-drawer.open { visibility: visible; opacity: 1; }
 .at-drawer .inv-dbody { background: #f5f6f8; }
 .at-card-first { margin-top: 14px; }
 .at-drawer .ct-note:first-child, .at-drawer .ct-errbox:first-child { margin-top: 0; }
@@ -463,5 +462,4 @@ onMounted(load);
 .at-del { margin-right: auto; color: #dc2626; }
 .at-cancel-sheet { color: #dc2626; border-color: #fecaca; }
 .add-btn-cancel:disabled, .add-btn-more:disabled { opacity: .5; cursor: not-allowed; }
-@media (max-width: 900px) { .at-drawer { width: 100% !important; right: -100%; max-width: 100%; } }
 </style>

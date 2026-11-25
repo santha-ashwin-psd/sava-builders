@@ -35,7 +35,7 @@
     <div class="em-scroll">
       <table class="em-tbl">
         <thead><tr>
-          <th class="sortable" @click="sortBy('name')">ID <span class="em-sort" v-html="sortArrow('name')"></span></th>
+          <th class="sortable" @click="sortBy('id_no')">ID <span class="em-sort" v-html="sortArrow('id_no')"></span></th>
           <th class="sortable" @click="sortBy('employee_name')">Name <span class="em-sort" v-html="sortArrow('employee_name')"></span></th>
           <th class="sortable" @click="sortBy('designation')">Designation <span class="em-sort" v-html="sortArrow('designation')"></span></th>
           <th class="sortable" @click="sortBy('department')">Department <span class="em-sort" v-html="sortArrow('department')"></span></th>
@@ -62,7 +62,7 @@
             </template>
           </td></tr>
           <tr v-else v-for="row in paged" :key="row.name" class="em-row">
-            <td @click="openEdit(row)" data-label="ID"><span class="em-id">{{ row.name }}</span></td>
+            <td @click="openEdit(row)" data-label="ID"><span class="em-id">{{ row.id_no || '—' }}</span></td>
             <td @click="openEdit(row)" data-label="Name" class="em-name">{{ row.employee_name }}</td>
             <td @click="openEdit(row)" data-label="Designation">{{ row.designation || '—' }}</td>
             <td @click="openEdit(row)" data-label="Department">{{ row.department || '—' }}</td>
@@ -264,6 +264,7 @@ const filtered = computed(() => {
   const s = search.value.trim().toLowerCase();
   if (s) rows = rows.filter(r =>
     (r.name || "").toLowerCase().includes(s) ||
+    (r.id_no || "").toLowerCase().includes(s) ||
     (r.employee_name || "").toLowerCase().includes(s) ||
     (r.designation || "").toLowerCase().includes(s) ||
     (r.department || "").toLowerCase().includes(s) ||
@@ -467,7 +468,7 @@ async function removeRow(row) {
 
 function exportCSV() {
   const headers = ["ID", "Name", "Designation", "Department", "Project", "Login User", "Status"];
-  const rows = filtered.value.map(r => [r.name, r.employee_name, r.designation || "", r.department || "",
+  const rows = filtered.value.map(r => [r.id_no || "", r.employee_name, r.designation || "", r.department || "",
     r.project ? projectLabel(r.project) : "", r.user || "", r.status || "Active"]);
   const csv = [headers, ...rows].map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));

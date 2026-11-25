@@ -1,8 +1,8 @@
 """Labour Weekly Bill (Sava Phase 2, Labour Contract > Weekly Bill). Prototype v11.
 
 A bill is not tied to one project: it lists every Approved contract of the caller's company (contracts of a Closed project
-are left out), whatever its project or dates, and a project can have any number of bills in the same week (Monday to
-Sunday; any date in the week can be given, it is moved to the Monday). The user enters the amount to pay now on each. The lines are made by the system; the user only edits the amounts.
+are left out), whatever its project or dates, and a project can have any number of bills in the same week (Saturday to
+Friday, like the weekly wages sheet; any date in the week can be given, it is moved to the Saturday). The user enters the amount to pay now on each. The lines are made by the system; the user only edits the amounts.
 - Paid till now = amounts on other Paid bills; balance = contract value - paid - amounts on other bills
   still Pending approval or Approved (approved but not yet marked Paid). An amount can't be below zero or above the balance (checked on save, send and approve).
 - Status: Draft -> Pending approval -> Approved -> Paid; a Director can send it back (Sent back, editable again).
@@ -14,7 +14,7 @@ Sunday; any date in the week can be given, it is moved to the Monday). The user 
 - Blocked on send and on approve: no amount above zero; a contractor paid on the bill has an expired tax
   certificate or is inactive.
 - A contract can be paid once a week: an amount above zero on a contract is refused when another bill of the same week
-  (Monday to Sunday) already holds an amount on it (checked on save, send and approve). Pending approval, Approved and Paid
+  (Saturday to Friday) already holds an amount on it (checked on save, send and approve). Pending approval, Approved and Paid
   bills always count; a Draft counts only against bills created after it (the first Draft keeps the contract), so two
   drafts can't both claim it. A Sent back bill does not reserve the week.
 - A new bill can be made for a past week, but only for contracts with nothing paid so far (paid till now 0); a contract that already has
@@ -38,17 +38,19 @@ PAYER_ROLES = ("Director", "Purchase Manager", "Admin")
 
 # ---- pure helpers (no database) ----
 def monday_of(d):
-	"""The Monday of the week holding date d (date or YYYY-MM-DD string)."""
+	"""The first day of the week holding date d (date or YYYY-MM-DD string). Weeks run Saturday to Friday, so this is the Saturday.
+	The name is kept from when weeks ran Monday to Sunday."""
 	d = d if isinstance(d, datetime.date) else datetime.date.fromisoformat(str(d)[:10])
-	return d - datetime.timedelta(days=d.weekday())
+	return d - datetime.timedelta(days=(d.weekday() - 5) % 7)
 
 
 def sunday_of(d):
+	"""The last day of the week holding date d: the Friday (name kept from the Monday to Sunday weeks)."""
 	return monday_of(d) + datetime.timedelta(days=6)
 
 
 def is_past_week(d, today=None):
-	"""True when the week holding date d ended before the current week (Monday to Sunday)."""
+	"""True when the week holding date d ended before the current week (Saturday to Friday)."""
 	return monday_of(d) < monday_of(today or nowdate())
 
 
@@ -221,7 +223,7 @@ def send_back(doc, user, roles, reason):
 # ---- database helpers ----
 def approved_contracts(project=None, company=None, week_end=None):
 	"""Approved contracts, all projects unless project is given, limited to the company when given. Contracts of a Closed project are left out.
-	When week_end (the Sunday of the bill week) is given, a contract that starts after it is left out; the end date is not checked."""
+	When week_end (the Friday of the bill week) is given, a contract that starts after it is left out; the end date is not checked."""
 	filters = {"status": "Approved"}
 	if project:
 		filters["project"] = project

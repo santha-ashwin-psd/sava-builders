@@ -18,8 +18,8 @@
   {
    "fieldname": "employee",
    "fieldtype": "Link",
-   "label": "Employee",
-   "options": "Employee",
+   "label": "Worker",
+   "options": "Labour Worker",
    "reqd": 1,
    "in_list_view": 1
   },
@@ -39,7 +39,7 @@
   {
    "fieldname": "grade",
    "fieldtype": "Select",
-   "label": "Grade",
+   "label": "Grade (SK = Skilled, C = Unskilled)",
    "options": "C\nSK",
    "default": "C"
   },

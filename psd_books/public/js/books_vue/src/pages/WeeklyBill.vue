@@ -39,7 +39,7 @@
   <div class="inv-table-wrap">
     <table class="inv-table">
       <thead>
-        <tr><th class="vt-th">Bill</th><th class="vt-th">Project</th><th class="vt-th">Contract</th><th class="vt-th">Week (Monday to Sunday)</th><th class="vt-th vt-th-r">Total to Pay (KES)</th><th class="vt-th vt-th-r">Balance to Pay (KES)</th><th class="vt-th">Status</th></tr>
+        <tr><th class="vt-th">Bill</th><th class="vt-th">Project</th><th class="vt-th">Contract</th><th class="vt-th">Week (Saturday to Friday)</th><th class="vt-th vt-th-r">Total to Pay (KES)</th><th class="vt-th vt-th-r">Balance to Pay (KES)</th><th class="vt-th">Status</th></tr>
       </thead>
       <tbody>
         <template v-if="loading">
@@ -80,14 +80,21 @@
         </div>
 
         <div class="inv-dbody" style="padding:24px;overflow-y:auto;flex:1">
-          <div class="inv-fg inv-fg2">
+          <div class="inv-fg" :class="ac.canEdit ? 'inv-fg3' : 'inv-fg2'">
+            <div v-if="ac.canEdit" class="inv-field">
+              <label class="inv-lbl">Project</label>
+              <select v-model="drawerProject" class="inv-fi" @change="onDrawerProject">
+                <option value="">All projects</option>
+                <option v-for="p in openProjects" :key="p.name" :value="p.name">{{ p.project_name || p.name }}</option>
+              </select>
+            </div>
             <div class="inv-field">
               <label class="inv-lbl">Pick any date in the week <span class="nim-req">*</span></label>
               <input type="date" v-model="form.week_date" class="inv-fi" :style="errStyle('week_date')" :disabled="!ac.canEdit || !!form.name" @change="delete formErrors.week_date; refreshRows()"/>
               <div v-if="formErrors.week_date" class="ct-err">{{ formErrors.week_date }}</div>
             </div>
             <div class="inv-field">
-              <label class="inv-lbl">Week (Monday to Sunday)</label>
+              <label class="inv-lbl">Week (Saturday to Friday)</label>
               <input class="inv-fi" :value="weekLabel(form.week_date)" disabled/>
             </div>
           </div>
@@ -100,7 +107,7 @@
               </thead>
               <tbody>
                 <tr v-if="rowsLoading"><td colspan="8" class="vt-empty"><div class="vt-empty-sub">Loading contracts…</div></td></tr>
-                <tr v-else-if="!visible.length"><td colspan="8" class="vt-empty"><div class="vt-empty-sub">{{ !ac.canEdit ? 'No contracts on this bill' : rows.length ? 'All Approved contracts are fully paid' : 'There are no Approved contracts to bill' }}</div></td></tr>
+                <tr v-else-if="!visible.length"><td colspan="8" class="vt-empty"><div class="vt-empty-sub">{{ !ac.canEdit ? 'No contracts on this bill' : drawerProject ? 'No unpaid Approved contracts for this project' : rows.length ? 'All Approved contracts are fully paid' : 'There are no Approved contracts to bill' }}</div></td></tr>
                 <tr v-else v-for="r in visible" :key="r.contract">
                   <td class="vt-td vt-td-mono">{{ r.contract }}</td>
                   <td class="vt-td">{{ contractorNames[r.contractor] || r.contractor }}<span v-if="certExpired(r.contractor)" class="ct-flag"> certificate expired</span></td>
@@ -120,7 +127,7 @@
             </table>
           </div>
           <div v-if="visible.length" style="margin-top:12px;font-weight:600;text-align:right">Total to pay now: KES {{ fmtKES(total) }}</div>
-          <div v-if="ac.canEdit" class="ct-info"><span v-html="icon('info',14)"></span>Fully paid contracts are not listed. Contracts of all projects are shown. A contract can be paid once a week, and an amount can't be above its balance.</div>
+          <div v-if="ac.canEdit" class="ct-info"><span v-html="icon('info',14)"></span>Fully paid contracts are not listed. Contracts of all projects are shown unless you pick a project. A contract can be paid once a week, and an amount can't be above its balance.</div>
 
           <div v-if="form.status===SENT_BACK && form.rejection_reason" class="ct-note ct-note-bad">Sent back: {{ form.rejection_reason }}</div>
           <div v-if="form.status===PENDING" class="ct-note">Waiting for Director approval. The bill is locked.</div>
@@ -145,6 +152,7 @@
             <button v-if="ac.canApprove" class="add-btn-more" :disabled="busy || blockers.length>0" @click="approve">Approve as Director</button>
             <button v-if="ac.canReopen" class="add-btn-draft" :disabled="busy" @click="reopen">Edit</button>
             <button v-if="ac.canCancel" class="add-btn-cancel wb-cancel-bill" :disabled="busy" @click="cancelBill">Cancel bill</button>
+            <button v-if="form.name && canPrint(form.status)" class="add-btn-cancel" :disabled="!visible.length" @click="printBill"><span v-html="icon('print',13)"></span>&nbsp;Print</button>
             <button v-if="ac.canMarkUnpaid" class="add-btn-cancel" :disabled="busy" @click="markUnpaid">Mark unpaid</button>
             <button v-if="ac.canAmend" class="add-btn-more" :disabled="busy || !canWrite" @click="amend">Amend</button>
             <button v-if="ac.canMarkPaid" class="add-btn-more" :disabled="busy" @click="markPaid">Paid</button>
@@ -173,7 +181,7 @@ import { isCertExpired, todayISO } from "../utils/labourContractor.js";
 import { statusClass, fmtKES } from "../utils/labourContract.js";
 import {
   PENDING, APPROVED, SENT_BACK, PAID, CANCELLED, weekLabel, matchesFilter, countsFor, matchesSearch, mergeRows, totalOf, rowError, visibleRows,
-  billBlockers, validateBill, actionState, cleanAmount, lockedRows, canDelete, toDoc, contractsLabel, projectsLabel, pastLocked, inProject, kpiFor,
+  billBlockers, validateBill, actionState, canPrint, printHtml, cleanAmount, lockedRows, canDelete, toDoc, contractsLabel, projectsLabel, pastLocked, inProject, kpiFor,
 } from "../utils/labourWeeklyBill.js";
 
 const { toast } = useToast();
@@ -209,7 +217,17 @@ const saving = ref(false);
 const busy = ref(false);
 const rows = ref([]);
 // A bill being edited lists every unpaid contract; a locked one (Pending, Approved, Paid) lists only the contracts paid on it.
-const visible = computed(() => (ac.value.canEdit ? visibleRows(rows.value) : lockedRows(rows.value)));
+const drawerProject = ref("");   // drawer-only filter on the contract rows; not saved on the bill
+const projOf = (r) => contractProject.value[r.contract] || r.project || "";
+const visible = computed(() => {
+  const base = ac.value.canEdit ? visibleRows(rows.value) : lockedRows(rows.value);
+  return drawerProject.value && ac.value.canEdit ? base.filter((r) => projOf(r) === drawerProject.value) : base;
+});
+// Choosing a project clears amounts typed on contracts of other projects, so nothing hidden is saved.
+function onDrawerProject() {
+  if (!drawerProject.value) return;
+  rows.value = rows.value.map((r) => (projOf(r) === drawerProject.value ? r : { ...r, amount_to_pay: "" }));
+}
 const rowsLoading = ref(false);
 const droppedMsg = ref("");
 const formErrors = reactive({});
@@ -221,9 +239,10 @@ function resetForm(src) {
   Object.keys(formErrors).forEach((k) => delete formErrors[k]);
   Object.keys(form).forEach((k) => delete form[k]);
   Object.assign(form, blank(), src || {});
-  rows.value = []; droppedMsg.value = "";
+  rows.value = []; droppedMsg.value = ""; drawerProject.value = "";
 }
 
+const openProjects = computed(() => projects.value.filter((p) => p.status !== "Closed"));
 const projectNames = computed(() => Object.fromEntries(projects.value.map((p) => [p.name, p.project_name || p.name])));
 const contractorNames = computed(() => Object.fromEntries(contractors.value.map((c) => [c.name, c.contractor_name || c.name])));
 // The project filter narrows the pills, the cards and the table together
@@ -402,6 +421,26 @@ async function doDelete() {
   try { await apiDelete(DT, form.name); toast("Bill deleted"); showDrawer.value = false; await load(); }
   catch (e) { toast(e.message || "Could not delete bill", "error"); }
   finally { busy.value = false; }
+}
+
+// Prints an approved (or paid) bill: the contracts shown in the drawer, in a new window.
+function printBill() {
+  const w = window.open("", "_blank");
+  if (!w) { toast("Allow pop-ups to print the bill", "error"); return; }
+  const lines = visible.value.map((r) => ({
+    contract: r.contract,
+    contractor: contractorNames.value[r.contractor] || r.contractor,
+    activity: contractActivity.value[r.contract] || "",
+    project: projectNames.value[contractProject.value[r.contract] || r.project] || contractProject.value[r.contract] || r.project || "",
+    contract_value: r.contract_value, paid_till_now: r.paid_till_now, balance: r.balance, amount_to_pay: r.amount_to_pay,
+  }));
+  const bill = { name: form.name, status: form.status, week_date: form.week_date,
+    approved_by: form.approved_by ? ownerName(form.approved_by) : "", approved_on: form.approved_on,
+    paid_by: form.paid_by ? ownerName(form.paid_by) : "", paid_on: form.paid_on };
+  w.document.write(printHtml(bill, lines));
+  w.document.close();
+  w.focus();
+  w.print();
 }
 
 onMounted(load);

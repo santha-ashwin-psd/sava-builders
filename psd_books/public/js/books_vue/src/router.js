@@ -82,6 +82,7 @@ const ExpenseCategories = () => import("./pages/ExpenseCategories.vue");
 const Reports = () => import("./pages/Reports.vue");
 const LabourPlaceholder = () => import("./pages/LabourPlaceholder.vue");
 const Contractors = () => import("./pages/Contractors.vue");
+const Workers = () => import("./pages/Workers.vue");
 const Activities = () => import("./pages/Activities.vue");
 const Contract = () => import("./pages/Contract.vue");
 const WeeklyBill = () => import("./pages/WeeklyBill.vue");
@@ -375,9 +376,11 @@ const routes = [
   // Weekly Bill: same access as Contractors (Books Admin, Director and the Admin job role only); only a Director approves.
   { path: "/labour-contract/weekly-bill", name: "labour-weekly-bill", component: WeeklyBill, meta: { module: "labour_contractors", doctype: "Labour Weekly Bill", title: "Weekly Bill" } },
   // Attendance (weekly wages sheet): same access as Contractors (Books Admin, Director and the Admin job role only); only a Director approves.
-  { path: "/labour-contract/attendance", name: "labour-attendance", component: Attendance, meta: { module: "labour_contractors", doctype: "Labour Attendance Sheet", title: "Attendance" } },
+  { path: "/labour-contract/attendance", name: "labour-attendance", component: Attendance, meta: { module: "labour_contractors", doctype: "Labour Attendance Sheet", title: "Weekly Wages" } },
   // Contractors: Books Admin, Director and the Admin job role only (module key below is never granted to others; doc_access decides).
   { path: "/labour-contract/contractors", name: "labour-contractors", component: Contractors, meta: { module: "labour_contractors", doctype: "Labour Contractor", title: "Contractors" } },
+  // Workers (the people on the Weekly Wages sheet): same access as Contractors.
+  { path: "/labour-contract/workers", name: "labour-workers", component: Workers, meta: { module: "labour_contractors", doctype: "Labour Worker", title: "Workers" } },
   // Activities: same access as Contractors (Books Admin, Director and the Admin job role only).
   { path: "/labour-contract/activities", name: "labour-activities", component: Activities, meta: { module: "labour_contractors", doctype: "Labour Activity", title: "Activities" } },
   { path: "/bulk-import",        name: "bulk-import",       component: BulkImport,       meta: { module: "admin"    } },

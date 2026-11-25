@@ -56,17 +56,17 @@ class Doc:
 
 
 class TestWeek(unittest.TestCase):
-	def test_any_day_moves_to_monday(self):
-		for d in ("2026-11-16", "2026-11-18", "2026-11-22"):  # Mon, Wed, Sun
-			self.assertEqual(wb.monday_of(d), datetime.date(2026, 11, 16))
-		self.assertEqual(wb.monday_of("2026-11-23"), datetime.date(2026, 11, 23))
+	def test_any_day_moves_to_saturday(self):
+		for d in ("2026-11-14", "2026-11-18", "2026-11-20"):  # Sat, Wed, Fri
+			self.assertEqual(wb.monday_of(d), datetime.date(2026, 11, 14))
+		self.assertEqual(wb.monday_of("2026-11-21"), datetime.date(2026, 11, 21))
 
-	def test_sunday(self):
-		self.assertEqual(wb.sunday_of("2026-11-18"), datetime.date(2026, 11, 22))
+	def test_friday(self):
+		self.assertEqual(wb.sunday_of("2026-11-18"), datetime.date(2026, 11, 20))
 
 	def test_across_month_and_year(self):
-		self.assertEqual(wb.monday_of("2027-01-01"), datetime.date(2026, 12, 28))
-		self.assertEqual(wb.sunday_of("2027-01-01"), datetime.date(2027, 1, 3))
+		self.assertEqual(wb.monday_of("2027-01-01"), datetime.date(2026, 12, 26))
+		self.assertEqual(wb.sunday_of("2027-01-01"), datetime.date(2027, 1, 1))
 
 
 class TestAmounts(unittest.TestCase):
@@ -302,9 +302,9 @@ class TestSync(unittest.TestCase):
 		self.assertEqual(wb.week_errors(lines, {}), [])
 
 	def test_is_past_week(self):
-		self.assertTrue(wb.is_past_week("2026-11-22", "2026-11-23"))  # Sunday of last week
+		self.assertTrue(wb.is_past_week("2026-11-20", "2026-11-23"))  # Friday of last week
 		self.assertFalse(wb.is_past_week("2026-11-23", "2026-11-23"))
-		self.assertFalse(wb.is_past_week("2026-11-29", "2026-11-23"))  # Sunday of this week
+		self.assertFalse(wb.is_past_week("2026-11-27", "2026-11-23"))  # Friday of this week
 		self.assertFalse(wb.is_past_week("2026-12-07", "2026-11-23"))
 		self.assertTrue(wb.is_past_week("2026-11-02", "2026-11-26"))
 
