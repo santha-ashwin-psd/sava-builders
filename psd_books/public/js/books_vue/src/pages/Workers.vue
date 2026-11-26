@@ -38,14 +38,15 @@
           <th class="sortable" @click="sortBy('id_no')">ID No. <span class="em-sort" v-html="sortArrow('id_no')"></span></th>
           <th class="sortable" @click="sortBy('worker_name')">Name <span class="em-sort" v-html="sortArrow('worker_name')"></span></th>
           <th class="sortable" @click="sortBy('skill')">SK / USK <span class="em-sort" v-html="sortArrow('skill')"></span></th>
+          <th class="sortable" @click="sortBy('rate')">Rate/Day (KES) <span class="em-sort" v-html="sortArrow('rate')"></span></th>
           <th class="sortable" @click="sortBy('status')">Status <span class="em-sort" v-html="sortArrow('status')"></span></th>
           <th class="em-th-actions">Actions</th>
         </tr></thead>
         <tbody>
           <template v-if="loading">
-            <tr v-for="n in 5" :key="n" class="em-skel"><td colspan="5"><div class="shimmer"></div></td></tr>
+            <tr v-for="n in 5" :key="n" class="em-skel"><td colspan="6"><div class="shimmer"></div></td></tr>
           </template>
-          <tr v-else-if="!sorted.length"><td colspan="5" class="em-empty">
+          <tr v-else-if="!sorted.length"><td colspan="6" class="em-empty">
             <template v-if="search || filterTab !== 'all'">
               <p class="em-empty-title">No workers match your filters</p>
               <p class="em-empty-sub">Try a different search or switch the status filter.</p>
@@ -62,6 +63,7 @@
             <td @click="openEdit(row)" data-label="ID No."><span class="em-id">{{ row.id_no || '—' }}</span></td>
             <td @click="openEdit(row)" data-label="Name" class="em-name">{{ row.worker_name }}</td>
             <td @click="openEdit(row)" data-label="SK / USK">{{ skillLabel(row.skill) || '—' }}</td>
+            <td @click="openEdit(row)" data-label="Rate/Day (KES)">{{ fmtRate(row.rate) }}</td>
             <td @click="openEdit(row)" data-label="Status">
               <span class="em-status" :class="row.status === 'Inactive' ? 'is-inactive' : 'is-active'">{{ row.status || 'Active' }}</span>
             </td>
@@ -175,6 +177,7 @@ import { cleanNumber } from "../utils/labourAttendance.js";
 
 const DT = "Labour Worker";
 // Stored values stay Skilled / Unskilled; the screen shows SK / USK.
+const fmtRate = (v) => (Number(v) > 0 ? Number(v).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "—");
 const skillLabel = (v) => (v === "Skilled" ? "SK" : v === "Unskilled" ? "USK" : v || "");
 const { toast } = useToast();
 const { confirm } = useConfirm();
@@ -377,8 +380,8 @@ async function removeRow(row) {
 }
 
 function exportCSV() {
-  const headers = ["ID No.", "Name", "SK / USK", "Status"];
-  const rows = filtered.value.map(r => [r.id_no || "", r.worker_name, skillLabel(r.skill), r.status || "Active"]);
+  const headers = ["ID No.", "Name", "SK / USK", "Rate/Day (KES)", "Status"];
+  const rows = filtered.value.map(r => [r.id_no || "", r.worker_name, skillLabel(r.skill), Number(r.rate) > 0 ? r.rate : "", r.status || "Active"]);
   const csv = [headers, ...rows].map(row => row.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
   const a = document.createElement("a");
