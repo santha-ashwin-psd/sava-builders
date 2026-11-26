@@ -23,11 +23,12 @@
 
 
   <!-- KPI cards (click a card to filter the list) -->
-  <div class="bk-kpi-grid bk-kpi-grid-4">
+  <div class="bk-kpi-grid bk-kpi-grid-4 ct-kpi-5">
     <div class="bk-kpi-card bk-kpi-accent clickable" @click="activeFilter='all'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dbeafe"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Total Bills</div><div class="bk-kpi-value">{{ kpi.all.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.all.value) }}</div></div></div></div>
     <div class="bk-kpi-card clickable" @click="activeFilter='draft'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#e2e8f0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Draft</div><div class="bk-kpi-value">{{ kpi.draft.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.draft.value) }}</div></div></div></div>
     <div class="bk-kpi-card bk-kpi-warn clickable" @click="activeFilter='pending'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#fef3c7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Pending Approval</div><div class="bk-kpi-value bk-kpi-amber">{{ kpi.pending.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.pending.value) }}</div></div></div></div>
     <div class="bk-kpi-card clickable" @click="activeFilter='approved'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#16a34a" stroke-width="1.8"/><polyline points="7 12.5 10.5 16 17 9" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Approved</div><div class="bk-kpi-value bk-kpi-green">{{ kpi.approved.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.approved.value) }}</div></div></div></div>
+    <div class="bk-kpi-card clickable" @click="activeFilter='paid'"><div class="bk-kpi-inner"><div class="bk-kpi-icon" style="background:#dcfce7"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div><div class="bk-kpi-body"><div class="bk-kpi-label">Paid</div><div class="bk-kpi-value bk-kpi-green">{{ kpi.paidBills.n }}</div><div class="bk-kpi-trend ct-kpi-sub">KES {{ fmtKES(kpi.paidBills.value) }}</div></div></div></div>
   </div>
   <div class="bk-stat-grid">
     <div class="bk-stat-card"><div class="bk-stat-content"><div><div class="bk-stat-label">Bills This Week</div><div class="bk-stat-value">{{ kpi.weekN }}</div></div><div class="bk-stat-icon" style="background:#dbeafe;color:#2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div></div>
@@ -504,4 +505,8 @@ onMounted(load);
 .vt-footer { padding: 9px 16px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; background: #fafafa; }
 .vt-footer strong { color: #6b7280; font-weight: 600; }
 .at-audit { padding: 8px 2px 0; }
+.bk-kpi-grid.ct-kpi-5 { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 1100px) { .bk-kpi-grid.ct-kpi-5 { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 800px) { .bk-kpi-grid.ct-kpi-5 { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .bk-kpi-grid.ct-kpi-5 { grid-template-columns: 1fr; } }
 </style>
