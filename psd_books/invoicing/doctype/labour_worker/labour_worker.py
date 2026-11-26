@@ -1,12 +1,13 @@
 """Labour Worker master (Sava Phase 2, Labour Contract > Workers).
 
-A person paid on the Weekly Wages sheet. Name, ID No. (optional, but unique when given), Skilled / Unskilled and Status
-(Active / Inactive). Only Active workers are listed on a new Weekly Wages sheet. A worker already on a wages sheet can be
+A person paid on the Weekly Wages sheet. Name, ID No. (optional, but unique when given), Skilled / Unskilled, Rate per Day
+(KES, the screen asks for it; a new wages sheet starts each worker on this rate) and Status (Active / Inactive). Only Active workers are listed on a new Weekly Wages sheet. A worker already on a wages sheet can be
 made Inactive but not deleted.
 """
 import frappe
 from frappe import _
 from frappe.model.document import Document
+from frappe.utils import flt
 
 SKILLS = ("Skilled", "Unskilled")
 STATUSES = ("Active", "Inactive")
@@ -40,6 +41,8 @@ class LabourWorker(Document):
 			frappe.throw(_("Worker Name is required"))
 		if self.skill not in SKILLS:
 			frappe.throw(_("Skilled / Unskilled must be one of: {0}").format(", ".join(SKILLS)))
+		if flt(getattr(self, "rate", 0)) < 0:
+			frappe.throw(_("Rate per Day can't be negative"))
 		if self.status not in STATUSES:
 			frappe.throw(_("Status must be one of: {0}").format(", ".join(STATUSES)))
 		if self.id_no:

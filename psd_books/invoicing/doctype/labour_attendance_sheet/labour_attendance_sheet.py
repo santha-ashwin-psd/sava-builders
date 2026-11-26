@@ -3,7 +3,7 @@
 One sheet per week for the whole company. The week runs Saturday to Friday (any date can be given; it is moved to the Saturday).
 - Lines: every Active Labour Worker (Labour Contract > Workers). A new worker added mid-week joins a Draft / Sent back sheet the
   next time it is opened or saved. The line field `employee` links to the Labour Worker. The grade starts from the worker's
-  Skilled (SK) / Unskilled (C); area of work, rate and SHA are carried from the worker's line on the latest earlier sheet.
+  Skilled (SK) / Unskilled (C); area of work and SHA are carried from the worker's line on the latest earlier sheet; the rate comes from the worker's Rate per Day (the earlier sheet's rate when the worker has none).
   The user can edit them. Day ticks and OT hours are never copied. With no earlier line: rate 0, SHA 125.
 - Per line: Days = ticks; OT amount = OT hours x rate / 8 (2 decimals); Total = days x rate + OT amount - SHA, rounded to the
   whole shilling (half up). A worker with no days and no OT gets Total 0 (no SHA is deducted).
@@ -208,7 +208,7 @@ def can_delete(status, raised_by, amendment=None):
 
 # ---- database helpers ----
 def active_workers(company):
-	kw = {"filters": {"status": "Active"}, "fields": ["name", "worker_name", "id_no", "skill"], "order_by": "worker_name asc", "limit_page_length": 0}
+	kw = {"filters": {"status": "Active"}, "fields": ["name", "worker_name", "id_no", "skill", "rate"], "order_by": "worker_name asc", "limit_page_length": 0}
 	if company:
 		kw["or_filters"] = [["company", "=", company], ["company", "is", "not set"]]
 	return frappe.get_all("Labour Worker", **kw)
@@ -228,14 +228,14 @@ def previous_values(week_start, company):
 
 
 def baseline_rows(week_start, company):
-	"""One row per Active worker with no days ticked; grade from the worker's Skilled / Unskilled, area, rate and SHA carried from the earlier sheet. OT hours start at 0 (never carried)."""
+	"""One row per Active worker with no days ticked; grade from the worker's Skilled / Unskilled, area and SHA carried from the earlier sheet; rate from the worker's Rate per Day (the earlier sheet's rate when the worker has none). OT hours start at 0 (never carried)."""
 	prev = previous_values(week_start, company)
 	rows = []
 	for e in active_workers(company):
 		p = prev.get(e["name"])
 		row = {"employee": e["name"], "employee_name": e.get("worker_name"), "id_no": e.get("id_no") or "",
 			"grade": GRADE_OF_SKILL.get(e.get("skill")) or DEFAULT_GRADE, "area_of_work": (p and p.get("area_of_work")) or "",
-			"rate": flt(p.get("rate")) if p else 0, "ot_hours": 0,
+			"rate": flt(e.get("rate")) or (flt(p.get("rate")) if p else 0), "ot_hours": 0,
 			"sha": flt(p.get("sha")) if p else DEFAULT_SHA}
 		row.update({k: 0 for k in DAYS})
 		rows.append(row)

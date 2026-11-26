@@ -140,6 +140,11 @@
             <div class="ct-errbox-title"><span v-html="icon('alert',15)"></span>{{ blockersTitle }}</div>
             <ul><li v-for="b in blockers" :key="b">{{ b }}</li></ul>
           </div>
+          <div class="inv-view-footer at-audit" v-if="form.name && form.owner">
+            Created by {{ ownerName(form.owner) }} on {{ fmtDate(form.creation) }}
+            <template v-if="form.approved_by"> · Approved by {{ ownerName(form.approved_by) }} on {{ fmtDate(form.approved_on) }}</template>
+            <template v-if="form.modified_by"> · Last modified by {{ ownerName(form.modified_by) }} on {{ fmtDate(form.modified) }}</template>
+          </div>
         </div>
 
         <div class="inv-dfooter" style="border-top:1px solid #e8ecf0;padding:14px 24px;background:#fafbfd;flex-wrap:wrap;gap:8px">
@@ -246,7 +251,7 @@ async function load() {
   try {
     const [rows, pr, ac2, ct, perm, pd] = await Promise.all([
       apiList(DT, { fields: ["name", "status", "project", "activity", "contractor", "start_date", "end_date", "contract_value", "narration",
-        "raised_by", "approved_by", "approved_on", "rejection_reason", "closed_on"], order: "creation desc", limit: 1000 }),
+        "raised_by", "approved_by", "approved_on", "rejection_reason", "closed_on", "owner", "creation", "modified_by", "modified"], order: "creation desc", limit: 1000 }),
       apiList("Project", { fields: ["name", "project_name", "status"], limit: 1000 }),
       apiList("Labour Activity", { fields: ["name", "activity_name", "disabled"], order: "activity_code asc", limit: 500 }),
       apiList("Labour Contractor", { fields: ["name", "contractor_name", "disabled", "tax_cert_expiry"], order: "contractor_name asc", limit: 1000 }),
@@ -380,4 +385,5 @@ onMounted(load);
 .vt-empty-sub { font-size: 13px; color: #9ca3af; }
 .vt-footer { padding: 9px 16px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; background: #fafafa; }
 .vt-footer strong { color: #6b7280; font-weight: 600; }
+.at-audit { padding: 8px 2px 0; }
 </style>

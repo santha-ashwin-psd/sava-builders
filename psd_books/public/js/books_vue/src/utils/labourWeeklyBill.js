@@ -176,8 +176,8 @@ export function printHtml(bill, lines = []) {
 		+ "<div class=\"sig\"><div>Prepared by</div><div>Approved by (Director)</div><div>Received by (Contractor)</div></div></body></html>";
 }
 
-// Delete only a Draft never sent for approval, or a Cancelled bill (server: on_trash).
-export function canDelete(b) { return b.status === CANCELLED || (b.status === DRAFT && !b.raised_by); }
+// Delete only a Draft never sent for approval, a Sent back bill, or a Cancelled bill (server: on_trash).
+export function canDelete(b) { return b.status === CANCELLED || b.status === SENT_BACK || (b.status === DRAFT && !b.raised_by); }
 
 // The document sent to save_doc: only contract and amount per line; the server rebuilds the rest.
 export function toDoc(form, rows, company) {

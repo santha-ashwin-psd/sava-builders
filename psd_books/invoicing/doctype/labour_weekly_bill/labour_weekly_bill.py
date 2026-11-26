@@ -203,8 +203,8 @@ def cancel(doc, user, roles, reason, now):
 
 
 def can_delete(status, raised_by):
-	"""A Draft never sent for approval, or a Cancelled bill."""
-	return status == CANCELLED or (status == DRAFT and not raised_by)
+	"""A Draft never sent for approval, a Sent back bill, or a Cancelled bill."""
+	return status in (CANCELLED, SENT_BACK) or (status == DRAFT and not raised_by)
 
 
 def send_back(doc, user, roles, reason):
@@ -379,4 +379,4 @@ class LabourWeeklyBill(Document):
 
 	def on_trash(self):
 		if not can_delete(self.status, self.raised_by):
-			frappe.throw(_("Delete is blocked. Only a Draft never sent for approval, or a Cancelled bill, can be deleted."))
+			frappe.throw(_("Delete is blocked. Only a Draft never sent for approval, a Sent back bill, or a Cancelled bill, can be deleted."))

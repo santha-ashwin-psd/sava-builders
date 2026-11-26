@@ -117,7 +117,7 @@
         </div>
 
         <!-- Card 2: Attendance -->
-        <div class="add-card">
+        <div class="add-card at-sheet-card" :class="{'at-sheet-collapsed':atCollapsed.sheet}">
           <div class="add-card-header" @click="atCollapsed.sheet=!atCollapsed.sheet">
             <div class="add-card-title">
               <span class="add-card-title-icon"><span v-html="icon('check',16)"></span></span>
@@ -128,8 +128,8 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </span>
           </div>
-          <div class="add-card-body" :class="{collapsed:atCollapsed.sheet}">
-            <div class="at-grid" style="overflow-x:auto">
+          <div class="add-card-body at-sheet-body" :class="{collapsed:atCollapsed.sheet}">
+            <div class="at-grid">
               <table class="inv-table" style="font-size:12px;min-width:1240px">
                 <thead>
                   <tr>
@@ -175,6 +175,11 @@
           <div class="ct-errbox-title"><span v-html="icon('alert',15)"></span>{{ ac.canApprove ? "Can't approve yet" : "Can't send for approval yet" }}</div>
           <ul><li v-for="b in blockers" :key="b">{{ b }}</li></ul>
         </div>
+        <div class="inv-view-footer at-audit" v-if="form.name && audit.owner">
+          Created by {{ ownerName(audit.owner) }} on {{ fmtDate(audit.creation) }}
+          <template v-if="form.approved_by"> · Approved by {{ ownerName(form.approved_by) }} on {{ fmtDate(form.approved_on) }}</template>
+          <template v-if="audit.modified_by"> · Last modified by {{ ownerName(audit.modified_by) }} on {{ fmtDate(audit.modified) }}</template>
+        </div>
       </div>
 
       <!-- Footer -->
@@ -201,7 +206,7 @@
 <script setup>
 // Labour Contract > Attendance (prototype v11, laid out like the client's paper wages sheet). List + drawer; data in the
 // "Labour Attendance Sheet" doctype, approval through psd_books.api.labour_attendance (only a Director approves).
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiList, apiGet, apiSave, apiDelete, apiPOST, apiGET, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
@@ -242,6 +247,16 @@ const addedMsg = ref("");
 const atCollapsed = reactive({ week: false, sheet: false });
 const formErrors = reactive({});
 const form = reactive({});
+const audit = reactive({ owner: "", creation: "", modified_by: "", modified: "" });
+async function loadAudit(name) {
+  Object.assign(audit, { owner: "", creation: "", modified_by: "", modified: "" });
+  if (!name) return;
+  try {
+    const d = await apiGet(DT, name);
+    Object.assign(audit, { owner: d.owner, creation: d.creation, modified_by: d.modified_by, modified: d.modified });
+  } catch (e) { /* footer line is optional */ }
+}
+watch(() => [form.name, form.status], () => loadAudit(form.name));
 
 const canWrite = computed(() => canEditModule("admin"));
 function onNumInput(e, r, key) {   // Rate, OT hours, SHA: digits and one decimal point only
@@ -345,6 +360,7 @@ async function run(method, args, okMsg) {
     await load();
     if (r && r.name) {
       Object.assign(form, { status: r.status, raised_by: r.raised_by, approved_by: r.approved_by, approved_on: r.approved_on, submitted_by: r.submitted_by, submitted_on: r.submitted_on, rejection_reason: r.rejection_reason, cancelled_by: r.cancelled_by, cancelled_on: r.cancelled_on, cancel_reason: r.cancel_reason, amends_sheet: r.amends_sheet });
+      loadAudit(r.name);
       if (actionState(r.status, false).canEdit) await refreshRows(r.lines || []);
       else rows.value = (r.lines || []).map((l) => ({ ...l }));
     }
@@ -456,10 +472,39 @@ onMounted(load);
 .at-period-val { font-size: 12.5px; }
 .at-count { margin-left: 6px; padding: 1px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .at-grid .inv-fi { padding: 5px 8px; font-size: 12.5px; min-height: 0; }
+/* Sheet scrolls inside its own box, so the left-right bar stays at the bottom of the screen */
+.at-grid { overflow: auto; min-height: 200px; border: 1px solid #e5e7eb; border-radius: 8px; }
+/* Weekly Wages card fills the screen height left over, so its left-right bar is always visible */
+.at-drawer .inv-dbody { display: flex; flex-direction: column; }
+.at-drawer .inv-dbody > * { flex-shrink: 0; }
+.at-drawer .inv-dbody > .at-sheet-card { flex: 1 1 0; min-height: 380px; display: flex; flex-direction: column; }
+.at-drawer .inv-dbody > .at-sheet-card.at-sheet-collapsed { flex: 0 0 auto; min-height: 0; }
+.at-sheet-card > .add-card-header { flex-shrink: 0; }
+.at-sheet-body:not(.collapsed) { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.at-sheet-body .at-grid { flex: 1 1 0; min-height: 0; }
+.at-sheet-body .at-foot { flex-shrink: 0; }
+/* Compact spacing so the wages table gets more height */
+.at-drawer .inv-dbody { padding: 10px 20px 6px; }
+.at-drawer .add-card { margin-bottom: 8px; }
+.at-drawer .add-card.at-sheet-card { margin-bottom: 0; }
+.at-drawer .add-card-header { padding: 8px 16px; }
+.at-drawer .add-card-body { padding: 10px 16px; }
+.at-drawer .at-sheet-body { padding: 8px 16px 10px; }
+.at-drawer .at-card-first .inv-lbl { margin-bottom: 3px; }
+.at-drawer .at-card-first .inv-fi { padding: 5px 10px; }
+.at-drawer .at-period { padding: 5px 12px; }
+.at-card-first { margin-top: 8px; }
+.at-foot { margin-top: 8px; }
+.at-grid thead th { position: sticky; top: 0; z-index: 2; }
+.at-grid::-webkit-scrollbar, .at-drawer .inv-dbody::-webkit-scrollbar { width: 16px; height: 16px; }
+.at-grid::-webkit-scrollbar-track, .at-drawer .inv-dbody::-webkit-scrollbar-track { background: #f1f5f9; }
+.at-grid::-webkit-scrollbar-thumb, .at-drawer .inv-dbody::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 8px; border: 3px solid #f1f5f9; }
+.at-grid::-webkit-scrollbar-thumb:hover, .at-drawer .inv-dbody::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 .at-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
 .at-foot .ct-info { flex: 1; min-width: 260px; }
 .at-totals { padding: 8px 14px; border-radius: 8px; border: 1px solid #1a6ef7; background: #fff; font-weight: 600; font-size: 13px; color: #111827; }
 .at-del { margin-right: auto; color: #dc2626; }
 .at-cancel-sheet { color: #dc2626; border-color: #fecaca; }
 .add-btn-cancel:disabled, .add-btn-more:disabled { opacity: .5; cursor: not-allowed; }
+.at-audit { padding: 8px 2px 0; }
 </style>

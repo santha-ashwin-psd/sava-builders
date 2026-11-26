@@ -46,6 +46,13 @@
    "in_list_view": 1
   },
   {
+   "fieldname": "rate",
+   "fieldtype": "Float",
+   "label": "Rate per Day (KES)",
+   "default": "0",
+   "non_negative": 1
+  },
+  {
    "fieldname": "column_break_1",
    "fieldtype": "Column Break",
    "label": ""

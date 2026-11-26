@@ -232,6 +232,12 @@ class TestBaseline(unittest.TestCase):
 		rows, _ga = self.run_baseline([{"name": "W1", "worker_name": "Ann", "id_no": "", "skill": "Skilled"}, {"name": "W2", "worker_name": "Bob", "id_no": "", "skill": "Unskilled"}], [], [])
 		self.assertEqual([r["grade"] for r in rows], ["SK", "C"])
 
+	def test_rate_comes_from_the_worker_master(self):
+		emps = [{"name": "E1", "worker_name": "Ann", "id_no": "", "skill": "Skilled", "rate": 900}, {"name": "E2", "worker_name": "Bob", "id_no": "", "skill": "Unskilled", "rate": 0}]
+		prev = [{"employee": "E1", "grade": "C", "area_of_work": "", "rate": 750, "ot_hours": 0, "sha": 125}, {"employee": "E2", "grade": "C", "area_of_work": "", "rate": 650, "ot_hours": 0, "sha": 125}]
+		rows, _ga = self.run_baseline(emps, ["LAS-2026-0001"], prev)
+		self.assertEqual([r["rate"] for r in rows], [900, 650])   # the worker's rate wins; a worker with no rate keeps the earlier sheet's
+
 	def test_no_earlier_sheet_gives_defaults(self):
 		rows, _ga = self.run_baseline([{"name": "E1", "worker_name": "Ann", "id_no": "", "skill": "Unskilled"}], [], [])
 		self.assertEqual((rows[0]["rate"], rows[0]["sha"], rows[0]["grade"]), (0, 125, "C"))

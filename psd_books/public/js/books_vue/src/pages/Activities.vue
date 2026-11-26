@@ -40,7 +40,7 @@
           <th class="vt-th">Code</th>
           <th class="vt-th">Activity</th>
           <th class="vt-th">Category</th>
-          <th class="vt-th">Used on</th>
+          <th class="vt-th">Used on Contract</th>
           <th class="vt-th">Status</th>
           <th class="vt-th vt-th-actions">Actions</th>
         </tr>

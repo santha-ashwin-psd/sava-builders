@@ -120,6 +120,15 @@
         </div>
 
         <div class="em-group">
+          <label for="wk-f-rate">Rate/Day (KES) <span class="em-req">*</span></label>
+          <div class="em-field">
+            <span class="em-field-ico" v-html="icon('user',16)"></span>
+            <input id="wk-f-rate" :value="form.rate" type="text" inputmode="decimal" autocomplete="off" maxlength="10" placeholder="0" @input="onRateInput" />
+          </div>
+          <div class="em-hint">Numbers only. This is the starting Rate/Day on the Weekly Wages sheet.</div>
+        </div>
+
+        <div class="em-group">
           <label for="wk-f-status">Status</label>
           <div class="em-field em-field-select" :class="{ open: ddOpen === 'status' }">
             <span class="em-dot" :class="form.status === 'Inactive' ? 'is-inactive' : 'is-active'"></span>
@@ -162,6 +171,7 @@ import { apiList, apiSave, apiDelete, resolveCompany } from "../api/client.js";
 import { useConfirm } from "../composables/useConfirm.js";
 import { icon } from "../utils/icons.js";
 import Pagination from "../components/Pagination.vue";
+import { cleanNumber } from "../utils/labourAttendance.js";
 
 const DT = "Labour Worker";
 // Stored values stay Skilled / Unskilled; the screen shows SK / USK.
@@ -189,7 +199,7 @@ const tabs = [
 ];
 
 function blankForm() {
-  return { worker_name: "", id_no: "", skill: "Unskilled", status: "Active" };
+  return { worker_name: "", id_no: "", skill: "Unskilled", rate: "", status: "Active" };
 }
 
 const counts = computed(() => {
@@ -234,7 +244,7 @@ async function load() {
   try {
     const company = await resolveCompany();
     list.value = await apiList(DT, {
-      fields: ["name", "worker_name", "id_no", "skill", "status", "company"],
+      fields: ["name", "worker_name", "id_no", "skill", "rate", "status", "company"],
       filters: company ? [["company", "=", company]] : [],
       order: "worker_name asc",
       limit: 1000,
@@ -254,7 +264,7 @@ function openNew() {
 }
 function openEdit(row) {
   isEdit.value = true;
-  form.value = { ...blankForm(), ...row, id_no: row.id_no || "", skill: row.skill || "Unskilled", status: row.status || "Active" };
+  form.value = { ...blankForm(), ...row, id_no: row.id_no || "", skill: row.skill || "Unskilled", rate: Number(row.rate) > 0 ? String(row.rate) : "", status: row.status || "Active" };
   showForm.value = true;
 }
 function closeForm() { ddOpen.value = null; showForm.value = false; }
@@ -314,8 +324,15 @@ function onDocPointer(e) {
 }
 function onAnyScroll(e) { if (ddOpen.value && !(e.target.closest && e.target.closest(".em-dd"))) ddOpen.value = null; }
 
+function onRateInput(e) {   // digits and one decimal point only; letters are dropped as they are typed
+  const c = cleanNumber(e.target.value);
+  e.target.value = c;
+  form.value.rate = c;
+}
+
 async function save() {
   const f = form.value;
+  if (!(Number(f.rate) > 0)) { toast.error("Enter the Rate/Day (a number above 0)"); return; }
   saving.value = true;
   try {
     const doc = {
@@ -323,6 +340,7 @@ async function save() {
       worker_name: (f.worker_name || "").trim(),
       id_no: (f.id_no || "").trim() || null,
       skill: f.skill || "Unskilled",
+      rate: Number(f.rate),
       status: f.status || "Active",
     };
     if (isEdit.value) {

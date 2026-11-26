@@ -2425,10 +2425,6 @@ onMounted(() => { load(); loadItems(); });
 
 /* ── Stock table ── */
 .wh-tbl-wrap { overflow-x: auto; }
-.wh-tbl-wrap::-webkit-scrollbar { height: 8px; }
-.wh-tbl-wrap::-webkit-scrollbar-track { background: #f1f5f9; }
-.wh-tbl-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-.wh-tbl-wrap::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 .wh-tbl { width: 100%; border-collapse: collapse; min-width: 520px; }
 
 .wh-th {

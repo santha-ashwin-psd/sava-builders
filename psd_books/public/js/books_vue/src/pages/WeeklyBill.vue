@@ -140,6 +140,11 @@
             <ul><li v-for="b in blockers" :key="b">{{ b }}</li></ul>
           </div>
           <div v-if="droppedMsg" class="ct-note ct-note-bad">{{ droppedMsg }}</div>
+          <div class="inv-view-footer at-audit" v-if="form.name && audit.owner">
+            Created by {{ ownerName(audit.owner) }} on {{ fmtDate(audit.creation) }}
+            <template v-if="form.approved_by"> · Approved by {{ ownerName(form.approved_by) }} on {{ fmtDate(form.approved_on) }}</template>
+            <template v-if="audit.modified_by"> · Last modified by {{ ownerName(audit.modified_by) }} on {{ fmtDate(audit.modified) }}</template>
+          </div>
         </div>
 
         <div class="inv-dfooter">
@@ -168,7 +173,7 @@
 <script setup>
 // Labour Contract > Weekly Bill (prototype v11). List + drawer; data in the "Labour Weekly Bill" doctype,
 // approval through psd_books.api.labour_weekly_bill (only a Director approves).
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, reactive, computed, watch, onMounted } from "vue";
 import { apiList, apiGet, apiSave, apiDelete, apiPOST, apiGET, resolveCompany } from "../api/client.js";
 import { useToast } from "../composables/useToast.js";
 import { useConfirm } from "../composables/useConfirm.js";
@@ -232,6 +237,16 @@ const rowsLoading = ref(false);
 const droppedMsg = ref("");
 const formErrors = reactive({});
 const form = reactive({});
+const audit = reactive({ owner: "", creation: "", modified_by: "", modified: "" });
+async function loadAudit(name) {
+  Object.assign(audit, { owner: "", creation: "", modified_by: "", modified: "" });
+  if (!name) return;
+  try {
+    const d = await apiGet(DT, name);
+    Object.assign(audit, { owner: d.owner, creation: d.creation, modified_by: d.modified_by, modified: d.modified });
+  } catch (e) { /* footer line is optional */ }
+}
+watch(() => [form.name, form.status], () => loadAudit(form.name));
 
 const canWrite = computed(() => canEditModule("admin"));
 const blank = () => ({ name: "", status: "Draft", project: "", week_date: todayISO(), raised_by: "", approved_by: "", approved_on: "", paid_by: "", paid_on: "", cancelled_by: "", cancelled_on: "", cancel_reason: "", amended_from: "", rejection_reason: "" });
@@ -360,6 +375,7 @@ async function run(method, args, okMsg) {
     await load();
     if (r && r.name) {
       Object.assign(form, { status: r.status, raised_by: r.raised_by, approved_by: r.approved_by, approved_on: r.approved_on, paid_by: r.paid_by, paid_on: r.paid_on, cancelled_by: r.cancelled_by, cancelled_on: r.cancelled_on, cancel_reason: r.cancel_reason, amended_from: r.amended_from, rejection_reason: r.rejection_reason });
+      loadAudit(r.name);
       if (actionState(r.status, false).canEdit) await refreshRows(r.lines || []);
       else rows.value = (r.lines || []).map((l) => ({ ...l }));
     }
@@ -415,7 +431,7 @@ async function sendBack() {
   await run("send_back_bill", { name: form.name, reason: reason.trim() }, "Sent back");
 }
 async function doDelete() {
-  const ok = await confirm({ title: "Confirm to delete", body: "Delete " + form.name + "? Only a Draft never sent for approval, or a Cancelled bill, can be deleted." });
+  const ok = await confirm({ title: "Confirm to delete", body: "Delete " + form.name + "? Only a Draft never sent for approval, a Sent back bill, or a Cancelled bill, can be deleted." });
   if (!ok) return;
   busy.value = true;
   try { await apiDelete(DT, form.name); toast("Bill deleted"); showDrawer.value = false; await load(); }
@@ -487,4 +503,5 @@ onMounted(load);
 .vt-empty-sub { font-size: 13px; color: #9ca3af; }
 .vt-footer { padding: 9px 16px; border-top: 1px solid #f3f4f6; font-size: 12px; color: #9ca3af; background: #fafafa; }
 .vt-footer strong { color: #6b7280; font-weight: 600; }
+.at-audit { padding: 8px 2px 0; }
 </style>

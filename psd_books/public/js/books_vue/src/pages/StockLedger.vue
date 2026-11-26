@@ -277,7 +277,11 @@ onMounted(()=>{fetchItems("");fetchWarehouses("");});
 .sl-search-wrap{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:7px 12px;min-width:260px;transition:border-color .15s,box-shadow .15s;}
 .sl-search-wrap:focus-within{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1);}
 .sl-search-input{border:none;background:transparent;outline:none;font:inherit;font-size:13px;color:#0f172a;width:100%;}
-.sl-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;}
+.sl-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow-x:auto;overflow-y:hidden;}
+.sl-card::-webkit-scrollbar{height:16px;}
+.sl-card::-webkit-scrollbar-track{background:#f1f5f9;}
+.sl-card::-webkit-scrollbar-thumb{background:#9ca3af;border-radius:8px;border:3px solid #f1f5f9;}
+.sl-card::-webkit-scrollbar-thumb:hover{background:#6b7280;}
 .sl-table{width:100%;border-collapse:collapse;font-size:13px;}
 .sl-table th{background:#f9fafb;border-bottom:1px solid #e5e7eb;padding:10px 12px;font-size:11.5px;font-weight:600;color:#374151;text-align:left;white-space:nowrap;text-transform:uppercase;}
 .sl-table th.sortable{cursor:pointer;user-select:none;}.sl-table th.sortable:hover{color:#2563eb;}
@@ -346,4 +350,12 @@ onMounted(()=>{fetchItems("");fetchWarehouses("");});
   .sl-fld-date { width: 100%; }
   .sl-meta-grid { grid-template-columns: 1fr !important; }
 }
+</style>
+
+<!-- The page's up-down scroll bar belongs to the app shell, so it is styled here without scoping, for this page only -->
+<style>
+.bv-app-content:has(.sl-page)::-webkit-scrollbar{width:16px;height:16px;}
+.bv-app-content:has(.sl-page)::-webkit-scrollbar-track{background:#f1f5f9;}
+.bv-app-content:has(.sl-page)::-webkit-scrollbar-thumb{background:#9ca3af;border-radius:8px;border:3px solid #f1f5f9;}
+.bv-app-content:has(.sl-page)::-webkit-scrollbar-thumb:hover{background:#6b7280;}
 </style>

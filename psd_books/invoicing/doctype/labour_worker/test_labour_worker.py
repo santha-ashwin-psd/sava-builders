@@ -45,6 +45,7 @@ class FakeWorker(lw.LabourWorker):
 		self.worker_name = k.get("worker_name", "Ann")
 		self.id_no = k.get("id_no")
 		self.skill = k.get("skill", "Unskilled")
+		self.rate = k.get("rate", 0)
 		self.status = k.get("status", "Active")
 
 
@@ -55,6 +56,12 @@ def check(w, dup_rows=(), sheets=()):
 
 
 class TestValidate(unittest.TestCase):
+	def test_rate_can_not_be_negative(self):
+		with self.assertRaises(Exception):
+			check(FakeWorker(rate=-1))
+		check(FakeWorker(rate=655))   # a normal rate passes
+
+
 	def test_good_worker_passes_and_name_is_tidied(self):
 		w = FakeWorker(worker_name="  Ann   Wanjiku ", id_no=" 4052  8637 ")
 		check(w)

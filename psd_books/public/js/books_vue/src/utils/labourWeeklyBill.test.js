@@ -139,7 +139,8 @@ describe("validate, actions, payload", () => {
 	it("delete only a Draft never sent", () => {
 		expect(canDelete({ status: "Draft", raised_by: "" })).toBe(true);
 		expect(canDelete({ status: "Draft", raised_by: "a@x" })).toBe(false);
-		expect(canDelete({ status: "Sent back", raised_by: "a@x" })).toBe(false);
+		expect(canDelete({ status: "Sent back", raised_by: "a@x" })).toBe(true);
+		expect(canDelete({ status: "Pending approval", raised_by: "a@x" })).toBe(false);
 	});
 	it("builds the saved document", () => {
 		const d = toDoc({ name: "", week_date: "2026-11-18" }, [{ contract: "LC-1", amount_to_pay: "1500" }, { contract: "LC-2", amount_to_pay: "" }], "Sava");

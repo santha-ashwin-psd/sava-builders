@@ -187,7 +187,8 @@ class TestWorkflow(unittest.TestCase):
 	def test_can_delete(self):
 		self.assertTrue(wb.can_delete("Draft", None))
 		self.assertTrue(wb.can_delete("Cancelled", "a@x"))
-		for st in ("Draft", "Sent back", "Pending approval", "Approved", "Paid"):
+		self.assertTrue(wb.can_delete("Sent back", "a@x"))
+		for st in ("Draft", "Pending approval", "Approved", "Paid"):
 			self.assertFalse(wb.can_delete(st, "a@x"))
 		self.assertFalse(wb.can_delete("Approved", None))
 
