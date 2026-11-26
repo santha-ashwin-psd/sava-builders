@@ -124,7 +124,8 @@ describe("validate, actions, payload", () => {
 		expect(actionState("Paid", true).canMarkUnpaid).toBe(true);
 		expect(actionState("Paid", false).canMarkUnpaid).toBe(false);
 		expect(actionState("Paid", true).canCancel).toBe(false);
-		expect(actionState("Cancelled", false).canAmend).toBe(true);
+		expect(actionState("Cancelled", true).canAmend).toBe(true);
+		expect(actionState("Cancelled", false).canAmend).toBe(false);
 		expect(actionState("Approved", false).canMarkPaid).toBe(false);
 		// Purchase Manager / Admin: Paid only, none of the Director buttons
 		expect(actionState("Approved", false, true)).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canMarkPaid: true, canReopen: false, canCancel: false, canMarkUnpaid: false, canAmend: false });

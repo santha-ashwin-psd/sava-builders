@@ -164,6 +164,7 @@ describe("cancel, amend, delete", () => {
 	it("a cancelled sheet is locked and can be amended", () => {
 		const a = actionState("Cancelled", true);
 		expect(a).toEqual({ canEdit: false, canSend: false, canApprove: false, canSendBack: false, canSubmit: false, canCancel: false, canAmend: true });
+		expect(actionState("Cancelled", false).canAmend).toBe(false);
 		expect(actionState("Approved", true).canAmend).toBe(false);
 	});
 	it("a cancelled sheet is deleted only while nothing amends it", () => {

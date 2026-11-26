@@ -152,6 +152,8 @@ def cancel_bill(name, reason=None):
 def amend_bill(name):
 	from psd_books.utils.access import assert_can
 	assert_can(DOCTYPE, "write")
+	if "Director" not in frappe.get_roles():
+		frappe.throw(_("Only a Director can amend a weekly bill."), frappe.PermissionError)
 	old = _load(name)
 	if old.status != rules.CANCELLED:
 		frappe.throw(_("{0} is {1}. Only a Cancelled bill can be amended.").format(old.name, old.status))

@@ -169,12 +169,12 @@ export function matchesSearch(s, q) {
 }
 
 // Which buttons apply. canApprove = the user holds the Director role (api.labour_contract.my_permissions).
-// Cancel is for a Director on a Sent back, Approved or Submitted sheet; Amend is for a Cancelled sheet.
+// Cancel is for a Director on a Sent back, Approved or Submitted sheet; Amend is for a Director on a Cancelled sheet.
 export function actionState(status, canApprove) {
 	const editable = status === DRAFT || status === SENT_BACK;
 	return {
 		canEdit: editable, canSend: editable, canApprove: status === PENDING && !!canApprove, canSendBack: status === PENDING && !!canApprove, canSubmit: status === APPROVED,
-		canCancel: (status === SENT_BACK || status === APPROVED || status === SUBMITTED) && !!canApprove, canAmend: status === CANCELLED,
+		canCancel: (status === SENT_BACK || status === APPROVED || status === SUBMITTED) && !!canApprove, canAmend: status === CANCELLED && !!canApprove,
 	};
 }
 

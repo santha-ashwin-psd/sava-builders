@@ -138,11 +138,11 @@ export function validateBill(form, rows = []) {
 
 // Which buttons apply. canApprove = the user holds the Director role (api.labour_contract.my_permissions).
 // canMarkPaid: an Approved bill is marked Paid (the payment is recorded) by a Director, Purchase Manager or Admin (canPay; defaults to canApprove).
-// canReopen (Edit) and canCancel: an Approved bill, Director. canMarkUnpaid: a Paid bill, Director. canAmend: a Cancelled bill.
+// canReopen (Edit) and canCancel: an Approved bill, Director. canMarkUnpaid: a Paid bill, Director. canAmend: a Cancelled bill, Director.
 export function actionState(status, canApprove, canPay = canApprove) {
 	const editable = status === DRAFT || status === SENT_BACK;
 	return { canEdit: editable, canSend: editable, canApprove: status === PENDING && !!canApprove, canSendBack: status === PENDING && !!canApprove, canMarkPaid: status === APPROVED && !!canPay,
-		canReopen: status === APPROVED && !!canApprove, canCancel: status === APPROVED && !!canApprove, canMarkUnpaid: status === PAID && !!canApprove, canAmend: status === CANCELLED };
+		canReopen: status === APPROVED && !!canApprove, canCancel: status === APPROVED && !!canApprove, canMarkUnpaid: status === PAID && !!canApprove, canAmend: status === CANCELLED && !!canApprove };
 }
 
 // Print is offered only once the Director has approved the bill: Approved or Paid (not Draft, Pending, Sent back or Cancelled).

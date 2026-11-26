@@ -110,6 +110,8 @@ def cancel_sheet(name, reason=None):
 def amend_sheet(name):
 	from psd_books.utils.access import assert_can
 	assert_can(DOCTYPE, "write")
+	if "Director" not in frappe.get_roles():
+		frappe.throw(_("Only a Director can amend a wages sheet."), frappe.PermissionError)
 	doc = _load(name)
 	rules.check_amend(doc, rules.amendment_of(name))
 	new = frappe.get_doc(rules.amended_values(doc))
