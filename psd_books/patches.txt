@@ -142,6 +142,12 @@ psd_books.patches.v1_25.create_project_manager_role
 # Project warehouse (kept in step with Warehouse > Projects): fill in for existing projects. Safe to re-run.
 psd_books.patches.v1_26.backfill_project_warehouse
 
+# Quotation Comparison Item gets Order Qty: set it to the line qty on existing comparisons. Safe to re-run.
+psd_books.patches.v1_27.backfill_order_qty
+
+# Create the Admin role on existing sites. Safe to re-run.
+psd_books.patches.v1_27.create_admin_role
+
 # GRN lines saved with rate 0: fill the rate (and amount) from the Purchase Order line. Safe to re-run.
 psd_books.patches.v1_28.backfill_grn_rate
 
