@@ -1242,7 +1242,13 @@ def delete_cancelled_stock_ledger_entry(name):
         frappe.throw(_("Stock Ledger Entry not found"))
     if not is_cancelled:
         frappe.throw(_("Only cancelled entries can be deleted"))
+    item_code, warehouse = frappe.db.get_value(
+        "Stock Ledger Entry", name, ["item_code", "warehouse"]
+    )
     frappe.delete_doc("Stock Ledger Entry", name, ignore_permissions=True, force=True)
+    # Later rows' stored running balance still includes the deleted row.
+    from psd_books.inventory.utils import repost_qty_after_transaction
+    repost_qty_after_transaction(item_code, warehouse)
     return {"deleted": name}
 
 

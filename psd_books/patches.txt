@@ -160,3 +160,6 @@ psd_books.patches.v1_30.backfill_grn_line_po
 
 # GRN lines get the tax template of their Purchase Order line (shown next to the rate). Safe to re-run.
 psd_books.patches.v1_31.backfill_grn_line_tax
+
+# Stored running balance on Stock Ledger Entries was left stale when a cancelled Stock Entry was deleted: recompute it. Does not touch Bins. Safe to re-run.
+psd_books.patches.v1_32.fix_sle_running_balance

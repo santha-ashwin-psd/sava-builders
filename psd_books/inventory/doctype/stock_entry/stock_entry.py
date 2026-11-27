@@ -1028,10 +1028,22 @@ class StockEntry(Document):
             ).format(frappe.bold(self.name)))
 
         if self.docstatus == 2:
+            # Remember which item+warehouse ledgers lose rows: the stored
+            # running balance (qty_after_transaction) of every LATER row
+            # still includes this voucher and must be recomputed after the
+            # delete, otherwise the Stock Ledger shows wrong balances.
+            affected = frappe.db.sql("""
+                SELECT DISTINCT item_code, warehouse
+                FROM `tabStock Ledger Entry`
+                WHERE voucher_type = 'Stock Entry' AND voucher_no = %s
+            """, self.name)
             frappe.db.sql("""
                 DELETE FROM `tabStock Ledger Entry`
                 WHERE voucher_type = 'Stock Entry' AND voucher_no = %s
             """, self.name)
+            from psd_books.inventory.utils import repost_qty_after_transaction
+            for item_code, warehouse in affected:
+                repost_qty_after_transaction(item_code, warehouse)
             frappe.db.sql("""
                 DELETE FROM `tabGeneral Ledger Entry`
                 WHERE voucher_type = 'Stock Entry' AND voucher_no = %s

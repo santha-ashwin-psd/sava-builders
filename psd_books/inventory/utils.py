@@ -930,3 +930,46 @@ def make_sle(
         "stock_value_difference": round(stock_val_diff, 2),
         "is_cancelled":           0,
     }).insert(ignore_permissions=True)
+
+
+def repost_qty_after_transaction(item_code: str, warehouse: str) -> int:
+    """
+    Recompute the stored running balance (qty_after_transaction, stock_value)
+    of every Stock Ledger Entry for one item+warehouse, in posting order
+    (creation, name -- the same order the Bin was read in when each row was
+    written). Cancelled rows and their reversals stay in the running sum, just
+    as they did in the Bin at the time.
+
+    Why this exists: qty_after_transaction is a snapshot taken at posting time.
+    When an earlier voucher's SLE rows are deleted (cancelled Stock Entry
+    deleted), every later snapshot still includes that voucher. Call this after
+    any SLE delete.
+
+    Touches ONLY qty_after_transaction / stock_value on rows that differ.
+    Never changes the Bin or actual_qty. Idempotent. Returns rows corrected.
+    """
+    rows = frappe.db.sql(
+        """
+        SELECT name, actual_qty, qty_after_transaction, valuation_rate
+        FROM `tabStock Ledger Entry`
+        WHERE item_code = %s AND warehouse = %s
+        ORDER BY creation, name
+        """,
+        (item_code, warehouse),
+        as_dict=True,
+    )
+    running = 0.0
+    changed = 0
+    for r in rows:
+        running = round(running + flt(r.actual_qty), 4)
+        if abs(flt(r.qty_after_transaction) - running) > 0.0001:
+            frappe.db.set_value(
+                "Stock Ledger Entry", r.name,
+                {
+                    "qty_after_transaction": running,
+                    "stock_value": flt(running) * flt(r.valuation_rate),
+                },
+                update_modified=False,
+            )
+            changed += 1
+    return changed
