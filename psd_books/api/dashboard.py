@@ -218,6 +218,94 @@ def _pct_change(cur, prev):
     return round((flt(cur) - prev) / prev * 100)
 
 
+_LABOUR_PENDING = (
+    # (doctype, label, amount column, project column or NULL)
+    ("Labour Contract", "Labour Contract", "contract_value", "project"),
+    ("Labour Weekly Bill", "Weekly Bill", "total_amount", "project"),
+    ("Labour Attendance Sheet", "Weekly Wages", "total_amount", "NULL"),
+)
+
+
+def _labour_pending(company, user, is_director):
+    """Labour documents waiting for approval (status 'Pending approval'), for the Pending Approvals card.
+    Only doctypes the caller may read are listed, so a role without Labour access sees none."""
+    from psd_books.utils.access import assert_can
+
+    rows = []
+    for doctype, label, amount_col, project_col in _LABOUR_PENDING:
+        try:
+            assert_can(doctype, "read", user)
+        except frappe.PermissionError:
+            continue
+        found = frappe.db.sql(
+            f"""SELECT %(dt)s AS doctype, %(label)s AS label, name, {project_col} AS project,
+                       DATE(modified) AS date, owner, NULL AS party, {amount_col} AS amount
+                FROM `tab{doctype}`
+                WHERE company = %(company)s AND status = 'Pending approval'
+                ORDER BY modified DESC LIMIT 8""",
+            {"dt": doctype, "label": label, "company": company}, as_dict=True)
+        for r in found:
+            r["for_me"] = bool(is_director and r.get("owner") != user)
+        rows.extend(found)
+    return rows
+
+
+def _labour_tiles(company, user, ps, spark_from):
+    """Figures for the two Labour KPI tiles (Active Contracts, Labour Balance to Pay), or None when the caller
+    may not read Labour Contracts. Balance = value - amount on Paid bills, over Approved contracts, as on the Contract screen."""
+    from psd_books.utils.access import assert_can
+
+    try:
+        assert_can("Labour Contract", "read", user)
+    except frappe.PermissionError:
+        return None
+    from psd_books.invoicing.doctype.labour_weekly_bill import labour_weekly_bill as bills
+
+    cons = frappe.get_all("Labour Contract", filters={"status": "Approved", "company": company},
+                          fields=["name", "contract_value", "approved_on"], limit_page_length=0)
+    paid_by = bills.committed_totals([c["name"] for c in cons])
+    value = sum(flt(c.get("contract_value")) for c in cons)
+    paid = sum(paid_by[c["name"]]["paid"] for c in cons)
+    balance = sum(max(0.0, flt(c.get("contract_value")) - paid_by[c["name"]]["paid"]) for c in cons)
+    paid_bills = frappe.get_all("Labour Weekly Bill",
+                                filters={"status": "Paid", "company": company, "paid_on": [">=", spark_from]},
+                                fields=["paid_on", "total_amount"], limit_page_length=0)
+    count_by_status = lambda dt: {r["status"]: int(r["n"]) for r in frappe.db.sql(
+        f"SELECT status, COUNT(*) AS n FROM `tab{dt}` WHERE company = %(c)s GROUP BY status", {"c": company}, as_dict=True)}
+    try:
+        assert_can("Labour Weekly Bill", "read", user)
+        bill_status = count_by_status("Labour Weekly Bill")
+        unpaid = frappe.db.sql(
+            """SELECT name, project, week_start, week_end, total_amount, approved_on,
+                      DATEDIFF(%(t)s, DATE(approved_on)) AS days_waiting
+               FROM `tabLabour Weekly Bill`
+               WHERE company = %(c)s AND status = 'Approved'
+               ORDER BY approved_on ASC, name ASC""", {"c": company, "t": today()}, as_dict=True)
+        for r in unpaid:
+            r["total_amount"] = flt(r.get("total_amount"))
+        awaiting_payment = unpaid[:6]
+        awaiting_payment_total = sum(r["total_amount"] for r in unpaid)
+        awaiting_payment_count = len(unpaid)
+    except frappe.PermissionError:
+        bill_status, awaiting_payment, awaiting_payment_total, awaiting_payment_count = None, [], 0.0, 0
+    return {
+        "contract_status": count_by_status("Labour Contract"),
+        "bill_status": bill_status,
+        "awaiting_payment": awaiting_payment,
+        "awaiting_payment_total": flt(awaiting_payment_total),
+        "awaiting_payment_count": awaiting_payment_count,
+        "active_contracts": len(cons),
+        "approved_value": flt(value),
+        "new_month": sum(1 for c in cons if c.get("approved_on") and str(c["approved_on"])[:10] >= ps["month"]),
+        "balance": flt(balance),
+        "paid": flt(paid),
+        "spark": {
+            "contracts": _weekly_series(cons, "approved_on", today()),
+            "balance": _weekly_series(paid_bills, "paid_on", today(), value="total_amount"),
+        },
+    }
+
+
 @frappe.whitelist()
 def get_projects_dashboard(company: str | None = None) -> dict:
     """Everything the project dashboard shows, in one call (counts and short lists only)."""
@@ -296,7 +384,9 @@ def get_projects_dashboard(company: str | None = None) -> dict:
         WHERE company = %(company)s AND docstatus != 2 AND status = 'Pending Approval'
         ORDER BY modified DESC LIMIT 8
     """, p, as_dict=True)
-    pending = sorted(mr_pending, key=lambda r: not r["for_me"]) + [dict(r, for_me=False) for r in po_pending]
+    labour_pending = _labour_pending(company, user, "Director" in set(frappe.get_roles(user)))
+    pending = (sorted(mr_pending + labour_pending, key=lambda r: not r["for_me"])
+               + [dict(r, for_me=False) for r in po_pending])
 
     # Expected date comes from the Material Request(s) the PO covers (MR "Expected Delivery Date" is
     # posting_date); earliest one when a PO spans several. Falls back to the PO's own date if it has no MRN.
@@ -399,6 +489,10 @@ def get_projects_dashboard(company: str | None = None) -> dict:
         for r in rows:
             r["project_label"] = names.get(r.get("project")) or ""
 
+    labour = _labour_tiles(company, user, ps, spark_from)
+    for r in (labour or {}).get("awaiting_payment") or []:
+        r["project_label"] = names.get(r.get("project")) or ""
+
     return {
         "company": company,
         "active_projects": int(proj.get("active") or 0),
@@ -418,6 +512,7 @@ def get_projects_dashboard(company: str | None = None) -> dict:
         "open_po_count": int(po.get("n") or 0),
         "open_po_value": flt(po.get("total")),
         "qc": {"pending": qc.get("Pending", 0), "pass": qc.get("Pass", 0), "fail": qc.get("Fail", 0)},
+        "labour": labour,
         "pending_approvals": pending,
         "awaiting_delivery": awaiting,
         "project_snapshot": snapshot,

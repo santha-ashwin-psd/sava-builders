@@ -21,7 +21,7 @@
     </div>
 
     <!-- ── KPI tiles ── -->
-    <div class="ov-kpi-grid">
+    <div class="ov-kpi-grid" :class="{ 'ov-kpi-6': kpiCards.length > 4 }">
       <div v-for="kpi in kpiCards" :key="kpi.key" class="ov-kpi" :class="kpi.accent" @click="navTo(kpi.route)">
         <div class="ov-kpi-icon"><span v-html="kpi.icon"></span></div>
         <div class="ov-kpi-main">
@@ -92,7 +92,7 @@
               <span class="ov-appr-ico" v-html="iconDoc"></span>
               <div class="ov-appr-info">
                 <div class="ov-appr-name">{{ r.name }}</div>
-                <div class="ov-appr-sub">{{ r.doctype }}<span v-if="r.project_label"> · {{ r.project_label }}</span></div>
+                <div class="ov-appr-sub">{{ r.label || r.doctype }}<span v-if="r.project_label"> · {{ r.project_label }}</span></div>
               </div>
               <div class="ov-appr-right">
                 <div class="ov-appr-date"><span v-html="iconClock"></span>{{ fmtDate(r.date) }}</div>
@@ -184,6 +184,93 @@
         </template>
       </div>
       -->
+    </div>
+
+    <!-- ── Labour: contracts and weekly bills by status (only for users who can read them) ── -->
+    <div v-if="d.labour && d.labour.contract_status" class="ov-row" :class="d.labour.bill_status ? 'ov-row-even' : 'ov-row-single'">
+      <div class="ov-card">
+        <div class="ov-card-head">
+          <div class="ov-head-l">
+            <span class="ov-head-ico ov-ico-blue" v-html="iconClip"></span>
+            <div>
+              <div class="ov-card-title">Labour Contracts</div>
+              <div class="ov-card-sub">Contracts by status</div>
+            </div>
+          </div>
+          <button class="ov-link" @click="navTo('/labour-contract/contract')">View all →</button>
+        </div>
+        <div v-if="loading" class="ov-shimmer" style="height:190px;border-radius:10px"></div>
+        <div v-else-if="!labourContractBars.total" class="ov-empty"><div class="ov-empty-sub">No labour contracts yet.</div></div>
+        <div v-else class="ov-bars">
+          <div v-for="st in labourContractBars.rows" :key="st.key" class="ov-bar-row" @click="navTo('/labour-contract/contract')">
+            <span class="ov-bar-lbl">{{ st.label }}</span>
+            <div class="ov-bar-track"><div class="ov-bar-fill" :style="{ width: st.pct + '%', background: st.color }"></div></div>
+            <span class="ov-bar-n" :style="{ color: st.count ? st.color : '#94a3b8' }">{{ st.count }}</span>
+          </div>
+        </div>
+      </div>
+
+      <template v-if="d.labour.bill_status">
+      <div class="ov-card">
+        <div class="ov-card-head">
+          <div class="ov-head-l">
+            <span class="ov-head-ico ov-ico-blue" v-html="iconClip"></span>
+            <div>
+              <div class="ov-card-title">Weekly Bills</div>
+              <div class="ov-card-sub">Labour weekly bills by status</div>
+            </div>
+          </div>
+          <button class="ov-link" @click="navTo('/labour-contract/weekly-bill')">View all →</button>
+        </div>
+        <div v-if="loading" class="ov-shimmer" style="height:190px;border-radius:10px"></div>
+        <div v-else-if="!labourBillBars.total" class="ov-empty"><div class="ov-empty-sub">No weekly bills yet.</div></div>
+        <div v-else class="ov-bars">
+          <div v-for="st in labourBillBars.rows" :key="st.key" class="ov-bar-row" @click="navTo('/labour-contract/weekly-bill')">
+            <span class="ov-bar-lbl">{{ st.label }}</span>
+            <div class="ov-bar-track"><div class="ov-bar-fill" :style="{ width: st.pct + '%', background: st.color }"></div></div>
+            <span class="ov-bar-n" :style="{ color: st.count ? st.color : '#94a3b8' }">{{ st.count }}</span>
+          </div>
+        </div>
+      </div>
+      </template>
+    </div>
+
+    <!-- ── Labour: approved weekly bills not yet paid ── -->
+    <div v-if="d.labour && d.labour.bill_status" class="ov-row ov-row-single">
+      <div class="ov-card">
+        <div class="ov-card-head">
+          <div class="ov-head-l">
+            <span class="ov-head-ico ov-ico-blue" v-html="iconDoc"></span>
+            <div>
+              <div class="ov-card-title">Awaiting Payment</div>
+              <div class="ov-card-sub">Approved weekly bills not yet paid<template v-if="d.labour.awaiting_payment_count"> · {{ d.labour.awaiting_payment_count }} bill<template v-if="d.labour.awaiting_payment_count > 1">s</template> · {{ fmt(d.labour.awaiting_payment_total) }}</template></div>
+            </div>
+          </div>
+          <button class="ov-link" @click="navTo('/labour-contract/weekly-bill')">View all →</button>
+        </div>
+        <div v-if="loading" class="ov-shimmer" style="height:190px;border-radius:10px"></div>
+        <template v-else-if="d.labour.awaiting_payment && d.labour.awaiting_payment.length">
+          <div class="ov-tbl-wrap">
+            <table class="ov-tbl">
+              <thead>
+                <tr><th>Bill</th><th>Project</th><th>Week</th><th class="ta-r">Amount</th><th>Approved</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in d.labour.awaiting_payment" :key="r.name" @click="navTo('/labour-contract/weekly-bill')">
+                  <td><span class="ov-tbl-link">{{ r.name }}</span></td>
+                  <td class="ov-clip">{{ r.project_label || '—' }}</td>
+                  <td class="ov-muted">{{ fmtDate(r.week_start) }} – {{ fmtDate(r.week_end) }}</td>
+                  <td class="ta-r">{{ fmt(r.total_amount) }}</td>
+                  <td class="ov-muted">{{ fmtDate(r.approved_on) }}
+                    <span class="ov-pill" :class="payWait(r).cls" style="margin-left:8px">{{ payWait(r).label }}</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <button class="ov-link ov-foot-link" @click="navTo('/labour-contract/weekly-bill')">View all weekly bills →</button>
+        </template>
+        <div v-else class="ov-empty"><div class="ov-empty-sub">No approved weekly bills are waiting for payment.</div></div>
+      </div>
     </div>
 
     <!-- ── Spend by project + Top suppliers ── -->
@@ -390,7 +477,7 @@ function spark(vals) {
 const kpiCards = computed(() => {
   const x = d.value, sp = x.spark || {};
   const pct = x.material_value_change_pct;
-  return [
+  const cards = [
     { key: "projects", label: "Active Projects", accent: "ov-a-blue", icon: iconGlyph("folder"), route: "/projects", color: "#2563eb",
       value: x.active_projects ?? 0, sub: `${x.new_projects_month ?? 0} this month`, trend: (x.new_projects_month || 0) > 0 ? "up" : "", spark: spark(sp.projects) },
     { key: "mr", label: "Pending Approval", accent: "ov-a-amber", icon: iconGlyph("clock"), route: "/manufacturing/material-request", color: "#f59e0b",
@@ -402,6 +489,16 @@ const kpiCards = computed(() => {
       sub: pct == null ? "This month's purchase orders" : `${Math.abs(pct)}% vs same days last month`,
       trend: pct == null ? "" : pct >= 0 ? "up" : "down", spark: spark(sp.value) },
   ];
+  const lb = x.labour;   // null when the user cannot read Labour Contracts: the two labour tiles are left out
+  if (lb) {
+    cards.push(
+      { key: "lab-contracts", label: "Active Contracts", accent: "ov-a-blue", icon: iconGlyph("folder"), route: "/labour-contract/contract", color: "#0891b2",
+        value: lb.active_contracts ?? 0, sub: `${lb.new_month ?? 0} approved this month · ${fmt(lb.approved_value || 0)}`, trend: (lb.new_month || 0) > 0 ? "up" : "", spark: spark((lb.spark || {}).contracts) },
+      { key: "lab-balance", label: "Labour Balance to Pay", accent: "ov-a-amber", icon: iconGlyph("clock"), route: "/labour-contract/weekly-bill", color: "#d97706",
+        value: fmt(lb.balance || 0), sub: `${fmt(lb.paid || 0)} paid so far`, trend: "", spark: spark((lb.spark || {}).balance) },
+    );
+  }
+  return cards;
 });
 
 // ── MR pipeline ──
@@ -426,6 +523,40 @@ const pipelineRows = computed(() => {
     return { ...s, count, pct: Math.round(count / max * 100) };
   });
 });
+
+// Approved weekly bill waiting for payment: "Overdue" once it has waited more than 7 days since approval.
+const payWait = (r) => {
+  const n = r.days_waiting;
+  if (n == null) return { label: "No date", cls: "ov-pill-blue" };
+  if (n > 7) return { label: "Overdue", cls: "ov-pill-red" };
+  if (n === 0) return { label: "Today", cls: "ov-pill-green" };
+  return { label: `${n} day${n > 1 ? "s" : ""}`, cls: "ov-pill-amber" };
+};
+
+// ── Labour status bars ──
+const LABOUR_CONTRACT_STATES = [
+  { key: "Draft",            label: "Draft",            color: "#94a3b8" },
+  { key: "Pending approval", label: "Pending Approval", color: "#f59e0b" },
+  { key: "Sent back",        label: "Sent Back",        color: "#fb7185" },
+  { key: "Approved",         label: "Approved",         color: "#2563eb" },
+  { key: "Closed",           label: "Closed",           color: "#16a34a" },
+];
+const LABOUR_BILL_STATES = [
+  { key: "Draft",            label: "Draft",              color: "#94a3b8" },
+  { key: "Pending approval", label: "Pending Approval",   color: "#f59e0b" },
+  { key: "Sent back",        label: "Sent Back",          color: "#fb7185" },
+  { key: "Approved",         label: "Approved (unpaid)",  color: "#2563eb" },
+  { key: "Paid",             label: "Paid",               color: "#16a34a" },
+  { key: "Cancelled",        label: "Cancelled",          color: "#ef4444" },
+];
+function statusBars(states, src) {
+  src = src || {};
+  const max = Math.max(1, ...states.map(s => src[s.key] || 0));
+  const rows = states.map(s => { const count = src[s.key] || 0; return { ...s, count, pct: Math.round(count / max * 100) }; });
+  return { rows, total: rows.reduce((a, r) => a + r.count, 0) };
+}
+const labourContractBars = computed(() => statusBars(LABOUR_CONTRACT_STATES, (d.value.labour || {}).contract_status));
+const labourBillBars     = computed(() => statusBars(LABOUR_BILL_STATES, (d.value.labour || {}).bill_status));
 
 // ── Awaiting delivery / QC helpers ──
 // Overdue / Due today / Upcoming, from the expected delivery date (list is already sorted oldest first).
@@ -500,6 +631,9 @@ function openDoc(r) {
   if (r.doctype === "Material Request") return navTo("/manufacturing/material-request/" + encodeURIComponent(r.name));
   if (r.doctype === "Purchase Order")   return navTo({ path: "/purchase-orders",   query: { open: r.name } });
   if (r.doctype === "Purchase Receipt") return navTo({ path: "/purchase-receipts", query: { open: r.name } });
+  if (r.doctype === "Labour Contract")         return navTo("/labour-contract/contract");
+  if (r.doctype === "Labour Weekly Bill")      return navTo("/labour-contract/weekly-bill");
+  if (r.doctype === "Labour Attendance Sheet") return navTo("/labour-contract/attendance");
 }
 
 // ── Inline SVG glyphs ──
@@ -584,6 +718,7 @@ const iconCheck    = `<svg width="40" height="40" viewBox="0 0 24 24" fill="none
 
 /* ── KPI tiles ── */
 .ov-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+@media (min-width: 1201px) { .ov-kpi-grid.ov-kpi-6 { grid-template-columns: repeat(3, 1fr); } }
 .ov-kpi {
   position: relative; display: flex; align-items: flex-start; gap: 14px;
   background: #fff; border: 1px solid #eef1f5; border-radius: 14px;
