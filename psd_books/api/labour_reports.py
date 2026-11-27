@@ -1,8 +1,9 @@
 """Sava Phase 2: labour contract reports (Reports page, same screen as the procurement reports). Read-only.
 
 - contract_status(project=None):      one row per contract: task, contractor, status, value, billed %, paid, balance
-- employee_wages(from_date, to_date): one row per employee from Submitted wages sheets in the range
-- weekly_payments(from_date, to_date): per week: paid to contractors, paid to employees, total
+- employee_wages(from_date, to_date): one row per worker (Labour Worker) from Submitted wages sheets in the range; lines of
+                                      people who are not Labour Workers (old sheets made before Workers existed) are left out
+- weekly_payments(from_date, to_date): per week: paid to contractors, paid to workers (Labour Workers only, as in employee_wages), total
 
 Rules shared with the screens:
 - Paid on a contract = amounts on Paid weekly bills (same as "Paid till now" on the Weekly Bill screen).
@@ -61,14 +62,16 @@ def build_contract_status(contracts, paid, project_names=None, activity_names=No
 
 
 def build_employee_wages(lines):
-	"""lines: dicts with employee, employee_name, id_no, week_end, days, rate, ot_amount, sha, total (one per sheet line).
-	Days, OT, SHA and net wages are added up; the rate shown is the one on the latest week."""
+	"""lines: dicts with employee, employee_name, id_no, worker_id_no, week_end, days, rate, ot_amount, sha, total (one per sheet line).
+	Days, OT, SHA and net wages are added up; the rate shown is the one on the latest week.
+	ID No. shown = the worker's ID No. on the Workers screen (worker_id_no), else the ID No. on the latest sheet line that has one,
+	else the employee code."""
 	acc = {}
 	for ln in lines:
 		key = ln.get("employee") or ln.get("id_no") or ln.get("employee_name") or ""
-		a = acc.setdefault(key, {"employee_id": ln.get("employee") or ln.get("id_no") or "",
-			"employee": ln.get("employee_name") or ln.get("employee") or "", "days": 0, "rate": 0.0, "ot_amount": 0.0,
-			"sha": 0.0, "net_wages": 0.0, "_last": None})
+		a = acc.setdefault(key, {"id_no": "", "employee": ln.get("employee_name") or ln.get("employee") or "", "days": 0,
+			"rate": 0.0, "ot_amount": 0.0, "sha": 0.0, "net_wages": 0.0, "_last": None,
+			"_code": ln.get("employee") or "", "_master_id": "", "_line_id": "", "_line_id_week": ""})
 		a["days"] += int(flt(ln.get("days")))
 		a["ot_amount"] += flt(ln.get("ot_amount"))
 		a["sha"] += flt(ln.get("sha"))
@@ -76,11 +79,17 @@ def build_employee_wages(lines):
 		we = str(ln.get("week_end") or "")
 		if a["_last"] is None or we >= a["_last"]:
 			a["_last"], a["rate"] = we, flt(ln.get("rate"))
+		a["_master_id"] = a["_master_id"] or (ln.get("worker_id_no") or "").strip()
+		line_id = (ln.get("id_no") or "").strip()
+		if line_id and we >= a["_line_id_week"]:
+			a["_line_id"], a["_line_id_week"] = line_id, we
 	rows = sorted(acc.values(), key=lambda r: (r["employee"] or "").lower())
 	for r in rows:
-		r.pop("_last")
+		r["id_no"] = r["_master_id"] or r["_line_id"] or r["_code"]
+		for k in ("_last", "_code", "_master_id", "_line_id", "_line_id_week"):
+			r.pop(k)
 	if rows:
-		rows.append({"employee_id": "", "employee": "Total", "days": sum(r["days"] for r in rows), "rate": None,
+		rows.append({"id_no": "", "employee": "Total", "days": sum(r["days"] for r in rows), "rate": None,
 			"ot_amount": sum(r["ot_amount"] for r in rows), "sha": sum(r["sha"] for r in rows),
 			"net_wages": sum(r["net_wages"] for r in rows)})
 	return rows
@@ -152,8 +161,9 @@ def employee_wages(from_date=None, to_date=None):
 	company = _guard("Labour Attendance Sheet")
 	f, t = _range(from_date, to_date)
 	lines = frappe.db.sql(
-		"""select l.employee, l.employee_name, l.id_no, s.week_end, l.days, l.rate, l.ot_amount, l.sha, l.total
+		"""select l.employee, l.employee_name, l.id_no, w.id_no as worker_id_no, s.week_end, l.days, l.rate, l.ot_amount, l.sha, l.total
 		from `tabLabour Attendance Line` l join `tabLabour Attendance Sheet` s on s.name = l.parent
+		join `tabLabour Worker` w on w.name = l.employee
 		where s.status in %(st)s and s.week_end between %(f)s and %(t)s""" + _company_sql(company, "s"),
 		{"st": WAGES_STATUSES, "f": f, "t": t, "co": company}, as_dict=True)
 	return build_employee_wages(lines)
@@ -171,6 +181,7 @@ def weekly_payments(from_date=None, to_date=None):
 	sheets = frappe.db.sql(
 		"""select s.week_end, sum(l.total) as amount
 		from `tabLabour Attendance Line` l join `tabLabour Attendance Sheet` s on s.name = l.parent
+		join `tabLabour Worker` w on w.name = l.employee
 		where s.status in %(st)s and s.week_end between %(f)s and %(t)s""" + _company_sql(company, "s")
 		+ " group by s.week_end", {"st": WAGES_STATUSES, "f": f, "t": t, "co": company}, as_dict=True)
 	return build_weekly_payments(bills, sheets)

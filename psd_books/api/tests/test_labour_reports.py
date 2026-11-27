@@ -60,6 +60,20 @@ class TestEmployeeWages(unittest.TestCase):
 		self.assertEqual(rows[-1]["net_wages"], 3475 + 6681.25)
 		self.assertEqual(rows[-1]["days"], 17)
 
+	def test_id_no_shown(self):
+		base = {"week_end": "2026-11-06", "days": 1, "rate": 500, "ot_amount": 0, "sha": 0, "total": 500}
+		lines = [
+			{**base, "employee": "WRK-00001", "employee_name": "worker - 1", "id_no": "old", "worker_id_no": "001"},
+			{**base, "employee": "EMP-2026-00007", "employee_name": "Abinesh", "id_no": "", "worker_id_no": None},
+			{**base, "employee": "EMP-2026-00008", "employee_name": "Abishek", "id_no": "A-8", "worker_id_no": None},
+			{**base, "week_end": "2026-11-13", "employee": "EMP-2026-00008", "employee_name": "Abishek", "id_no": "A-9", "worker_id_no": None}]
+		rows = {x["employee"]: x for x in r.build_employee_wages(lines)}
+		self.assertEqual(rows["worker - 1"]["id_no"], "001")            # the Workers screen ID No. wins
+		self.assertEqual(rows["Abinesh"]["id_no"], "EMP-2026-00007")    # no ID No. anywhere: falls back to the code
+		self.assertEqual(rows["Abishek"]["id_no"], "A-9")               # latest sheet line with an ID No.
+		self.assertEqual(rows["Total"]["id_no"], "")
+		self.assertNotIn("employee_id", rows["Abinesh"])
+
 	def test_empty(self):
 		self.assertEqual(r.build_employee_wages([]), [])
 

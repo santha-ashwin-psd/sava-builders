@@ -75,7 +75,7 @@
     </div>
 
     <!-- P&L -->
-    <div v-if="['mrn_lpo','lpo_grn','proj_summary','supp_analysis','asset_reg','lab_contract','lab_wages','lab_weekly'].includes(activeReport)" class="books-card report-card bs-card">
+    <div :key="activeReport" v-if="['mrn_lpo','lpo_grn','proj_summary','supp_analysis','asset_reg','lab_contract','lab_wages','lab_weekly'].includes(activeReport)" class="books-card report-card bs-card">
       <div class="bs-page-head">
         <div class="bs-page-head-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
@@ -5193,10 +5193,10 @@ const PROC_HIDDEN = {
   mrn_lpo: ["project"],
   lab_contract: ["project"],
 };
-const PROC_COL_LABELS = { project_name: "Project", billed_pct: "Billed %", employee_id: "Employee ID", sha: "SHA", ot_amount: "OT Amount", rate: "Rate/Day" };
+const PROC_COL_LABELS = { project_name: "Project", billed_pct: "Billed %", employee_id: "Employee ID", id_no: "ID No.", sha: "SHA", ot_amount: "OT Amount", rate: "Rate/Day" };
 // Search box: matches MRN / LPO no., supplier name, project (code or name), item code and item name
 const PROC_SEARCH_KEYS = ["mrn", "lpo", "supplier_name", "project", "project_name", "item_code", "item_name",
-  "contract", "task", "contractor_name", "employee", "employee_id", "week"];
+  "contract", "task", "contractor_name", "employee", "employee_id", "id_no", "week"];
 const PROC_SEARCH_HINTS = {
   mrn_lpo: "Search MRN, project, item code, item name",
   lpo_grn: "Search LPO, supplier, project, item",
@@ -7319,6 +7319,30 @@ function tabColor(i) {
 
 /* Profit & Loss dashboard */
 .pl-dash { display: flex; flex-direction: column; gap: 16px; }
+
+/* Report switch: the new panel eases in (soft fade with a short rise); the selector cards respond smoothly.
+   Each panel is re-created on switch, so the animation plays every time. */
+.page-reports > .bs-card,
+.page-reports > .pl-dash {
+  animation: rpt-in .38s cubic-bezier(.16, 1, .3, 1) backwards;
+}
+@keyframes rpt-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.report-grid .report-card {
+  transition: background-color .22s ease, border-color .22s ease, color .22s ease,
+              box-shadow .22s ease, transform .22s cubic-bezier(.16, 1, .3, 1);
+}
+.report-grid .report-card .report-card-icon { transition: background-color .22s ease, color .22s ease; }
+.report-grid .report-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15, 23, 42, .07); }
+.report-grid .report-card:active { transform: translateY(0) scale(.99); box-shadow: none; }
+.report-grid .report-card.active { box-shadow: 0 2px 8px rgba(37, 99, 235, .12); }
+@media (prefers-reduced-motion: reduce) {
+  .page-reports > .bs-card, .page-reports > .pl-dash { animation: none; }
+  .report-grid .report-card { transition: none; }
+  .report-grid .report-card:hover, .report-grid .report-card:active { transform: none; }
+}
 .pl-dash-header {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
