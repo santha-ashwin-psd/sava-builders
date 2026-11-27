@@ -636,7 +636,7 @@ const prNoAccess = computed(() => `Read-only access. Only ${prWho.value} can do 
 const removeLineIdx = ref(null); // index of the GRN line awaiting remove confirmation
 const confirmTarget = ref(null); // { row, mode: "delete"|"cancel" }
 const selectedRows = ref(new Set());
-const sortKey = ref("posting_date");
+const sortKey = ref("name");
 const sortDir = ref(-1);
 const vendorOptions = ref([]);
 const itemOptions   = ref([]);
@@ -789,14 +789,15 @@ const sorted = computed(() => {
     let av = a[key], bv = b[key];
     if (key === "total_qty" || key === "grand_total") { av = flt(av); bv = flt(bv); return dir * (av - bv); }
     av = (av||"").toString().toLowerCase(); bv = (bv||"").toString().toLowerCase();
-    return dir * av.localeCompare(bv);
+    // GRN # sorts as a number (so 140 is above 99, and 135-1 above 135)
+    return dir * av.localeCompare(bv, undefined, key === "name" ? { numeric: true } : undefined);
   });
 });
 const { page, pageSize, paged } = usePagination(sorted, { storageKey: "purchase-receipts" });
 
 function sortBy(key) {
   if (sortKey.value === key) sortDir.value = -sortDir.value;
-  else { sortKey.value = key; sortDir.value = key === "posting_date" ? -1 : 1; }
+  else { sortKey.value = key; sortDir.value = (key === "posting_date" || key === "name") ? -1 : 1; }
 }
 function sortArrow(key) {
   if (sortKey.value !== key) return "";
