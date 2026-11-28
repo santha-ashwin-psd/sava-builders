@@ -362,6 +362,144 @@ def get_item_names(doctype, names=None):
 
 
 @frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_mrn_remaining_item_names(names=None, doctype=None):
+    """
+    Bulk lookup for the Material Requests list "Remaining Items" column: for each MRN, the
+    item names whose quantity is not fully ordered yet (MRN qty, less any short-closed qty,
+    minus qty on Purchase Orders that are not cancelled). Same rule as
+    purchase_order.mrn_remaining_qty, done for all MRNs in three queries.
+    Returns {MRN name: [item name, ...], ...}; cancelled MRNs get an empty list.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    from psd_books.utils.access import assert_can
+    assert_can("Material Request", "read")
+
+    if isinstance(names, str):
+        names = json.loads(names)
+    names = [n for n in (names or []) if n]
+    if not names:
+        return {}
+
+    filters, allowed = _inject_tenancy_filters("Material Request", [["name", "in", names]])
+    if not allowed:
+        return {}
+    parents = {
+        r.name: r for r in frappe.get_all(
+            "Material Request", filters=filters, fields=["name", "docstatus", "status"], limit_page_length=0)
+    }
+    if not parents:
+        return {}
+
+    rows = frappe.get_all(
+        "Material Request Item",
+        filters={"parent": ["in", list(parents)], "parenttype": "Material Request"},
+        fields=["parent", "item_code", "item_name", "required_qty", "short_closed_qty"],
+        order_by="parent asc, idx asc",
+        limit_page_length=0,
+    )
+
+    ordered = {}
+    for r in frappe.db.sql(
+        """select ifnull(nullif(poi.material_request, ''), po.material_request) as mrn,
+                  poi.item_code, sum(poi.qty) as qty
+             from `tabPurchase Order Item` poi
+             join `tabPurchase Order` po on po.name = poi.parent
+            where ifnull(nullif(poi.material_request, ''), po.material_request) in %(mrns)s
+              and po.docstatus < 2 and ifnull(po.status, '') != 'Cancelled'
+         group by 1, poi.item_code""",
+        {"mrns": tuple(parents)}, as_dict=True,
+    ):
+        ordered[(r.mrn, r.item_code)] = flt(r.qty)
+
+    codes = list({r.item_code for r in rows if r.item_code})
+    master = {}
+    if codes:
+        master = {
+            i.name: i.item_name
+            for i in frappe.get_all("Item", filters={"name": ["in", codes]}, fields=["name", "item_name"], limit_page_length=0)
+        }
+
+    # Required qty per (MRN, item): rows of the same item are summed, short-closed qty taken off.
+    required, order = {}, {}
+    for r in rows:
+        k = (r.parent, r.item_code)
+        required[k] = required.get(k, 0.0) + max(0.0, flt(r.required_qty) - flt(r.short_closed_qty))
+        order.setdefault(r.parent, [])
+        if r.item_code not in order[r.parent]:
+            order[r.parent].append(r.item_code)
+    nm = {(r.parent, r.item_code): (master.get(r.item_code) or r.item_name or r.item_code) for r in rows}
+
+    out = {}
+    for mrn, items in order.items():
+        p = parents.get(mrn)
+        if not p or p.docstatus == 2 or (p.status or "") == "Cancelled":
+            out[mrn] = []
+            continue
+        out[mrn] = [
+            nm[(mrn, it)] for it in items
+            if flt(required[(mrn, it)]) - ordered.get((mrn, it), 0.0) > 0.0005
+        ]
+    return out
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
+def get_po_pending_item_names(names=None, doctype=None):
+    """
+    Bulk lookup for the Purchase Orders list "Remaining Items to Receive" column: for each PO,
+    the item names of lines not fully received yet (qty - received_qty - short_closed_qty > 0,
+    same rule as the Purchase Receipt pending qty). Cancelled POs get an empty list.
+    Returns {PO name: [item name, ...], ...}. Two-three queries for the whole list.
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw("Not permitted", frappe.PermissionError)
+    from psd_books.utils.access import assert_can
+    assert_can("Purchase Order", "read")
+
+    if isinstance(names, str):
+        names = json.loads(names)
+    names = [n for n in (names or []) if n]
+    if not names:
+        return {}
+
+    filters, allowed = _inject_tenancy_filters("Purchase Order", [["name", "in", names]])
+    if not allowed:
+        return {}
+    parents = {
+        r.name: r for r in frappe.get_all(
+            "Purchase Order", filters=filters, fields=["name", "docstatus", "status"], limit_page_length=0)
+    }
+    if not parents:
+        return {}
+
+    rows = frappe.get_all(
+        "Purchase Order Item",
+        filters={"parent": ["in", list(parents)], "parenttype": "Purchase Order"},
+        fields=["parent", "item_code", "item_name", "qty", "received_qty", "short_closed_qty"],
+        order_by="parent asc, idx asc",
+        limit_page_length=0,
+    )
+    codes = list({r.item_code for r in rows if r.item_code})
+    master = {}
+    if codes:
+        master = {
+            i.name: i.item_name
+            for i in frappe.get_all("Item", filters={"name": ["in", codes]}, fields=["name", "item_name"], limit_page_length=0)
+        }
+
+    out = {n: [] for n in parents}
+    for r in rows:
+        p = parents.get(r.parent)
+        if not p or p.docstatus == 2 or (p.status or "") == "Cancelled":
+            continue
+        if flt(r.qty) - flt(r.received_qty) - flt(r.short_closed_qty) > 0.0005:
+            nm = master.get(r.item_code) or r.item_name or r.item_code
+            if nm not in out[r.parent]:
+                out[r.parent].append(nm)
+    return out
+
+
+@frappe.whitelist(allow_guest=False, methods=["GET", "POST"])
 def get_list(doctype, fields=None, filters=None, order_by="modified desc", limit_page_length=50, start=0):
     """
     Permission-free list endpoint that mirrors frappe.client.get_list.

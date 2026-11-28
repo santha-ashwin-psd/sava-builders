@@ -4,14 +4,14 @@
 import { ref } from "vue";
 import { apiPOST } from "../api/client.js";
 
-export function useItemNames(doctype) {
+export function useItemNames(doctype, method = "psd_books.api.docs.get_item_names") {
   const map = ref({});
 
   async function loadItemNames(rows) {
     const names = (rows || []).map(r => r.name).filter(Boolean);
     if (!names.length) { map.value = {}; return; }
     try {
-      map.value = (await apiPOST("psd_books.api.docs.get_item_names", { doctype, names: JSON.stringify(names) })) || {};
+      map.value = (await apiPOST(method, { doctype, names: JSON.stringify(names) })) || {};
     } catch { map.value = {}; }
   }
 

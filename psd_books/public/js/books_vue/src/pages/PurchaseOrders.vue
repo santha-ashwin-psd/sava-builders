@@ -61,7 +61,7 @@
             <th @click="sortBy('name')" class="sortable">PO # <span v-html="sortArrow('name')"></span></th>
             <th @click="sortBy('supplier_name')" class="sortable">Vendor <span v-html="sortArrow('supplier_name')"></span></th>
             <th>Project</th>
-            <th>Item Names</th>
+            <th>Remaining Items to Receive</th>
             <th @click="sortBy('transaction_date')" class="sortable">Order Date <span v-html="sortArrow('transaction_date')"></span></th>
             <th v-if="false" @click="sortBy('expected_delivery_date')" class="sortable">Expected <span v-html="sortArrow('expected_delivery_date')"></span></th>
             <th style="width:170px">Status</th>
@@ -1418,7 +1418,7 @@ function canDelete(o) {
   return s === "draft" || s === "" || s === "sent back" || s === "cancelled";
 }
 
-const { loadItemNames, itemNames, hasItem } = useItemNames("Purchase Order");
+const { loadItemNames, itemNames, hasItem } = useItemNames("Purchase Order", "psd_books.api.docs.get_po_pending_item_names");
 async function load() {
   loading.value = true;
   // PO list and project names are independent: fetch them in parallel.

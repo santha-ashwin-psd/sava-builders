@@ -36,7 +36,7 @@
     <div class="mrl-table-wrap">
       <table class="mrl-table">
         <thead><tr>
-          <th>MRN No</th><th>Request Type</th><th>Project</th><th>Item Names</th><th>Entry Date</th><th>Expected Delivery Date</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
+          <th>MRN No</th><th>Request Type</th><th>Project</th><th>Remaining Items to Order</th><th>Entry Date</th><th>Expected Delivery Date</th><th>Requested By</th><th>Status</th><th style="text-align:center">Actions</th>
         </tr></thead>
         <tbody>
           <template v-if="loading"><tr v-for="n in 5" :key="n"><td colspan="9"><div class="shimmer" style="height:26px;border-radius:6px"></div></td></tr></template>
@@ -45,7 +45,7 @@
             <td class="mrl-c-no" data-label="MRN No"><span class="mrl-link">{{ row.name }}</span></td>
             <td data-label="Type">{{ row.material_request_type || '—' }}</td>
             <td data-label="Project">{{ refLabel(row) }}</td>
-            <td data-label="Item Names"><ItemNamesCell :names="itemNames(row.name)" /></td>
+            <td data-label="Remaining Items to Order"><ItemNamesCell :names="itemNames(row.name)" /></td>
             <td data-label="Entry Date">{{ fmtDate(row.entry_date) }}</td>
             <td data-label="Expected Delivery Date">{{ fmtDate(row.posting_date) }}</td>
             <td data-label="Requested By">{{ empName(row) }}</td>
@@ -340,7 +340,7 @@ function empName(r) {
   return (r && (r.employee_name || r.employee)) || "-";
 }
 
-const { loadItemNames, itemNames, hasItem } = useItemNames("Material Request");
+const { loadItemNames, itemNames, hasItem } = useItemNames("Material Request", "psd_books.api.docs.get_mrn_remaining_item_names");
 async function loadList() {
   try {
     const fields = ["name", "material_request_type", "posting_date", "entry_date", "production_plan", "project", "owner", "employee", "employee_name", "status", "docstatus", "modified"];
